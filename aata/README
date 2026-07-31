@@ -36,7 +36,13 @@ proofs follow its arguments.
 
 | File | Chapter | Status |
 |---|---|---|
+| `sets.md` | 1 — Preliminaries (§1.2.1 Set Theory) | ✅ full transliteration; set algebra + De Morgan (14 theorems), verified pure |
 | `groups.md` | 3 — Groups (Basic Properties) | ✅ 5 propositions + 5 exercises, verified pure |
+
+The set theory rests on `std/set.bpa` (sets over an abstract `Universe` of
+elements, fixed membershipwise, with extensionality). Every identity is proved
+by the same recipe — extensionality → fix an element → unfold `member(x, ·)` →
+one `[by tautology …]` — so the whole chapter is oracle-free.
 
 The group theory rests on `std/group.bpa` (the group axioms as a reusable bpa
 theory) and uses the `assoc` tactic (associativity-only reordering) for the
@@ -53,6 +59,11 @@ of standard-library constructions that future chapters will motivate:
 - **finite sets + cardinality** (counting arguments, Cayley tables, Lagrange),
 - **matrix / GLₙ** constructions and the reals,
 - a **group power** `gⁿ` (recursive over a Nat exponent) for the ℕ-indexed
-  exercises.
+  exercises,
+- **sets-of-sets / quotient structure + a relation sort** — Chapter 1's §1.2.3
+  (equivalence relations ⟺ partitions) needs equivalence classes `[a]` and the
+  partition `X = ⋃[x]`, which `std/set.bpa`'s flat `member : Universe → Set`
+  model cannot express; and the **indexed families** `⋃ᵢ Aᵢ` / `⋂ᵢ Aᵢ` need a
+  sort of finite sequences of `Set`.
 
 Each is a self-contained addition; the translation grows as they land.

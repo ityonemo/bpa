@@ -1,0 +1,54 @@
+// std/set.bpa — a set algebra over a fixed universe, per Chapter 1 of Judson's
+// *Abstract Algebra* (vendor/aata/src/sets.xml): sets of elements drawn from a
+// universe, with union, intersection, difference, complement, and the empty
+// set, characterized entirely by MEMBERSHIP.
+//
+// A reusable abstract theory (like std/peano, std/group), imported by the AATA
+// literate translation aata/sets.md, which drives it by these membership
+// axioms: every set identity `S = T` is proved by extensionality — fix an
+// element x, unfold `member(x, ·)` on both sides via the operator axioms, and
+// discharge the resulting propositional biconditional with `[by tautology]`.
+//
+// bpa has no `<->` connective, so each membership biconditional is written as
+// the `and` of its two implications. `complement` needs no explicit "universal
+// set" object — it is fixed purely by its double-negation membership rule, and
+// every theorem is proved membershipwise.
+
+sort Universe
+sort Set
+const emptyset: Set
+func union(a: Set, b: Set): Set
+func intersection(a: Set, b: Set): Set
+func difference(a: Set, b: Set): Set
+func complement(a: Set): Set
+pred member(x: Universe, s: Set)
+
+// x ∈ a∪b  iff  x∈a or x∈b
+axiom unionMember: forall a, b: Set; forall x: Universe;
+  (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
+  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+
+// x ∈ a∩b  iff  x∈a and x∈b
+axiom intersectionMember: forall a, b: Set; forall x: Universe;
+  (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
+  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+
+// x ∈ a\b  iff  x∈a and x∉b
+axiom differenceMember: forall a, b: Set; forall x: Universe;
+  (member(x, difference(a, b)) -> (member(x, a) and (not member(x, b))))
+  and ((member(x, a) and (not member(x, b))) -> member(x, difference(a, b)))
+
+// x ∈ a'  iff  x∉a
+axiom complementMember: forall a: Set; forall x: Universe;
+  (member(x, complement(a)) -> (not member(x, a)))
+  and ((not member(x, a)) -> member(x, complement(a)))
+
+// nothing is a member of the empty set
+axiom emptysetMember: forall x: Universe; not member(x, emptyset)
+
+// extensionality: sets with the same members are equal (each inclusion is a
+// plain forall; the two chain to `a = b`).
+axiom extensionality: forall a, b: Set;
+  (forall x: Universe; member(x, a) -> member(x, b)) ->
+  (forall x: Universe; member(x, b) -> member(x, a)) ->
+  a = b

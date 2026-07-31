@@ -56,7 +56,7 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&no_args.step);
 
         // fmt --check: the exemplars are canonically formatted
-        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa" }) |path| {
+        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/set.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa" }) |path| {
             const fmt_check = b.addRunArtifact(exe);
             fmt_check.has_side_effects = true;
             fmt_check.setCwd(b.path("."));
@@ -1300,6 +1300,27 @@ pub fn build(b: *std.Build) void {
         aata_groups.expectStdOutEqual("OK: 29 declarations, 10 theorems proven\n");
         aata_groups.expectExitCode(0);
         test_step.dependOn(&aata_groups.step);
+
+        // the set theory (std/set.bpa): axioms only, no theorems.
+        const std_set = b.addRunArtifact(exe);
+        std_set.has_side_effects = true;
+        std_set.setCwd(b.path("."));
+        std_set.addArgs(&.{ "check", "std/set.bpa" });
+        std_set.expectStdErrEqual("");
+        std_set.expectStdOutEqual("OK: 14 declarations, 0 theorems proven\n");
+        std_set.expectExitCode(0);
+        test_step.dependOn(&std_set.step);
+
+        // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
+        // (the set-algebra proposition + De Morgan's laws), verified PURE.
+        const aata_sets = b.addRunArtifact(exe);
+        aata_sets.has_side_effects = true;
+        aata_sets.setCwd(b.path("."));
+        aata_sets.addArgs(&.{ "check", "aata/sets.md" });
+        aata_sets.expectStdErrEqual("");
+        aata_sets.expectStdOutEqual("OK: 43 declarations, 14 theorems proven\n");
+        aata_sets.expectExitCode(0);
+        test_step.dependOn(&aata_sets.step);
 
         // --faster trusts imported proofs (peano-imports imports peano.bpa,
         // whose one oracle step would otherwise be re-checked and hard-error).
