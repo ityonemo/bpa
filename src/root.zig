@@ -26,6 +26,8 @@ pub const query = struct {
     pub const theorem = @import("query/theorem.zig");
     pub const whereis = @import("query/whereis.zig");
     pub const search = @import("query/search.zig");
+    pub const uses = @import("query/uses.zig");
+    pub const oracles = @import("query/oracles.zig");
 };
 
 pub const CheckResult = struct {
@@ -253,5 +255,7 @@ test {
     std.testing.refAllDecls(query.theorem);
     std.testing.refAllDecls(query.whereis);
     std.testing.refAllDecls(query.search);
+    std.testing.refAllDecls(query.uses);
+    std.testing.refAllDecls(query.oracles);
     std.testing.refAllDecls(literate);
 }

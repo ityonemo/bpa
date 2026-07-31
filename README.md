@@ -159,6 +159,15 @@ across files*, or *finding a lemma by concept* when the name is fuzzy.
 - `query search <file|dir> <query>` — fuzzy-search theorem/axiom names +
   statements (a directory searches the whole corpus; a file searches its
   transitive-import scope).
+- `query uses <file> [theorem]` — the **dependency audit**: per proof, the
+  rules/tactics it invokes (with counts) and the axioms/theorems/schemas it
+  cites (its own step labels excluded). Answers "which proofs use `assoc`?" and
+  "what does theorem X depend on?" — semantic and alias-aware, where a
+  multi-line `[by …]` defeats `grep`.
+- `query oracles <file> [theorem]` — the **purity audit**: per proof, every step
+  whose rule can fall back to an oracle (`arithmetic`, `tautology`, `polynomial`,
+  `assoc_commut`, `assoc`, and their quantified variants), flagged at its
+  `file:line:col`. A clean report means the file's proofs are pure.
 
 Query may support semantic searching in the future.
 

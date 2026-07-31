@@ -50,7 +50,9 @@ pub fn build(b: *std.Build) void {
                 "       bpa query outline <file.bpa> [theorem]\n" ++
                 "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
                 "       bpa query whereis <file.bpa> <identifier>\n" ++
-                "       bpa query search <file.bpa|dir> <query>\n",
+                "       bpa query search <file.bpa|dir> <query>\n" ++
+                "       bpa query uses <file.bpa> [theorem]\n" ++
+                "       bpa query oracles <file.bpa> [theorem]\n",
         );
         no_args.expectExitCode(1);
         test_step.dependOn(&no_args.step);
@@ -74,12 +76,15 @@ pub fn build(b: *std.Build) void {
         missing.expectExitCode(1);
         test_step.dependOn(&missing.step);
 
-        // Existing file -> exit 0. (Output contract tightens in later milestones.)
+        // Existing, valid file -> parses and checks with no diagnostics. It is
+        // comments-only, so it materializes 0 theorems and exits nonzero with
+        // the "nothing was checked" warning (valid, but proves nothing).
         const ok = b.addRunArtifact(exe);
         ok.has_side_effects = true;
         ok.addArg("check");
         ok.addFileArg(b.path("tests/cases/smoke.bpa"));
-        ok.expectExitCode(0);
+        ok.expectStdErrEqual("");
+        ok.expectExitCode(1);
         test_step.dependOn(&ok.step);
 
         // Syntax error -> exact diagnostic with line:col on stderr, exit 1.
@@ -94,13 +99,15 @@ pub fn build(b: *std.Build) void {
         syn.expectExitCode(1);
         test_step.dependOn(&syn.step);
 
-        // M2: full declaration surface elaborates cleanly.
+        // M2: full declaration surface elaborates cleanly. A decls-only file
+        // materializes 0 theorems, so it exits nonzero with the "nothing was
+        // checked" warning (clean elaboration, but nothing to prove).
         const decls = b.addRunArtifact(exe);
         decls.has_side_effects = true;
         decls.setCwd(b.path("."));
         decls.addArgs(&.{ "check", "tests/cases/pa_decls.bpa" });
         decls.expectStdErrEqual("");
-        decls.expectExitCode(0);
+        decls.expectExitCode(1);
         test_step.dependOn(&decls.step);
 
         // M2: sort errors are caught at elaboration with a precise location.
@@ -1008,6 +1015,48 @@ pub fn build(b: *std.Build) void {
         outline_missing.expectExitCode(1);
         test_step.dependOn(&outline_missing.step);
 
+        // `query uses <file>`: per-proof rule tally + external citations. The
+        // refs that are the proof's OWN labels are excluded from `cites`; the
+        // axioms/theorems it pulls in are listed.
+        const q_uses = b.addRunArtifact(exe);
+        q_uses.has_side_effects = true;
+        q_uses.setCwd(b.path("."));
+        q_uses.addArgs(&.{ "query", "uses", "tests/cases/outline.bpa" });
+        q_uses.expectStdErrEqual("");
+        q_uses.expectStdOutEqual("theorem everyoneIsQ\n" ++
+            "  rules: axiom×2 forall_elim×2 hypothesis×2 modus_ponens forall_intro\n" ++
+            "  cites: either pImpliesQ\n");
+        q_uses.expectExitCode(0);
+        test_step.dependOn(&q_uses.step);
+
+        // `query oracles <file>`: a proof with no oracle-capable rule reports
+        // pure.
+        const q_oracles_pure = b.addRunArtifact(exe);
+        q_oracles_pure.has_side_effects = true;
+        q_oracles_pure.setCwd(b.path("."));
+        q_oracles_pure.addArgs(&.{ "query", "oracles", "tests/cases/outline.bpa" });
+        q_oracles_pure.expectStdErrEqual("");
+        q_oracles_pure.expectStdOutEqual("no oracle-capable steps — this file's proofs are pure\n");
+        q_oracles_pure.expectExitCode(0);
+        test_step.dependOn(&q_oracles_pure.step);
+
+        // `query oracles <file>`: oracle-capable steps flagged at file:line:col
+        // with the rule name — here both `assoc_quantified` and `assoc` (the
+        // quantified variant runs the same oracle-capable core).
+        const q_oracles_hit = b.addRunArtifact(exe);
+        q_oracles_hit.has_side_effects = true;
+        q_oracles_hit.setCwd(b.path("."));
+        q_oracles_hit.addArgs(&.{ "query", "oracles", "tests/cases/assoc.bpa" });
+        q_oracles_hit.expectStdErrEqual("");
+        q_oracles_hit.expectStdOutEqual("theorem reassoc1\n" ++
+            "  tests/cases/assoc.bpa:19:9: assoc_quantified\n\n" ++
+            "theorem reassoc2\n" ++
+            "  tests/cases/assoc.bpa:28:9: assoc_quantified\n\n" ++
+            "theorem reassoc3\n" ++
+            "  tests/cases/assoc.bpa:45:25: assoc\n");
+        q_oracles_hit.expectExitCode(0);
+        test_step.dependOn(&q_oracles_hit.step);
+
         // `query theorem <file> <name>`: the full source of the declaration,
         // verbatim — leading doc-comment through `qed`. Pinned to real std
         // (brittle by design: a std edit to this theorem should break here).
@@ -1293,14 +1342,19 @@ pub fn build(b: *std.Build) void {
         literate_bad.expectExitCode(1);
         test_step.dependOn(&literate_bad.step);
 
-        // the group theory (std/group.bpa): axioms only, no theorems.
+        // the group theory (std/group.bpa): axioms only, no theorems — so a
+        // direct check materializes nothing and exits nonzero with a warning
+        // (the theory is a valid dependency, but checking it alone proves 0).
         const std_group = b.addRunArtifact(exe);
         std_group.has_side_effects = true;
         std_group.setCwd(b.path("."));
         std_group.addArgs(&.{ "check", "std/group.bpa" });
         std_group.expectStdErrEqual("");
-        std_group.expectStdOutEqual("OK: 9 declarations, 0 theorems proven\n");
-        std_group.expectExitCode(0);
+        // exit-code check MUST precede expectStdOutEqual: the latter auto-adds
+        // an `exited=0` term check when none exists yet, which would conflict.
+        std_group.expectExitCode(1);
+        std_group.expectStdOutEqual("OK: 9 declarations, 0 theorems proven\n" ++
+            "  \u{2014} WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).\n");
         test_step.dependOn(&std_group.step);
 
         // AATA group theory: the literate translation of Groups basic-
@@ -1314,14 +1368,16 @@ pub fn build(b: *std.Build) void {
         aata_groups.expectExitCode(0);
         test_step.dependOn(&aata_groups.step);
 
-        // the set theory (std/set.bpa): axioms only, no theorems.
+        // the set theory (std/set.bpa): axioms only, no theorems — a direct
+        // check materializes nothing and exits nonzero with a warning.
         const std_set = b.addRunArtifact(exe);
         std_set.has_side_effects = true;
         std_set.setCwd(b.path("."));
         std_set.addArgs(&.{ "check", "std/set.bpa" });
         std_set.expectStdErrEqual("");
-        std_set.expectStdOutEqual("OK: 14 declarations, 0 theorems proven\n");
-        std_set.expectExitCode(0);
+        std_set.expectExitCode(1);
+        std_set.expectStdOutEqual("OK: 14 declarations, 0 theorems proven\n" ++
+            "  \u{2014} WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).\n");
         test_step.dependOn(&std_set.step);
 
         // AATA set theory: the literate transliteration of Chapter 1 §1.2.1

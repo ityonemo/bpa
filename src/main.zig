@@ -49,7 +49,9 @@ const query_usage =
     "usage: bpa query outline <file.bpa> [theorem]\n" ++
     "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
     "       bpa query whereis <file.bpa> <identifier>\n" ++
-    "       bpa query search <file.bpa|dir> <query>\n";
+    "       bpa query search <file.bpa|dir> <query>\n" ++
+    "       bpa query uses <file.bpa> [theorem]\n" ++
+    "       bpa query oracles <file.bpa> [theorem]\n";
 
 /// Print a query op's result (stdout when ok, stderr otherwise) and map to an
 /// exit code.
@@ -129,6 +131,28 @@ fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
             else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
         };
         const result = try bpa.query.whereis.whereis(arena, path, source, ident, null, queryReadFile, std_root);
+        return emitQuery(result.text, result.ok);
+    }
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "uses")) {
+        if (rest.len < 2 or rest.len > 3) return fail(query_usage, .{});
+        const path = rest[1];
+        const thm: ?[]const u8 = if (rest.len == 3) rest[2] else null;
+        const source = readSource(arena, path) catch |e| switch (e) {
+            error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
+            else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
+        };
+        const result = try bpa.query.uses.uses(arena, path, source, thm);
+        return emitQuery(result.text, result.ok);
+    }
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "oracles")) {
+        if (rest.len < 2 or rest.len > 3) return fail(query_usage, .{});
+        const path = rest[1];
+        const thm: ?[]const u8 = if (rest.len == 3) rest[2] else null;
+        const source = readSource(arena, path) catch |e| switch (e) {
+            error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
+            else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
+        };
+        const result = try bpa.query.oracles.oracles(arena, path, source, thm);
         return emitQuery(result.text, result.ok);
     }
     if (rest.len >= 1 and std.mem.eql(u8, rest[0], "search")) {
@@ -233,6 +257,8 @@ pub fn main(init: std.process.Init) !u8 {
             \\       bpa query theorem <file.bpa> <theorem> [--sig]
             \\       bpa query whereis <file.bpa> <identifier>
             \\       bpa query search <file.bpa|dir> <query>
+            \\       bpa query uses <file.bpa> [theorem]
+            \\       bpa query oracles <file.bpa> [theorem]
             \\
             \\check reports every failure as
             \\  file:line:col: error: <message>
@@ -262,6 +288,11 @@ pub fn main(init: std.process.Init) !u8 {
             \\aliases across files to the real proof; axioms are marked).
             \\query whereis traces an identifier through every alias/import hop
             \\to its original definition (the file-chase as one command).
+            \\query uses lists, per proof, the rules/tactics it invokes and the
+            \\axioms/theorems/schemas it cites (its dependency audit).
+            \\query oracles flags, per proof, every step whose rule can fall back
+            \\to an oracle (arithmetic/tautology/polynomial/assoc_commut/assoc) —
+            \\the potential-taint sites; a clean report means the file is pure.
             \\
         );
         try out.flush();
@@ -274,7 +305,7 @@ pub fn main(init: std.process.Init) !u8 {
     if (args.len >= 2 and std.mem.eql(u8, args[1], "query")) {
         return queryCommand(arena, std_root, args[2..]);
     }
-    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n";
+    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query oracles <file.bpa> [theorem]\n";
     if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
         return fail(usage, .{});
     }
@@ -339,6 +370,16 @@ pub fn main(init: std.process.Init) !u8 {
         try out.writeAll("); re-run `bpa check` before finalizing.");
     }
     try out.writeAll("\n");
+    // A run that materialized NO theorems (schema-only, axioms-only, or a
+    // decls-only file) checked nothing — the file may be a valid dependency,
+    // but checking it directly almost certainly wasn't the intent. Warn and
+    // exit nonzero so it can't pass silently in a script or CI gate.
+    if (result.theorems_proven == 0) {
+        try out.writeAll("  \u{2014} WARNING: 0 theorems proven — nothing was checked" ++
+            " (a schema/axiom/declarations-only file proves nothing on its own).\n");
+        try out.flush();
+        return 1;
+    }
     try out.flush();
     return 0;
 }
