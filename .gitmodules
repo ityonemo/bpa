@@ -1,0 +1,3 @@
+[submodule "vendor/aata"]
+	path = vendor/aata
+	url = https://github.com/twjudson/aata
