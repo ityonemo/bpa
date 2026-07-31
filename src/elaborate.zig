@@ -728,12 +728,19 @@ pub const Elaborator = struct {
 
     /// fix/unpack variable. Zig's rule: no *shadowing* — the name must be fresh
     /// against every enclosing-scope variable and every declaration, but a
-    /// disjoint sibling subproof MAY reuse it. Soundness rests on the kernel's
-    /// `checkEigen`, which rejects an eigenvariable occurring free outside its
-    /// own block subtree; disjoint siblings have disjoint subtrees, so reusing
-    /// a name across them can never conflate two eigenvariables. (Previously
-    /// this required whole-proof freshness — a conservative over-restriction
-    /// that forced contorted unique names in branch-heavy proofs.)
+    /// disjoint sibling subproof MAY reuse it.
+    ///
+    /// The kernel identifies an eigenvariable by its interned name, so two
+    /// disjoint `fix x` blocks that both used the bare name `x` would produce
+    /// representationally identical eigenvariables — and closing the second with
+    /// `forall_intro` would trip `checkEigen` on the first block's (closed)
+    /// `x`-steps, which the kernel cannot tell apart. To keep sibling reuse
+    /// sound AND accepted, we bind the fix var to a FRESH disambiguated identity
+    /// `x#<n>` in kernel terms while keeping the source name `x` for scope
+    /// lookups and shadow-checks. `#` is not a legal identifier character, so
+    /// the disambiguated name can never collide with a userland name, and the
+    /// printer trims each fvar at `#` so proofs still render `x` (see
+    /// `print.zig` `displayName`).
     fn bindProofVar(self: *Elaborator, name_tok: lexer.Token, sort_tok: lexer.Token) ElabError!term.Node.Fvar {
         const name = try self.internTok(name_tok);
         for (self.scope.items) |entry| {
@@ -745,19 +752,45 @@ pub const Elaborator = struct {
             return self.fail(name_tok.start, "'{s}' shadows a declaration; choose a fresh name", .{self.text(name_tok)});
         }
         const sort = try self.resolveSort(sort_tok);
-        try self.scope.append(self.arena, .{ .name = name, .sort = sort, .fvar = name });
-        return .{ .name = name, .sort = sort };
+        const fvar = try self.freshNamed(self.text(name_tok));
+        try self.scope.append(self.arena, .{ .name = name, .sort = sort, .fvar = fvar });
+        return .{ .name = fvar, .sort = sort };
     }
 
     fn resolveStepRef(self: *Elaborator, low: *Lowering, tok: lexer.Token) ElabError!kernel.SRef {
         const name = try self.internTok(tok);
         const target = low.labels.get(name) orelse {
-            return self.fail(tok.start, "unknown reference '{s}'", .{self.text(tok)});
+            // A common mistake is naming an axiom/theorem/schema where a proof
+            // STEP is required (e.g. `forall_elim(a) unionMember` instead of
+            // materializing `@ax | ... [by axiom unionMember]` first, then
+            // `forall_elim(a) ax`). Detect that and point at the fix rather than
+            // reporting a bare "unknown reference".
+            const name_text = self.text(tok);
+            if (self.statementByName(name)) |stmt| {
+                // article + the intro keyword that materializes this kind as a step
+                const desc: []const u8, const intro: []const u8 = switch (stmt) {
+                    .axiom => .{ "an axiom", "axiom" },
+                    .theorem => .{ "a theorem", "theorem" },
+                    .schema => .{ "a schema", "instantiate" },
+                };
+                return self.fail(tok.start, "'{s}' is {s}, not a proof step; introduce it as a step first with `[by {s} {s}]`, then reference that step", .{
+                    name_text, desc, intro, name_text,
+                });
+            }
+            return self.fail(tok.start, "unknown reference '{s}'", .{name_text});
         };
         return switch (target) {
             .step => |id| .{ .id = id, .loc = tok.start },
             .block => self.fail(tok.start, "'{s}' names a subproof; a step reference is required", .{self.text(tok)}),
         };
+    }
+
+    /// Look up a statement (axiom/theorem/schema) visible by name in the theory
+    /// scope or the current file — used to sharpen "unknown reference" hints.
+    fn statementByName(self: *Elaborator, name: StrId) ?Statement {
+        const id = self.env.findStatementId(self.theoryScope(), name) orelse
+            self.env.findStatementId(self.file, name) orelse return null;
+        return self.env.statements.items[@intFromEnum(id)];
     }
 
     fn resolveBlockRef(self: *Elaborator, low: *Lowering, tok: lexer.Token) ElabError!kernel.BRef {
@@ -4196,7 +4229,7 @@ pub const Elaborator = struct {
                 for (cm.values) |a| {
                     msg.writer.print("{s}{s} := {d}", .{
                         if (count > 0) ", " else "",
-                        self.interner.str(a.name),
+                        displayName(self.interner.str(a.name)),
                         a.value,
                     }) catch return error.OutOfMemory;
                     count += 1;
@@ -4323,11 +4356,22 @@ pub const Elaborator = struct {
         return self.freshNamed("b");
     }
 
-    /// hygienic '#'-name with a readable prefix ("simplify#3" in diagnostics)
+    /// The name to SHOW for an interned identifier: everything up to the first
+    /// `#`. Eigenvariables and other hygienic names carry a `#<n>` disambiguator
+    /// (see `bindProofVar` / `freshNamed`); `#` is not a legal identifier
+    /// character, so trimming there recovers exactly what the author wrote. Used
+    /// by diagnostics that print a bare fvar name outside the `print.zig`
+    /// Printer (which strips independently via its own `displayName`).
+    fn displayName(interned: []const u8) []const u8 {
+        return if (std.mem.indexOfScalar(u8, interned, '#')) |i| interned[0..i] else interned;
+    }
+
+    /// hygienic '#'-name with a readable prefix ("simplify#3" in diagnostics,
+    /// or a disambiguated eigenvariable "x#7"). The prefix may be an arbitrary
+    /// user identifier, so allocate rather than risk truncation.
     fn freshNamed(self: *Elaborator, prefix: []const u8) ElabError!StrId {
         self.fresh_counter += 1;
-        var buf: [32]u8 = undefined;
-        const s = std.fmt.bufPrint(&buf, "{s}#{d}", .{ prefix, self.fresh_counter }) catch unreachable;
+        const s = std.fmt.allocPrint(self.arena, "{s}#{d}", .{ prefix, self.fresh_counter }) catch return error.OutOfMemory;
         return self.interner.intern(s) catch error.OutOfMemory;
     }
 

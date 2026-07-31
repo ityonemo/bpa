@@ -57,3 +57,41 @@ proof
         }
     }
 qed
+
+// The harder case: two disjoint sibling `fix x` blocks EACH closed by
+// `forall_intro`. The kernel identifies an eigenvariable by name, so before
+// the elaborator disambiguated fix vars (`x` -> `x#n` internally, rendered
+// back to `x`), closing the SECOND block tripped checkEigen on the FIRST
+// block's still-`x` steps. This is the pattern every two-direction
+// extensionality proof uses; both directions may now reuse `x`.
+theorem bothGeneralize:
+  (forall x: Nat; p(x)) and (forall x: Nat; q(x))
+proof
+  @fwd |
+    fix x: Nat {
+      @pa |
+        forall y: Nat; p(y)
+        [by axiom pall]
+      @px |
+        p(x)
+        [by forall_elim(x) pa]
+    }
+  @fwd-all |
+    forall x: Nat; p(x)
+    [by forall_intro fwd]
+  @bwd |
+    fix x: Nat {
+      @qa |
+        forall y: Nat; q(y)
+        [by axiom qall]
+      @qx |
+        q(x)
+        [by forall_elim(x) qa]
+    }
+  @bwd-all |
+    forall x: Nat; q(x)
+    [by forall_intro bwd]
+  @both |
+    (forall x: Nat; p(x)) and (forall x: Nat; q(x))
+    [by and_intro fwd-all bwd-all]
+qed

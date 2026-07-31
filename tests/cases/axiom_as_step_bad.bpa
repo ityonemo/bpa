@@ -1,0 +1,15 @@
+// Citing an axiom name where a proof STEP is required (a common mistake:
+// `forall_elim(a) myAxiom` instead of materializing the axiom as a step first).
+// The diagnostic must name the fix, not report a bare "unknown reference".
+sort Nat
+const Z: Nat
+pred p(n: Nat)
+
+axiom pall: forall x: Nat; p(x)
+
+theorem g: p(Z)
+proof
+  @bad |
+    p(Z)
+    [by forall_elim(Z) pall]
+qed

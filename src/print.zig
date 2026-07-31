@@ -41,10 +41,20 @@ const Printer = struct {
     /// enclosing binder names, innermost last
     bound: std.ArrayList([]const u8) = .empty,
 
+    /// Display name of an fvar: the elaborator disambiguates same-named
+    /// eigenvariables of disjoint sibling `fix` blocks by appending `#<n>` to
+    /// the interned name (`x` -> `x#2`). `#` can never appear in a userland
+    /// identifier (the lexer forbids it), so trimming at the first `#` recovers
+    /// the name the author wrote without any risk of colliding with a real name.
+    fn displayName(self: *const Printer, name: intern.StrId) []const u8 {
+        const s = self.interner.str(name);
+        return if (std.mem.indexOfScalar(u8, s, '#')) |i| s[0..i] else s;
+    }
+
     fn collectFvars(self: *Printer, id: TermId) Allocator.Error!void {
         switch (self.pool.get(id)) {
             .bvar => {},
-            .fvar => |v| try self.fvar_names.put(self.arena, self.interner.str(v.name), {}),
+            .fvar => |v| try self.fvar_names.put(self.arena, self.displayName(v.name), {}),
             .app, .pred => |a| for (self.pool.args(a)) |arg| try self.collectFvars(arg),
             .eq => |p| {
                 try self.collectFvars(p.lhs);
@@ -75,7 +85,7 @@ const Printer = struct {
                 const name = self.bound.items[self.bound.items.len - 1 - i];
                 try w.writeAll(name);
             },
-            .fvar => |v| try w.writeAll(self.interner.str(v.name)),
+            .fvar => |v| try w.writeAll(self.displayName(v.name)),
             .app, .pred => |a| {
                 try w.writeAll(self.interner.str(self.env.sym(a.sym).name));
                 if (a.args_len > 0) {
@@ -125,10 +135,11 @@ const Printer = struct {
                 // already in lowest-precedence (rightmost) position
                 const need_parens = min_prec > 1;
                 if (need_parens) try w.writeAll("(");
-                var name = self.interner.str(q.hint);
+                const hint = self.displayName(q.hint);
+                var name = hint;
                 var n: u32 = 2;
                 while (self.taken(name)) : (n += 1) {
-                    name = try std.fmt.allocPrint(self.arena, "{s}_{d}", .{ self.interner.str(q.hint), n });
+                    name = try std.fmt.allocPrint(self.arena, "{s}_{d}", .{ hint, n });
                 }
                 try w.print("{s} {s}: {s}; ", .{
                     if (q.q == .forall) "forall" else "exists",

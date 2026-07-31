@@ -11,9 +11,13 @@
 //! a fix/unpack block must not occur free in any step formula or block
 //! hypothesis outside that block's subtree, anywhere earlier in the proof.
 //! This over-approximates the textbook side condition (it may reject a valid
-//! proof that reuses a variable name in a disjoint sibling subproof) but can
-//! never accept an invalid one. The elaborator's per-proof freshness checks
-//! keep the conservative case from arising in practice; rename to work around.
+//! proof that reuses a variable *name* in a disjoint sibling subproof, since
+//! eigenvariables are identified here by their interned name) but can never
+//! accept an invalid one. The elaborator keeps this over-approximation from
+//! biting by binding each fix/unpack var to a fresh disambiguated identity
+//! `x#<n>` (see `elaborate.zig` `bindProofVar`), so sibling `fix x` blocks
+//! produce distinct eigenvariables the kernel never conflates; the `#<n>` is
+//! trimmed away on render, so proofs still read `x`.
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;

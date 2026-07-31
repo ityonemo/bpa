@@ -56,7 +56,7 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&no_args.step);
 
         // fmt --check: the exemplars are canonically formatted
-        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/set.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa" }) |path| {
+        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/set.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa", "tests/cases/axiom_as_step_bad.bpa" }) |path| {
             const fmt_check = b.addRunArtifact(exe);
             fmt_check.has_side_effects = true;
             fmt_check.setCwd(b.path("."));
@@ -139,6 +139,19 @@ pub fn build(b: *std.Build) void {
         );
         mp_bad.expectExitCode(1);
         test_step.dependOn(&mp_bad.step);
+
+        // citing an axiom where a proof STEP is required: the diagnostic must
+        // point at the fix (materialize it as a step first), not report a bare
+        // "unknown reference".
+        const axiom_as_step = b.addRunArtifact(exe);
+        axiom_as_step.has_side_effects = true;
+        axiom_as_step.setCwd(b.path("."));
+        axiom_as_step.addArgs(&.{ "check", "tests/cases/axiom_as_step_bad.bpa" });
+        axiom_as_step.expectStdErrEqual(
+            "tests/cases/axiom_as_step_bad.bpa:14:24: error: 'pall' is an axiom, not a proof step; introduce it as a step first with `[by axiom pall]`, then reference that step\n",
+        );
+        axiom_as_step.expectExitCode(1);
+        test_step.dependOn(&axiom_as_step.step);
 
         const shadow_bad = b.addRunArtifact(exe);
         shadow_bad.has_side_effects = true;
@@ -345,7 +358,7 @@ pub fn build(b: *std.Build) void {
         fix_reuse.setCwd(b.path("."));
         fix_reuse.addArgs(&.{ "check", "tests/cases/fix_sibling_reuse.bpa" });
         fix_reuse.expectStdErrEqual("");
-        fix_reuse.expectStdOutEqual("OK: 8 declarations, 1 theorems proven\n");
+        fix_reuse.expectStdOutEqual("OK: 9 declarations, 2 theorems proven\n");
         fix_reuse.expectExitCode(0);
         test_step.dependOn(&fix_reuse.step);
 
@@ -471,7 +484,7 @@ pub fn build(b: *std.Build) void {
         polynomial_bad.has_side_effects = true;
         polynomial_bad.setCwd(b.path("."));
         polynomial_bad.addArgs(&.{ "check", "tests/cases/polynomial_bad.bpa" });
-        polynomial_bad.expectStdErrEqual("tests/cases/polynomial_bad.bpa:18:9: error: polynomial: sides expand differently: 'add(mul(poly#5, poly#5), add(mul(poly#5, poly#6), add(mul(poly#5, poly#6), mul(poly#6, poly#6))))' vs 'add(mul(poly#5, poly#5), mul(poly#6, poly#6))'\n");
+        polynomial_bad.expectStdErrEqual("tests/cases/polynomial_bad.bpa:18:9: error: polynomial: sides expand differently: 'add(mul(poly, poly), add(mul(poly, poly), add(mul(poly, poly), mul(poly, poly))))' vs 'add(mul(poly, poly), mul(poly, poly))'\n");
         polynomial_bad.expectExitCode(1);
         test_step.dependOn(&polynomial_bad.step);
 
@@ -501,7 +514,7 @@ pub fn build(b: *std.Build) void {
         ac_bad.setCwd(b.path("."));
         ac_bad.addArgs(&.{ "check", "tests/cases/ac_bad.bpa" });
         ac_bad.expectStdErrEqual(
-            "tests/cases/ac_bad.bpa:18:17: error: assoc_commut: sides have different summands: 'add(a, add(a, b))' vs 'add(a, b)'\n",
+            "tests/cases/ac_bad.bpa:18:17: error: assoc_commut: sides have different summands: 'add(b, add(a, a))' vs 'add(b, a)'\n",
         );
         ac_bad.expectExitCode(1);
         test_step.dependOn(&ac_bad.step);
@@ -561,7 +574,7 @@ pub fn build(b: *std.Build) void {
         assoc_bad.has_side_effects = true;
         assoc_bad.setCwd(b.path("."));
         assoc_bad.addArgs(&.{ "check", "tests/cases/assoc_bad.bpa" });
-        assoc_bad.expectStdErrEqual("tests/cases/assoc_bad.bpa:11:9: error: assoc: sides differ by more than associativity: 'op(assoc#8, assoc#9)' vs 'op(assoc#9, assoc#8)'\n");
+        assoc_bad.expectStdErrEqual("tests/cases/assoc_bad.bpa:11:9: error: assoc: sides differ by more than associativity: 'op(assoc, assoc)' vs 'op(assoc, assoc)'\n");
         assoc_bad.expectExitCode(1);
         test_step.dependOn(&assoc_bad.step);
 
