@@ -1,0 +1,3 @@
+// deliberately broken: aliasing a constant as a sort is a kind error
+import lib <<< "lib.bpa"
+sort Wrong = lib.NIL

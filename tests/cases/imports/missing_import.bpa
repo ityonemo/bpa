@@ -1,0 +1,3 @@
+// deliberately broken: the imported file does not exist
+import ghost <<< "nope.bpa"
+sort T

@@ -1,0 +1,3 @@
+// deliberately broken: cycle_a and cycle_b import each other
+import b <<< "cycle_b.bpa"
+sort A

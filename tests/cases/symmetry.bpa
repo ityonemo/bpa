@@ -1,0 +1,27 @@
+// symmetry: from a proven equation x = y, conclude y = x in one step —
+// replacing the reflexivity + rewrite idiom. Pure (kernel-checked), so
+// --pure accepts it.
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+
+theorem flip: forall n: Nat; n = add(ZERO, n)
+proof
+  @generalize-n |
+    fix n: Nat {
+      @addZeroLeft-inst |
+        forall b: Nat; add(ZERO, b) = b
+        [by axiom addZeroLeft]
+      @unfolded |
+        add(ZERO, n) = n
+        [by forall_elim(n) addZeroLeft-inst]
+      @flipped |
+        n = add(ZERO, n)
+        [by symmetry unfolded]
+    }
+  @conclusion |
+    forall n: Nat; n = add(ZERO, n)
+    [by forall_intro generalize-n]
+qed

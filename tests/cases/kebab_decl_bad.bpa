@@ -1,0 +1,6 @@
+// deliberately broken: a kebab-case name in a DECLARATION position is
+// rejected. Declaration names (sort/const/func/pred/theorem + schema names)
+// must be plain identifiers; kebab spelling is reserved for proof labels and
+// [by ...] references.
+sort Nat
+pred foo-bar(n: Nat)

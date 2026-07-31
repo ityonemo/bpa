@@ -1,0 +1,32 @@
+// eta-sugar: a schema with a `Nat -> Prop` parameter can be instantiated with
+// a BARE predicate name (`induction(p)`), which stands for `fun x => p(x)`.
+// Previously this required the explicit lambda `induction((fun x: Nat => p(x)))`.
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+pred p(n: Nat)
+
+axiom induction(prop: Nat -> Prop):
+  prop(ZERO) -> (forall k: Nat; prop(k) -> prop(succ(k))) -> forall n: Nat; prop(n)
+
+axiom pZero: p(ZERO)
+axiom pStep: forall k: Nat; p(k) -> p(succ(k))
+
+theorem allP: forall n: Nat; p(n)
+proof
+  @base |
+    p(ZERO)
+    [by axiom pZero]
+  @step |
+    forall k: Nat; p(k) -> p(succ(k))
+    [by axiom pStep]
+  @inst |
+    p(ZERO) -> (forall k: Nat; p(k) -> p(succ(k))) -> forall n: Nat; p(n)
+    [by instantiate induction(p)]
+  @imp |
+    (forall k: Nat; p(k) -> p(succ(k))) -> forall n: Nat; p(n)
+    [by modus_ponens inst base]
+  @conclusion |
+    forall n: Nat; p(n)
+    [by modus_ponens imp step]
+qed

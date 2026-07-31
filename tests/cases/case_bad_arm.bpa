@@ -1,0 +1,32 @@
+// deliberately broken: a `case` arm assumes a formula that isn't the disjunct
+// at its position. The first arm must assume the left disjunct `p(Z)`, but
+// assumes `q(Z)` — a located error.
+sort Nat
+const Z: Nat
+pred p(n: Nat)
+pred q(n: Nat)
+
+axiom either: p(Z) or q(Z)
+
+theorem g: q(Z)
+proof
+  @disj |
+    p(Z) or q(Z)
+    [by axiom either]
+  @result |
+    q(Z)
+    case on disj {
+      @wrong |
+        assume q(Z) {
+          @c |
+            q(Z)
+            [by hypothesis wrong]
+        }
+      @other |
+        assume q(Z) {
+          @c |
+            q(Z)
+            [by hypothesis other]
+        }
+    }
+qed

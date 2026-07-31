@@ -1,0 +1,16 @@
+// deliberately broken: two steps cite each other, forming a justification
+// cycle. With forward references allowed, textual order no longer prevents
+// this, so it must be caught as a named cycle.
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+
+theorem bad: succ(ZERO) = succ(ZERO)
+proof
+  @a |
+    succ(ZERO) = succ(ZERO)
+    [by symmetry b]
+  @b |
+    succ(ZERO) = succ(ZERO)
+    [by symmetry a]
+qed

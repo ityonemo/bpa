@@ -1,0 +1,29 @@
+// C2a: a ground arithmetic goal replays as a pure simplify certificate over
+// the well-known peano recursion axioms in scope — no oracle, so --pure is
+// satisfied. Without these axioms the same goal falls back to the oracle
+// (see tests/cases/arithmetic.bpa).
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+axiom mulZeroLeft: forall b: Nat; mul(ZERO, b) = ZERO
+axiom mulSuccLeft: forall a, b: Nat; mul(succ(a), b) = add(mul(a, b), b)
+axiom oneIsSuccZero: ONE = succ(ZERO)
+
+theorem twoTimesTwo: mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+proof
+  @conclusion |
+    mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+    [by arithmetic]
+qed
+
+theorem onePlusOne: add(ONE, ONE) = succ(succ(ZERO))
+proof
+  @conclusion |
+    add(ONE, ONE) = succ(succ(ZERO))
+    [by arithmetic]
+qed

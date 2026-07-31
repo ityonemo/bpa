@@ -1,0 +1,3 @@
+// deliberately broken: 'ghost' was never imported
+sort T
+const C: ghost.T

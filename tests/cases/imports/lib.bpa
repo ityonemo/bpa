@@ -1,0 +1,11 @@
+// tiny shared theory for import tests
+sort Item
+const NIL: Item
+pred good(x: Item)
+axiom nilGood: good(NIL)
+theorem nilIsGood: good(NIL)
+proof
+  @conclusion |
+    good(NIL)
+    [by axiom nilGood]
+qed

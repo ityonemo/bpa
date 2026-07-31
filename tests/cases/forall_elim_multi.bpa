@@ -1,0 +1,18 @@
+// forall_elim at several arguments in one step: `forall_elim(A, B) ref`
+// specializes a nested universal without writing the intermediate tower.
+// The elaborator emits the chain; the kernel checks every link as usual.
+sort Nat
+const Z: Nat
+func add(a: Nat, b: Nat): Nat
+
+axiom addComm: forall a, b: Nat; add(a, b) = add(b, a)
+
+theorem swapNested: add(Z, add(Z, Z)) = add(add(Z, Z), Z)
+proof
+  @commutativity |
+    forall a, b: Nat; add(a, b) = add(b, a)
+    [by axiom addComm]
+  @conclusion |
+    add(Z, add(Z, Z)) = add(add(Z, Z), Z)
+    [by forall_elim(Z, add(Z, Z)) commutativity]
+qed

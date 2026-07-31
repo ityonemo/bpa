@@ -1,0 +1,467 @@
+//! Kernel terms: flat pool of immutable nodes, u32 ids, LOCALLY NAMELESS —
+//! bound variables are de Bruijn indices (`bvar`), free variables are named
+//! (`fvar`). This is the soundness core:
+//!   - substituting a locally-closed term for an fvar can never capture
+//!     (binders are indices, not names), so substFvar needs no renaming;
+//!   - alpha-equivalence is structural equality ignoring binder name hints;
+//!   - eigenvariable conditions are fvar occurrence checks.
+//! There is deliberately NO lambda node: lambdas exist only in the surface AST
+//! and are beta-reduced away during elaboration.
+
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+const StrId = @import("intern.zig").StrId;
+
+pub const SortId = enum(u32) {
+    /// the builtin sort of propositions
+    prop = 0,
+    _,
+};
+pub const SymId = enum(u32) { _ };
+pub const TermId = enum(u32) { _ };
+
+pub const Quantifier = enum(u8) { forall, exists };
+pub const BinOp = enum(u8) { and_op, or_op, implies };
+pub const AppKind = enum { app, pred };
+
+pub const Node = union(enum) {
+    /// bound variable: de Bruijn index (innermost binder = 0)
+    bvar: u16,
+    /// free variable (or eigenvariable): named, sorted
+    fvar: Fvar,
+    /// function/constant application (constants are 0-ary funcs)
+    app: App,
+    /// predicate application
+    pred: App,
+    /// equality between two terms of the same (non-prop) sort
+    eq: Pair,
+    not: TermId,
+    bin: Bin,
+    quant: Quant,
+
+    pub const Fvar = struct { name: StrId, sort: SortId };
+    pub const App = struct { sym: SymId, args_start: u32, args_len: u16 };
+    pub const Pair = struct { lhs: TermId, rhs: TermId };
+    pub const Bin = struct { op: BinOp, lhs: TermId, rhs: TermId };
+    pub const Quant = struct { q: Quantifier, sort: SortId, hint: StrId, body: TermId };
+};
+
+/// Leaf action for the shared traversal: what to do at bvar/fvar nodes.
+/// `depth` = number of binders passed on the way down.
+const Transform = union(enum) {
+    /// fvar `name` -> bvar(depth)   (build a quantifier body: "close over x")
+    close: StrId,
+    /// bvar(depth) -> `term`        (instantiate a binder: "open with u")
+    open: TermId,
+    /// fvar `name` -> `term`        (capture-free by construction)
+    subst_fvar: struct { name: StrId, term: TermId },
+};
+
+pub const Pool = struct {
+    arena: Allocator,
+    nodes: std.ArrayList(Node) = .empty,
+    extra: std.ArrayList(TermId) = .empty,
+
+    pub fn init(arena: Allocator) Pool {
+        return .{ .arena = arena };
+    }
+
+    pub fn get(self: *const Pool, id: TermId) Node {
+        return self.nodes.items[@intFromEnum(id)];
+    }
+
+    pub fn add(self: *Pool, node: Node) Allocator.Error!TermId {
+        const id: TermId = @enumFromInt(self.nodes.items.len);
+        try self.nodes.append(self.arena, node);
+        return id;
+    }
+
+    /// Build an app/pred node from a symbol and argument list.
+    pub fn addApp(self: *Pool, kind: AppKind, sym: SymId, arg_ids: []const TermId) Allocator.Error!TermId {
+        const start: u32 = @intCast(self.extra.items.len);
+        try self.extra.appendSlice(self.arena, arg_ids);
+        const app: Node.App = .{ .sym = sym, .args_start = start, .args_len = @intCast(arg_ids.len) };
+        return self.add(switch (kind) {
+            .app => .{ .app = app },
+            .pred => .{ .pred = app },
+        });
+    }
+
+    pub fn args(self: *const Pool, app: Node.App) []const TermId {
+        return self.extra.items[app.args_start..][0..app.args_len];
+    }
+
+    // --- the substitution calculus ---
+    // Invariant: every public TermId is locally closed (no loose bvars) except
+    // quantifier bodies and stored guards (params as loose bvars); the public
+    // entry points preserve local closure. Replacement terms must be locally
+    // closed, which is why no shifting is ever needed.
+
+    /// fvar `name` -> bound variable of a new innermost binder.
+    /// The result is a body with one loose bvar, ready to wrap in a `quant`.
+    pub fn close(self: *Pool, id: TermId, name: StrId) Allocator.Error!TermId {
+        return self.walk(id, .{ .close = name }, 0);
+    }
+
+    /// Instantiate the binder of quantifier body `id` with locally-closed `u`.
+    pub fn open(self: *Pool, id: TermId, u: TermId) Allocator.Error!TermId {
+        return self.walk(id, .{ .open = u }, 0);
+    }
+
+    /// Substitute locally-closed `u` for every occurrence of fvar `name`.
+    pub fn substFvar(self: *Pool, id: TermId, name: StrId, u: TermId) Allocator.Error!TermId {
+        return self.walk(id, .{ .subst_fvar = .{ .name = name, .term = u } }, 0);
+    }
+
+    /// Does fvar `name` occur (free) anywhere in `id`? (eigenvariable check)
+    pub fn occursFree(self: *const Pool, id: TermId, name: StrId) bool {
+        switch (self.get(id)) {
+            .bvar => return false,
+            .fvar => |v| return v.name == name,
+            .app, .pred => |a| {
+                for (self.args(a)) |arg| {
+                    if (self.occursFree(arg, name)) return true;
+                }
+                return false;
+            },
+            .eq => |p| return self.occursFree(p.lhs, name) or self.occursFree(p.rhs, name),
+            .not => |t| return self.occursFree(t, name),
+            .bin => |b| return self.occursFree(b.lhs, name) or self.occursFree(b.rhs, name),
+            .quant => |q| return self.occursFree(q.body, name),
+        }
+    }
+
+    /// Does any function/predicate application in `id` use a symbol whose
+    /// declared name is `name`? (Used by the named-theory contract to detect a
+    /// goal referencing an arithmetic symbol the theory failed to provide.)
+    /// `EnvT` is duck-typed to avoid a term->env import cycle: it needs
+    /// `sym(SymId) -> struct { name: StrId, ... }`.
+    pub fn usesSymNamed(self: *const Pool, env: anytype, name: StrId, id: TermId) bool {
+        switch (self.get(id)) {
+            .bvar, .fvar => return false,
+            .app, .pred => |a| {
+                if (env.sym(a.sym).name == name) return true;
+                for (self.args(a)) |arg| {
+                    if (self.usesSymNamed(env, name, arg)) return true;
+                }
+                return false;
+            },
+            .eq => |p| return self.usesSymNamed(env, name, p.lhs) or self.usesSymNamed(env, name, p.rhs),
+            .not => |t| return self.usesSymNamed(env, name, t),
+            .bin => |b| return self.usesSymNamed(env, name, b.lhs) or self.usesSymNamed(env, name, b.rhs),
+            .quant => |q| return self.usesSymNamed(env, name, q.body),
+        }
+    }
+
+    /// Alpha-equivalence: structural equality ignoring quantifier name hints
+    /// (bound variables are indices, so hints carry no meaning).
+    pub fn alphaEq(self: *const Pool, a: TermId, b: TermId) bool {
+        if (a == b) return true;
+        const na = self.get(a);
+        const nb = self.get(b);
+        if (std.meta.activeTag(na) != std.meta.activeTag(nb)) return false;
+        switch (na) {
+            .bvar => |i| return i == nb.bvar,
+            .fvar => |v| return v.name == nb.fvar.name and v.sort == nb.fvar.sort,
+            .app => |x| return self.appEq(x, nb.app),
+            .pred => |x| return self.appEq(x, nb.pred),
+            .eq => |p| return self.alphaEq(p.lhs, nb.eq.lhs) and self.alphaEq(p.rhs, nb.eq.rhs),
+            .not => |t| return self.alphaEq(t, nb.not),
+            .bin => |x| return x.op == nb.bin.op and
+                self.alphaEq(x.lhs, nb.bin.lhs) and self.alphaEq(x.rhs, nb.bin.rhs),
+            .quant => |q| return q.q == nb.quant.q and q.sort == nb.quant.sort and
+                self.alphaEq(q.body, nb.quant.body), // hint deliberately ignored
+        }
+    }
+
+    fn appEq(self: *const Pool, x: Node.App, y: Node.App) bool {
+        if (x.sym != y.sym or x.args_len != y.args_len) return false;
+        for (self.args(x), self.args(y)) |ax, ay| {
+            if (!self.alphaEq(ax, ay)) return false;
+        }
+        return true;
+    }
+
+    /// A total structural order over terms, consistent with alphaEq
+    /// (alpha-equal terms compare `.eq`; quantifier hints ignored). Used to
+    /// canonicalize AC-rearranged sums: both sides sort their summands the
+    /// same way iff the multisets match. Only totality and consistency
+    /// matter for soundness — the certificate is kernel-checked, so a
+    /// mis-order can only fail to join, never prove a falsehood.
+    pub fn termOrder(self: *const Pool, a: TermId, b: TermId) std.math.Order {
+        if (a == b) return .eq;
+        const na = self.get(a);
+        const nb = self.get(b);
+        const ta = @intFromEnum(std.meta.activeTag(na));
+        const tb = @intFromEnum(std.meta.activeTag(nb));
+        if (ta != tb) return std.math.order(ta, tb);
+        switch (na) {
+            .bvar => |i| return std.math.order(i, nb.bvar),
+            .fvar => |v| {
+                const by_name = std.math.order(@intFromEnum(v.name), @intFromEnum(nb.fvar.name));
+                if (by_name != .eq) return by_name;
+                return std.math.order(@intFromEnum(v.sort), @intFromEnum(nb.fvar.sort));
+            },
+            .app => |x| return self.appOrder(x, nb.app),
+            .pred => |x| return self.appOrder(x, nb.pred),
+            .eq => |p| {
+                const l = self.termOrder(p.lhs, nb.eq.lhs);
+                return if (l != .eq) l else self.termOrder(p.rhs, nb.eq.rhs);
+            },
+            .not => |t| return self.termOrder(t, nb.not),
+            .bin => |x| {
+                const op = std.math.order(@intFromEnum(x.op), @intFromEnum(nb.bin.op));
+                if (op != .eq) return op;
+                const l = self.termOrder(x.lhs, nb.bin.lhs);
+                return if (l != .eq) l else self.termOrder(x.rhs, nb.bin.rhs);
+            },
+            .quant => |q| {
+                const qk = std.math.order(@intFromEnum(q.q), @intFromEnum(nb.quant.q));
+                if (qk != .eq) return qk;
+                const srt = std.math.order(@intFromEnum(q.sort), @intFromEnum(nb.quant.sort));
+                if (srt != .eq) return srt;
+                return self.termOrder(q.body, nb.quant.body); // hint ignored
+            },
+        }
+    }
+
+    fn appOrder(self: *const Pool, x: Node.App, y: Node.App) std.math.Order {
+        const sym = std.math.order(@intFromEnum(x.sym), @intFromEnum(y.sym));
+        if (sym != .eq) return sym;
+        const len = std.math.order(x.args_len, y.args_len);
+        if (len != .eq) return len;
+        for (self.args(x), self.args(y)) |ax, ay| {
+            const o = self.termOrder(ax, ay);
+            if (o != .eq) return o;
+        }
+        return .eq;
+    }
+
+    /// Shared recursion for close/open/substFvar. Returns the original id when
+    /// nothing changed underneath (keeps the pool small via sharing).
+    fn walk(self: *Pool, id: TermId, t: Transform, depth: u16) Allocator.Error!TermId {
+        switch (self.get(id)) {
+            .bvar => |i| switch (t) {
+                // replacement is locally closed => no shifting needed
+                .open => |u| return if (i == depth) u else id,
+                else => return id,
+            },
+            .fvar => |v| switch (t) {
+                .close => |name| return if (v.name == name) self.add(.{ .bvar = depth }) else id,
+                .subst_fvar => |s| return if (v.name == s.name) s.term else id,
+                .open => return id,
+            },
+            .app => |a| return self.walkApp(id, .app, a, t, depth),
+            .pred => |a| return self.walkApp(id, .pred, a, t, depth),
+            .eq => |p| {
+                const lhs = try self.walk(p.lhs, t, depth);
+                const rhs = try self.walk(p.rhs, t, depth);
+                if (lhs == p.lhs and rhs == p.rhs) return id;
+                return self.add(.{ .eq = .{ .lhs = lhs, .rhs = rhs } });
+            },
+            .not => |inner| {
+                const w = try self.walk(inner, t, depth);
+                if (w == inner) return id;
+                return self.add(.{ .not = w });
+            },
+            .bin => |b| {
+                const lhs = try self.walk(b.lhs, t, depth);
+                const rhs = try self.walk(b.rhs, t, depth);
+                if (lhs == b.lhs and rhs == b.rhs) return id;
+                return self.add(.{ .bin = .{ .op = b.op, .lhs = lhs, .rhs = rhs } });
+            },
+            .quant => |q| {
+                const body = try self.walk(q.body, t, depth + 1);
+                if (body == q.body) return id;
+                return self.add(.{ .quant = .{ .q = q.q, .sort = q.sort, .hint = q.hint, .body = body } });
+            },
+        }
+    }
+
+    fn walkApp(
+        self: *Pool,
+        id: TermId,
+        kind: AppKind,
+        a: Node.App,
+        t: Transform,
+        depth: u16,
+    ) Allocator.Error!TermId {
+        // args() aliases extra.items; the recursive walks below may grow
+        // extra, and ArrayList growth poisons the abandoned buffer — copy
+        // the argument ids out before recursing
+        const old_args = try self.arena.dupe(TermId, self.args(a));
+        const new_args = try self.arena.alloc(TermId, old_args.len);
+        var changed = false;
+        for (old_args, new_args) |arg, *out| {
+            const w = try self.walk(arg, t, depth);
+            if (w != arg) changed = true;
+            out.* = w;
+        }
+        if (!changed) return id;
+        return self.addApp(kind, a.sym, new_args);
+    }
+};
+
+// --- tests ---
+
+const testing = std.testing;
+
+const nat: SortId = @enumFromInt(1);
+fn sid(n: u32) StrId {
+    return @enumFromInt(n);
+}
+fn tsym(n: u32) SymId {
+    return @enumFromInt(n);
+}
+
+test "close/open round-trip" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    // x = x  with x free
+    const x = try p.add(.{ .fvar = .{ .name = sid(1), .sort = nat } });
+    const x_eq_x = try p.add(.{ .eq = .{ .lhs = x, .rhs = x } });
+
+    // close over x: bvar0 = bvar0
+    const body = try p.close(x_eq_x, sid(1));
+    const b0 = p.get(body).eq;
+    try testing.expectEqual(Node{ .bvar = 0 }, p.get(b0.lhs));
+
+    // open with a fresh fvar y: y = y, alpha-equal to original modulo the name
+    const y = try p.add(.{ .fvar = .{ .name = sid(2), .sort = nat } });
+    const reopened = try p.open(body, y);
+    const r = p.get(reopened).eq;
+    try testing.expectEqual(sid(2), p.get(r.lhs).fvar.name);
+
+    // open with x restores the original exactly
+    const restored = try p.open(body, x);
+    try testing.expect(p.alphaEq(restored, x_eq_x));
+}
+
+test "classic capture case: substituting y for x under a binder named y cannot capture" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    // forall y: nat. x = y   (x free, y bound — hint says "y")
+    const x = try p.add(.{ .fvar = .{ .name = sid(1), .sort = nat } });
+    const by = try p.add(.{ .bvar = 0 });
+    const inner = try p.add(.{ .eq = .{ .lhs = x, .rhs = by } });
+    const t = try p.add(.{ .quant = .{ .q = .forall, .sort = nat, .hint = sid(2), .body = inner } });
+
+    // substitute the FREE variable y for x
+    const y_free = try p.add(.{ .fvar = .{ .name = sid(2), .sort = nat } });
+    const result = try p.substFvar(t, sid(1), y_free);
+
+    // result must be: forall y'. y = y'  — i.e. fvar y NOT captured as bvar
+    const rq = p.get(result).quant;
+    const req = p.get(rq.body).eq;
+    try testing.expectEqual(Node{ .fvar = .{ .name = sid(2), .sort = nat } }, p.get(req.lhs));
+    try testing.expectEqual(Node{ .bvar = 0 }, p.get(req.rhs));
+}
+
+test "alphaEq ignores binder hints, distinguishes structure" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    // forall n: nat. n = n   vs   forall m: nat. m = m   (different hints)
+    const b0 = try p.add(.{ .bvar = 0 });
+    const body = try p.add(.{ .eq = .{ .lhs = b0, .rhs = b0 } });
+    const tn = try p.add(.{ .quant = .{ .q = .forall, .sort = nat, .hint = sid(1), .body = body } });
+    const tm = try p.add(.{ .quant = .{ .q = .forall, .sort = nat, .hint = sid(2), .body = body } });
+    try testing.expect(p.alphaEq(tn, tm));
+
+    // exists n. n = n differs from forall n. n = n
+    const te = try p.add(.{ .quant = .{ .q = .exists, .sort = nat, .hint = sid(1), .body = body } });
+    try testing.expect(!p.alphaEq(tn, te));
+
+    // different fvar names are NOT alpha-equal (free names are meaningful)
+    const fx = try p.add(.{ .fvar = .{ .name = sid(1), .sort = nat } });
+    const fy = try p.add(.{ .fvar = .{ .name = sid(2), .sort = nat } });
+    try testing.expect(!p.alphaEq(fx, fy));
+}
+
+test "occursFree sees through binders; open substitutes at correct depth" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    // body of `forall a. exists b. f(a, x)`: bvar1 under two binders + free x
+    const x = try p.add(.{ .fvar = .{ .name = sid(1), .sort = nat } });
+    const b1 = try p.add(.{ .bvar = 1 });
+    const fx = try p.addApp(.app, tsym(1), &.{ b1, x });
+    const feq = try p.add(.{ .eq = .{ .lhs = fx, .rhs = x } });
+    const ex = try p.add(.{ .quant = .{ .q = .exists, .sort = nat, .hint = sid(3), .body = feq } });
+
+    try testing.expect(p.occursFree(ex, sid(1)));
+    try testing.expect(!p.occursFree(ex, sid(2)));
+
+    // open the OUTER binder (bvar 1 inside `ex` since it sits under one quant):
+    const z = try p.add(.{ .fvar = .{ .name = sid(4), .sort = nat } });
+    const opened = try p.open(ex, z);
+    const oq = p.get(opened).quant;
+    const oeq = p.get(oq.body).eq;
+    const oapp = p.get(oeq.lhs).app;
+    try testing.expectEqual(Node{ .fvar = .{ .name = sid(4), .sort = nat } }, p.get(p.args(oapp)[0]));
+    // x untouched
+    try testing.expectEqual(Node{ .fvar = .{ .name = sid(1), .sort = nat } }, p.get(p.args(oapp)[1]));
+}
+
+test "unchanged subtrees share ids (no pool bloat)" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    const x = try p.add(.{ .fvar = .{ .name = sid(1), .sort = nat } });
+    const c = try p.add(.{ .fvar = .{ .name = sid(2), .sort = nat } });
+    const t = try p.add(.{ .eq = .{ .lhs = x, .rhs = c } });
+
+    const before = p.nodes.items.len;
+    const unchanged = try p.substFvar(t, sid(9), x); // sid(9) doesn't occur
+    try testing.expectEqual(t, unchanged);
+    try testing.expectEqual(before, p.nodes.items.len);
+}
+
+test "termOrder: total, consistent with alphaEq, transitive" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    const x = try p.add(.{ .fvar = .{ .name = sid(1), .sort = nat } });
+    const y = try p.add(.{ .fvar = .{ .name = sid(2), .sort = nat } });
+    const z = try p.add(.{ .fvar = .{ .name = sid(3), .sort = nat } });
+    // a second x built independently must compare .eq (consistency w/ alphaEq)
+    const x2 = try p.add(.{ .fvar = .{ .name = sid(1), .sort = nat } });
+
+    try testing.expectEqual(std.math.Order.eq, p.termOrder(x, x2));
+    try testing.expect(p.alphaEq(x, x2));
+    try testing.expectEqual(std.math.Order.lt, p.termOrder(x, y));
+    try testing.expectEqual(std.math.Order.gt, p.termOrder(y, x));
+    // transitivity: x < y < z
+    try testing.expectEqual(std.math.Order.lt, p.termOrder(y, z));
+    try testing.expectEqual(std.math.Order.lt, p.termOrder(x, z));
+
+    // compound atoms order structurally and stay total
+    const fx = try p.addApp(.app, tsym(7), &.{x});
+    const fy = try p.addApp(.app, tsym(7), &.{y});
+    try testing.expectEqual(std.math.Order.lt, p.termOrder(fx, fy));
+    // different tags: fvar (leaf) vs app compare by tag, consistently
+    try testing.expect(p.termOrder(x, fx) != .eq);
+    try testing.expectEqual(p.termOrder(x, fx), invert(p.termOrder(fx, x)));
+}
+
+fn invert(o: std.math.Order) std.math.Order {
+    return switch (o) {
+        .lt => .gt,
+        .gt => .lt,
+        .eq => .eq,
+    };
+}

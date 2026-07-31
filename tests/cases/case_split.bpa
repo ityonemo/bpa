@@ -1,0 +1,63 @@
+// the `case` construct: split a proven disjunction into arms, each an
+// assume-block concluding the shared goal. This 3-way split over a left-nested
+// `(p or q) or r` fans out into a nested or_elim tree automatically — no
+// hand-nesting. `case` is pure elaborator sugar; the kernel checks the
+// synthesized or_elim exactly as if written by hand.
+sort Nat
+const Z: Nat
+pred p(n: Nat)
+pred q(n: Nat)
+pred r(n: Nat)
+pred g(n: Nat)
+
+axiom tri: p(Z) or q(Z) or r(Z)
+axiom pg: p(Z) -> g(Z)
+axiom qg: q(Z) -> g(Z)
+axiom rg: r(Z) -> g(Z)
+
+theorem goalG: g(Z)
+proof
+  @disj |
+    p(Z) or q(Z) or r(Z)
+    [by axiom tri]
+  @result |
+    g(Z)
+    case on disj {
+      @arm-p |
+        assume p(Z) {
+          @i |
+            p(Z) -> g(Z)
+            [by axiom pg]
+          @h |
+            p(Z)
+            [by hypothesis arm-p]
+          @c |
+            g(Z)
+            [by modus_ponens i h]
+        }
+      @arm-q |
+        assume q(Z) {
+          @i |
+            q(Z) -> g(Z)
+            [by axiom qg]
+          @h |
+            q(Z)
+            [by hypothesis arm-q]
+          @c |
+            g(Z)
+            [by modus_ponens i h]
+        }
+      @arm-r |
+        assume r(Z) {
+          @i |
+            r(Z) -> g(Z)
+            [by axiom rg]
+          @h |
+            r(Z)
+            [by hypothesis arm-r]
+          @c |
+            g(Z)
+            [by modus_ponens i h]
+        }
+    }
+qed

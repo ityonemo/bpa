@@ -1,0 +1,28 @@
+// forward label references: a step may cite a label defined LATER in the
+// same block. The elaborator topologically sorts before lowering, so the
+// kernel still sees strictly-backward references. Pure.
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+
+theorem flip: forall n: Nat; n = add(ZERO, n)
+proof
+  @generalize-n |
+    fix n: Nat {
+    // `flipped` cites `unfolded`, which is defined AFTER it
+      @flipped |
+        n = add(ZERO, n)
+        [by symmetry unfolded]
+      @unfolded |
+        add(ZERO, n) = n
+        [by forall_elim(n) addZeroLeft-inst]
+      @addZeroLeft-inst |
+        forall b: Nat; add(ZERO, b) = b
+        [by axiom addZeroLeft]
+    }
+  @conclusion |
+    forall n: Nat; n = add(ZERO, n)
+    [by forall_intro generalize-n]
+qed

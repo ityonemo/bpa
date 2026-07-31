@@ -1,0 +1,55 @@
+// oracle-backed: 'tautology' decides propositional consequence by truth
+// search over the atoms (see ORACLES.md). Theorems proved by it, or citing
+// one that was, are disclosed as tainted in the summary; handProven stays
+// pure.
+pred p
+pred q
+axiom pHolds: p
+axiom pImpliesQ: p -> q
+
+theorem pierce: ((p -> q) -> p) -> p
+proof
+  @conclusion |
+    ((p -> q) -> p) -> p
+    [by tautology]
+qed
+
+theorem deMorgan: (not (p or q)) -> ((not p) and (not q))
+proof
+  @conclusion |
+    (not (p or q)) -> ((not p) and (not q))
+    [by tautology]
+qed
+
+theorem withPremises: q
+proof
+  @have-p |
+    p
+    [by axiom pHolds]
+  @have-implication |
+    p -> q
+    [by axiom pImpliesQ]
+  @conclusion |
+    q
+    [by tautology have-p have-implication]
+qed
+
+theorem restated: ((p -> q) -> p) -> p
+proof
+  @conclusion |
+    ((p -> q) -> p) -> p
+    [by theorem pierce]
+qed
+
+theorem handProven: p -> p
+proof
+  @hp |
+    assume p {
+      @again |
+        p
+        [by hypothesis hp]
+    }
+  @conclusion |
+    p -> p
+    [by implies_intro hp]
+qed

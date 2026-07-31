@@ -1,0 +1,6 @@
+// deliberately broken: nested guarded applications — BOTH obligations are
+// reported, the inner one and the outer one
+sort Nat
+const ZERO: Nat
+func div(a: Nat, b: Nat): Nat requires b != ZERO
+axiom outerOk: div(ZERO, div(ZERO, ZERO)) = ZERO

@@ -1,0 +1,59 @@
+// Zig's no-shadowing rule: two DISJOINT sibling subproofs may reuse a fix
+// variable name (`bb`). Neither eigenvariable escapes its own block subtree,
+// so the kernel's checkEigen accepts it; only enclosing-scope shadowing is
+// forbidden. (Previously this errored: "variable 'bb' was already used".)
+sort Nat
+const Z: Nat
+pred p(n: Nat)
+pred q(n: Nat)
+
+axiom either: p(Z) or q(Z)
+axiom pall: forall x: Nat; p(x)
+axiom qall: forall x: Nat; q(x)
+
+theorem g: p(Z) or q(Z)
+proof
+  @disj |
+    p(Z) or q(Z)
+    [by axiom either]
+  @result |
+    p(Z) or q(Z)
+    case on disj {
+      @arm-p |
+        assume p(Z) {
+          @gp |
+            fix bb: Nat {
+              @pa |
+                forall x: Nat; p(x)
+                [by axiom pall]
+              @pp |
+                p(bb)
+                [by forall_elim(bb) pa]
+            }
+          @h |
+            p(Z)
+            [by hypothesis arm-p]
+          @c |
+            p(Z) or q(Z)
+            [by or_intro_left h]
+        }
+      @arm-q |
+        assume q(Z) {
+          @gq |
+            fix bb: Nat {
+              @qa |
+                forall x: Nat; q(x)
+                [by axiom qall]
+              @qq |
+                q(bb)
+                [by forall_elim(bb) qa]
+            }
+          @h |
+            q(Z)
+            [by hypothesis arm-q]
+          @c |
+            p(Z) or q(Z)
+            [by or_intro_right h]
+        }
+    }
+qed

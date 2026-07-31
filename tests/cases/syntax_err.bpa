@@ -1,0 +1,4 @@
+// deliberately broken: missing ':' after the axiom name
+sort Nat
+const ZERO: Nat
+axiom bad forall x: Nat; x = x

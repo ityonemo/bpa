@@ -1,0 +1,12 @@
+// a library with an INCORRECT theorem: the proof concludes the wrong thing.
+// Importers that don't pass --recursive trust this without checking it.
+sort Thing
+const A: Thing
+const B: Thing
+axiom aIsA: A = A
+theorem aIsB: A = B
+proof
+  @conclusion |
+    A = A
+    [by axiom aIsA]
+qed

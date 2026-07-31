@@ -1,0 +1,25 @@
+// simplify_quantified: peel a forall-over-equation goal, run the simplify
+// core on the body, close with forall_intro — so you needn't `fix` the
+// variables by hand. Pure (kernel-checked), so --pure accepts it.
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+
+// one binder
+theorem leftZero: forall n: Nat; add(ZERO, n) = n
+proof
+  @conclusion |
+    forall n: Nat; add(ZERO, n) = n
+    [by simplify_quantified addZeroLeft]
+qed
+
+// two binders, a genuine rewrite chain in the body
+theorem pushSucc: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+proof
+  @conclusion |
+    forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+    [by simplify_quantified addSuccLeft]
+qed

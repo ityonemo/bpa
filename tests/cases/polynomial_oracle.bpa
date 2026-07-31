@@ -1,0 +1,23 @@
+// The polynomial ORACLE (--fast path). This theory declares add/mul but proves
+// NONE of the ring lemmas — so `polynomial` cannot build a certificate here
+// (under the default it hard-errors "needs mulAddDistribLeft in scope").
+//
+// Under --fast, the oracle decides the identity by comparing pure syntactic
+// semiring normal forms — trusting that add/mul ARE a commutative semiring,
+// which this theory never proves. That presumption about uninterpreted symbols
+// is exactly why the result is TAINTED (via oracles: polynomial). Run with
+// --fast; the golden shows the taint + the NOT FULLY VERIFIED banner.
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func add(a: Nat, b: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+
+// distribute + reorder + fold — all decided structurally by the oracle.
+theorem ringIdentity: forall a, b, c: Nat;
+  mul(add(a, b), c) = add(mul(c, b), mul(c, a))
+proof
+  @conclusion |
+    forall a, b, c: Nat; mul(add(a, b), c) = add(mul(c, b), mul(c, a))
+    [by polynomial_quantified]
+qed

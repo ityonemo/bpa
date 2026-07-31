@@ -1,0 +1,26 @@
+// deliberately broken: not every a is below every b; the diagnostic carries
+// concrete countermodel values for the fixed variables
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+pred less_than(a: Nat, b: Nat)
+
+theorem bad: forall a, b: Nat; less_than(a, b)
+proof
+  @gen-a |
+    fix a: Nat {
+      @gen-b |
+        fix b: Nat {
+          @nope |
+            less_than(a, b)
+            [by arithmetic]
+        }
+      @all-b |
+        forall b: Nat; less_than(a, b)
+        [by forall_intro gen-b]
+    }
+  @conclusion |
+    forall a, b: Nat; less_than(a, b)
+    [by forall_intro gen-a]
+qed

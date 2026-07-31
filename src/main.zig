@@ -1,0 +1,345 @@
+//! bpa CLI: `bpa check <file.bpa>`.
+
+const std = @import("std");
+const Io = std.Io;
+const bpa = @import("bpa");
+
+// User program, not a library: io lives in a global for convenience.
+pub var io: Io = undefined;
+
+fn fail(comptime fmt: []const u8, args: anytype) u8 {
+    var buf: [512]u8 = undefined;
+    var fw: Io.File.Writer = .init(.stderr(), io, &buf);
+    const err = &fw.interface;
+    err.print(fmt, args) catch {};
+    err.flush() catch {};
+    return 1;
+}
+
+/// `bpa fmt [--check] <file>`: whitespace/indentation normalizer.
+/// In place by default; --check reports (exit 1) instead of rewriting.
+fn fmtCommand(arena: std.mem.Allocator, rest: []const [:0]const u8) !u8 {
+    var check_only = false;
+    var path: ?[]const u8 = null;
+    for (rest) |arg| {
+        if (std.mem.eql(u8, arg, "--check")) {
+            check_only = true;
+        } else if (path == null) {
+            path = arg;
+        } else {
+            return fail("usage: bpa fmt [--check] <file.bpa>\n", .{});
+        }
+    }
+    const p = path orelse return fail("usage: bpa fmt [--check] <file.bpa>\n", .{});
+
+    const source = Io.Dir.cwd().readFileAlloc(io, p, arena, .limited(64 << 20)) catch |e| switch (e) {
+        error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{p}),
+        else => return fail("error: cannot open '{s}': {t}\n", .{ p, e }),
+    };
+    const formatted = try bpa.fmt.format(arena, source);
+    if (std.mem.eql(u8, source, formatted)) return 0;
+    if (check_only) {
+        return fail("{s}: not formatted\n", .{p});
+    }
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = p, .data = formatted });
+    return 0;
+}
+
+const query_usage =
+    "usage: bpa query outline <file.bpa> [theorem]\n" ++
+    "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
+    "       bpa query whereis <file.bpa> <identifier>\n" ++
+    "       bpa query search <file.bpa|dir> <query>\n";
+
+/// Print a query op's result (stdout when ok, stderr otherwise) and map to an
+/// exit code.
+fn emitQuery(text: []const u8, ok: bool) !u8 {
+    var buf: [4096]u8 = undefined;
+    const stream: Io.File = if (ok) .stdout() else .stderr();
+    var fw: Io.File.Writer = .init(stream, io, &buf);
+    const w = &fw.interface;
+    try w.writeAll(text);
+    try w.flush();
+    return if (ok) 0 else 1;
+}
+
+fn readFile(arena: std.mem.Allocator, path: []const u8) ![]const u8 {
+    return Io.Dir.cwd().readFileAlloc(io, path, arena, .limited(64 << 20)) catch |e| switch (e) {
+        error.FileNotFound => return error.FileNotFound,
+        else => return e,
+    };
+}
+
+/// `bpa query <op> …` — read-only inspection.
+///   outline <file> [theorem]  — proof skeleton (labels + block headers)
+///   theorem <file> <name>     — full source of a theorem (aliases followed)
+fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:0]const u8) !u8 {
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "outline")) {
+        if (rest.len < 2 or rest.len > 3) return fail(query_usage, .{});
+        const path = rest[1];
+        const thm: ?[]const u8 = if (rest.len == 3) rest[2] else null;
+        const source = readFile(arena, path) catch |e| switch (e) {
+            error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
+            else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
+        };
+        const result = try bpa.query.outline.outline(arena, path, source, thm);
+        return emitQuery(result.text, result.ok);
+    }
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "theorem")) {
+        // `query theorem <file> <name> [--sig]` — --sig prints just the
+        // statement (kind + name + formula, one line), no proof body.
+        var sig_only = false;
+        var path: ?[]const u8 = null;
+        var name: ?[]const u8 = null;
+        for (rest[1..]) |arg| {
+            if (std.mem.eql(u8, arg, "--sig")) {
+                sig_only = true;
+            } else if (path == null) {
+                path = arg;
+            } else if (name == null) {
+                name = arg;
+            } else {
+                return fail(query_usage, .{});
+            }
+        }
+        const p = path orelse return fail(query_usage, .{});
+        const n = name orelse return fail(query_usage, .{});
+        const source = readFile(arena, p) catch |e| switch (e) {
+            error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{p}),
+            else => return fail("error: cannot open '{s}': {t}\n", .{ p, e }),
+        };
+        const result = try bpa.query.theorem.theorem(arena, p, source, n, null, queryReadFile, std_root, sig_only);
+        return emitQuery(result.text, result.ok);
+    }
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "whereis")) {
+        if (rest.len != 3) return fail(query_usage, .{});
+        const path = rest[1];
+        const ident = rest[2];
+        const source = readFile(arena, path) catch |e| switch (e) {
+            error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
+            else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
+        };
+        const result = try bpa.query.whereis.whereis(arena, path, source, ident, null, queryReadFile, std_root);
+        return emitQuery(result.text, result.ok);
+    }
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "search")) {
+        if (rest.len != 3) return fail(query_usage, .{});
+        const path = rest[1];
+        const q = rest[2];
+        const files = collectSearchFiles(arena, path, std_root) catch |e| switch (e) {
+            error.FileNotFound => return fail("error: cannot open '{s}': not found\n", .{path}),
+            else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
+        };
+        const result = try bpa.query.search.search(arena, files, q);
+        return emitQuery(result.text, result.ok);
+    }
+    return fail(query_usage, .{});
+}
+
+/// Build the `{path, source}` set `query search` runs over. A DIRECTORY yields
+/// its top-level `.bpa` files (corpus discovery); a FILE yields that file plus
+/// everything it transitively imports (scope-aware).
+fn collectSearchFiles(arena: std.mem.Allocator, path: []const u8, std_root: []const u8) ![]const bpa.query.search.File {
+    const cwd = Io.Dir.cwd();
+    const st = try cwd.statFile(io, path, .{});
+    var files: std.ArrayList(bpa.query.search.File) = .empty;
+    if (st.kind == .directory) {
+        var dir = try cwd.openDir(io, path, .{ .iterate = true });
+        var it = dir.iterate();
+        while (try it.next(io)) |entry| {
+            if (entry.kind != .file or !std.mem.endsWith(u8, entry.name, ".bpa")) continue;
+            const full = try std.fs.path.join(arena, &.{ path, entry.name });
+            const src = readFile(arena, full) catch continue;
+            try files.append(arena, .{ .path = full, .source = src });
+        }
+        return files.items;
+    }
+    // a file: it + its transitive imports (BFS over import decls).
+    var seen: std.StringHashMapUnmanaged(void) = .empty;
+    var queue: std.ArrayList([]const u8) = .empty;
+    try queue.append(arena, path);
+    var qi: usize = 0;
+    while (qi < queue.items.len) : (qi += 1) {
+        const p = queue.items[qi];
+        if (seen.contains(p)) continue;
+        try seen.put(arena, p, {});
+        const src = readFile(arena, p) catch continue;
+        try files.append(arena, .{ .path = p, .source = src });
+        for (try importPaths(arena, src, p, std_root)) |imp| {
+            if (!seen.contains(imp)) try queue.append(arena, imp);
+        }
+    }
+    return files.items;
+}
+
+/// Resolve every `import ns <<< "path"` in `source` to its file path (loader's
+/// std/-prefix + relative rule).
+fn importPaths(arena: std.mem.Allocator, source: []const u8, from: []const u8, std_root: []const u8) ![]const []const u8 {
+    var out: std.ArrayList([]const u8) = .empty;
+    var lex: bpa.lexer.Lexer = .init(source);
+    var after_import = false;
+    while (true) {
+        const t = lex.next();
+        if (t.tag == .eof) break;
+        if (t.tag == .keyword_import) {
+            after_import = true;
+        } else if (after_import and t.tag == .string) {
+            const raw = source[t.start + 1 .. t.end - 1];
+            const resolved = if (std.mem.startsWith(u8, raw, "std/"))
+                try std.fs.path.resolve(arena, &.{ std_root, raw["std/".len..] })
+            else
+                try std.fs.path.resolve(arena, &.{ std.fs.path.dirname(from) orelse ".", raw });
+            try out.append(arena, resolved);
+            after_import = false;
+        }
+    }
+    return out.items;
+}
+
+/// `ReadFileFn` for cross-file alias resolution in `query theorem`.
+fn queryReadFile(ctx: ?*anyopaque, arena: std.mem.Allocator, path: []const u8) anyerror![]const u8 {
+    _ = ctx;
+    return readFile(arena, path);
+}
+
+pub fn main(init: std.process.Init) !u8 {
+    const arena = init.arena.allocator();
+    io = init.io;
+
+    const args = try init.minimal.args.toSlice(arena);
+    if (args.len == 2 and std.mem.eql(u8, args[1], "--help")) {
+        var buf: [1024]u8 = undefined;
+        var fw: Io.File.Writer = .init(.stdout(), io, &buf);
+        const out = &fw.interface;
+        try out.writeAll(
+            \\bpa — a proof checker
+            \\
+            \\usage: bpa check [--fast | --faster | --reckless] <file.bpa>
+            \\       bpa fmt [--check] <file.bpa>
+            \\       bpa query outline <file.bpa> [theorem]
+            \\       bpa query theorem <file.bpa> <theorem> [--sig]
+            \\       bpa query whereis <file.bpa> <identifier>
+            \\       bpa query search <file.bpa|dir> <query>
+            \\
+            \\check reports every failure as
+            \\  file:line:col: error: <message>
+            \\on stderr (exit 1), or a summary line on stdout (exit 0).
+            \\Import paths beginning "std/" resolve in the standard library
+            \\($BPA_STD_DIR, default ./std).
+            \\
+            \\By default check VERIFIES EVERYTHING: `by arithmetic`/`by
+            \\tautology` must produce a checkable certificate (an oracle
+            \\fallback is a hard error), imported proofs are re-checked, and
+            \\imported schemas are re-instantiated. The speed flags defer that
+            \\work to speed up iteration while developing (each run says so
+            \\loudly):
+            \\  --fast      accept oracle verdicts for arithmetic/tautology
+            \\  --faster    also trust imported theorem proofs (skip re-check)
+            \\  --reckless  also trust imported schemas (skip re-instantiation)
+            \\Re-run plain `bpa check` to fully verify before finalizing.
+            \\
+            \\fmt normalizes whitespace and indentation in place; --check
+            \\reports instead of rewriting.
+            \\
+            \\query outline prints a proof's structural skeleton: one line per
+            \\step (bare label), with a header on steps that open a nesting
+            \\block (fix / assume / unpack / case). With no theorem argument it
+            \\outlines every proof in the file.
+            \\query theorem prints the full source of one theorem (following
+            \\aliases across files to the real proof; axioms are marked).
+            \\query whereis traces an identifier through every alias/import hop
+            \\to its original definition (the file-chase as one command).
+            \\
+        );
+        try out.flush();
+        return 0;
+    }
+    const std_root = init.environ_map.get("BPA_STD_DIR") orelse "std";
+    if (args.len >= 2 and std.mem.eql(u8, args[1], "fmt")) {
+        return fmtCommand(arena, args[2..]);
+    }
+    if (args.len >= 2 and std.mem.eql(u8, args[1], "query")) {
+        return queryCommand(arena, std_root, args[2..]);
+    }
+    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n";
+    if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
+        return fail(usage, .{});
+    }
+    // Speed presets over the verification knobs (default = verify everything).
+    // Each preset turns off one more layer; at most one may be given.
+    var verify: bpa.Verify = .{};
+    var speed_flag = false;
+    var path: ?[]const u8 = null;
+    for (args[2..]) |arg| {
+        const preset: ?bpa.Verify =
+            if (std.mem.eql(u8, arg, "--fast")) .{ .certify_arithmetic = false } else if (std.mem.eql(u8, arg, "--faster")) .{ .certify_arithmetic = false, .recheck_imports = false } else if (std.mem.eql(u8, arg, "--reckless")) .{ .certify_arithmetic = false, .recheck_imports = false, .recheck_schemas = false } else null;
+        if (preset) |p| {
+            if (speed_flag) return fail("error: at most one of --fast / --faster / --reckless\n", .{});
+            verify = p;
+            speed_flag = true;
+        } else if (path == null) {
+            path = arg;
+        } else {
+            return fail(usage, .{});
+        }
+    }
+    const root_path = path orelse return fail(usage, .{});
+
+    const raw_source = Io.Dir.cwd().readFileAlloc(io, root_path, arena, .limited(64 << 20)) catch |e| switch (e) {
+        error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{root_path}),
+        else => return fail("error: cannot open '{s}': {t}\n", .{ root_path, e }),
+    };
+    // a `.md` file is a LITERATE proof: check the ```bpa fenced blocks (prose
+    // masked to blank lines so error line numbers still map to the document).
+    const source = if (std.mem.endsWith(u8, root_path, ".md"))
+        try bpa.literate.extract(arena, raw_source)
+    else
+        raw_source;
+
+    var result = try bpa.checkProject(arena, root_path, source, null, readImport, verify, std_root);
+    if (!result.ok()) {
+        var buf: [4096]u8 = undefined;
+        var fw: Io.File.Writer = .init(.stderr(), io, &buf);
+        const err = &fw.interface;
+        try result.sink.render(err, result.files);
+        try err.flush();
+        return 1;
+    }
+    var buf: [256]u8 = undefined;
+    var fw: Io.File.Writer = .init(.stdout(), io, &buf);
+    const out = &fw.interface;
+    try out.print("OK: {d} declarations, {d} theorems proven", .{
+        result.declarations, result.theorems_proven,
+    });
+    if (result.theorems_tainted > 0) {
+        try out.print(" ({d} pure, {d} via oracles: ", .{ result.theorems_pure, result.theorems_tainted });
+        for (result.oracle_names, 0..) |name, i| {
+            if (i > 0) try out.writeAll(", ");
+            try out.writeAll(name);
+        }
+        try out.writeAll(")");
+    }
+    if (result.theorems_trusted > 0) {
+        try out.print(", {d} imported theorems trusted", .{result.theorems_trusted});
+    }
+    // loud disclosure: a speed flag deferred verification work — name what was
+    // skipped and remind the reader this run is not fully verified.
+    if (speed_flag) {
+        try out.writeAll("\n  \u{2014} NOT FULLY VERIFIED (deferred:");
+        if (!verify.certify_arithmetic) try out.writeAll(" arithmetic-certificates");
+        if (!verify.recheck_imports) try out.writeAll(" imported-proofs");
+        if (!verify.recheck_schemas) try out.writeAll(" imported-schemas");
+        try out.writeAll("); re-run `bpa check` before finalizing.");
+    }
+    try out.writeAll("\n");
+    try out.flush();
+    return 0;
+}
+
+fn readImport(ctx: ?*anyopaque, arena: std.mem.Allocator, path: []const u8) anyerror![]const u8 {
+    _ = ctx;
+    const raw = try Io.Dir.cwd().readFileAlloc(io, path, arena, .limited(64 << 20));
+    // an imported `.md` is literate too — extract its bpa blocks.
+    if (std.mem.endsWith(u8, path, ".md")) return bpa.literate.extract(arena, raw);
+    return raw;
+}

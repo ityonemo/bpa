@@ -1,0 +1,5 @@
+// a library exporting a guarded (partial) function
+sort Num
+const Z: Num
+const ONE: Num
+func half(n: Num): Num requires n != Z

@@ -1,0 +1,240 @@
+# bpa proof-writing conventions
+
+These conventions optimize for the two audiences of a `.bpa` file: an LLM
+writing it and a human reviewing it. Most are style (normalized by the planned
+`bpa fmt`); a few are checker-enforced where noted. `examples/pa.bpa` is the
+living exemplar.
+
+## File layout
+
+Order: header comment → imports → aliases → sorts → constants → functions →
+predicates → axioms → theorems. Separate the groups with blank lines; in
+larger files, use section comments (`// -- axioms ----`).
+
+A **parenthesized parameter list makes a statement schematic** (a comptime
+form, instantiated per concrete argument): `axiom induction(prop: Nat -> Prop):
+...` is an assumption family; `theorem contrapositive(p: Prop, q: Prop): ...
+proof ... qed` is a proven family whose proof is re-checked at every
+instantiation. The keyword carries the epistemic status either way — an axiom
+never has a proof, a theorem always does. Libraries exporting schematic
+theorems should ship a smoke file instantiating each one (schemas are never
+checked at declaration, only at use).
+
+The header comment states what the file is and what it proves.
+
+## The forward manifest
+
+An optional block of `forward <name>` lines after the axioms declares, up
+front, which theorems the file will prove — a table of contents the checker
+verifies (each name must be defined in this file as a theorem, plain or
+schematic; nothing else is checked).  This exists for organizational purposes,
+because theorem bodies can get quite large, and can signal that a particular
+theorem is expected to be imported, however, note that this is not a promise.
+
+```
+// -- forwarded theorems ----
+forward addZeroRight
+forward addIsCommutative
+```
+
+## Comments carry the "why"
+
+These comments are not required, they are just a helpful guide for humans
+and LLMs to understand the context of what is followed.  Expect an LLM to
+be able to be prompted with a preceding comment block and be able to scan
+the theorem to assess if it's correct.
+
+- Every theorem is preceded by a **strategy comment**: the proof idea in one or
+  two lines (e.g. `// Strategy: induction on b with prop(k) := forall a. ...`).
+  A reviewer — or a future session with a cold context — should never have to
+  reverse-engineer intent from the steps.
+- Inside proofs, **phase comments** mark the structure: `// base case: ...`,
+  `// inductive step: ...`.
+- Comments explain *why*; steps state *what*. Don't paraphrase a step in its
+  comment.
+- Statement-level quirks get a comment (e.g. why a quantifier order was chosen).
+
+## Naming
+
+Every category has a distinct look:
+
+| Category                | Style           | Example                        |
+|-------------------------|-----------------|--------------------------------|
+| Sorts                   | ProudCamelCase  | `Nat`, `Prop`, `Word32`        |
+| Constants               | ALLCAPS         | `ZERO`, `ONE`                  |
+| Functions / predicates  | snake_case word | `succ`, `add`, `even`          |
+| Axioms/theorems         | camelCase       | `addZeroLeft`, `induction`     |
+| Labels                  | kebab-case      | `induction-step`, `given-inductive-hypothesis`   |
+| Variables               | snake_case      | `a`, `k`, `high_word`          |
+
+- Functions and predicates should not be **one letter**: `succ` not `S`. The same
+  applies to schema parameters (`prop: Nat -> Prop`, not `P`) — they are
+  function-shaped.
+- Statement names are **spelled out**: `addZeroLeft`, not `addZ`; properties in
+  full: `addIsCommutative`, not `addComm`.
+  - Equation-shaped facts encode which argument position they describe:
+    axiom `addZeroLeft` is `add(ZERO, b) = b`; theorem `addZeroRight` is
+    `add(n, ZERO) = n`; likewise `addSuccLeft` / `addSuccRight`. This prevents
+    near-collisions between an axiom and its mirror-image theorem.
+- Kebab labels work because `-` joins identifier characters (`x->y` still
+  lexes as an arrow). A deliberate consequence: there is **no infix minus,
+  ever** — subtraction is `sub(a, b)`.  Note that this convention may be
+  changed in the future.
+- Variables may be one letter, but this is slightly discouraged — reserve it
+  for conventional mathematical scalars in their home domain: `a, b, m, n`
+  ranging over `Nat`; `x, y, z, w` over the reals; `i, j, k` as indices
+  (including induction variables). Anything else gets a snake_case word.
+
+## Labels
+
+**The dump test.** The label column IS the proof outline: stripping every
+assertion and justification line must leave a skeleton from which a reader can
+reconstruct the argument. Every label is judged by what it contributes to that
+skeleton.
+
+- **Every label is a mini-assertion of the fact it establishes**:
+  `@six-is-nonzero`, `@three-is-below-six`, `@quotients-are-equal`. Never bare
+  counters (`eq2`, `s3`), never abbreviations (`gen-a`, `mi-b`, `qcbl` — write
+  the words out), never pure operation names when a content name exists.
+- **A specialized fact folds its instance into the name**:
+  `@remainder-is-unique-nine-six`. Long names are fine — noise is
+  meaninglessness, not length.
+- **Provenance is not content.** The justification line already says
+  `[by theorem modIntro]`; the label says what the step *asserts*
+  (`@remainder-is-unique`), not what was cited. Exception that proves the
+  rule: when a lemma's own name is already an assertion
+  (`addIsCommutative`), its kebab form is a fine content name
+  (`@add-is-commutative`).
+- **Name the move, not the proposition.** The formula line is right there — a
+  label that just re-narrates its syntax earns nothing. On a line reading
+  `forall b, d: Nat; ...`, `@for-all-b-d` is dead weight; the step's real
+  contribution is *discharging the `fix`* (`@discharge-b`). Likewise a
+  `forall_elim` step's content is the *specialization* it performs
+  (`@specialized-to-this-a-b`), not that the result is now quantifier-free.
+  Ask "what did this step DO to the argument?" — that is the name.
+- **Steps that assert nothing should not exist.** Specialization towers
+  collapse with multi-argument `forall_elim(A, B, C)`; modus-ponens discharge
+  ladders collapse with `tautology` (see the apply-a-lemma idiom below). Only
+  name what survives.
+
+**Stock names for structural roles** (one standard spelling per role, full
+words — the role IS the content for these):
+
+| role | name |
+|---|---|
+| final step of every proof | `@conclusion` |
+| step establishing `P(ZERO)` (the base premise) | `@base-case` |
+| block proving the base when it needs its own subproof | `@base-case-proof` (its export step is then `@base-case`) |
+| fix-block deriving the successor case | `@induction-step` |
+| assume-block introducing `P(k)` | `@given-inductive-hypothesis` |
+| restatement of `P(k)` inside it | `@inductive-hypothesis` |
+| the implication at fixed `k` | `@induction-step-at-k` |
+| the generalized step premise | `@induction-step-for-all-k` |
+| fix-block generalizing a statement binder | `@generalize-<var>` |
+| forall_intro closing such a block | `@discharge-<var>` (it discharges the `fix`; do NOT name it `@for-all-<var>`, which merely echoes the formula) |
+| forall_elim specializing a lemma | `@specialized-<to-what>` / `@<fact>-at-<args>` (name the specialization, not that it is now quantifier-free) |
+| assume-block (hypothesis intro) | `@given-<content>` (`@given-b-nonzero`) |
+| implies_intro export | `@<cond>-implies-<result>` |
+| the existential feeding an unpack | `@<thing>-exists` (`@gap-exists`) |
+| unpack-block naming a witness | `@with-<role>-<var>` (`@with-gap-d`, `@with-quotient-j`); fallback `@with-witness-<var>` |
+| case arms (`case`/`or_elim` branches) | `@when-<condition>` (`@when-zero`, `@when-successor`) |
+| a flipped equation (`[by symmetry x]`) | `@<content>-flipped` |
+
+The induction payoff line reads
+`[by instantiate induction((fun ...)) base-case induction-step-for-all-k]`.
+
+**The apply-a-lemma idiom** — cite, specialize, discharge; three nameable
+steps, no filler:
+
+  ```
+  @remainder-is-unique |
+    forall a, b, q, r: Nat; b != ZERO -> less_than(r, b) -> add(mul(b, q), r) = a -> mod(a, b) = r
+    [by theorem modIntro]
+  @remainder-is-determined-nine-six |
+    SIX != ZERO -> less_than(THREE, SIX) -> add(mul(SIX, ONE), THREE) = NINE -> mod(NINE, SIX) = THREE
+    [by forall_elim(NINE, SIX, ONE, THREE) remainder-is-unique]
+  @conclusion |
+    mod(NINE, SIX) = THREE
+    [by tautology remainder-is-determined-nine-six six-is-nonzero three-is-below-six sum-is-nine]
+  ```
+
+  (`tautology` replays as a pure certificate here — a Horn-shaped discharge
+  never approaches its atom cap or step budget. If a discharge ever exceeds
+  the 16-atom cap, fall back to named `modus_ponens` steps.)
+
+## Proof variables
+
+- **No shadowing — checker-enforced.** No introduced name (quantifier binder,
+  lambda binder, parameter, fix/unpack variable) may reuse any visible name: a
+  variable in scope, a schema parameter, or any declared symbol.
+- When generalizing a statement variable with `fix`, reuse the statement's own
+  binder name (`theorem t: forall b, ... proof @g | fix b: Nat { ... }`). Binder
+  hints and fix-variables don't collide — hints carry no identity.
+- Induction variables are named `k` (matching the schema's conventional
+  parameter).
+- Variable names must be fresh per proof (checker-enforced). When a conceptual
+  variable must be re-fixed in a disjoint subproof, append an index: `a`, then
+  `a2`, `a3`.
+- When restating a fact whose binder names would shadow variables in scope,
+  rename the binders freely (`forall c: Nat; ...`) — alpha-equivalence ignores
+  hints.
+
+## Imports
+
+- `import peano <<< "peano.bpa"` binds a namespace to a file (path relative to
+  the importing file). Imports come first in the file.
+- Everything imported is referenced **qualified** (`peano.Nat`,
+  `[by theorem peano.addIsCommutative]`) or via an **explicit alias**:
+  `sort Nat = peano.Nat`, `const ZERO = peano.ZERO`, `func succ = peano.succ`.
+  Aliases are kind-checked views of the same entity — both spellings denote
+  the same thing, and there is no wildcard `open`.
+- **Alias only when it earns its place: alias a name used more than once,
+  qualify inline (`peano.mulSuccLeft`) for a single use.** An alias line at
+  the top pays for itself when the name recurs; for a lone reference it just
+  adds a line to scan past, so write the qualified name at its one call site
+  instead. (This keeps alias headers to the vocabulary a file actually
+  leans on.)
+- **Naming the arithmetic theory**: `by arithmetic` resolves its vocabulary
+  and certificate lemmas in **local scope**; `by arithmetic(<module>)`
+  resolves them against an imported theory module (e.g.
+  `by arithmetic(ordering)` after `import ordering <<< "std/peano-ordering.bpa"`).
+  Prefer the named form in a file that is layers above the primitives or is a
+  subdomain still building its own vocabulary: it certifies against the solid
+  theory beneath it without aliasing `add`/`less_than`/the order lemmas into
+  the local namespace. `std/peano-ordering.bpa` is the canonical theory module
+  (it carries the full order + Farkas lemma set). A named theory must supply
+  every symbol the goal uses, or the check hard-errors naming the gap.
+- **Trust model**: `bpa check` verifies everything by default — arithmetic
+  must certify, imported proofs are re-checked, schemas re-instantiate. The
+  speed flags defer layers for iteration (`--fast` accepts arithmetic oracle
+  verdicts; `--faster` also trusts imported proofs, reporting them as trusted;
+  `--reckless` also trusts imported schemas), always with a loud
+  not-fully-verified banner. Re-run plain `bpa check` before finalizing.
+
+## Layout of steps
+
+- Each step is three lines: the `@`-sigiled label alone, then the formula, then
+  the bracketed justification — the formula and justification aligned two spaces
+  under the label:
+
+  ```
+  @conclusion |
+    forall n: Nat; add(n, ZERO) = n
+    [by instantiate induction((fun k: Nat => add(k, ZERO) = k)) base step]
+  ```
+
+  The `@` marks a definition and sits at the left margin, so labels form a
+  scannable gutter column; citations of a label stay bare. (The brackets are
+  syntax — the justification is a delimited unit — but the line breaks are
+  convention; the checker is whitespace-insensitive. `bpa fmt` produces this
+  shape.)
+- Two-space indent per block depth.
+- Blank line between proof phases; none within a phase.
+- Soft limit ~100 columns.
+- Layout tokens are not "overhead": structure gives both the reviewer and a
+  generating LLM room to think. Do not compress for token frugality.
+- `bpa fmt <file>` normalizes all of this mechanically (in place;
+  `--check` reports instead of rewriting). It is strictly a whitespace and
+  indentation tool: it preserves comments, blank-line placement (collapsed to
+  one), and the author's line breaks within statements (re-indenting
+  continuations to +2) — and it never checks or rewrites names.

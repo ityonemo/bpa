@@ -1,0 +1,16 @@
+// deliberately broken: mul with both sides variable is nonlinear. The
+// equation is a relation the fragment is meant to decide but cannot, so the
+// diagnostic names the offending term as outside linear arithmetic (rather
+// than a countermodel, which would read as calling a true statement false).
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+
+theorem bad: forall a, b: Nat; mul(a, b) = mul(b, a)
+proof
+  @conclusion |
+    forall a, b: Nat; mul(a, b) = mul(b, a)
+    [by arithmetic]
+qed

@@ -1,0 +1,28 @@
+// quantifier manipulation: forall_elim instantiates, fix + forall_intro rebuild
+sort Nat
+pred r(a: Nat, b: Nat)
+axiom rAll: forall x, y: Nat; r(x, y)
+theorem swap: forall y, x: Nat; r(x, y)
+proof
+  @fy |
+    fix b: Nat {
+      @fx |
+        fix a: Nat {
+          @all |
+            forall x, y: Nat; r(x, y)
+            [by axiom rAll]
+          @one |
+            forall y: Nat; r(a, y)
+            [by forall_elim(a) all]
+          @two |
+            r(a, b)
+            [by forall_elim(b) one]
+        }
+      @inner |
+        forall x: Nat; r(x, b)
+        [by forall_intro fx]
+    }
+  @conc |
+    forall y, x: Nat; r(x, y)
+    [by forall_intro fy]
+qed

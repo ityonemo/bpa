@@ -1,0 +1,48 @@
+// guarded division, used safely: every div application owes a proof that the
+// divisor is nonzero. Here the guards are discharged by (a) a hypothesis in
+// scope at the use site, and (b) a lemma matching the statement's obligation.
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func div(a: Nat, b: Nat): Nat requires b != ZERO
+
+// this lemma is EXACTLY the obligation the divSafe statement generates —
+// the tool prints obligations in copy-pasteable form for this reason
+theorem guardTaut: forall d: Nat; d != ZERO -> d != ZERO
+proof
+  @fd |
+    fix d: Nat {
+      @hb |
+        assume d != ZERO {
+          @h |
+            d != ZERO
+            [by hypothesis hb]
+        }
+      @imp |
+        d != ZERO -> d != ZERO
+        [by implies_intro hb]
+    }
+  @conc |
+    forall d: Nat; d != ZERO -> d != ZERO
+    [by forall_intro fd]
+qed
+
+theorem divSafe: forall d: Nat; d != ZERO -> div(ONE, d) = div(ONE, d)
+proof
+  @fd2 |
+    fix d: Nat {
+      @hb2 |
+        assume d != ZERO {
+      // div's guard here is discharged by the assumption in scope
+          @refl-in |
+            div(ONE, d) = div(ONE, d)
+            [by reflexivity]
+        }
+      @imp2 |
+        d != ZERO -> div(ONE, d) = div(ONE, d)
+        [by implies_intro hb2]
+    }
+  @conc2 |
+    forall d: Nat; d != ZERO -> div(ONE, d) = div(ONE, d)
+    [by forall_intro fd2]
+qed

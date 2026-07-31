@@ -1,0 +1,5 @@
+// deliberately broken: a define competes in the same namespace as every
+// other declaration
+sort Nat
+const TWO: Nat
+define TWO = TWO

@@ -1,0 +1,16 @@
+// kebab-case is allowed for proof labels (`base-eq`) and [by ...] references
+// (`base-eq` cited by `symmetry`). The theorem NAME stays a plain identifier;
+// only the in-proof label namespace admits hyphens.
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+
+theorem reflHolds: succ(ZERO) = succ(ZERO)
+proof
+  @base-eq |
+    succ(ZERO) = succ(ZERO)
+    [by reflexivity]
+  @flipped-eq |
+    succ(ZERO) = succ(ZERO)
+    [by symmetry base-eq]
+qed

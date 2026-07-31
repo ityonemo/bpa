@@ -1,0 +1,5 @@
+// deliberately broken: succ expects a Nat, p is a proposition
+sort Nat
+func succ(n: Nat): Nat
+pred p
+axiom bad: succ(p) = succ(p)

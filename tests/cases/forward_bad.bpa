@@ -1,0 +1,5 @@
+// deliberately broken: the manifest promises theorems the file never delivers
+sort T
+forward missingTheorem
+forward onlyAxiom
+axiom onlyAxiom: forall x: T; x = x

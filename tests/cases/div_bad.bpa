@@ -1,0 +1,12 @@
+// deliberately broken: div(ONE, ZERO) with no proof that ZERO != ZERO
+// (there is none) — the 3/0 footgun this system exists to forbid
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func div(a: Nat, b: Nat): Nat requires b != ZERO
+theorem bad: div(ONE, ZERO) = div(ONE, ZERO)
+proof
+  @conc |
+    div(ONE, ZERO) = div(ONE, ZERO)
+    [by reflexivity]
+qed
