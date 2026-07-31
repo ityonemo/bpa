@@ -57,8 +57,9 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
 - **Certificate status**: certificate-first (B2). Every valid goal within
   the step budget replays as ordinary kernel steps — an inline excluded
   middle plus or_elim per split atom, structural derivation at the leaves —
-  so typical uses are pure and satisfy `--pure`. The oracle verdict remains
-  only as the over-budget fallback, tainting that use only.
+  so typical uses are pure and check green by default. The oracle verdict is
+  admitted only under `--fast` as the over-budget fallback, tainting that use
+  only.
 
 ### `arithmetic` — linear (Presburger) arithmetic over Nat
 

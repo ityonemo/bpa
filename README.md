@@ -32,8 +32,8 @@ axiom induction(prop: Nat -> Prop):
   prop(ZERO) -> (forall k: Nat; prop(k) -> prop(succ(k))) -> forall n: Nat; prop(n)
 ```
 
-behaves like `fn List(comptime T: type)`: it the case of bpa it is a **stored form**,
-not a theorem. It does nothing until instantiated with a concrete,
+behaves like `fn List(comptime T: type)`: in the case of bpa it is a **stored
+form**, not a theorem. It does nothing until instantiated with a concrete,
 written-out argument, at which point it is monomorphized into plain
 first-order logic.  A theorem schema's proof is re-checked at each
 instance, just as Zig re-analyzes a generic function per instantiation.
@@ -45,8 +45,8 @@ of that power is *instantiating* a general rule with a predicate you
 supply. bpa keeps exactly that half: schemas are instantiated only with
 formulas you have actually written down, so instantiation is decidable
 substitution rather than search, no quantifier over predicates ever exists
-in the object logic, and the trusted kernel stays a few hundred lines of
-concrete first-order checking.
+in the object logic, and the trusted kernel stays a small body of concrete
+first-order checking.
 
 **Mistakes fail loud, never silent.** You can still write a *bad proof* —
 an awkward detour, a cited step that doesn't apply, a tactic pointed at the
@@ -58,7 +58,8 @@ the elaborator, parser, or a tactic asserts. There are exactly two claims
 the kernel accepts without re-deriving — a schema *instance* (and it still
 checks the premise-matching) and a named *oracle* verdict — and both are
 made visible rather than hidden: an oracle taints its theorem, the summary
-line discloses it, and `bpa check --pure` rejects it outright. Ambiguity is
+line discloses it, and by default `bpa check` rejects it outright (only the
+opt-in `--fast` accepts an oracle verdict). Ambiguity is
 squeezed out of the surface for the same reason: `:` is only ever sort
 ascription, `|` only ever a step label, connectives are words not symbols,
 and no-shadowing is enforced — so a proof reads one way, and the way it
@@ -100,221 +101,8 @@ Failures are located and exact:
 
 ```
 $ ./zig-out/bin/bpa check examples/incorrect.bpa
-examples/incorrect.bpa:35:39: error: modus_ponens: expected antecedent 'raining', got 'wet'
+examples/incorrect.bpa:39:41: error: modus_ponens: expected antecedent 'raining', got 'wet'
 ```
-
-## How it works
-
-- A **tiny trusted kernel** checks concrete first-order logic: every proof
-  step names a rule and the steps it depends on, and the kernel verifies
-  each one. Everything outside the kernel — parsing, name resolution,
-  tactics — is untrusted machinery that can only ever *prepare* work for
-  it.
-- **Schematic statements** are stored forms, monomorphized per
-  instantiation (see Design above); the kernel only ever sees the concrete
-  first-order instances.
-- **Automation is certificate-first.** The `simplify`, `tautology`, and
-  `arithmetic` rules discharge goals in one step. Whenever possible they
-  emit ordinary kernel steps (a *certificate*), so the result is exactly as
-  trustworthy as a hand proof. When a decidable goal falls outside the
-  certificate fragment, a built-in decision procedure (an *oracle*) accepts
-  it, the theorem is marked, and the summary line discloses it. `bpa check
-  --pure` rejects every oracle-backed step.
-- **Imports** (`import peano <<< "std/peano.bpa"`) bring in namespaced
-  declarations; `--recursive` re-verifies imported proofs.  Note that the
-  default reverification strategy may be revisited in the future to prevent
-  footguns.
-
-## Compared to other proof assistants
-
-bpa is young and deliberately narrow; the mature systems below are vastly
-more capable and have decades of libraries. These sections are about
-*design differences*, not a claim that bpa competes on power. The recurring
-theme: bpa trades expressive foundations for a tiny kernel, decidable
-elaboration, and an explicit surface — a trade that suits a proof *checker*
-whose proofs are written to be read (by humans and LLMs) and grepped.
-
-Each subsection below names a **footgun** that system has and bpa does not —
-a place where the more powerful design admits a hazard the narrower one
-rules out by construction. These are genuine trade-offs the other systems
-made knowingly for good reasons, not defects; the point is only to show what
-bpa's constraints buy.
-
-One footgun is shared by all three, so it goes here: **division (and other
-partial functions) is made *total* by fiat.** Lean, Isabelle/HOL, and Rocq
-all define `n / 0 = 0` (and `head []`, etc.) so the term is well-typed —
-which means `n / 0` silently denotes a meaningless value and a proof can pass
-through it without anyone noticing the degenerate case. bpa instead guards
-such functions (`func div(a, b) requires b != ZERO`), turning every use into
-a proof obligation: you must *prove* the divisor is nonzero, or the check
-fails with a located error. The cost is that you carry the obligation; the
-benefit is that the `n / 0` case cannot silently slip into a proof.
-
-**A caveat about the sections below, and where bpa is headed.** Each section
-names a place where those systems trust a compiler, VM, or code generator the
-kernel does not re-check. bpa does **not** today escape this class of trust:
-when `arithmetic` cannot yet produce a certificate it falls back to an oracle
-— a step accepted with no derivation, resting on bpa's own decision procedure
-(the Cooper-algorithm implementation in `src/presburger.zig`) rather than the
-kernel. That code is **young and only lightly tested** — a handful of
-fixtures and unit tests, far less exercised than the hardened evaluators
-those systems ship — so per oracle use it is, if anything, *more* likely to
-harbor a bug. This is stated plainly because the design already makes it
-impossible to hide, and because it is a **transitional** state, not the
-intended one.
-
-The roadmap inverts the relationship with oracles entirely
-(`CERTIFICATES-PLAN.md`):
-
-- **Certificate-by-default.** The direction of travel is that `by arithmetic`
-  *produces a full kernel-checked proof* by default; the oracle becomes a
-  genuine last resort for the one fragment that is provably hard to certify
-  (quantifier-alternation replay), not a fallback proofs drift into. Most of
-  the linear fragment is already certificated; the largest remaining lever is
-  a **Farkas certificate** for linear infeasibility, a fixed no-search recipe
-  that turns the bulk of remaining oracle uses pure in one step.
-- **A loud, opt-in fast mode for development.** A `--fast` flag will *skip*
-  certificate generation and take the oracle verdict, for quick iteration
-  while a proof is still being worked out — announced in the summary, never
-  silent, and the thing you turn *off* before finalizing. Paired with the
-  existing `--pure` (certificate-or-error, no oracle ever), that is a
-  three-point spectrum: `--pure` ⟶ default (certificate-preferred) ⟶
-  `--fast`.
-
-So the honest claim in each section below is narrow but real, and it holds
-today *and* strengthens over time: not that bpa trusts *less code* in the
-worst case, but that whatever it trusts beyond the kernel is **named,
-transitively propagated, printed on every summary line, and refusable with
-`--pure`** — never silent, never discoverable only by after-the-fact audit —
-and that the amount so trusted is on a deliberate path toward zero for
-everything short of the undecidable fragment.
-
-### Lean vs bpa
-
-Lean is a dependently-typed proof assistant and a full programming language:
-its logic is the Calculus of Inductive Constructions, proofs *are* programs
-(terms of a type), and `Prop` is one universe among many. Its kernel is
-small by dependent-type standards but still implements definitional equality,
-universe checking, and inductive families. Lean's automation (`simp`,
-`omega`, `decide`, and the Mathlib tactic ecosystem) is powerful and
-tactic-block-oriented; a Lean proof is typically a script whose intermediate
-states you inspect in an editor rather than a document you read top to bottom.
-
-bpa is many-sorted **first-order** logic — no dependent types, no `Type`
-universes, no proofs-as-programs. That is a real expressiveness ceiling
-(you cannot, e.g., index a type by a value). In exchange the kernel checks
-only concrete FOL in a few hundred lines with no definitional-equality
-engine, "higher-order" reasoning is the `comptime`-style schema mechanism
-(decidable instantiation, never higher-order unification), and every proof
-is an explicit sequence of named steps that reads as a static artifact. Where
-Lean reaches for a powerful trusted elaborator, bpa keeps the trusted base
-minimal and makes each automation either replay as checked steps or disclose
-itself as an oracle.
-
-*Where bpa differs:* the trusted base growing **silently**. `native_decide`
-discharges a decidable goal by compiling its `Decidable` instance to native
-code, running it, and believing the answer — so the proof's soundness now
-rests on the Lean compiler, the runtime, and the `Lean.ofReduceBool` /
-`trustCompiler` assumptions ("if the compiled `Bool` reduces to `true`, it
-*is* `true`"), none of which the kernel checks. Unlike `sorry`, this is meant
-to be used in real proofs — it is the fast path when `decide` is too slow —
-so a user aiming at a genuinely correct proof can inherit the whole compiler
-as a trust dependency without realizing it, and `native_decide` has in fact
-been used to derive `False` through compiler and FFI bugs. The exposure is
-visible only if you run `#print axioms` and know to look. bpa is **not** free
-of this class of trust — its oracles are exactly the same kind of
-accept-without-a-derivation (see the shared caveat above) — but the trust is
-never silent: it taints the theorem, prints on the summary line, and
-`--pure` rejects it, so "am I relying on something the kernel didn't check?"
-is answered by default rather than by an after-the-fact audit.
-
-### Isabelle/HOL vs bpa
-
-Isabelle/HOL is built on higher-order logic (simply-typed lambda calculus
-with `bool`) atop the generic Isabelle framework. Its defining strength is
-the **LCF architecture**: theorems are an abstract type produced only by a
-small trusted inference kernel, so even elaborate automation (the classical
-reasoner, `auto`, `sledgehammer` dispatching to external provers) is
-sound by construction — everything ultimately factors through kernel
-inferences. Isabelle proofs are often written in Isar, a structured,
-readable proof language.
-
-bpa shares Isabelle's instinct that the trusted core should be tiny and that
-automation should reduce to kernel-checkable steps — bpa's certificate-first
-tactics are the same idea (an `omega`-style result that replays as ordinary
-rules is "pure", exactly as an Isabelle tactic factors through the kernel).
-The differences: bpa is first-order rather than HOL, so it has no genuine
-quantification over predicates (the schema mechanism substitutes for the
-common *instantiation* case only); and bpa is explicit about the cases where
-a decision procedure *cannot* be replayed — those become disclosed oracles
-with `--pure` to reject them, rather than being trusted silently. Isar and
-bpa's step language share the "proof as a readable document" goal; bpa's is
-smaller and more rigid, tuned for greppability and constrained context.
-
-*Where bpa differs:* how the analogous trust is surfaced. Isabelle's `eval`
-method (and `value`) proves a proposition by having the code generator emit
-ML, compiling it, and running it — so the result is trusted on the code
-generator, the ML compiler, and the runtime, outside the LCF kernel. As with
-Lean's `native_decide` this is a legitimate performance tool aimed at real
-proofs, not a stub. Isabelle is honest about it — it can track such
-derivations and offers the slower kernel-checked `code_simp` — and bpa's
-oracle is the same shape of accept-without-a-derivation, so bpa is not
-categorically cleaner here. What bpa fixes is default and enforcement: an
-oracle use is *always* a named, transitive taint on the theorem, on the
-summary line, with `--pure` to refuse it — you don't have to know to check.
-
-### Rocq (Coq) vs bpa
-
-Rocq (formerly Coq), like Lean, is founded on the Calculus of Inductive
-Constructions with dependent types and proofs-as-programs, and it pioneered
-much of that tradition (the kernel, `Ltac`/`Ltac2` tactic languages,
-extraction to executable code, and landmark developments like CompCert and
-the Feit–Thompson proof). A Rocq proof is a tactic script producing a proof
-term the kernel type-checks; the kernel is small but implements the full
-dependent-type conversion check.
-
-bpa makes the same trade against Rocq as against Lean — no dependent types
-and no proofs-as-programs, so no extraction and a hard expressiveness limit,
-in return for a first-order kernel with no conversion engine and a proof
-format that is a plain checked step list rather than a tactic script. One
-narrower point of contact: Rocq's `Ltac` is a Turing-complete *untrusted*
-metaprogramming layer that emits proof terms the kernel re-checks — bpa's
-tactics occupy the same "untrusted, must produce kernel-checkable output"
-role, but they are fixed built-in procedures rather than a user
-metaprogramming language, and bpa additionally formalizes the escape hatch
-(an oracle) for results the kernel genuinely cannot re-derive.
-
-*Where bpa differs:* the same compiled-reduction trust surface as Lean
-appears in Rocq's own form. `native_compute` compiles terms to OCaml, runs
-them, and trusts the result to close a goal by computation; `vm_compute` uses
-a bytecode VM inside the kernel's reduction. Both fold the compiler or VM
-into the trusted computing base — Rocq's documentation flags `native_compute`
-as doing exactly that — so a proof closed this way for speed depends on more
-than the type theory, discoverable only via `Print Assumptions` / careful
-audit. bpa does not escape the category (its oracles are the analogue), but
-it removes the *silence*: no compiled fast path sits in the trusted position
-unnamed. Every unchecked step is a disclosed, `--pure`-rejectable oracle, and
-the trusted surface stays statable in a sentence — the FOL kernel, its two
-disclosed elaborator licenses, and whatever oracle code a given proof's taint
-names.
-
-## Layout
-
-| Path | Contents |
-|---|---|
-| `examples/peano.bpa` | the living demo: automation-assisted Peano arithmetic |
-| `examples/peano-pure.bpa` | the same theory proved entirely by hand |
-| `examples/gauss.bpa` | Gauss's summation formula (with the `assoc_commut` tactic) |
-| `examples/euclid.bpa` | Euclid's gcd, consuming the verified `std/peano-gcd` library |
-| `examples/euclid-compute.bpa` | gcd *run* on concrete numbers: `gcd(9, 6) = 3`, unfolded step by step |
-| `examples/incorrect.bpa` | three classic wrong proofs and their diagnostics |
-| `examples/sqrt2.bpa` | **√2 is irrational** (stated over ℕ), proved pure |
-| `examples/literate.md` | a **literate** proof: prose + checkable ` ```bpa ` blocks |
-| `std/` | the standard library: arithmetic (`peano`), order + strong induction (`peano-ordering`), subtraction, division/divisibility, the verified `peano-gcd`, even/odd + the parity crux (`peano-parity`), abstract group theory (`group`), and set algebra over a universe (`set`) |
-| `aata/` | **literate transliterations of an abstract-algebra textbook** (Judson's AATA, GFDL) verified in bpa — the book's prose reproduced in order, each stated result followed by a checked proof; see `aata/README` |
-| `GUIDE.md` | every keyword, the kernel design, the built-in oracles |
-| `CONVENTIONS.md` | naming and proof-writing style |
-| `ORACLES.md` | the oracle registry and trust disclosure |
 
 ## Commands
 
@@ -353,10 +141,13 @@ The `bpa query` commands (below) also understand `.md` — they extract the same
 
 ### Query (read-only inspection)
 
+For most simple searches (label audits, tactic-usage sites, counts), using `grep`
+or similar is encouraged!
+
 `bpa query` navigates a proof corpus without checking it — for the cases plain
-`grep` handles poorly: a proof's *structure*, a theorem's *exact statement*
-(which may wrap across lines), *following an alias across files*, or *finding a
-lemma by concept* when the name is fuzzy.
+text searching, especially `grep`, handles poorly: a proof's *structure*, a
+theorem's *exact statement* (which may wrap across lines), *following an alias
+across files*, or *finding a lemma by concept* when the name is fuzzy.
 
 - `query outline <file> [theorem]` — the proof **skeleton** (one line per step,
   with headers on `fix`/`assume`/`unpack`/`case`).
@@ -369,8 +160,135 @@ lemma by concept* when the name is fuzzy.
   statements (a directory searches the whole corpus; a file searches its
   transitive-import scope).
 
-For plain text searches (label audits, tactic-usage sites, counts), use `grep`.
+Query may support semantic searching in the future.
 
-Exactness is a hard rule: bpa works symbolically, and where it computes it
-computes with exact integers. There are no floating-point numbers anywhere,
-ever.
+## How it works
+
+- A **tiny trusted kernel** checks concrete first-order logic: every proof
+  step names a rule and the steps it depends on, and the kernel verifies
+  each one. Everything outside the kernel — parsing, name resolution,
+  tactics — is untrusted machinery that can only ever *prepare* work for
+  it.
+- **Schematic statements** are stored forms, monomorphized per
+  instantiation (see Design above); the kernel only ever sees the concrete
+  first-order instances.
+- **Automation is certificate-first.** The `simplify`, `tautology`, and
+  `arithmetic` rules discharge goals in one step. Whenever possible they
+  emit ordinary kernel steps (a *certificate*), so the result is exactly as
+  trustworthy as a hand proof. When a decidable goal falls outside the
+  certificate fragment, checking fails with a located error by default; the
+  opt-in `--fast` flag instead lets a built-in decision procedure (an
+  *oracle*) accept the goal, marks the theorem, and discloses it on the
+  summary line. In other words, the default is certificate-or-error; oracle
+  verdicts are never accepted unless you ask for `--fast`.
+- **Imports** (`import peano <<< "std/peano.bpa"`) bring in namespaced
+  declarations, and by default their proofs are re-verified too. The
+  `--faster` flag opts out (trusting imported proofs to skip the re-check),
+  and `--reckless` also skips re-instantiating imported schemas — both
+  development shortcuts that the summary announces.
+
+## Compared to other proof assistants
+
+bpa is young and deliberately narrow; the mature systems below are vastly
+more capable and have decades of libraries. These sections are about
+*design differences*, not a claim that bpa competes on power. The recurring
+theme: bpa trades expressive foundations for a tiny kernel, decidable
+elaboration, and an explicit surface — a trade that suits a proof *checker*
+whose proofs are written to be read (by humans and LLMs) and grepped.
+
+bpa is designed to rule these footguns out by construction. Each is a genuine
+trade-off the mature systems made knowingly, for good reasons — but we think
+it's better not to have them at all.
+
+One footgun is shared by all three, so it goes here: **division (and other
+partial functions) is made *total* by fiat.** Lean, Isabelle/HOL, and Rocq
+all define `n / 0 = 0` (and `head []`, etc.) so the term is well-typed —
+which means `n / 0` silently denotes a meaningless value and a proof can pass
+through it without anyone noticing the degenerate case. bpa instead guards
+such functions (`func div(a, b) requires b != ZERO`), turning every use into
+a proof obligation: you must *prove* the divisor is nonzero, or the check
+fails with a located error. The cost is that you carry the obligation; the
+benefit is that the `n / 0` case cannot silently slip into a proof.
+
+In general, bpa inverts the usual relationship with oracles:
+
+- **Certificate-by-default.** `by arithmetic` *produces a full kernel-checked
+  proof* whenever it can, and the default mode is certificate-or-error — a
+  goal it cannot certify is a located error, never a silently trusted step.
+  The linear fragment is certificated, including a **Farkas certificate** for
+  linear infeasibility (a fixed no-search recipe), so the bulk of arithmetic
+  goals check pure with no oracle at all.
+- **A loud, opt-in fast mode for development.** The `--fast` flag *skips*
+  certificate generation and takes the oracle verdict, for quick iteration
+  while a proof is still being worked out.
+
+Anything that bpa trusts beyond the kernel is **named, transitively propagated,
+printed on every summary line, and rejected by default**.
+
+### Lean vs bpa
+
+Lean is a dependently-typed proof assistant and a full programming language
+(the Calculus of Inductive Constructions; proofs *are* programs). It is vastly
+more expressive than bpa's many-sorted first-order logic. For example, in Lean
+you can index a type by a value, which bpa cannot, at the cost of a kernel that
+implements definitional equality, universe checking, and inductive families. That
+Lean is a full programming language makes it harder to reason about without deeper
+knowledge of the underlying language; bpa is on the surface easier to reason about
+at the expense of having longer proofs. This tradeoff is taken for two reasons:
+
+- modulo context windows, LLMs seem to have more patience walking through steppy
+  problems
+
+- simplifying human review to a less specialized (more general-math) audience is
+  desirable.
+
+*The footgun:* `native_decide` expands the trust surface silently, to include
+the compiler and FFI, both places where bugs have been found that enable deriving
+`False`.  These are only visible via `#print axioms`, versus bpa, which always
+discloses oracle use.
+
+### Isabelle/HOL vs bpa
+
+Isabelle/HOL is higher-order logic under the **LCF architecture**: theorems are
+an abstract type only the small kernel can mint, so even `sledgehammer` and the
+classical reasoner factor through kernel inferences. bpa shares the tiny-trusted-core
+instinct — its certificate-first tactics replay as kernel steps the same way —
+but is first-order (the schema mechanism covers only *instantiation*, not real
+quantification over predicates).
+
+*The footgun:* the `eval` method / `value` prove by emitting ML, compiling, and
+running it — expanding the trust surface to the code generator, the ML compiler,
+and the runtime, outside the LCF kernel. bpa's oracle is the same shape, but
+rejected in the default mode and disclosed under `--fast` rather than trusted silently.
+
+### Rocq (Coq) vs bpa
+
+Rocq, like Lean, is founded on the Calculus of Inductive Constructions with
+dependent types and proofs-as-programs (and pioneered much of that tradition —
+`Ltac`, extraction, CompCert). Its `Ltac` is a Turing-complete *untrusted*
+metaprogramming layer emitting proof terms the kernel re-checks; bpa's tactics
+fill the same role but are fixed built-ins, not a metalanguage.
+
+*The footgun:* `native_compute` (to OCaml) and `vm_compute` (a bytecode VM)
+close goals by computation, folding the compiler or VM into the trusted base —
+discoverable only via `Print Assumptions`. bpa's oracles are the analogue, but
+disclosed and `--fast`-gated, so the trusted surface is always disclosed.
+
+## Layout
+
+| Path | Contents |
+|---|---|
+| `examples/peano.bpa` | the living demo: automation-assisted Peano arithmetic |
+| `examples/peano-pure.bpa` | the same theory proved entirely by hand |
+| `examples/gauss.bpa` | Gauss's summation formula (with the `assoc_commut` tactic) |
+| `examples/euclid.bpa` | Euclid's gcd, consuming the verified `std/peano-gcd` library |
+| `examples/euclid-compute.bpa` | gcd *run* on concrete numbers: `gcd(9, 6) = 3`, unfolded step by step |
+| `examples/incorrect.bpa` | three classic wrong proofs and their diagnostics |
+| `examples/sqrt2.bpa` | **√2 is irrational** (stated over ℕ), proved pure |
+| `examples/literate.md` | a **literate** proof: prose + checkable ` ```bpa ` blocks |
+| `std/` | the standard library: arithmetic (`peano`), order + strong induction (`peano-ordering`), subtraction, division/divisibility, the verified `peano-gcd`, even/odd + the parity crux (`peano-parity`), abstract group theory (`group`), and set algebra over a universe (`set`) |
+| `aata/` | **literate transliterations of an abstract-algebra textbook** (Judson's AATA, GFDL) verified in bpa — the book's prose reproduced in order, each stated result followed by a checked proof; see `aata/README` |
+| `skills/` | Agent Skills (symlinked into `.claude/skills/`) — e.g. `bpa-query`, teaching an agent when to reach for `bpa query` over `grep` |
+| `GUIDE.md` | every keyword, the kernel design, the built-in oracles |
+| `CONVENTIONS.md` | naming and proof-writing style |
+| `ORACLES.md` | the oracle registry and trust disclosure |
