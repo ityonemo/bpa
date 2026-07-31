@@ -1,15 +1,17 @@
-# Groups — Basic Properties
+# Groups
 
-A literate bpa translation of the "Basic Properties of Groups" results from
-Chapter 3 of Thomas W. Judson's *Abstract Algebra: Theory and Applications*
-(see `vendor/aata/src/groups.xml`; © 1997–2025 Judson, GFDL 1.3). Each `bpa`
-block below is checked by `bpa check aata/groups.md`; the proofs follow the
-textbook's own arguments.
+A literate `bpa` transliteration of **Chapter 3 ("Groups"), §3.2 "Definitions
+and Examples"** of Thomas W. Judson's *Abstract Algebra: Theory and
+Applications* (source: `vendor/aata/src/groups.xml`; © 1997–2026 Judson,
+GFDL 1.3). The book's prose is reproduced in order — the definition of a group,
+its worked examples, and the basic-properties results — with a machine-checked
+`bpa` proof following each result the book states. Run `bpa check aata/groups.md`
+to verify every proof block below.
 
 The theory of a group lives in `std/group.bpa` (a sort `Grp`, an associative
-operation `op`, a two-sided identity `E`, and a two-sided `inverse`). Here we
-import it and alias the vocabulary to the **book's notation** — `G`, `e`, `op`,
-`inv` — so the proofs read like the text.
+`op`, a two-sided identity `E`, and a two-sided `inverse`). We import it and
+alias the vocabulary to the **book's notation** — `G`, `e`, `op`, `inv` — so the
+proofs read like the text.
 
 ```bpa
 import group <<< "std/group.bpa"
@@ -26,12 +28,164 @@ axiom inverseLeft = group.opInverseLeft
 axiom inverseRight = group.opInverseRight
 ```
 
-## Proposition — the identity is unique
+> *§3.1 "Integer Equivalence Classes and Symmetries" (integers mod $n$, the
+> symmetries of a triangle) motivates the definition with concrete examples that
+> need modular arithmetic and finite permutation carriers `bpa` does not model;
+> it is summarized where the examples below refer back to it, but not
+> transliterated as formal content.*
 
-> The identity element in a group $G$ is unique.
+## Definitions and Examples
 
-The textbook argues: if $e$ and $e'$ are both identities, then $e = ee' = e'$.
-We state uniqueness as: **any left identity `x` equals `e`** — because
+The integers mod $n$ and the symmetries of a triangle or a rectangle are examples of groups. A **binary operation** or **law of composition** on a set $G$ is a function $G \times G \rightarrow G$ that assigns to each pair $(a,b) \in G \times G$ a unique element $a \circ b$, or $ab$ in $G$, called the composition of $a$ and $b$. A **group** $(G, \circ )$ is a set $G$ together with a law of composition $(a,b) \mapsto a \circ b$ that satisfies the following axioms.
+
+- The law of composition is **associative**. That is,
+  $$(a \circ b) \circ c = a \circ (b \circ c)$$
+  for $a, b, c \in G$.
+- There exists an element $e \in G$, called the **identity element**, such that for any element $a \in G$
+  $$e \circ a = a \circ e = a.$$
+- For each element $a \in G$, there exists an **inverse element** in $G$, denoted by $a^{-1}$, such that
+  $$a \circ a^{-1} = a^{-1} \circ a = e.$$
+
+A group $G$ with the property that $a \circ b = b \circ a$ for all $a, b \in G$ is called **abelian** or **commutative**. Groups not satisfying this property are said to be **nonabelian** or **noncommutative**.
+
+> *`std/group.bpa` encodes exactly this definition: a sort `Grp` (the carrier
+> $G$), a binary `op` (the law of composition), a constant `E` (the identity
+> $e$), and a unary `inverse`, constrained by five axioms — `opAssoc`
+> (associativity), `opIdentityLeft`/`opIdentityRight` (the two-sided identity
+> $ea = ae = a$), and `opInverseLeft`/`opInverseRight` (the two-sided inverse
+> $a^{-1}a = aa^{-1} = e$). The proofs below are aliased to the book's notation
+> — `G`, `op`, `e`, `inv` — so they read like the text. `bpa` has no notion of
+> commutativity built in, so **abelian** is expressed where needed as an
+> explicit hypothesis `forall x, y: G; op(x, y) = op(y, x)`.*
+
+**Example.** The integers ${\mathbb Z } = \{ \ldots , -1, 0, 1, 2, \ldots \}$ form a group under the operation of addition. The binary operation on two integers $m, n \in {\mathbb Z}$ is just their sum. Since the integers under addition already have a well-established notation, we will use the operator $+$ instead of $\circ$; that is, we shall write $m + n$ instead of $m \circ n$. The identity is $0$, and the inverse of $n \in {\mathbb Z}$ is written as $-n$ instead of $n^{-1}$. Notice that the set of integers under addition have the additional property that $m + n = n + m$ and therefore form an abelian group.
+
+Most of the time we will write $ab$ instead of $a \circ b$; however, if the group already has a natural operation such as addition in the integers, we will use that operation. That is, if we are adding two integers, we still write $m + n$, $-n$ for the inverse, and $0$ for the identity as usual. We also write $m - n$ instead of $m + (-n)$.
+
+It is often convenient to describe a group in terms of an addition or multiplication table. Such a table is called a **Cayley table**.
+
+**Example.** The integers mod $n$ form a group under addition modulo $n$. Consider ${\mathbb Z}_5$, consisting of the equivalence classes of the integers $0$, $1$, $2$, $3$, and $4$. We define the group operation on ${\mathbb Z}_5$ by modular addition. We write the binary operation on the group additively; that is, we write $m + n$. The element $0$ is the identity of the group and each element in ${\mathbb Z}_5$ has an inverse. For instance, $2 + 3 = 3 + 2 = 0$. The table below is a Cayley table for ${\mathbb Z}_5$. By the proposition on equivalence classes in $\mathbb Z_n$, ${\mathbb Z}_n = \{0, 1, \ldots, n-1 \}$ is a group under the binary operation of addition mod $n$.
+
+Cayley table for $({\mathbb Z_5}, +)$:
+
+$$\begin{array}{c|ccccc}
++ & 0 & 1 & 2 & 3 & 4 \\
+\hline
+0 & 0 & 1 & 2 & 3 & 4 \\
+1 & 1 & 2 & 3 & 4 & 0 \\
+2 & 2 & 3 & 4 & 0 & 1 \\
+3 & 3 & 4 & 0 & 1 & 2 \\
+4 & 4 & 0 & 1 & 2 & 3
+\end{array}$$
+
+**Example.** Not every set with a binary operation is a group. For example, if we let modular multiplication be the binary operation on ${\mathbb Z}_n$, then ${\mathbb Z}_n$ fails to be a group. The element 1 acts as a group identity since $1 \cdot k = k \cdot 1 = k$ for any $k \in {\mathbb Z}_n$; however, a multiplicative inverse for $0$ does not exist since $0 \cdot k = k \cdot 0 = 0$ for every $k$ in ${\mathbb Z}_n$. Even if we consider the set ${\mathbb Z}_n \setminus \{0 \}$, we still may not have a group. For instance, let $2 \in {\mathbb Z}_6$. Then $2$ has no multiplicative inverse since
+
+$$\begin{aligned}
+0 \cdot 2 & = 0 \qquad 1 \cdot 2 = 2 \\
+2 \cdot 2 & = 4 \qquad 3 \cdot 2 = 0 \\
+4 \cdot 2 & = 2 \qquad 5 \cdot 2 = 4
+\end{aligned}$$
+
+By the proposition on equivalence classes in $\mathbb Z_n$, every nonzero $k$ does have an inverse in ${\mathbb Z}_n$ if $k$ is relatively prime to $n$. Denote the set of all such nonzero elements in ${\mathbb Z}_n$ by $U(n)$. Then $U(n)$ is a group called the **group of units** of ${\mathbb Z}_n$. The table below is a Cayley table for the group $U(8)$.
+
+Multiplication table for $U(8)$:
+
+$$\begin{array}{c|cccc}
+\cdot & 1 & 3 & 5 & 7 \\
+\hline
+1       & 1 & 3 & 5 & 7 \\
+3       & 3 & 1 & 7 & 5 \\
+5       & 5 & 7 & 1 & 3 \\
+7       & 7 & 5 & 3 & 1
+\end{array}$$
+
+**Example.** The symmetries of an equilateral triangle described in the section on symmetries form a nonabelian group. As we observed, it is not necessarily true that $\alpha \beta = \beta \alpha$ for two symmetries $\alpha$ and $\beta$. Using the Cayley table for this group, we can easily check that the symmetries of an equilateral triangle are indeed a group. We will denote this group by either $S_3$ or $D_3$, for reasons that will be explained later.
+
+**Example.** We use ${\mathbb M}_2 ( {\mathbb R})$ to denote the set of all $2 \times 2$ matrices. Let $GL_2({\mathbb R})$ be the subset of ${\mathbb M}_2 ( {\mathbb R})$ consisting of invertible matrices; that is, a matrix
+
+$$A =
+\begin{pmatrix}
+a & b \\
+c & d
+\end{pmatrix}$$
+
+is in $GL_2( {\mathbb R})$ if there exists a matrix $A^{-1}$ such that $A A^{-1} = A^{-1} A = I$, where $I$ is the $2 \times 2$ identity matrix. For $A$ to have an inverse is equivalent to requiring that the determinant of $A$ be nonzero; that is, $\det A = ad - bc \neq 0$. The set of invertible matrices forms a group called the **general linear group**. The identity of the group is the identity matrix
+
+$$I =
+\begin{pmatrix}
+1 & 0 \\
+0 & 1
+\end{pmatrix}.$$
+
+The inverse of $A \in GL_2( {\mathbb R})$ is
+
+$$A^{-1} =
+\frac{1}{ad-bc}
+\begin{pmatrix}
+d & -b \\
+-c & a
+\end{pmatrix}.$$
+
+The product of two invertible matrices is again invertible. Matrix multiplication is associative, satisfying the other group axiom. For matrices it is not true in general that $AB = BA$; hence, $GL_2({\mathbb R})$ is another example of a nonabelian group.
+
+**Example.** Let
+
+$$\begin{aligned}
+1 & =
+\begin{pmatrix}
+1 & 0\\
+0 & 1
+\end{pmatrix}
+\qquad
+I
+=
+\begin{pmatrix}
+0 & 1\\
+-1 & 0
+\end{pmatrix} \\
+J & =
+\begin{pmatrix}
+0 & i\\
+i & 0
+\end{pmatrix}
+\qquad
+K =
+\begin{pmatrix}
+i & 0\\
+0 & -i
+\end{pmatrix}
+\end{aligned}$$
+
+where $i^2 = -1$. Then the relations $I^2 = J^2 = K^2 = -1$, $IJ=K$, $JK = I$, $KI = J$, $JI = -K$, $KJ = -I$, and $IK = -J$ hold. The set $Q_8 = \{\pm 1, \pm I, \pm J, \pm K  \}$ is a group called the **quaternion group**. Notice that $Q_8$ is noncommutative.
+
+**Example.** Let ${\mathbb C}^\ast$ be the set of nonzero complex numbers. Under the operation of multiplication ${\mathbb C}^\ast$ forms a group. The identity is $1$. If $z = a+bi$ is a nonzero complex number, then
+
+$$z^{-1} = \frac{a -bi}{a^2 +b^2}$$
+
+is the inverse of $z$. It is easy to see that the remaining group axioms hold.
+
+> *These seven examples ($\mathbb{Z}$ under addition, $\mathbb{Z}_5$, $U(8)$,
+> the triangle symmetries $S_3$, $GL_2(\mathbb{R})$, the quaternions $Q_8$,
+> $\mathbb{C}^\ast$) are concrete carriers, each requiring machinery `std/group.bpa`
+> does not model — modular arithmetic $\mathbb{Z}_n$/$U(n)$, a finite tabulated
+> operation, $2\times 2$ real matrices and determinants, the complex numbers.
+> The abstract theory proves theorems that hold in **all** of them at once; the
+> concrete carriers are named for context and reproduced here for completeness.*
+
+A group is **finite**, or has **finite order**, if it contains a finite number of elements; otherwise, the group is said to be **infinite** or to have **infinite order**. The **order** of a finite group is the number of elements that it contains. If $G$ is a group containing $n$ elements, we write $|G| = n$. The group ${\mathbb Z}_5$ is a finite group of order $5$; the integers ${\mathbb Z}$ form an infinite group under addition, and we sometimes write $|{\mathbb Z}| = \infty$.
+
+### Basic Properties of Groups
+
+The remainder of the section proves, from the axioms alone, the facts every group
+obeys. These are exactly the theorems `std/group.bpa` supports, and each is
+machine-checked below. Every proof follows the book's own argument.
+
+## Proposition
+
+> The identity element in a group $G$ is unique; that is, there exists only one element $e \in G$ such that $eg = ge = g$ for all $g \in G$.
+
+The book argues: if $e$ and $e'$ are both identities, then $e = ee' = e'$. We
+capture uniqueness as **any left identity `x` equals `e`** — because
 `x = op(x, e) = e` (the left `x` sends `e` to `e`; `identityRight` sends it to
 `x`).
 
@@ -68,14 +222,16 @@ proof
 qed
 ```
 
-## Proposition — inverses are unique
+Inverses in a group are also unique. If $g'$ and $g''$ are both inverses of an element $g$ in a group $G$, then $gg' = g'g = e$ and $gg'' = g''g = e$. We want to show that $g' = g''$, but $g' = g'e = g'(gg'') = (g'g)g'' = eg'' = g''$. We summarize this fact in the following proposition.
 
-> If $g$ is any element in a group $G$, then the inverse of $g$ is unique.
+## Proposition
 
-The reusable form: **a right inverse of `a` is exactly `inv(a)`** — if
-`op(a, b) = e` then `b = inv(a)`. The proof:
-`b = eb = (a⁻¹a)b = a⁻¹(ab) = a⁻¹e = a⁻¹`. The re-association `(a⁻¹a)b → a⁻¹(ab)`
-is a single `assoc(associative)` step.
+> If $g$ is any element in a group $G$, then the inverse of $g$, denoted by $g^{-1}$, is unique.
+
+The reusable form is: **a right inverse of `a` is exactly `inv(a)`** — if
+`op(a, b) = e` then `b = inv(a)`. The proof is the book's own chain
+`b = eb = (a⁻¹a)b = a⁻¹(ab) = a⁻¹e = a⁻¹`, with the single re-association
+`(a⁻¹a)b → a⁻¹(ab)` handled by an `assoc(associative)` step.
 
 ```bpa
 theorem inverseUnique: forall a, b: G; op(a, b) = e -> b = inv(a)
@@ -143,51 +299,14 @@ proof
 qed
 ```
 
-## Proposition — $(a^{-1})^{-1} = a$
+## Proposition
 
-> For any $a \in G$, $(a^{-1})^{-1} = a$.
+> Let $G$ be a group. If $a, b \in G$, then $(ab)^{-1} = b^{-1}a^{-1}$.
 
-Since `op(inv(a), a) = e`, the element `a` is a right inverse of `inv(a)`, so by
-`inverseUnique`, `a = inv(inv(a))`.
+**Proof.** Let $a, b \in G$. Then $abb^{-1}a^{-1} = aea^{-1} = aa^{-1} = e$. Similarly, $b^{-1}a^{-1}ab = e$. But by the previous proposition, inverses are unique; hence, $(ab)^{-1} = b^{-1}a^{-1}$.
 
-```bpa
-theorem invInvolution: forall a: G; inv(inv(a)) = a
-proof
-  @generalize-a |
-    fix a: G {
-      @inv-left |
-        forall g: G; op(inv(g), g) = e
-        [by axiom inverseLeft]
-      @inva-a-is-e |
-        op(inv(a), a) = e
-        [by forall_elim(a) inv-left]
-      @inv-unique |
-        forall x, y: G; op(x, y) = e -> y = inv(x)
-        [by theorem inverseUnique]
-      @at-inva-a |
-        op(inv(a), a) = e -> a = inv(inv(a))
-        [by forall_elim(inv(a), a) inv-unique]
-      @a-is-invinva |
-        a = inv(inv(a))
-        [by modus_ponens at-inva-a inva-a-is-e]
-      @invinva-is-a |
-        inv(inv(a)) = a
-        [by symmetry a-is-invinva]
-    }
-  @conclusion |
-    forall a: G; inv(inv(a)) = a
-    [by forall_intro generalize-a]
-qed
-```
-
-## Proposition — $(ab)^{-1} = b^{-1} a^{-1}$
-
-> Let $G$ be a group. If $a, b \in G$, then $(ab)^{-1} = b^{-1} a^{-1}$.
-
-The textbook shows $abb^{-1}a^{-1} = e$; then by uniqueness of inverses,
-$(ab)^{-1} = b^{-1}a^{-1}$. We compute `op(op(a,b), op(inv(b), inv(a)))`,
-re-associating (via `assoc`) to `a·(b·b⁻¹)·a⁻¹`, which collapses to `e`, and
-apply `inverseUnique`.
+Formally: we compute `op(op(a,b), op(inv(b), inv(a)))`, re-associate (via `assoc`)
+to `a·(b·b⁻¹)·a⁻¹`, which collapses to `e`, then apply `inverseUnique`.
 
 ```bpa
 theorem invProduct: forall a, b: G; inv(op(a, b)) = op(inv(b), inv(a))
@@ -246,14 +365,216 @@ proof
 qed
 ```
 
-## Proposition — cancellation
+## Proposition
 
-> If $G$ is a group and $a, b, c \in G$, then $ba = ca$ implies $b = c$ (and
-> $ab = ac$ implies $b = c$).
+> Let $G$ be a group. For any $a \in G$, $(a^{-1})^{-1} = a$.
 
-The book leaves this as an exercise (Exercise 30). We prove **right
-cancellation**: right-multiply `op(b, a) = op(c, a)` by `inv(a)` and simplify
-each side via `b·(a·a⁻¹) = b·e = b`.
+**Proof.** Observe that $a^{-1} (a^{-1})^{-1} = e$. Consequently, multiplying both sides of this equation by $a$, we have
+
+$$(a^{-1})^{-1} = e (a^{-1})^{-1} = a a^{-1} (a^{-1})^{-1} = ae = a.$$
+
+Formally, since `op(inv(a), a) = e`, the element `a` is a right inverse of
+`inv(a)`, so by `inverseUnique`, `a = inv(inv(a))`.
+
+```bpa
+theorem invInvolution: forall a: G; inv(inv(a)) = a
+proof
+  @generalize-a |
+    fix a: G {
+      @inv-left |
+        forall g: G; op(inv(g), g) = e
+        [by axiom inverseLeft]
+      @inva-a-is-e |
+        op(inv(a), a) = e
+        [by forall_elim(a) inv-left]
+      @inv-unique |
+        forall x, y: G; op(x, y) = e -> y = inv(x)
+        [by theorem inverseUnique]
+      @at-inva-a |
+        op(inv(a), a) = e -> a = inv(inv(a))
+        [by forall_elim(inv(a), a) inv-unique]
+      @a-is-invinva |
+        a = inv(inv(a))
+        [by modus_ponens at-inva-a inva-a-is-e]
+      @invinva-is-a |
+        inv(inv(a)) = a
+        [by symmetry a-is-invinva]
+    }
+  @conclusion |
+    forall a: G; inv(inv(a)) = a
+    [by forall_intro generalize-a]
+qed
+```
+
+It makes sense to write equations with group elements and group operations. If $a$ and $b$ are two elements in a group $G$, does there exist an element $x \in G$ such that $ax = b$? If such an $x$ does exist, is it unique? The following proposition answers both of these questions positively.
+
+## Proposition
+
+> Let $G$ be a group and $a$ and $b$ be any two elements in $G$. Then the equations $ax = b$ and $xa = b$ have unique solutions in $G$.
+
+**Proof.** Suppose that $ax = b$. We must show that such an $x$ exists. We can multiply both sides of $ax = b$ by $a^{-1}$ to find $x = ex = a^{-1}ax = a^{-1}b$.
+
+To show uniqueness, suppose that $x_1$ and $x_2$ are both solutions of $ax = b$; then $ax_1 = b = ax_2$. So $x_1 = a^{-1}ax_1 = a^{-1}ax_2 = x_2$. The proof for the existence and uniqueness of the solution of $xa = b$ is similar.
+
+We formalize the $xa = b$ form. **Existence** — the solution is $x = b a^{-1}$,
+since `op(op(b, inv(a)), a) = b`:
+
+```bpa
+theorem solutionExists: forall a, b: G; op(op(b, inv(a)), a) = b
+proof
+  @generalize-a |
+    fix a: G {
+      @generalize-b |
+        fix b: G {
+          @assoc-step |
+            op(op(b, inv(a)), a) = op(b, op(inv(a), a))
+            [by assoc(associative)]
+          @inv-left |
+            forall g: G; op(inv(g), g) = e
+            [by axiom inverseLeft]
+          @inva-a |
+            op(inv(a), a) = e
+            [by forall_elim(a) inv-left]
+          @with-e |
+            op(op(b, inv(a)), a) = op(b, e)
+            [by rewrite inva-a assoc-step]
+          @id-right |
+            forall g: G; op(g, e) = g
+            [by axiom identityRight]
+          @b-e |
+            op(b, e) = b
+            [by forall_elim(b) id-right]
+          @conclusion-inner |
+            op(op(b, inv(a)), a) = b
+            [by rewrite b-e with-e]
+        }
+      @close-b |
+        forall b: G; op(op(b, inv(a)), a) = b
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: G; op(op(b, inv(a)), a) = b
+    [by forall_intro generalize-a]
+qed
+```
+
+**Uniqueness** — any two solutions of `op(x, a) = b` coincide, by right
+cancellation:
+
+```bpa
+theorem solutionUnique: forall a, b, x, y: G;
+  op(x, a) = b -> op(y, a) = b -> x = y
+proof
+  @generalize-a |
+    fix a: G {
+      @generalize-b |
+        fix b: G {
+          @generalize-x |
+            fix x: G {
+              @generalize-y |
+                fix y: G {
+                  @given-x |
+                    assume op(x, a) = b {
+                      @given-y |
+                        assume op(y, a) = b {
+                          @xa-b |
+                            op(x, a) = b
+                            [by hypothesis given-x]
+                          @ya-b |
+                            op(y, a) = b
+                            [by hypothesis given-y]
+                          @b-ya |
+                            b = op(y, a)
+                            [by symmetry ya-b]
+                          @xa-ya |
+                            op(x, a) = op(y, a)
+                            [by rewrite b-ya xa-b]
+                          // uniqueness = right-multiply by inv(a) and simplify
+                          // each side via z·(a·a⁻¹) = z·e = z (the book's
+                          // x = a⁻¹ax argument, here on the right).
+                          @xa-refl |
+                            op(op(x, a), inv(a)) = op(op(x, a), inv(a))
+                            [by reflexivity]
+                          @mult |
+                            op(op(x, a), inv(a)) = op(op(y, a), inv(a))
+                            [by rewrite xa-ya xa-refl]
+                          @assoc-x |
+                            op(op(x, a), inv(a)) = op(x, op(a, inv(a)))
+                            [by assoc(associative)]
+                          @a-inva |
+                            forall g: G; op(g, inv(g)) = e
+                            [by axiom inverseRight]
+                          @a-inva-is-e |
+                            op(a, inv(a)) = e
+                            [by forall_elim(a) a-inva]
+                          @assoc-x-e |
+                            op(op(x, a), inv(a)) = op(x, e)
+                            [by rewrite a-inva-is-e assoc-x]
+                          @id-right |
+                            forall g: G; op(g, e) = g
+                            [by axiom identityRight]
+                          @x-e-is-x |
+                            op(x, e) = x
+                            [by forall_elim(x) id-right]
+                          @lhs-is-x |
+                            op(op(x, a), inv(a)) = x
+                            [by rewrite x-e-is-x assoc-x-e]
+                          @assoc-y |
+                            op(op(y, a), inv(a)) = op(y, op(a, inv(a)))
+                            [by assoc(associative)]
+                          @assoc-y-e |
+                            op(op(y, a), inv(a)) = op(y, e)
+                            [by rewrite a-inva-is-e assoc-y]
+                          @y-e-is-y |
+                            op(y, e) = y
+                            [by forall_elim(y) id-right]
+                          @rhs-is-y |
+                            op(op(y, a), inv(a)) = y
+                            [by rewrite y-e-is-y assoc-y-e]
+                          @x-is-mult |
+                            x = op(op(x, a), inv(a))
+                            [by symmetry lhs-is-x]
+                          @x-is-rhs |
+                            x = op(op(y, a), inv(a))
+                            [by rewrite mult x-is-mult]
+                          @x-is-y |
+                            x = y
+                            [by rewrite rhs-is-y x-is-rhs]
+                        }
+                      @disch-y |
+                        op(y, a) = b -> x = y
+                        [by implies_intro given-y]
+                    }
+                  @disch-x |
+                    op(x, a) = b -> op(y, a) = b -> x = y
+                    [by implies_intro given-x]
+                }
+              @close-y |
+                forall y: G; op(x, a) = b -> op(y, a) = b -> x = y
+                [by forall_intro generalize-y]
+            }
+          @close-x |
+            forall x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
+            [by forall_intro generalize-x]
+        }
+      @close-b |
+        forall b, x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
+    [by forall_intro generalize-a]
+qed
+```
+
+## Proposition
+
+> If $G$ is a group and $a, b, c \in G$, then $ba = ca$ implies $b = c$ and $ab = ac$ implies $b = c$.
+
+This proposition tells us that the **right and left cancellation laws** are true in groups. The book leaves the proof as an exercise (Exercise 30).
+
+**Right cancellation** — right-multiply `op(b, a) = op(c, a)` by `inv(a)` and
+simplify each side via `b·(a·a⁻¹) = b·e = b`:
 
 ```bpa
 theorem cancelRight: forall a, b, c: G; op(b, a) = op(c, a) -> b = c
@@ -336,22 +657,7 @@ proof
 qed
 ```
 
-# Exercises
-
-Solutions to the Chapter 3 exercises that are provable from the group axioms
-alone (no additional machinery). Exercises that need structure bpa does not yet
-have — a concrete $\mathbb{Z}_n$ model, finite sets and counting, matrix groups
-— are listed with a `#### Solution` note stating what they would require; those
-are the forcing-function backlog for future standard-library work.
-
-## Exercise 30 — cancellation laws
-
-> Prove the right and left cancellation laws for a group $G$.
-
-#### Solution
-
-Right cancellation is the `cancelRight` proposition above. Left cancellation is
-its mirror (right-multiply becomes left-multiply by `inv(a)`):
+**Left cancellation** is the mirror image (left-multiply by `inv(a)`):
 
 ```bpa
 theorem cancelLeft: forall a, b, c: G; op(a, b) = op(a, c) -> b = c
@@ -434,130 +740,67 @@ proof
 qed
 ```
 
-## Exercise 28 — unique solution of $xa = b$
+We can use exponential notation for groups just as we do in ordinary algebra. If $G$ is a group and $g \in G$, then we define $g^0 = e$. For $n \in {\mathbb N}$, we define
 
-> If $G$ is a group and $a, b \in G$, the equation $xa = b$ has a unique
-> solution in $G$.
+$$g^n = \underbrace{g \cdot g \cdots g}_{n \; \text{times}}$$
 
-#### Solution
+and
 
-**Existence** — the solution is $x = b a^{-1}$:
+$$g^{-n} = \underbrace{g^{-1} \cdot g^{-1} \cdots g^{-1}}_{n \; \text{times}}.$$
 
-```bpa
-theorem solutionExists: forall a, b: G; op(op(b, inv(a)), a) = b
-proof
-  @generalize-a |
-    fix a: G {
-      @generalize-b |
-        fix b: G {
-          @assoc-step |
-            op(op(b, inv(a)), a) = op(b, op(inv(a), a))
-            [by assoc(associative)]
-          @inv-left |
-            forall g: G; op(inv(g), g) = e
-            [by axiom inverseLeft]
-          @inva-a |
-            op(inv(a), a) = e
-            [by forall_elim(a) inv-left]
-          @with-e |
-            op(op(b, inv(a)), a) = op(b, e)
-            [by rewrite inva-a assoc-step]
-          @id-right |
-            forall g: G; op(g, e) = g
-            [by axiom identityRight]
-          @b-e |
-            op(b, e) = b
-            [by forall_elim(b) id-right]
-          @conclusion-inner |
-            op(op(b, inv(a)), a) = b
-            [by rewrite b-e with-e]
-        }
-      @close-b |
-        forall b: G; op(op(b, inv(a)), a) = b
-        [by forall_intro generalize-b]
-    }
-  @conclusion |
-    forall a, b: G; op(op(b, inv(a)), a) = b
-    [by forall_intro generalize-a]
-qed
-```
+## Theorem — Laws of Exponents
 
-**Uniqueness** — any two solutions coincide, by right cancellation:
+> In a group, the usual laws of exponents hold; that is, for all $g, h \in G$,
+>
+> 1. $g^mg^n = g^{m+n}$ for all $m, n \in {\mathbb Z}$;
+> 2. $(g^m)^n = g^{mn}$ for all $m, n \in {\mathbb Z}$;
+> 3. $(gh)^n = (h^{-1}g^{-1})^{-n}$ for all $n \in {\mathbb Z}$. Furthermore, if $G$ is abelian, then $(gh)^n = g^nh^n$.
 
 ```bpa
-theorem solutionUnique: forall a, b, x, y: G;
-  op(x, a) = b -> op(y, a) = b -> x = y
-proof
-  @generalize-a |
-    fix a: G {
-      @generalize-b |
-        fix b: G {
-          @generalize-x |
-            fix x: G {
-              @generalize-y |
-                fix y: G {
-                  @given-x |
-                    assume op(x, a) = b {
-                      @given-y |
-                        assume op(y, a) = b {
-                          @xa-b |
-                            op(x, a) = b
-                            [by hypothesis given-x]
-                          @ya-b |
-                            op(y, a) = b
-                            [by hypothesis given-y]
-                          @b-ya |
-                            b = op(y, a)
-                            [by symmetry ya-b]
-                          @xa-ya |
-                            op(x, a) = op(y, a)
-                            [by rewrite b-ya xa-b]
-                          @cancel-r |
-                            forall aa, bb, cc: G; op(bb, aa) = op(cc, aa) -> bb = cc
-                            [by theorem cancelRight]
-                          @cr-at |
-                            op(x, a) = op(y, a) -> x = y
-                            [by forall_elim(a, x, y) cancel-r]
-                          @x-is-y |
-                            x = y
-                            [by modus_ponens cr-at xa-ya]
-                        }
-                      @disch-y |
-                        op(y, a) = b -> x = y
-                        [by implies_intro given-y]
-                    }
-                  @disch-x |
-                    op(x, a) = b -> op(y, a) = b -> x = y
-                    [by implies_intro given-x]
-                }
-              @close-y |
-                forall y: G; op(x, a) = b -> op(y, a) = b -> x = y
-                [by forall_intro generalize-y]
-            }
-          @close-x |
-            forall x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
-            [by forall_intro generalize-x]
-        }
-      @close-b |
-        forall b, x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
-        [by forall_intro generalize-b]
-    }
-  @conclusion |
-    forall a, b, x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
-    [by forall_intro generalize-a]
-qed
+// this section cannot currently be encoded [needs a group power g^n]:
+// the laws of exponents quantify over an INTEGER exponent n (g^m g^n =
+// g^{m+n}, (g^m)^n = g^{mn}, ...), which requires defining g^n as a
+// function recursive over a Nat/Int exponent — an addition to
+// std/group.bpa that this pass does not make. The n=fixed instances are
+// provable (e.g. (gh)^2 via invProduct); the n-indexed laws are not,
+// pending the g^n construction. Deferred; see aata/README.
 ```
+
+We will leave the proof of this theorem as an exercise. Notice that $(gh)^n \neq g^nh^n$ in general, since the group may not be abelian. If the group is ${\mathbb Z}$ or ${\mathbb Z}_n$, we write the group operation additively and the exponential operation multiplicatively; that is, we write $ng$ instead of $g^n$. The laws of exponents now become
+
+1. $mg + ng = (m+n)g$ for all $m, n \in {\mathbb Z}$;
+2. $m(ng) = (mn)g$ for all $m, n \in {\mathbb Z}$;
+3. $m(g + h) = mg + mh$ for all $n \in {\mathbb Z}$.
+
+It is important to realize that the last statement can be made only because ${\mathbb Z}$ and ${\mathbb Z}_n$ are commutative groups.
+
+### Historical Note
+
+Although the first clear axiomatic definition of a group was not given until the late 1800s, group-theoretic methods had been employed before this time in the development of many areas of mathematics, including geometry and the theory of algebraic equations.
+
+Joseph-Louis Lagrange used group-theoretic methods in a 1770–1771 memoir to study methods of solving polynomial equations. Later, Évariste Galois (1811–1832) succeeded in developing the mathematics necessary to determine exactly which polynomial equations could be solved in terms of the coefficients of the polynomial. Galois' primary tool was group theory.
+
+The study of geometry was revolutionized in 1872 when Felix Klein proposed that geometric spaces should be studied by examining those properties that are invariant under a transformation of the space. Sophus Lie, a contemporary of Klein, used group theory to study solutions of partial differential equations. One of the first modern treatments of group theory appeared in William Burnside's *The Theory of Groups of Finite Order* [1], first published in 1897.
+
+---
+
+# Exercises
+
+The Chapter 3 exercises that follow from the group axioms alone are proved here;
+the rest are listed with a note stating the standard-library construction they
+would require — the forcing-function backlog for future chapters.
 
 ## Exercise 31 — $a^2 = e$ for all $a$ implies $G$ abelian
 
 > Show that if $a^2 = e$ for all elements $a$ in a group $G$, then $G$ must be
 > abelian.
 
-#### Solution
+The book's hint: since $abab = (ab)^2 = e = a^2 b^2 = aabb$, we know $ba = ab$.
 
-If every element squares to `e`, then every element is its own inverse
-(`inverseUnique`); combined with $(ab)^{-1} = b^{-1}a^{-1}$ this gives
-$ab = (ab)^{-1} = b^{-1}a^{-1} = ba$.
+**Solution.** If every element squares to `e`, then every element is its own
+inverse (`inverseUnique`); combined with $(ab)^{-1} = b^{-1}a^{-1}$ this gives
+$ab = (ab)^{-1} = b^{-1}a^{-1} = ba$. (This uses only the $n = 2$, i.e.
+`op(a, a)`, instance of squaring — no general group power is needed.)
 
 ```bpa
 theorem selfInverse: (forall a: G; op(a, a) = e) -> forall a: G; inv(a) = a
@@ -654,33 +897,29 @@ proof
 qed
 ```
 
-## Exercises requiring machinery bpa does not yet have
+## Exercises requiring machinery `bpa` does not yet have
 
 These are honest markers — each names the standard-library construction it would
 need. They are the backlog that future AATA chapters will motivate.
 
 - **Exercises 1, 6, 19–24** (compute in $\mathbb{Z}_n$ / $U(n)$; identities,
   associativity, distributivity of modular arithmetic).
-  #### Solution
-  Not solvable without a concrete $\mathbb{Z}_n$ model (integers modulo $n$ as a
-  sort with its operations) — bpa has Peano naturals and `mod`, but not the
+  **Deferred:** needs a concrete $\mathbb{Z}_n$ model (integers modulo $n$ as a
+  sort with its operations) — `bpa` has Peano naturals and `mod`, but not the
   quotient structure $\mathbb{Z}/n\mathbb{Z}$ as a group.
 - **Exercises 2–5** (Cayley tables; symmetries of the rectangle, rhombus,
   square).
-  #### Solution
-  Not solvable without finite sets and an explicit enumeration of group elements
+  **Deferred:** needs finite sets and an explicit enumeration of group elements
   (a finite carrier with a tabulated operation).
 - **Exercises 7–15** (specific groups: $\mathbb{R}^*$, $SL_2$, the Heisenberg
   group, matrix determinants, $\mathbb{R}^* \times \mathbb{Z}$).
-  #### Solution
-  Not solvable without the relevant carrier constructions (real numbers, the
-  matrix / $GL_n$ construction, direct products) — none of which bpa has.
+  **Deferred:** needs the relevant carrier constructions (real numbers, the
+  matrix / $GL_n$ construction, direct products) — none of which `bpa` has.
 - **Exercises 17, 18** (count groups of order 8; $n!$ permutations).
-  #### Solution
-  Not solvable without finite sets + cardinality/counting.
+  **Deferred:** needs finite sets + cardinality/counting.
 - **Exercises 25, 27, 29** ($ab^n a^{-1} = (aba^{-1})^n$; product of inverses;
   exponent laws — all indexed by $n \in \mathbb{Z}$).
-  #### Solution
-  Expressible via induction over a Nat exponent (bpa's `std/peano` `induction`),
-  but they require defining $g^n$ (group power) as a recursive function — a small
-  addition to `std/group.bpa`, deferred to a later pass rather than done here.
+  **Deferred:** expressible via induction over a Nat exponent (`bpa`'s
+  `std/peano` `induction`), but they require defining $g^n$ (group power) as a
+  recursive function — the same $g^n$ the Laws of Exponents theorem needs. A
+  small addition to `std/group.bpa`, deferred to a later pass.

@@ -1,17 +1,22 @@
 # AATA — abstract algebra, verified in bpa
 
-This directory holds **literate bpa translations of theorems and exercises from
+This directory holds **literate bpa transliterations of
 *Abstract Algebra: Theory and Applications*** by Thomas W. Judson (the "AATA"
-textbook). Each `.md` file is prose interleaved with ` ```bpa ` proof blocks,
-checked directly:
+textbook). Each `.md` file is a **faithful transliteration of a textbook
+section** — the book's own prose, definitions, and examples reproduced in order
+— with a machine-checked ` ```bpa ` proof following each result the book states.
+Every file is checked directly:
 
 ```
 bpa check aata/groups.md
 ```
 
 The document map mirrors the textbook's own structure
-(`vendor/aata/src/aata.xml`), translated a chapter at a time, as far as bpa's
-first-order-logic kernel can currently express.
+(`vendor/aata/src/aata.xml`), transliterated a section at a time. Where a
+statement is beyond what bpa's first-order-logic kernel can express, the prose
+is kept and marked in place with a note (or a `// this section cannot currently
+be encoded [reason]` block) stating exactly what it would require — never
+silently dropped.
 
 ## Attribution and license
 
@@ -27,17 +32,17 @@ The source textbook is vendored as a git submodule at **`vendor/aata`**
 > version, with no Invariant Sections and no Cover Texts. See
 > `vendor/aata/COPYING`.
 
-The files in this directory are **derived works** — formalizations of the
-textbook's statements and proofs — and are distributed under the same **GFDL
-1.3** copyleft. Theorem statements are transcribed from the textbook; the bpa
+The files in this directory are **derived works** — transliterations of the
+textbook's prose, statements, and proofs — and are distributed under the same
+**GFDL 1.3** copyleft. The exposition is transcribed from the textbook; the bpa
 proofs follow its arguments.
 
 ## What's here
 
-| File | Chapter | Status |
+| File | Chapter / section | Status |
 |---|---|---|
-| `sets.md` | 1 — Preliminaries (§1.2.1 Set Theory) | ✅ full transliteration; set algebra + De Morgan (14 theorems), verified pure |
-| `groups.md` | 3 — Groups (Basic Properties) | ✅ 5 propositions + 5 exercises, verified pure |
+| `sets.md` | 1 — Preliminaries, §1.2.1 Set Theory | ✅ full transliteration; set algebra + De Morgan (14 theorems), verified pure |
+| `groups.md` | 3 — Groups, §3.2 Definitions and Examples | ✅ full transliteration; definition + 7 examples + basic-properties propositions (10 theorems) + Exercise 31, verified pure |
 
 The set theory rests on `std/set.bpa` (sets over an abstract `Universe` of
 elements, fixed membershipwise, with extensionality). Every identity is proved
@@ -51,9 +56,11 @@ non-commutative rearrangements.
 ## What's deferred (the forcing-function backlog)
 
 Most of the textbook needs machinery bpa does not yet have. Rather than skip
-those exercises silently, each is listed in the relevant `.md` under a
-`#### Solution` note stating exactly what it would require — a running backlog
-of standard-library constructions that future chapters will motivate:
+those results silently, each is kept in the relevant `.md` with an in-place note
+(`**Deferred:** …` for an exercise, or a `// this section cannot currently be
+encoded [reason]` block for a stated theorem) saying exactly what it would
+require — a running backlog of standard-library constructions that future
+chapters will motivate:
 
 - a concrete **ℤ_n / U(n)** model (modular arithmetic as a group carrier),
 - **finite sets + cardinality** (counting arguments, Cayley tables, Lagrange),
