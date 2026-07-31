@@ -70,6 +70,15 @@ fn readFile(arena: std.mem.Allocator, path: []const u8) ![]const u8 {
     };
 }
 
+/// Read a file as bpa SOURCE: a `.md` is a literate document, so extract its
+/// ```bpa blocks (prose masked, offsets preserved). Used by `check` and the
+/// `query` commands so both operate on the same extracted source.
+fn readSource(arena: std.mem.Allocator, path: []const u8) ![]const u8 {
+    const raw = try readFile(arena, path);
+    if (std.mem.endsWith(u8, path, ".md")) return bpa.literate.extract(arena, raw);
+    return raw;
+}
+
 /// `bpa query <op> …` — read-only inspection.
 ///   outline <file> [theorem]  — proof skeleton (labels + block headers)
 ///   theorem <file> <name>     — full source of a theorem (aliases followed)
@@ -78,7 +87,7 @@ fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
         if (rest.len < 2 or rest.len > 3) return fail(query_usage, .{});
         const path = rest[1];
         const thm: ?[]const u8 = if (rest.len == 3) rest[2] else null;
-        const source = readFile(arena, path) catch |e| switch (e) {
+        const source = readSource(arena, path) catch |e| switch (e) {
             error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
             else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
         };
@@ -104,7 +113,7 @@ fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
         }
         const p = path orelse return fail(query_usage, .{});
         const n = name orelse return fail(query_usage, .{});
-        const source = readFile(arena, p) catch |e| switch (e) {
+        const source = readSource(arena, p) catch |e| switch (e) {
             error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{p}),
             else => return fail("error: cannot open '{s}': {t}\n", .{ p, e }),
         };
@@ -115,7 +124,7 @@ fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
         if (rest.len != 3) return fail(query_usage, .{});
         const path = rest[1];
         const ident = rest[2];
-        const source = readFile(arena, path) catch |e| switch (e) {
+        const source = readSource(arena, path) catch |e| switch (e) {
             error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
             else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
         };
@@ -147,9 +156,13 @@ fn collectSearchFiles(arena: std.mem.Allocator, path: []const u8, std_root: []co
         var dir = try cwd.openDir(io, path, .{ .iterate = true });
         var it = dir.iterate();
         while (try it.next(io)) |entry| {
-            if (entry.kind != .file or !std.mem.endsWith(u8, entry.name, ".bpa")) continue;
+            // `.bpa` proofs and `.md` literate documents (readSource extracts
+            // the ```bpa blocks from the latter).
+            const is_bpa = std.mem.endsWith(u8, entry.name, ".bpa");
+            const is_md = std.mem.endsWith(u8, entry.name, ".md");
+            if (entry.kind != .file or !(is_bpa or is_md)) continue;
             const full = try std.fs.path.join(arena, &.{ path, entry.name });
-            const src = readFile(arena, full) catch continue;
+            const src = readSource(arena, full) catch continue;
             try files.append(arena, .{ .path = full, .source = src });
         }
         return files.items;
@@ -163,7 +176,7 @@ fn collectSearchFiles(arena: std.mem.Allocator, path: []const u8, std_root: []co
         const p = queue.items[qi];
         if (seen.contains(p)) continue;
         try seen.put(arena, p, {});
-        const src = readFile(arena, p) catch continue;
+        const src = readSource(arena, p) catch continue;
         try files.append(arena, .{ .path = p, .source = src });
         for (try importPaths(arena, src, p, std_root)) |imp| {
             if (!seen.contains(imp)) try queue.append(arena, imp);
@@ -199,7 +212,7 @@ fn importPaths(arena: std.mem.Allocator, source: []const u8, from: []const u8, s
 /// `ReadFileFn` for cross-file alias resolution in `query theorem`.
 fn queryReadFile(ctx: ?*anyopaque, arena: std.mem.Allocator, path: []const u8) anyerror![]const u8 {
     _ = ctx;
-    return readFile(arena, path);
+    return readSource(arena, path);
 }
 
 pub fn main(init: std.process.Init) !u8 {
@@ -285,16 +298,10 @@ pub fn main(init: std.process.Init) !u8 {
     }
     const root_path = path orelse return fail(usage, .{});
 
-    const raw_source = Io.Dir.cwd().readFileAlloc(io, root_path, arena, .limited(64 << 20)) catch |e| switch (e) {
+    const source = readSource(arena, root_path) catch |e| switch (e) {
         error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{root_path}),
         else => return fail("error: cannot open '{s}': {t}\n", .{ root_path, e }),
     };
-    // a `.md` file is a LITERATE proof: check the ```bpa fenced blocks (prose
-    // masked to blank lines so error line numbers still map to the document).
-    const source = if (std.mem.endsWith(u8, root_path, ".md"))
-        try bpa.literate.extract(arena, raw_source)
-    else
-        raw_source;
 
     var result = try bpa.checkProject(arena, root_path, source, null, readImport, verify, std_root);
     if (!result.ok()) {
@@ -338,8 +345,5 @@ pub fn main(init: std.process.Init) !u8 {
 
 fn readImport(ctx: ?*anyopaque, arena: std.mem.Allocator, path: []const u8) anyerror![]const u8 {
     _ = ctx;
-    const raw = try Io.Dir.cwd().readFileAlloc(io, path, arena, .limited(64 << 20));
-    // an imported `.md` is literate too — extract its bpa blocks.
-    if (std.mem.endsWith(u8, path, ".md")) return bpa.literate.extract(arena, raw);
-    return raw;
+    return readSource(arena, path);
 }

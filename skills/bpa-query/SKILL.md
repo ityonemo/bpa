@@ -5,7 +5,8 @@ description: Inspect and navigate a bpa proof corpus (.bpa files) with the `bpa 
 
 # bpa query — navigating a proof corpus
 
-`bpa query <op>` reads `.bpa` files without checking them, for navigation. Build
+`bpa query <op>` reads `.bpa` files (and `.md` literate documents — the ```bpa
+blocks are extracted, like `check`) without checking them, for navigation. Build
 the binary first if needed (`zig build`); it lands at `./zig-out/bin/bpa`.
 
 **Guiding principle: we love grep.** grep/sed/awk are the default for text

@@ -1,0 +1,22 @@
+// std/group.bpa — the theory of a GROUP, per Judson's *Abstract Algebra*
+// (vendor/aata, Definition, "Definitions and Examples"): a set with an
+// associative operation, a two-sided identity, and two-sided inverses.
+//
+// This is a reusable abstract theory (like std/peano), imported by the AATA
+// literate translations in aata/. It is driven ENTIRELY by its own cited
+// axioms — proofs use `[by assoc(opAssoc)]`, `[by rewrite opIdentityLeft ...]`,
+// etc., naming these axioms explicitly. Do NOT invoke `polynomial`/`arithmetic`
+// here: those tactics presume a commutative-semiring `add`/`mul`, which a
+// (possibly non-abelian) group's `op` is not.
+
+sort Grp
+const E: Grp
+func op(a: Grp, b: Grp): Grp
+func inverse(a: Grp): Grp
+
+// A group's three axioms (the identity and inverse laws are two-sided).
+axiom opAssoc: forall c, b, a: Grp; op(op(a, b), c) = op(a, op(b, c))
+axiom opIdentityLeft: forall a: Grp; op(E, a) = a
+axiom opIdentityRight: forall a: Grp; op(a, E) = a
+axiom opInverseLeft: forall a: Grp; op(inverse(a), a) = E
+axiom opInverseRight: forall a: Grp; op(a, inverse(a)) = E

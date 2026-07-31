@@ -341,6 +341,8 @@ names for citations). Rules taking a term argument write it in parens:
 | `simplify_quantified refs...` | tactic: `simplify` under a `forall` prefix, without a hand `fix` (see Automation) |
 | `assoc_commut [(assoc, comm, swap)] [refs...]` | tactic: reorder an associative-commutative sum by its A/C laws — bare uses well-known `add`/`mul`; `(assoc, comm, swap)` supplies the triple for a custom operator; cited refs (e.g. distributivity) pre-normalize first (see Automation) |
 | `assoc_commut_quantified [(assoc, comm, swap)] [refs...]` | tactic: `assoc_commut` under a `forall` prefix, without a hand `fix` (see Automation) |
+| `assoc(assocLemma)` | tactic: prove `s = t` when equal by **associativity alone** of one operator — right-nests both sides and compares. The associativity lemma is required; no reordering, no commutativity (see Automation) |
+| `assoc_quantified(assocLemma)` | tactic: `assoc` under a `forall` prefix, without a hand `fix` (see Automation) |
 | `polynomial(theory)` | tactic: prove an `add`/`mul` polynomial identity `s = t` by expanding both sides to a canonical sorted sum of sorted monomials (see Automation) |
 | `polynomial_quantified(theory)` | tactic: `polynomial` under a `forall` prefix, without a hand `fix` (see Automation) |
 | `tautology refs...` | tactic: propositional consequence (see Automation) |
@@ -474,6 +476,35 @@ presumption about a symbol whose laws are never checked is why the result is
 **tainted** (`via oracles: assoc_commut`). The explicit-triple form always
 certifies (the triple is checkable), so it has no oracle path.
 
+### `assoc` — associativity-only reordering
+
+`[by assoc(assocLemma)]` proves `s = t` when both are equal by **associativity
+alone** of a single operator — the non-commutative sibling of `assoc_commut`.
+It right-nests each side (associativity is confluent and terminating, so
+right-nesting is a canonical form) and compares; no reordering, no
+commutativity. This is what you reach for in **non-commutative** algebra (group
+theory: rearranging `(ab)c` ↔ `a(bc)`), where `assoc_commut` does not apply.
+
+```bpa
+// a custom group operator `op` with its associativity axiom `opAssoc`
+@rearrange |
+  op(op(op(a, b), c), d) = op(a, op(b, op(c, d)))
+  [by assoc(opAssoc)]
+```
+
+**The associativity lemma is REQUIRED** — there is no bare form and no
+assumption the operator is `add`/`mul`. `assoc` takes exactly one argument, the
+lemma of shape `f(f(a,b),c) = f(a,f(b,c))`, and recovers the operator `f` from
+it. This keeps `assoc` fully parameterized by its cited axiom (zero dependence
+on ambient scope or well-known names). Bare `[by assoc]` is a located error;
+sides that differ by more than associativity report `assoc: sides differ by more
+than associativity`. **Under a `forall` prefix**, use `assoc_quantified`.
+
+**The `--fast` oracle**: under `--fast`, `assoc` skips *emitting* the rewrite
+certificate — it structurally right-nests both sides and compares, presuming the
+operator is associative without kernel-checking the rearrangement — and taints
+(`via oracles: assoc`). By default it certifies (the rewrite chain is checked).
+
 ### `polynomial` — nonlinear identities
 
 `[by polynomial(theory)]` proves an `add`/`mul` polynomial identity `s = t`
@@ -554,9 +585,11 @@ certificate coverage — lives in `ORACLES.md`.
 
 ## Query commands (read-only inspection)
 
-`bpa query <op>` inspects `.bpa` files without checking them — for navigating a
-proof corpus. grep is the right tool for most searches (label audits, "who uses
-`[by arithmetic]`", counting); these cover the cases grep can't do cleanly.
+`bpa query <op>` inspects `.bpa` files (and `.md` literate documents — the
+`bpa` blocks are extracted the same way `check` does) without checking them,
+for navigating a proof corpus. grep is the right tool for most searches (label
+audits, "who uses `[by arithmetic]`", counting); these cover the cases grep
+can't do cleanly.
 
 | Command | What it does |
 |---|---|

@@ -167,3 +167,24 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
 - **Relation to `polynomial`**: `assoc_commut` is the single-operator special
   case; `polynomial` additionally distributes `mul` over `add`. Same trust
   story — both presume the vocabulary's algebra where the certify path proves it.
+
+### `assoc` — associativity-only reordering (`--fast` oracle only)
+
+- **Module**: `src/elaborate.zig` (`assocEquation`)
+- **Surface rule**: `[by assoc(assocLemma)]` / `[by assoc_quantified(assocLemma)]`.
+  The associativity lemma is **REQUIRED** (exactly one arg — no bare form, no
+  `add`/`mul` assumption); the operator is recovered from the lemma's shape
+  `f(f(a,b),c) = f(a,f(b,c))`. The non-commutative sibling of `assoc_commut`
+  (for group theory etc.), where reordering is forbidden — only re-nesting.
+- **Certify path is the DEFAULT and is NOT an oracle.** Right-nest each side by
+  the cited associativity rule (confluent + terminating → canonical form),
+  `alphaEq`-compare, and emit a kernel-checked rewrite chain that cites the
+  lemma. Sides that differ by more than associativity are a located error.
+- **Oracle verdict (only under `--fast`)**: structurally right-nest both sides
+  over the operator and compare, WITHOUT emitting/kernel-checking the rewrite
+  chain. A shape that isn't associativity-equal is still rejected. What taints
+  is the **presumption that the operator is associative** — the rewrite is not
+  discharged against the kernel. Oracle name: `assoc`. (Unlike `assoc_commut`,
+  the lemma is always resolved even in the oracle path, since it's required to
+  identify the operator; the taint is for the *undischarged rewrite*, not for an
+  unresolved lemma.)

@@ -56,7 +56,7 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&no_args.step);
 
         // fmt --check: the exemplars are canonically formatted
-        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa" }) |path| {
+        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa" }) |path| {
             const fmt_check = b.addRunArtifact(exe);
             fmt_check.has_side_effects = true;
             fmt_check.setCwd(b.path("."));
@@ -544,6 +544,54 @@ pub fn build(b: *std.Build) void {
         ac_oracle_fast.expectStdOutEqual("OK: 4 declarations, 1 theorems proven (0 pure, 1 via oracles: assoc_commut)\n  — NOT FULLY VERIFIED (deferred: arithmetic-certificates); re-run `bpa check` before finalizing.\n");
         ac_oracle_fast.expectExitCode(0);
         test_step.dependOn(&ac_oracle_fast.step);
+
+        // `assoc(assocLemma)`: associativity-only reorder on a CUSTOM operator
+        // (no add/mul assumption). Pure.
+        const assoc_t = b.addRunArtifact(exe);
+        assoc_t.has_side_effects = true;
+        assoc_t.setCwd(b.path("."));
+        assoc_t.addArgs(&.{ "check", "tests/cases/assoc.bpa" });
+        assoc_t.expectStdErrEqual("");
+        assoc_t.expectStdOutEqual("OK: 6 declarations, 3 theorems proven\n");
+        assoc_t.expectExitCode(0);
+        test_step.dependOn(&assoc_t.step);
+
+        // sides differ by more than associativity (operands permuted) → error
+        const assoc_bad = b.addRunArtifact(exe);
+        assoc_bad.has_side_effects = true;
+        assoc_bad.setCwd(b.path("."));
+        assoc_bad.addArgs(&.{ "check", "tests/cases/assoc_bad.bpa" });
+        assoc_bad.expectStdErrEqual("tests/cases/assoc_bad.bpa:11:9: error: assoc: sides differ by more than associativity: 'op(assoc#8, assoc#9)' vs 'op(assoc#9, assoc#8)'\n");
+        assoc_bad.expectExitCode(1);
+        test_step.dependOn(&assoc_bad.step);
+
+        // the required-arg contract: bare `assoc` is an error
+        const assoc_missing = b.addRunArtifact(exe);
+        assoc_missing.has_side_effects = true;
+        assoc_missing.setCwd(b.path("."));
+        assoc_missing.addArgs(&.{ "check", "tests/cases/assoc_missing_arg.bpa" });
+        assoc_missing.expectStdErrEqual("tests/cases/assoc_missing_arg.bpa:10:9: error: assoc requires an associativity lemma: assoc(<assocLemma>); got 0 argument(s)\n");
+        assoc_missing.expectExitCode(1);
+        test_step.dependOn(&assoc_missing.step);
+
+        // the assoc ORACLE: certifies by default, --fast taints
+        const assoc_oracle_default = b.addRunArtifact(exe);
+        assoc_oracle_default.has_side_effects = true;
+        assoc_oracle_default.setCwd(b.path("."));
+        assoc_oracle_default.addArgs(&.{ "check", "tests/cases/assoc_oracle.bpa" });
+        assoc_oracle_default.expectStdErrEqual("");
+        assoc_oracle_default.expectStdOutEqual("OK: 4 declarations, 1 theorems proven\n");
+        assoc_oracle_default.expectExitCode(0);
+        test_step.dependOn(&assoc_oracle_default.step);
+
+        const assoc_oracle_fast = b.addRunArtifact(exe);
+        assoc_oracle_fast.has_side_effects = true;
+        assoc_oracle_fast.setCwd(b.path("."));
+        assoc_oracle_fast.addArgs(&.{ "check", "--fast", "tests/cases/assoc_oracle.bpa" });
+        assoc_oracle_fast.expectStdErrEqual("");
+        assoc_oracle_fast.expectStdOutEqual("OK: 4 declarations, 1 theorems proven (0 pure, 1 via oracles: assoc)\n  — NOT FULLY VERIFIED (deferred: arithmetic-certificates); re-run `bpa check` before finalizing.\n");
+        assoc_oracle_fast.expectExitCode(0);
+        test_step.dependOn(&assoc_oracle_fast.step);
 
         // simplify_quantified: peel forall over an equation, pure
         const sq = b.addRunArtifact(exe);
@@ -1231,6 +1279,27 @@ pub fn build(b: *std.Build) void {
         literate_bad.expectStdErrEqual("tests/cases/literate_bad.md:16:4: error: reflexivity requires a claim of the form 't = t', got 'A = B'\n");
         literate_bad.expectExitCode(1);
         test_step.dependOn(&literate_bad.step);
+
+        // the group theory (std/group.bpa): axioms only, no theorems.
+        const std_group = b.addRunArtifact(exe);
+        std_group.has_side_effects = true;
+        std_group.setCwd(b.path("."));
+        std_group.addArgs(&.{ "check", "std/group.bpa" });
+        std_group.expectStdErrEqual("");
+        std_group.expectStdOutEqual("OK: 9 declarations, 0 theorems proven\n");
+        std_group.expectExitCode(0);
+        test_step.dependOn(&std_group.step);
+
+        // AATA group theory: the literate translation of Groups basic-
+        // properties (5 propositions) + 5 in-scope exercises, verified PURE.
+        const aata_groups = b.addRunArtifact(exe);
+        aata_groups.has_side_effects = true;
+        aata_groups.setCwd(b.path("."));
+        aata_groups.addArgs(&.{ "check", "aata/groups.md" });
+        aata_groups.expectStdErrEqual("");
+        aata_groups.expectStdOutEqual("OK: 29 declarations, 10 theorems proven\n");
+        aata_groups.expectExitCode(0);
+        test_step.dependOn(&aata_groups.step);
 
         // --faster trusts imported proofs (peano-imports imports peano.bpa,
         // whose one oracle step would otherwise be re-checked and hard-error).

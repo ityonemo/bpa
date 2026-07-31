@@ -1,0 +1,62 @@
+// The `assoc` tactic: prove `s = t` when they're equal by ASSOCIATIVITY ALONE
+// of a single operator. The non-commutative sibling of `assoc_commut` — it
+// right-nests both sides and compares, no reordering. Pure (emits a kernel-
+// checked rewrite chain).
+//
+// `assoc` REQUIRES its associativity lemma as an argument — there is no bare
+// form and NO assumption that the operator is add/mul. The operator is
+// recovered from the lemma's shape `f(f(a,b),c) = f(a,f(b,c))`. Here it's a
+// totally custom `op`.
+sort T
+func op(a: T, b: T): T
+axiom opAssoc: forall c, b, a: T; op(op(a, b), c) = op(a, op(b, c))
+
+// one re-association
+theorem reassoc1: forall a, b, c: T; op(op(a, b), c) = op(a, op(b, c))
+proof
+  @conclusion |
+    forall a, b, c: T; op(op(a, b), c) = op(a, op(b, c))
+    [by assoc_quantified(opAssoc)]
+qed
+
+// a deeper re-nesting: both sides right-nest to op(a, op(b, op(c, d)))
+theorem reassoc2: forall a, b, c, d: T;
+  op(op(op(a, b), c), d) = op(a, op(b, op(c, d)))
+proof
+  @conclusion |
+    forall a, b, c, d: T; op(op(op(a, b), c), d) = op(a, op(b, op(c, d)))
+    [by assoc_quantified(opAssoc)]
+qed
+
+// mixed nesting on both sides, same right-nested normal form
+theorem reassoc3: forall a, b, c, d: T;
+  op(op(a, b), op(c, d)) = op(op(op(a, b), c), d)
+proof
+  @open |
+    fix a: T {
+      @inner |
+        fix b: T {
+          @mid |
+            fix c: T {
+              @innermost |
+                fix d: T {
+                  @eq |
+                    op(op(a, b), op(c, d)) = op(op(op(a, b), c), d)
+                    [by assoc(opAssoc)]
+                }
+              @close-d |
+                forall d: T; op(op(a, b), op(c, d)) = op(op(op(a, b), c), d)
+                [by forall_intro innermost]
+            }
+          @close-c |
+            forall c, d: T; op(op(a, b), op(c, d)) = op(op(op(a, b), c), d)
+            [by forall_intro mid]
+        }
+      @close-b |
+        forall b, c, d: T; op(op(a, b), op(c, d)) = op(op(op(a, b), c), d)
+        [by forall_intro inner]
+    }
+  @conclusion |
+    forall a, b, c, d: T; op(op(a, b), op(c, d)) = op(op(op(a, b), c), d)
+    [by forall_intro open]
+qed
