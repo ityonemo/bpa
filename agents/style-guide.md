@@ -28,6 +28,14 @@ and justification line, and the remaining `@labels` must let a reader
 reconstruct the argument. Every label is judged by what it contributes to that
 skeleton. If the skeleton reads like noise, the labels are wrong.
 
+`bpa query outline <file> <theorem>` prints exactly this skeleton — the labels
+plus block headers, nothing else. **Read the outline as the acceptance test:**
+it should be *narrative* — reading it top to bottom should convey the shape and
+flow of the proof (what is assumed, what is derived, how it concludes) to
+someone who has not read the steps. A well-labeled proof outlines into prose;
+a poorly-labeled one outlines into a list of opaque tokens. Run it on what you
+write and check that it reads.
+
 - **Every label is a mini-assertion of the fact it establishes** —
   `@six-is-nonzero`, `@quotients-are-equal`, `@inverse-cancels-on-the-left`.
   - NEVER bare counters (`eq2`, `s3`, `step1`).
@@ -98,10 +106,3 @@ form is a fine content label: `@add-is-commutative`.)
   `[by …]`, formula/justification indented two spaces under the label; two-space
   indent per block depth; blank line between phases; `bpa fmt` normalizes
   whitespace only (never names).
-
-## Note on the generated corpus
-
-`aata/sets.md` and `aata/functions.md` were mechanically generated and their
-labels DRIFT from the above (`@gen-a`, `@fwd`, `@ca`, `@done`, `@body2`, …).
-Do not model new proofs on them; `aata/groups.md` and `examples/pa.bpa` /
-`std/peano*.bpa` are the compliant exemplars.
