@@ -742,12 +742,12 @@ proof
                                           @addition-reassociates |
                                             forall c, bb, aa: Nat; add(add(aa, bb), c) = add(aa, add(bb, c))
                                             [by theorem addIsAssociative]
-                                          @right-side-reassociates |
+                                          @rhs-reassociates |
                                             add(add(mul(b, q1), add(mul(b, k), b)), r2) = add(mul(b, q1), add(add(mul(b, k), b), r2))
                                             [by forall_elim(r2, add(mul(b, k), b), mul(b, q1)) addition-reassociates]
                                           @decomposition-over-common-prefix |
                                             add(mul(b, q1), r1) = add(mul(b, q1), add(add(mul(b, k), b), r2))
-                                            [by rewrite right-side-reassociates left-decomposition-expanded]
+                                            [by rewrite rhs-reassociates left-decomposition-expanded]
                       // cancel mul(b, q1): r1 = add(add(mul(b,k), b), r2)
                                           @addition-cancels-on-left |
                                             forall c, aa, bb: Nat; add(c, aa) = add(c, bb) -> aa = bb

@@ -550,18 +550,18 @@ proof
                         [by hypothesis when-a-is-zero]
             // a=ZERO: LHS mul(d, sub(ZERO, succ k)) = mul(d, ZERO) = ZERO [subZeroLeft, mulZeroRight]
             //   RHS sub(mul(d,ZERO), mul(d,succ k)) = sub(ZERO, mul(d, succ k)) = ZERO [mulZeroRight, subZeroLeft]
-                      @left-side-is-zero |
+                      @lhs-is-zero |
                         mul(d, sub(ZERO, succ(k))) = ZERO
                         [by simplify subZeroLeft mulZeroRight]
-                      @right-side-is-zero |
+                      @rhs-is-zero |
                         sub(mul(d, ZERO), mul(d, succ(k))) = ZERO
                         [by simplify mulZeroRight subZeroLeft]
-                      @zero-is-right-side |
+                      @zero-is-rhs |
                         ZERO = sub(mul(d, ZERO), mul(d, succ(k)))
-                        [by symmetry right-side-is-zero]
+                        [by symmetry rhs-is-zero]
                       @distributes-at-zero |
                         mul(d, sub(ZERO, succ(k))) = sub(mul(d, ZERO), mul(d, succ(k)))
-                        [by rewrite zero-is-right-side left-side-is-zero]
+                        [by rewrite zero-is-rhs lhs-is-zero]
             // rewrite ZERO -> a using a = ZERO backwards
                       @zero-is-a |
                         ZERO = a
@@ -592,18 +592,18 @@ proof
                             sub(succ(ap), succ(k)) = sub(ap, k)
                             [by simplify subSuccSucc]
               // mul(d, sub(succ ap, succ k)) = mul(d, sub(ap, k))
-                          @left-side-is-reflexive |
+                          @lhs-is-reflexive |
                             mul(d, sub(succ(ap), succ(k))) = mul(d, sub(succ(ap), succ(k)))
                             [by reflexivity]
-                          @left-side-peels |
+                          @lhs-peels |
                             mul(d, sub(succ(ap), succ(k))) = mul(d, sub(ap, k))
-                            [by rewrite sub-succ-succ-peels left-side-is-reflexive]
+                            [by rewrite sub-succ-succ-peels lhs-is-reflexive]
                           @inductive-hypothesis-at-ap-d |
                             mul(d, sub(ap, k)) = sub(mul(d, ap), mul(d, k))
                             [by forall_elim(ap, d) inductive-hypothesis]
-                          @left-side-value |
+                          @lhs-value |
                             mul(d, sub(succ(ap), succ(k))) = sub(mul(d, ap), mul(d, k))
-                            [by rewrite inductive-hypothesis-at-ap-d left-side-peels]
+                            [by rewrite inductive-hypothesis-at-ap-d lhs-peels]
               // RHS: sub(mul(d, succ ap), mul(d, succ k))
                           @mul-succ-right |
                             forall bb, aa: Nat; mul(aa, succ(bb)) = add(mul(aa, bb), aa)
@@ -615,15 +615,15 @@ proof
                             mul(d, succ(k)) = add(mul(d, k), d)
                             [by forall_elim(k, d) mul-succ-right]
               // sub(mul(d,succ ap), mul(d, succ k)) = sub(add(mul(d,ap),d), add(mul(d,k),d))
-                          @right-side-is-reflexive |
+                          @rhs-is-reflexive |
                             sub(mul(d, succ(ap)), mul(d, succ(k))) = sub(mul(d, succ(ap)), mul(d, succ(k)))
                             [by reflexivity]
-                          @right-side-ap-unfolded |
+                          @rhs-ap-unfolded |
                             sub(add(mul(d, ap), d), mul(d, succ(k))) = sub(mul(d, succ(ap)), mul(d, succ(k)))
-                            [by rewrite mul-d-succ-ap-unfolds right-side-is-reflexive]
-                          @right-side-both-unfolded |
+                            [by rewrite mul-d-succ-ap-unfolds rhs-is-reflexive]
+                          @rhs-both-unfolded |
                             sub(add(mul(d, ap), d), add(mul(d, k), d)) = sub(mul(d, succ(ap)), mul(d, succ(k)))
-                            [by rewrite mul-d-succ-k-unfolds right-side-ap-unfolded]
+                            [by rewrite mul-d-succ-k-unfolds rhs-ap-unfolded]
               // sub(add(x,d), add(y,d)) = sub(x,y) [subAddSameRight]
                           @subtract-same-right |
                             forall dd, x, y: Nat; sub(add(x, dd), add(y, dd)) = sub(x, y)
@@ -631,21 +631,21 @@ proof
                           @same-right-cancels-here |
                             sub(add(mul(d, ap), d), add(mul(d, k), d)) = sub(mul(d, ap), mul(d, k))
                             [by forall_elim(d, mul(d, ap), mul(d, k)) subtract-same-right]
-              // right-side-both-unfolded LHS = sub(add..,add..); rewrite it to sub(mul(d,ap),mul(d,k))
-                          @right-side-is-unfolded-form |
+              // rhs-both-unfolded LHS = sub(add..,add..); rewrite it to sub(mul(d,ap),mul(d,k))
+                          @rhs-is-unfolded-form |
                             sub(mul(d, succ(ap)), mul(d, succ(k))) = sub(add(mul(d, ap), d), add(mul(d, k), d))
-                            [by symmetry right-side-both-unfolded]
-                          @right-side-value |
+                            [by symmetry rhs-both-unfolded]
+                          @rhs-value |
                             sub(mul(d, succ(ap)), mul(d, succ(k))) = sub(mul(d, ap), mul(d, k))
-                            [by rewrite same-right-cancels-here right-side-is-unfolded-form]
-              // now both left-side and right-side equal sub(mul(d,ap),mul(d,k)); combine.
+                            [by rewrite same-right-cancels-here rhs-is-unfolded-form]
+              // now both lhs and rhs equal sub(mul(d,ap),mul(d,k)); combine.
               // goal: mul(d, sub(a, succ k)) = sub(mul(d,a), mul(d, succ k)), a=succ ap.
-                          @sub-mul-is-right-side |
+                          @sub-mul-is-rhs |
                             sub(mul(d, ap), mul(d, k)) = sub(mul(d, succ(ap)), mul(d, succ(k)))
-                            [by symmetry right-side-value]
+                            [by symmetry rhs-value]
                           @distributes-at-succ-ap |
                             mul(d, sub(succ(ap), succ(k))) = sub(mul(d, succ(ap)), mul(d, succ(k)))
-                            [by rewrite sub-mul-is-right-side left-side-value]
+                            [by rewrite sub-mul-is-rhs lhs-value]
               // rewrite succ ap -> a
                           @succ-ap-is-a |
                             succ(ap) = a

@@ -62,7 +62,7 @@ proof
               @generalize-a |
                 fix a: Nat {
           // right-nest the left side: (a+b)+(c+d) = a+(b+(c+d))
-                  @left-side-right-nested |
+                  @lhs-right-nested |
                     add(add(a, b), add(c, d)) = add(a, add(b, add(c, d)))
                     [by simplify addIsAssociative]
           // swap b past c inside the inner triple
@@ -72,23 +72,23 @@ proof
                   @b-swaps-past-c |
                     add(b, add(c, d)) = add(c, add(b, d))
                     [by forall_elim(d, c, b) left-swap]
-                  @left-side-with-b-c-swapped |
+                  @lhs-with-b-c-swapped |
                     add(add(a, b), add(c, d)) = add(a, add(c, add(b, d)))
-                    [by rewrite b-swaps-past-c left-side-right-nested]
+                    [by rewrite b-swaps-past-c lhs-right-nested]
           // right-nest the target's right side identically, then flip it so
           // the shared form a+(c+(b+d)) can be rewritten back
-                  @right-side-right-nested |
+                  @rhs-right-nested |
                     add(add(a, c), add(b, d)) = add(a, add(c, add(b, d)))
                     [by simplify addIsAssociative]
-                  @right-side-refl |
+                  @rhs-refl |
                     add(add(a, c), add(b, d)) = add(add(a, c), add(b, d))
                     [by reflexivity]
-                  @right-side-nesting-flipped |
+                  @rhs-nesting-flipped |
                     add(a, add(c, add(b, d))) = add(add(a, c), add(b, d))
-                    [by rewrite right-side-right-nested right-side-refl]
+                    [by rewrite rhs-right-nested rhs-refl]
                   @quadruple-sum-rearranged |
                     add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-                    [by rewrite right-side-nesting-flipped left-side-with-b-c-swapped]
+                    [by rewrite rhs-nesting-flipped lhs-with-b-c-swapped]
                 }
               @discharge-a |
                 forall a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
