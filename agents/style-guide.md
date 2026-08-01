@@ -62,6 +62,7 @@ write and check that it reads.
 | role | name |
 |---|---|
 | final step of every proof | `@conclusion` (NOT `@done`, `@result`, `@qed`) |
+| concluding step of a NESTED subproof block | `@conclusion-<what-it-concludes>` (`@conclusion-add-left-swaps`, `@conclusion-two-divides-p`) — the `@conclusion-` prefix marks a subproof's final step; the suffix says what it proved (NOT the bare `@conclusion-inner`) |
 | `P(ZERO)` base premise | `@base-case` |
 | base needing its own subproof | `@base-case-proof` (export → `@base-case`) |
 | fix-block deriving the successor case | `@induction-step` |

@@ -197,7 +197,7 @@ proof
                     mul(p, p) != mul(TWO, mul(q, q))
                     [by exists_elim with-k]
                 }
-              @conclusion-inner |
+              @conclusion-p-squared-is-not-twice-q-squared |
                 mul(p, p) != mul(TWO, mul(q, q))
                 [by not_intro suppose-square square-eq square-impossible]
             }

@@ -69,12 +69,12 @@ proof
     fix k: Nat {
       @given-inductive-hypothesis |
         assume divides(TWO, k) or divides(TWO, succ(k)) {
-          @ih |
+          @inductive-hypothesis |
             divides(TWO, k) or divides(TWO, succ(k))
             [by hypothesis given-inductive-hypothesis]
-          @conclusion-inner |
+          @conclusion-succ-k-or-succ-succ-k-even |
             divides(TWO, succ(k)) or divides(TWO, succ(succ(k)))
-            case on ih {
+            case on inductive-hypothesis {
               @k-even |
                 assume divides(TWO, k) {
                   @k-div |
@@ -92,12 +92,12 @@ proof
                   @add-at |
                     divides(TWO, k) -> divides(TWO, TWO) -> divides(TWO, add(k, TWO))
                     [by forall_elim(TWO, k, TWO) add-closed]
-                  @step1 |
+                  @two-divides-two-gives-k-plus-two-even |
                     divides(TWO, TWO) -> divides(TWO, add(k, TWO))
                     [by modus_ponens add-at k-div]
                   @k-plus-two-even |
                     divides(TWO, add(k, TWO))
-                    [by modus_ponens step1 two-divides-two]
+                    [by modus_ponens two-divides-two-gives-k-plus-two-even two-divides-two]
                   @sum-is-succ-succ |
                     add(k, TWO) = succ(succ(k))
                     [by simplify addSuccRight addZeroRight oneIsSuccZero]
@@ -285,7 +285,7 @@ proof
         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
         = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
         [by rewrite lhs-poly lhs-succ-form]
-      @conclusion-inner |
+      @conclusion-odd-squared-is-odd |
         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
         = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
         [by rewrite rhs-as-succ chain1]
@@ -463,7 +463,7 @@ proof
           @p-parity |
             divides(TWO, p) or divides(TWO, succ(p))
             [by forall_elim(p) parity]
-          @conclusion-inner |
+          @conclusion-two-divides-p |
             divides(TWO, p)
             case on p-parity {
               @p-even |

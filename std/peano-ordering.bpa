@@ -2036,7 +2036,7 @@ proof
                                 }
                               @a-equals-b |
                                 assume a = b {
-                                  @eq |
+                                  @a-and-b-coincide |
                                     a = b
                                     [by hypothesis a-equals-b]
                                 }
@@ -2075,7 +2075,7 @@ proof
                                 }
                             }
                         }
-                      @conclusion-inner |
+                      @conclusion-a-equals-b |
                         a = b
                         [by exists_elim with-c-pred]
                     }

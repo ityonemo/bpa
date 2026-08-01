@@ -1343,7 +1343,7 @@ proof
               @swapped |
                 add(x, add(y, r)) = add(add(y, x), r)
                 [by rewrite x-y-commuted ungrouped]
-              @conclusion-inner |
+              @conclusion-add-left-swaps |
                 add(x, add(y, r)) = add(y, add(x, r))
                 [by rewrite reassociated-y-x swapped]
             }
@@ -1390,7 +1390,7 @@ proof
               @swapped |
                 mul(x, mul(y, r)) = mul(mul(y, x), r)
                 [by rewrite x-y-commuted ungrouped]
-              @conclusion-inner |
+              @conclusion-mul-left-swaps |
                 mul(x, mul(y, r)) = mul(y, mul(x, r))
                 [by rewrite reassociated-y-x swapped]
             }
