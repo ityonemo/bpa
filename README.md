@@ -298,6 +298,7 @@ disclosed and `--fast`-gated, so the trusted surface is always disclosed.
 | `std/` | the standard library: arithmetic (`peano`), order + strong induction (`peano-ordering`), subtraction, division/divisibility, the verified `peano-gcd`, even/odd + the parity crux (`peano-parity`), abstract group theory (`group`), set algebra over a universe (`set`), and the theory of mappings (`function`) |
 | `aata/` | **literate transliterations of an abstract-algebra textbook** (Judson's AATA, GFDL) verified in bpa — the book's prose reproduced in order, each stated result followed by a checked proof; see `aata/README` |
 | `skills/` | Agent Skills (symlinked into `.claude/skills/`) — e.g. `bpa-query`, teaching an agent when to reach for `bpa query` over `grep` |
+| `tests/` | the integration suite: `zig build test` spawns the built `bpa` on each corpus file and asserts its exact stdout/stderr/exit. Gates live in subject-grouped `tests/test_*.zig` (cli, tactics, std, aata, examples, query, imports), each a one-line `ctx.ok`/`ctx.fail` (see `tests/Ctx.zig`); `build.zig` stays build configuration |
 | `GUIDE.md` | every keyword, the kernel design, the built-in oracles |
 | `CONVENTIONS.md` | naming and proof-writing style |
 | `ORACLES.md` | the oracle registry and trust disclosure |
