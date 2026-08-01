@@ -42,12 +42,21 @@ proofs follow its arguments.
 | File | Chapter / section | Status |
 |---|---|---|
 | `sets.md` | 1 — Preliminaries, §1.2.1 Set Theory | ✅ full transliteration; set algebra + De Morgan (14 theorems), verified pure |
+| `functions.md` | 1 — Preliminaries, §1.2.2 Cartesian Products and Mappings | ✅ full transliteration; composition associativity/preservation + invertible⇒bijective forward (7 theorems), verified pure; bijective⇒invertible marked (needs a choice operator) |
 | `groups.md` | 3 — Groups, §3.2 Definitions and Examples | ✅ full transliteration; definition + 7 examples + basic-properties propositions (10 theorems) + Exercise 31, verified pure |
 
 The set theory rests on `std/set.bpa` (sets over an abstract `Universe` of
 elements, fixed membershipwise, with extensionality). Every identity is proved
 by the same recipe — extensionality → fix an element → unfold `member(x, ·)` →
 one `[by tautology …]` — so the whole chapter is oracle-free.
+
+The function theory rests on `std/function.bpa` (maps as opaque `Fn` objects
+over a `Universe`, with `apply`/`compose`, an identity, and
+injective/surjective/invertible, fixed by their axioms plus **function
+extensionality**). Composition associativity is a funcExt rewrite chain; the
+preservation and invertibility results are FOL over the defining predicates,
+with existential witnesses (`g(b)` for onto, the unpacked inverse for
+invertible⇒bijective).
 
 The group theory rests on `std/group.bpa` (the group axioms as a reusable bpa
 theory) and uses the `assoc` tactic (associativity-only reordering) for the
@@ -71,6 +80,14 @@ chapters will motivate:
   (equivalence relations ⟺ partitions) needs equivalence classes `[a]` and the
   partition `X = ⋃[x]`, which `std/set.bpa`'s flat `member : Universe → Set`
   model cannot express; and the **indexed families** `⋃ᵢ Aᵢ` / `⋂ᵢ Aᵢ` need a
-  sort of finite sequences of `Set`.
+  sort of finite sequences of `Set`,
+- a **choice / inverse-construction operator** — Chapter 1's §1.2.2 backward
+  direction (bijective ⇒ invertible) builds the inverse by "letting `g(b) = a`"
+  for the unique preimage `a`; that definite description (turning "for each `b`
+  a unique `a`" into a function value) is not expressible in bpa's first-order
+  logic, so `invertibleDef`'s `exists g` cannot be discharged,
+- a **pair sort `Universe × Universe`** (with a set-of-pairs theory) for the
+  §1.2.2 Cartesian products `A × B` and the pairs-based definition of a
+  function; `std/function.bpa` sidesteps it by taking `apply(f, x)` primitive.
 
 Each is a self-contained addition; the translation grows as they land.

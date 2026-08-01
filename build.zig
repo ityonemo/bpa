@@ -58,7 +58,7 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&no_args.step);
 
         // fmt --check: the exemplars are canonically formatted
-        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/set.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa", "tests/cases/axiom_as_step_bad.bpa" }) |path| {
+        for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/set.bpa", "std/function.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa", "tests/cases/axiom_as_step_bad.bpa" }) |path| {
             const fmt_check = b.addRunArtifact(exe);
             fmt_check.has_side_effects = true;
             fmt_check.setCwd(b.path("."));
@@ -1390,6 +1390,30 @@ pub fn build(b: *std.Build) void {
         aata_sets.expectStdOutEqual("OK: 43 declarations, 14 theorems proven\n");
         aata_sets.expectExitCode(0);
         test_step.dependOn(&aata_sets.step);
+
+        // the function theory (std/function.bpa): axioms only, no theorems — a
+        // direct check materializes nothing and exits nonzero with a warning.
+        const std_function = b.addRunArtifact(exe);
+        std_function.has_side_effects = true;
+        std_function.setCwd(b.path("."));
+        std_function.addArgs(&.{ "check", "std/function.bpa" });
+        std_function.expectStdErrEqual("");
+        std_function.expectExitCode(1);
+        std_function.expectStdOutEqual("OK: 14 declarations, 0 theorems proven\n" ++
+            "  \u{2014} WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).\n");
+        test_step.dependOn(&std_function.step);
+
+        // AATA functions: the literate transliteration of Chapter 1 §1.2.2
+        // (composition associativity/preservation + invertible⇒bijective
+        // forward), verified PURE. The backward direction is a marked wall.
+        const aata_functions = b.addRunArtifact(exe);
+        aata_functions.has_side_effects = true;
+        aata_functions.setCwd(b.path("."));
+        aata_functions.addArgs(&.{ "check", "aata/functions.md" });
+        aata_functions.expectStdErrEqual("");
+        aata_functions.expectStdOutEqual("OK: 36 declarations, 7 theorems proven\n");
+        aata_functions.expectExitCode(0);
+        test_step.dependOn(&aata_functions.step);
 
         // --faster trusts imported proofs (peano-imports imports peano.bpa,
         // whose one oracle step would otherwise be re-checked and hard-error).

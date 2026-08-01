@@ -1,0 +1,55 @@
+// std/function.bpa — the theory of MAPPINGS between sets, per Chapter 1 of
+// Judson's *Abstract Algebra* (vendor/aata/src/sets.xml, §1.2.2 "Cartesian
+// Products and Mappings"): functions as objects with application, composition,
+// an identity map, and the injective / surjective / invertible properties.
+//
+// A reusable abstract theory (like std/group, std/set), imported by the AATA
+// literate translation aata/functions.md. Every function here maps a fixed
+// element domain `Universe` to itself (f : Universe -> Universe); that single
+// sort is enough for composition-associativity and the invertible/bijective
+// results, and keeps the theory small. Functions are opaque `Fn` objects
+// characterized by what `apply` does to them, so two functions are equal
+// exactly when they agree pointwise (funcExtensionality) — the mapping analogue
+// of set extensionality.
+//
+// bpa has no `<->` connective, so each defining biconditional (injective,
+// surjective, invertible) is written as the `and` of its two implications.
+
+sort Universe
+sort Fn
+const identityFn: Fn
+func apply(f: Fn, x: Universe): Universe
+func compose(g: Fn, f: Fn): Fn
+pred injective(f: Fn)
+pred surjective(f: Fn)
+pred invertible(f: Fn)
+
+// (g ∘ f)(x) = g(f(x)) — the defining law of composition.
+axiom composeApply: forall g, f: Fn; forall x: Universe;
+  apply(compose(g, f), x) = apply(g, apply(f, x))
+
+// id(x) = x — the identity map does nothing.
+axiom identityApply: forall x: Universe; apply(identityFn, x) = x
+
+// function extensionality: maps agreeing at every point are equal.
+axiom funcExtensionality: forall f, g: Fn;
+  (forall x: Universe; apply(f, x) = apply(g, x)) -> f = g
+
+// injective (one-to-one): f(a) = f(b) implies a = b (and conversely, equal
+// inputs give equal outputs — the trivial direction, included so the predicate
+// unfolds to a full biconditional).
+axiom injectiveDef: forall f: Fn;
+  (injective(f) -> (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b))
+  and ((forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
+
+// surjective (onto): every codomain element y is hit by some x.
+axiom surjectiveDef: forall f: Fn;
+  (surjective(f) -> (forall y: Universe; exists x: Universe; apply(f, x) = y))
+  and ((forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f))
+
+// invertible: there is a two-sided inverse g (g∘f = id and f∘g = id).
+axiom invertibleDef: forall f: Fn;
+  (invertible(f) ->
+  (exists g: Fn; compose(g, f) = identityFn and compose(f, g) = identityFn))
+  and ((exists g: Fn; compose(g, f) = identityFn and compose(f, g) = identityFn)
+  -> invertible(f))

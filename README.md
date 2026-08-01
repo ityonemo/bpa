@@ -295,7 +295,7 @@ disclosed and `--fast`-gated, so the trusted surface is always disclosed.
 | `examples/incorrect.bpa` | three classic wrong proofs and their diagnostics |
 | `examples/sqrt2.bpa` | **√2 is irrational** (stated over ℕ), proved pure |
 | `examples/literate.md` | a **literate** proof: prose + checkable ` ```bpa ` blocks |
-| `std/` | the standard library: arithmetic (`peano`), order + strong induction (`peano-ordering`), subtraction, division/divisibility, the verified `peano-gcd`, even/odd + the parity crux (`peano-parity`), abstract group theory (`group`), and set algebra over a universe (`set`) |
+| `std/` | the standard library: arithmetic (`peano`), order + strong induction (`peano-ordering`), subtraction, division/divisibility, the verified `peano-gcd`, even/odd + the parity crux (`peano-parity`), abstract group theory (`group`), set algebra over a universe (`set`), and the theory of mappings (`function`) |
 | `aata/` | **literate transliterations of an abstract-algebra textbook** (Judson's AATA, GFDL) verified in bpa — the book's prose reproduced in order, each stated result followed by a checked proof; see `aata/README` |
 | `skills/` | Agent Skills (symlinked into `.claude/skills/`) — e.g. `bpa-query`, teaching an agent when to reach for `bpa query` over `grep` |
 | `GUIDE.md` | every keyword, the kernel design, the built-in oracles |
