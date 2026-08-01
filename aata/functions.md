@@ -170,73 +170,73 @@ argument: the two composites agree at every point `x` after unfolding
 theorem composeAssoc: forall h, g, f: Fn;
   compose(compose(h, g), f) = compose(h, compose(g, f))
 proof
-  @gen-h |
+  @generalize-h |
     fix h: Fn {
-      @gen-g |
+      @generalize-g |
         fix g: Fn {
-          @gen-f |
+          @generalize-f |
             fix f: Fn {
               @pointwise |
                 fix x: Universe {
                   // LHS applied at x
-                  @ca |
+                  @compose-applies |
                     forall gg, ff: Fn; forall y: Universe;
                       apply(compose(gg, ff), y) = apply(gg, apply(ff, y))
                     [by axiom composeApply]
-                  @lhs1 |
+                  @lhs-outer-unfolds |
                     apply(compose(compose(h, g), f), x) = apply(compose(h, g), apply(f, x))
-                    [by forall_elim(compose(h, g), f, x) ca]
-                  @lhs2 |
+                    [by forall_elim(compose(h, g), f, x) compose-applies]
+                  @lhs-inner-unfolds |
                     apply(compose(h, g), apply(f, x)) = apply(h, apply(g, apply(f, x)))
-                    [by forall_elim(h, g, apply(f, x)) ca]
-                  @lhs |
+                    [by forall_elim(h, g, apply(f, x)) compose-applies]
+                  @lhs-associated-unfolds |
                     apply(compose(compose(h, g), f), x) = apply(h, apply(g, apply(f, x)))
-                    [by rewrite lhs2 lhs1]
+                    [by rewrite lhs-inner-unfolds lhs-outer-unfolds]
                   // RHS applied at x
-                  @rhs1 |
+                  @rhs-outer-unfolds |
                     apply(compose(h, compose(g, f)), x) = apply(h, apply(compose(g, f), x))
-                    [by forall_elim(h, compose(g, f), x) ca]
-                  @rhs2 |
+                    [by forall_elim(h, compose(g, f), x) compose-applies]
+                  @rhs-inner-unfolds |
                     apply(compose(g, f), x) = apply(g, apply(f, x))
-                    [by forall_elim(g, f, x) ca]
-                  @rhs |
+                    [by forall_elim(g, f, x) compose-applies]
+                  @rhs-associated-unfolds |
                     apply(compose(h, compose(g, f)), x) = apply(h, apply(g, apply(f, x)))
-                    [by rewrite rhs2 rhs1]
+                    [by rewrite rhs-inner-unfolds rhs-outer-unfolds]
                   // equate the two sides at x
-                  @rhs-sym |
+                  @rhs-agrees-with-hgfx |
                     apply(h, apply(g, apply(f, x))) = apply(compose(h, compose(g, f)), x)
-                    [by symmetry rhs]
-                  @eq-at-x |
+                    [by symmetry rhs-associated-unfolds]
+                  @both-sides-agree-at-x |
                     apply(compose(compose(h, g), f), x) = apply(compose(h, compose(g, f)), x)
-                    [by rewrite rhs-sym lhs]
+                    [by rewrite rhs-agrees-with-hgfx lhs-associated-unfolds]
                 }
-              @all-x |
+              @agree-pointwise |
                 forall x: Universe;
                   apply(compose(compose(h, g), f), x) = apply(compose(h, compose(g, f)), x)
                 [by forall_intro pointwise]
-              @ext |
+              @extensionality |
                 forall p, q: Fn;
                   (forall x: Universe; apply(p, x) = apply(q, x)) -> p = q
                 [by axiom funcExt]
-              @ext-at |
+              @extensionality-at-both-composites |
                 (forall x: Universe; apply(compose(compose(h, g), f), x) = apply(compose(h, compose(g, f)), x))
                   -> compose(compose(h, g), f) = compose(h, compose(g, f))
-                [by forall_elim(compose(compose(h, g), f), compose(h, compose(g, f))) ext]
-              @done |
+                [by forall_elim(compose(compose(h, g), f), compose(h, compose(g, f))) extensionality]
+              @conclusion-at-h-g-f |
                 compose(compose(h, g), f) = compose(h, compose(g, f))
-                [by modus_ponens ext-at all-x]
+                [by modus_ponens extensionality-at-both-composites agree-pointwise]
             }
-          @close-f |
+          @discharge-f |
             forall f: Fn; compose(compose(h, g), f) = compose(h, compose(g, f))
-            [by forall_intro gen-f]
+            [by forall_intro generalize-f]
         }
-      @close-g |
+      @discharge-g |
         forall g, f: Fn; compose(compose(h, g), f) = compose(h, compose(g, f))
-        [by forall_intro gen-g]
+        [by forall_intro generalize-g]
     }
   @conclusion |
     forall h, g, f: Fn; compose(compose(h, g), f) = compose(h, compose(g, f))
-    [by forall_intro gen-h]
+    [by forall_intro generalize-h]
 qed
 ```
 
@@ -251,124 +251,124 @@ qed
 theorem composeInjective: forall g, f: Fn;
   injective(g) -> injective(f) -> injective(compose(g, f))
 proof
-  @gen-g |
+  @generalize-g |
     fix g: Fn {
-      @gen-f |
+      @generalize-f |
         fix f: Fn {
-          @assume-g |
+          @given-g-injective |
             assume injective(g) {
-              @assume-f |
+              @given-f-injective |
                 assume injective(f) {
-                  // unfold both injectivity hypotheses to their forall-forms
-                  @inj-def |
+                  // both injectivity hypotheses, unfolded to their pointwise forms
+                  @injective-unfolds |
                     forall h: Fn;
                       (injective(h) -> (forall a, b: Universe; apply(h, a) = apply(h, b) -> a = b))
                       and ((forall a, b: Universe; apply(h, a) = apply(h, b) -> a = b) -> injective(h))
                     [by axiom injectiveDef]
-                  @g-at |
+                  @g-injective-unfolds |
                     (injective(g) -> (forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b))
                     and ((forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b) -> injective(g))
-                    [by forall_elim(g) inj-def]
-                  @g-fwd |
+                    [by forall_elim(g) injective-unfolds]
+                  @g-injective-gives-pointwise |
                     injective(g) -> (forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b)
-                    [by and_elim_left g-at]
-                  @g-hyp |
+                    [by and_elim_left g-injective-unfolds]
+                  @g-is-injective |
                     injective(g)
-                    [by hypothesis assume-g]
-                  @g-inj |
+                    [by hypothesis given-g-injective]
+                  @g-is-pointwise-injective |
                     forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b
-                    [by modus_ponens g-fwd g-hyp]
-                  @f-at |
+                    [by modus_ponens g-injective-gives-pointwise g-is-injective]
+                  @f-injective-unfolds |
                     (injective(f) -> (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b))
                     and ((forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
-                    [by forall_elim(f) inj-def]
-                  @f-fwd |
+                    [by forall_elim(f) injective-unfolds]
+                  @f-injective-gives-pointwise |
                     injective(f) -> (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b)
-                    [by and_elim_left f-at]
-                  @f-hyp |
+                    [by and_elim_left f-injective-unfolds]
+                  @f-is-injective |
                     injective(f)
-                    [by hypothesis assume-f]
-                  @f-inj |
+                    [by hypothesis given-f-injective]
+                  @f-is-pointwise-injective |
                     forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b
-                    [by modus_ponens f-fwd f-hyp]
-                  @body |
+                    [by modus_ponens f-injective-gives-pointwise f-is-injective]
+                  @generalize-a |
                     fix a: Universe {
-                      @body2 |
+                      @generalize-b |
                         fix b: Universe {
-                          @assume-eq |
+                          @given-composite-agrees |
                             assume apply(compose(g, f), a) = apply(compose(g, f), b) {
-                              @ca |
+                              @compose-applies |
                                 forall gg, ff: Fn; forall x: Universe;
                                   apply(compose(gg, ff), x) = apply(gg, apply(ff, x))
                                 [by axiom composeApply]
-                              @cgfa |
+                              @composite-a-unfolds |
                                 apply(compose(g, f), a) = apply(g, apply(f, a))
-                                [by forall_elim(g, f, a) ca]
-                              @cgfb |
+                                [by forall_elim(g, f, a) compose-applies]
+                              @composite-b-unfolds |
                                 apply(compose(g, f), b) = apply(g, apply(f, b))
-                                [by forall_elim(g, f, b) ca]
-                              @eq-hyp |
+                                [by forall_elim(g, f, b) compose-applies]
+                              @composites-agree |
                                 apply(compose(g, f), a) = apply(compose(g, f), b)
-                                [by hypothesis assume-eq]
-                              // g(f(a)) = g(f(b))
-                              @gfa-eq-c |
+                                [by hypothesis given-composite-agrees]
+                              // rewrite both composites to g(f(-)): g(f(a)) = g(f(b))
+                              @g-of-fa-agrees-with-composite-b |
                                 apply(g, apply(f, a)) = apply(compose(g, f), b)
-                                [by rewrite cgfa eq-hyp]
-                              @gfa-eq-gfb |
+                                [by rewrite composite-a-unfolds composites-agree]
+                              @g-of-fa-equals-g-of-fb |
                                 apply(g, apply(f, a)) = apply(g, apply(f, b))
-                                [by rewrite cgfb gfa-eq-c]
-                              // g injective => f(a) = f(b)
-                              @g-inj-at |
+                                [by rewrite composite-b-unfolds g-of-fa-agrees-with-composite-b]
+                              // g injective on f(a), f(b) => f(a) = f(b)
+                              @g-injective-at-fa-fb |
                                 apply(g, apply(f, a)) = apply(g, apply(f, b)) -> apply(f, a) = apply(f, b)
-                                [by forall_elim(apply(f, a), apply(f, b)) g-inj]
-                              @fa-eq-fb |
+                                [by forall_elim(apply(f, a), apply(f, b)) g-is-pointwise-injective]
+                              @fa-equals-fb |
                                 apply(f, a) = apply(f, b)
-                                [by modus_ponens g-inj-at gfa-eq-gfb]
+                                [by modus_ponens g-injective-at-fa-fb g-of-fa-equals-g-of-fb]
                               // f injective => a = b
-                              @f-inj-at |
+                              @f-injective-at-a-b |
                                 apply(f, a) = apply(f, b) -> a = b
-                                [by forall_elim(a, b) f-inj]
-                              @a-eq-b |
+                                [by forall_elim(a, b) f-is-pointwise-injective]
+                              @a-equals-b |
                                 a = b
-                                [by modus_ponens f-inj-at fa-eq-fb]
+                                [by modus_ponens f-injective-at-a-b fa-equals-fb]
                             }
-                          @imp |
+                          @composite-injective-at-a-b |
                             apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b
-                            [by implies_intro assume-eq]
+                            [by implies_intro given-composite-agrees]
                         }
-                      @close-b |
+                      @discharge-b |
                         forall b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b
-                        [by forall_intro body2]
+                        [by forall_intro generalize-b]
                     }
-                  @all |
+                  @composite-is-pointwise-injective |
                     forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b
-                    [by forall_intro body]
-                  @c-at |
+                    [by forall_intro generalize-a]
+                  @composite-injective-unfolds |
                     (injective(compose(g, f)) -> (forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b))
                     and ((forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b) -> injective(compose(g, f)))
-                    [by forall_elim(compose(g, f)) inj-def]
-                  @c-bwd |
+                    [by forall_elim(compose(g, f)) injective-unfolds]
+                  @pointwise-injective-gives-injective |
                     (forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b) -> injective(compose(g, f))
-                    [by and_elim_right c-at]
-                  @inj-c |
+                    [by and_elim_right composite-injective-unfolds]
+                  @composite-is-injective |
                     injective(compose(g, f))
-                    [by modus_ponens c-bwd all]
+                    [by modus_ponens pointwise-injective-gives-injective composite-is-pointwise-injective]
                 }
-              @imp-f |
+              @f-injective-implies-composite-injective |
                 injective(f) -> injective(compose(g, f))
-                [by implies_intro assume-f]
+                [by implies_intro given-f-injective]
             }
-          @imp-g |
+          @g-injective-implies-composite-injective |
             injective(g) -> injective(f) -> injective(compose(g, f))
-            [by implies_intro assume-g]
+            [by implies_intro given-g-injective]
         }
-      @close-f |
+      @discharge-f |
         forall f: Fn; injective(g) -> injective(f) -> injective(compose(g, f))
-        [by forall_intro gen-f]
+        [by forall_intro generalize-f]
     }
   @conclusion |
     forall g, f: Fn; injective(g) -> injective(f) -> injective(compose(g, f))
-    [by forall_intro gen-g]
+    [by forall_intro generalize-g]
 qed
 ```
 
@@ -383,120 +383,120 @@ yields `b` with `g(b) = c`, then surjectivity of `f` yields `a` with
 theorem composeSurjective: forall g, f: Fn;
   surjective(g) -> surjective(f) -> surjective(compose(g, f))
 proof
-  @gen-g |
+  @generalize-g |
     fix g: Fn {
-      @gen-f |
+      @generalize-f |
         fix f: Fn {
-          @assume-g |
+          @given-g-surjective |
             assume surjective(g) {
-              @assume-f |
+              @given-f-surjective |
                 assume surjective(f) {
-                  @surj-def |
+                  @surjective-unfolds |
                     forall h: Fn;
                       (surjective(h) -> (forall y: Universe; exists x: Universe; apply(h, x) = y))
                       and ((forall y: Universe; exists x: Universe; apply(h, x) = y) -> surjective(h))
                     [by axiom surjectiveDef]
-                  @g-at |
+                  @g-surjective-unfolds |
                     (surjective(g) -> (forall y: Universe; exists x: Universe; apply(g, x) = y))
                     and ((forall y: Universe; exists x: Universe; apply(g, x) = y) -> surjective(g))
-                    [by forall_elim(g) surj-def]
-                  @g-fwd |
+                    [by forall_elim(g) surjective-unfolds]
+                  @g-surjective-gives-pointwise |
                     surjective(g) -> (forall y: Universe; exists x: Universe; apply(g, x) = y)
-                    [by and_elim_left g-at]
-                  @g-hyp |
+                    [by and_elim_left g-surjective-unfolds]
+                  @g-is-surjective |
                     surjective(g)
-                    [by hypothesis assume-g]
-                  @g-onto |
+                    [by hypothesis given-g-surjective]
+                  @g-is-pointwise-surjective |
                     forall y: Universe; exists x: Universe; apply(g, x) = y
-                    [by modus_ponens g-fwd g-hyp]
-                  @f-at |
+                    [by modus_ponens g-surjective-gives-pointwise g-is-surjective]
+                  @f-surjective-unfolds |
                     (surjective(f) -> (forall y: Universe; exists x: Universe; apply(f, x) = y))
                     and ((forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f))
-                    [by forall_elim(f) surj-def]
-                  @f-fwd |
+                    [by forall_elim(f) surjective-unfolds]
+                  @f-surjective-gives-pointwise |
                     surjective(f) -> (forall y: Universe; exists x: Universe; apply(f, x) = y)
-                    [by and_elim_left f-at]
-                  @f-hyp |
+                    [by and_elim_left f-surjective-unfolds]
+                  @f-is-surjective |
                     surjective(f)
-                    [by hypothesis assume-f]
-                  @f-onto |
+                    [by hypothesis given-f-surjective]
+                  @f-is-pointwise-surjective |
                     forall y: Universe; exists x: Universe; apply(f, x) = y
-                    [by modus_ponens f-fwd f-hyp]
-                  @body |
+                    [by modus_ponens f-surjective-gives-pointwise f-is-surjective]
+                  @generalize-c |
                     fix c: Universe {
                       // g onto: get b with g(b) = c
-                      @g-at-c |
+                      @c-has-g-preimage |
                         exists x: Universe; apply(g, x) = c
-                        [by forall_elim(c) g-onto]
-                      @unpack-b |
-                        unpack b: Universe from g-at-c {
-                          @gb-c |
+                        [by forall_elim(c) g-is-pointwise-surjective]
+                      @with-g-preimage-b |
+                        unpack b: Universe from c-has-g-preimage {
+                          @g-maps-b-to-c |
                             apply(g, b) = c
-                            [by hypothesis unpack-b]
+                            [by hypothesis with-g-preimage-b]
                           // f onto: get a with f(a) = b
-                          @f-at-b |
+                          @b-has-f-preimage |
                             exists x: Universe; apply(f, x) = b
-                            [by forall_elim(b) f-onto]
-                          @unpack-a |
-                            unpack a: Universe from f-at-b {
-                              @fa-b |
+                            [by forall_elim(b) f-is-pointwise-surjective]
+                          @with-f-preimage-a |
+                            unpack a: Universe from b-has-f-preimage {
+                              @f-maps-a-to-b |
                                 apply(f, a) = b
-                                [by hypothesis unpack-a]
-                              @ca |
+                                [by hypothesis with-f-preimage-a]
+                              @compose-applies |
                                 forall gg, ff: Fn; forall x: Universe;
                                   apply(compose(gg, ff), x) = apply(gg, apply(ff, x))
                                 [by axiom composeApply]
-                              @cgf-a |
+                              @composite-a-unfolds |
                                 apply(compose(g, f), a) = apply(g, apply(f, a))
-                                [by forall_elim(g, f, a) ca]
+                                [by forall_elim(g, f, a) compose-applies]
                               // g(f(a)) = g(b) = c
-                              @g-of-fa |
+                              @composite-a-equals-g-of-b |
                                 apply(compose(g, f), a) = apply(g, b)
-                                [by rewrite fa-b cgf-a]
-                              @cgf-a-c |
+                                [by rewrite f-maps-a-to-b composite-a-unfolds]
+                              @composite-maps-a-to-c |
                                 apply(compose(g, f), a) = c
-                                [by rewrite gb-c g-of-fa]
-                              @witness |
+                                [by rewrite g-maps-b-to-c composite-a-equals-g-of-b]
+                              @composite-has-preimage-a |
                                 exists x: Universe; apply(compose(g, f), x) = c
-                                [by exists_intro(a) cgf-a-c]
+                                [by exists_intro(a) composite-maps-a-to-c]
                             }
-                          @exported |
+                          @composite-hits-c-via-f |
                             exists x: Universe; apply(compose(g, f), x) = c
-                            [by exists_elim unpack-a]
+                            [by exists_elim with-f-preimage-a]
                         }
-                      @c-hit |
+                      @composite-hits-c |
                         exists x: Universe; apply(compose(g, f), x) = c
-                        [by exists_elim unpack-b]
+                        [by exists_elim with-g-preimage-b]
                     }
-                  @all |
+                  @composite-is-pointwise-surjective |
                     forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y
-                    [by forall_intro body]
-                  @c-at |
+                    [by forall_intro generalize-c]
+                  @composite-surjective-unfolds |
                     (surjective(compose(g, f)) -> (forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y))
                     and ((forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y) -> surjective(compose(g, f)))
-                    [by forall_elim(compose(g, f)) surj-def]
-                  @c-bwd |
+                    [by forall_elim(compose(g, f)) surjective-unfolds]
+                  @pointwise-surjective-gives-surjective |
                     (forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y) -> surjective(compose(g, f))
-                    [by and_elim_right c-at]
-                  @surj-c |
+                    [by and_elim_right composite-surjective-unfolds]
+                  @composite-is-surjective |
                     surjective(compose(g, f))
-                    [by modus_ponens c-bwd all]
+                    [by modus_ponens pointwise-surjective-gives-surjective composite-is-pointwise-surjective]
                 }
-              @imp-f |
+              @f-surjective-implies-composite-surjective |
                 surjective(f) -> surjective(compose(g, f))
-                [by implies_intro assume-f]
+                [by implies_intro given-f-surjective]
             }
-          @imp-g |
+          @g-surjective-implies-composite-surjective |
             surjective(g) -> surjective(f) -> surjective(compose(g, f))
-            [by implies_intro assume-g]
+            [by implies_intro given-g-surjective]
         }
-      @close-f |
+      @discharge-f |
         forall f: Fn; surjective(g) -> surjective(f) -> surjective(compose(g, f))
-        [by forall_intro gen-f]
+        [by forall_intro generalize-f]
     }
   @conclusion |
     forall g, f: Fn; surjective(g) -> surjective(f) -> surjective(compose(g, f))
-    [by forall_intro gen-g]
+    [by forall_intro generalize-g]
 qed
 ```
 
@@ -509,60 +509,60 @@ theorem composeBijective: forall g, f: Fn;
   (injective(g) and surjective(g)) -> (injective(f) and surjective(f))
   -> (injective(compose(g, f)) and surjective(compose(g, f)))
 proof
-  @gen-g |
+  @generalize-g |
     fix g: Fn {
-      @gen-f |
+      @generalize-f |
         fix f: Fn {
-          @assume-g |
+          @given-g-bijective |
             assume injective(g) and surjective(g) {
-              @assume-f |
+              @given-f-bijective |
                 assume injective(f) and surjective(f) {
-                  @hg | injective(g) and surjective(g) [by hypothesis assume-g]
-                  @hf | injective(f) and surjective(f) [by hypothesis assume-f]
-                  @ig | injective(g) [by and_elim_left hg]
-                  @sg | surjective(g) [by and_elim_right hg]
-                  @if | injective(f) [by and_elim_left hf]
-                  @sf | surjective(f) [by and_elim_right hf]
-                  @ci-thm |
+                  @g-is-bijective | injective(g) and surjective(g) [by hypothesis given-g-bijective]
+                  @f-is-bijective | injective(f) and surjective(f) [by hypothesis given-f-bijective]
+                  @g-is-injective | injective(g) [by and_elim_left g-is-bijective]
+                  @g-is-surjective | surjective(g) [by and_elim_right g-is-bijective]
+                  @f-is-injective | injective(f) [by and_elim_left f-is-bijective]
+                  @f-is-surjective | surjective(f) [by and_elim_right f-is-bijective]
+                  @composeInjective-theorem |
                     forall gg, ff: Fn; injective(gg) -> injective(ff) -> injective(compose(gg, ff))
                     [by theorem composeInjective]
-                  @ci-at |
+                  @composeInjective-at-g-f |
                     injective(g) -> injective(f) -> injective(compose(g, f))
-                    [by forall_elim(g, f) ci-thm]
-                  @ci1 | injective(f) -> injective(compose(g, f)) [by modus_ponens ci-at ig]
-                  @inj-c | injective(compose(g, f)) [by modus_ponens ci1 if]
-                  @cs-thm |
+                    [by forall_elim(g, f) composeInjective-theorem]
+                  @f-injective-gives-composite-injective | injective(f) -> injective(compose(g, f)) [by modus_ponens composeInjective-at-g-f g-is-injective]
+                  @composite-is-injective | injective(compose(g, f)) [by modus_ponens f-injective-gives-composite-injective f-is-injective]
+                  @composeSurjective-theorem |
                     forall gg, ff: Fn; surjective(gg) -> surjective(ff) -> surjective(compose(gg, ff))
                     [by theorem composeSurjective]
-                  @cs-at |
+                  @composeSurjective-at-g-f |
                     surjective(g) -> surjective(f) -> surjective(compose(g, f))
-                    [by forall_elim(g, f) cs-thm]
-                  @cs1 | surjective(f) -> surjective(compose(g, f)) [by modus_ponens cs-at sg]
-                  @surj-c | surjective(compose(g, f)) [by modus_ponens cs1 sf]
-                  @both |
+                    [by forall_elim(g, f) composeSurjective-theorem]
+                  @f-surjective-gives-composite-surjective | surjective(f) -> surjective(compose(g, f)) [by modus_ponens composeSurjective-at-g-f g-is-surjective]
+                  @composite-is-surjective | surjective(compose(g, f)) [by modus_ponens f-surjective-gives-composite-surjective f-is-surjective]
+                  @composite-is-bijective |
                     injective(compose(g, f)) and surjective(compose(g, f))
-                    [by and_intro inj-c surj-c]
+                    [by and_intro composite-is-injective composite-is-surjective]
                 }
-              @imp-f |
+              @f-bijective-implies-composite-bijective |
                 (injective(f) and surjective(f)) -> (injective(compose(g, f)) and surjective(compose(g, f)))
-                [by implies_intro assume-f]
+                [by implies_intro given-f-bijective]
             }
-          @imp-g |
+          @g-bijective-implies-composite-bijective |
             (injective(g) and surjective(g)) -> (injective(f) and surjective(f))
             -> (injective(compose(g, f)) and surjective(compose(g, f)))
-            [by implies_intro assume-g]
+            [by implies_intro given-g-bijective]
         }
-      @close-f |
+      @discharge-f |
         forall f: Fn;
           (injective(g) and surjective(g)) -> (injective(f) and surjective(f))
           -> (injective(compose(g, f)) and surjective(compose(g, f)))
-        [by forall_intro gen-f]
+        [by forall_intro generalize-f]
     }
   @conclusion |
     forall g, f: Fn;
       (injective(g) and surjective(g)) -> (injective(f) and surjective(f))
       -> (injective(compose(g, f)) and surjective(compose(g, f)))
-    [by forall_intro gen-g]
+    [by forall_intro generalize-g]
 qed
 ```
 
@@ -682,144 +682,144 @@ bijective) and mark the **backward** direction, which `bpa` cannot yet encode.
 // Theorem B, forward (part 1): invertible ⇒ injective.
 theorem invertibleImpliesInjective: forall f: Fn; invertible(f) -> injective(f)
 proof
-  @gen-f |
+  @generalize-f |
     fix f: Fn {
-      @assume-inv |
+      @given-f-invertible |
         assume invertible(f) {
-          @inv-def |
+          @invertible-unfolds |
             forall ff: Fn;
               (invertible(ff) ->
                 (exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id))
               and ((exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id)
                 -> invertible(ff))
             [by axiom invertibleDef]
-          @inv-at |
+          @f-invertible-unfolds |
             (invertible(f) ->
               (exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id))
             and ((exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
               -> invertible(f))
-            [by forall_elim(f) inv-def]
-          @fwd-imp |
+            [by forall_elim(f) invertible-unfolds]
+          @f-invertible-gives-inverse |
             invertible(f) ->
               (exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
-            [by and_elim_left inv-at]
-          @inv-hyp |
+            [by and_elim_left f-invertible-unfolds]
+          @f-is-invertible |
             invertible(f)
-            [by hypothesis assume-inv]
-          @exists-g |
+            [by hypothesis given-f-invertible]
+          @inverse-exists |
             exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id
-            [by modus_ponens fwd-imp inv-hyp]
-          @unpacked |
-            unpack g: Fn from exists-g {
-              @g-props |
+            [by modus_ponens f-invertible-gives-inverse f-is-invertible]
+          @with-inverse-g |
+            unpack g: Fn from inverse-exists {
+              @g-is-two-sided-inverse |
                 compose(g, f) = id and compose(f, g) = id
-                [by hypothesis unpacked]
-              @gf-id |
+                [by hypothesis with-inverse-g]
+              @g-cancels-f-on-left |
                 compose(g, f) = id
-                [by and_elim_left g-props]
+                [by and_elim_left g-is-two-sided-inverse]
               // now show injectivity: f(a)=f(b) -> a=b
-              @inj-body |
+              @generalize-a |
                 fix a: Universe {
-                  @inj-body2 |
+                  @generalize-b |
                     fix b: Universe {
-                      @assume-eq |
+                      @given-fa-equals-fb |
                         assume apply(f, a) = apply(f, b) {
-                          @ca |
+                          @compose-applies |
                             forall gg, ff: Fn; forall x: Universe;
                               apply(compose(gg, ff), x) = apply(gg, apply(ff, x))
                             [by axiom composeApply]
                           // g(f(a)) = (g∘f)(a) = id(a) = a  ; same for b
-                          @gfa |
+                          @composite-a-unfolds |
                             apply(compose(g, f), a) = apply(g, apply(f, a))
-                            [by forall_elim(g, f, a) ca]
-                          @gfb |
+                            [by forall_elim(g, f, a) compose-applies]
+                          @composite-b-unfolds |
                             apply(compose(g, f), b) = apply(g, apply(f, b))
-                            [by forall_elim(g, f, b) ca]
-                          @id-app |
+                            [by forall_elim(g, f, b) compose-applies]
+                          @identity-applies |
                             forall x: Universe; apply(id, x) = x
                             [by axiom identityApply]
                           // (g∘f)(a) = a: rewrite compose(g,f)->id in gfa's LHS,
                           // then id(a)->a.
-                          @gfa-id |
+                          @id-of-a-equals-g-of-fa |
                             apply(id, a) = apply(g, apply(f, a))
-                            [by rewrite gf-id gfa]
-                          @id-a |
+                            [by rewrite g-cancels-f-on-left composite-a-unfolds]
+                          @id-fixes-a |
                             apply(id, a) = a
-                            [by forall_elim(a) id-app]
-                          @a-eq-gfa |
+                            [by forall_elim(a) identity-applies]
+                          @a-equals-g-of-fa |
                             a = apply(g, apply(f, a))
-                            [by rewrite id-a gfa-id]
-                          @lhs-a |
+                            [by rewrite id-fixes-a id-of-a-equals-g-of-fa]
+                          @g-of-fa-equals-a |
                             apply(g, apply(f, a)) = a
-                            [by symmetry a-eq-gfa]
-                          @gfb-id |
+                            [by symmetry a-equals-g-of-fa]
+                          @id-of-b-equals-g-of-fb |
                             apply(id, b) = apply(g, apply(f, b))
-                            [by rewrite gf-id gfb]
-                          @id-b |
+                            [by rewrite g-cancels-f-on-left composite-b-unfolds]
+                          @id-fixes-b |
                             apply(id, b) = b
-                            [by forall_elim(b) id-app]
-                          @b-eq-gfb |
+                            [by forall_elim(b) identity-applies]
+                          @b-equals-g-of-fb |
                             b = apply(g, apply(f, b))
-                            [by rewrite id-b gfb-id]
-                          @lhs-b |
+                            [by rewrite id-fixes-b id-of-b-equals-g-of-fb]
+                          @g-of-fb-equals-b |
                             apply(g, apply(f, b)) = b
-                            [by symmetry b-eq-gfb]
+                            [by symmetry b-equals-g-of-fb]
                           // f(a)=f(b) => g(f(a))=g(f(b)); chain to a=b
-                          @eq-hyp |
+                          @fa-equals-fb |
                             apply(f, a) = apply(f, b)
-                            [by hypothesis assume-eq]
-                          @gfa-refl |
+                            [by hypothesis given-fa-equals-fb]
+                          @g-of-fa-reflexive |
                             apply(g, apply(f, a)) = apply(g, apply(f, a))
                             [by reflexivity]
-                          @gfa-eq-gfb |
+                          @g-of-fa-equals-g-of-fb |
                             apply(g, apply(f, a)) = apply(g, apply(f, b))
-                            [by rewrite eq-hyp gfa-refl]
+                            [by rewrite fa-equals-fb g-of-fa-reflexive]
                           // a = g(f(a)) = g(f(b)) = b
-                          @a-eq-gfb |
+                          @a-equals-g-of-fb |
                             a = apply(g, apply(f, b))
-                            [by rewrite lhs-a gfa-eq-gfb]
-                          @a-eq-b |
+                            [by rewrite g-of-fa-equals-a g-of-fa-equals-g-of-fb]
+                          @a-equals-b |
                             a = b
-                            [by rewrite lhs-b a-eq-gfb]
+                            [by rewrite g-of-fb-equals-b a-equals-g-of-fb]
                         }
-                      @imp-b |
+                      @f-injective-at-a-b |
                         apply(f, a) = apply(f, b) -> a = b
-                        [by implies_intro assume-eq]
+                        [by implies_intro given-fa-equals-fb]
                     }
-                  @close-b |
+                  @discharge-b |
                     forall b: Universe; apply(f, a) = apply(f, b) -> a = b
-                    [by forall_intro inj-body2]
+                    [by forall_intro generalize-b]
                 }
-              @inj-all |
+              @f-is-pointwise-injective |
                 forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b
-                [by forall_intro inj-body]
-              @inj-def |
+                [by forall_intro generalize-a]
+              @injective-unfolds |
                 forall ff: Fn;
                   (injective(ff) -> (forall a, b: Universe; apply(ff, a) = apply(ff, b) -> a = b))
                   and ((forall a, b: Universe; apply(ff, a) = apply(ff, b) -> a = b) -> injective(ff))
                 [by axiom injectiveDef]
-              @inj-at |
+              @f-injective-unfolds |
                 (injective(f) -> (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b))
                 and ((forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
-                [by forall_elim(f) inj-def]
-              @inj-bwd |
+                [by forall_elim(f) injective-unfolds]
+              @pointwise-injective-gives-injective |
                 (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f)
-                [by and_elim_right inj-at]
-              @injective-f |
+                [by and_elim_right f-injective-unfolds]
+              @f-is-injective |
                 injective(f)
-                [by modus_ponens inj-bwd inj-all]
+                [by modus_ponens pointwise-injective-gives-injective f-is-pointwise-injective]
             }
-          @inj-out |
+          @f-is-injective-from-inverse |
             injective(f)
-            [by exists_elim unpacked]
+            [by exists_elim with-inverse-g]
         }
-      @imp |
+      @f-invertible-implies-injective |
         invertible(f) -> injective(f)
-        [by implies_intro assume-inv]
+        [by implies_intro given-f-invertible]
     }
   @conclusion |
     forall f: Fn; invertible(f) -> injective(f)
-    [by forall_intro gen-f]
+    [by forall_intro generalize-f]
 qed
 ```
 
@@ -831,100 +831,100 @@ qed
 // From f∘g = id: for any y, f(g(y)) = y, so x := g(y) is a preimage.
 theorem invertibleImpliesSurjective: forall f: Fn; invertible(f) -> surjective(f)
 proof
-  @gen-f |
+  @generalize-f |
     fix f: Fn {
-      @assume-inv |
+      @given-f-invertible |
         assume invertible(f) {
-          @inv-def |
+          @invertible-unfolds |
             forall ff: Fn;
               (invertible(ff) ->
                 (exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id))
               and ((exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id)
                 -> invertible(ff))
             [by axiom invertibleDef]
-          @inv-at |
+          @f-invertible-unfolds |
             (invertible(f) ->
               (exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id))
             and ((exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
               -> invertible(f))
-            [by forall_elim(f) inv-def]
-          @fwd-imp |
+            [by forall_elim(f) invertible-unfolds]
+          @f-invertible-gives-inverse |
             invertible(f) ->
               (exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
-            [by and_elim_left inv-at]
-          @inv-hyp |
+            [by and_elim_left f-invertible-unfolds]
+          @f-is-invertible |
             invertible(f)
-            [by hypothesis assume-inv]
-          @exists-g |
+            [by hypothesis given-f-invertible]
+          @inverse-exists |
             exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id
-            [by modus_ponens fwd-imp inv-hyp]
-          @unpacked |
-            unpack g: Fn from exists-g {
-              @g-props |
+            [by modus_ponens f-invertible-gives-inverse f-is-invertible]
+          @with-inverse-g |
+            unpack g: Fn from inverse-exists {
+              @g-is-two-sided-inverse |
                 compose(g, f) = id and compose(f, g) = id
-                [by hypothesis unpacked]
-              @fg-id |
+                [by hypothesis with-inverse-g]
+              @f-cancels-g-on-left |
                 compose(f, g) = id
-                [by and_elim_right g-props]
-              @surj-body |
+                [by and_elim_right g-is-two-sided-inverse]
+              @generalize-y |
                 fix y: Universe {
                   // witness x = g(y): f(g(y)) = (f∘g)(y) = id(y) = y
-                  @ca |
+                  @compose-applies |
                     forall gg, ff: Fn; forall x: Universe;
                       apply(compose(gg, ff), x) = apply(gg, apply(ff, x))
                     [by axiom composeApply]
-                  @fgy |
+                  @composite-at-y-unfolds |
                     apply(compose(f, g), y) = apply(f, apply(g, y))
-                    [by forall_elim(f, g, y) ca]
-                  @id-app |
+                    [by forall_elim(f, g, y) compose-applies]
+                  @identity-applies |
                     forall x: Universe; apply(id, x) = x
                     [by axiom identityApply]
-                  @fgy-id |
+                  @id-of-y-equals-f-of-gy |
                     apply(id, y) = apply(f, apply(g, y))
-                    [by rewrite fg-id fgy]
-                  @id-y |
+                    [by rewrite f-cancels-g-on-left composite-at-y-unfolds]
+                  @id-fixes-y |
                     apply(id, y) = y
-                    [by forall_elim(y) id-app]
-                  @y-eq |
+                    [by forall_elim(y) identity-applies]
+                  @y-equals-f-of-gy |
                     y = apply(f, apply(g, y))
-                    [by rewrite id-y fgy-id]
-                  @f-hits |
+                    [by rewrite id-fixes-y id-of-y-equals-f-of-gy]
+                  @f-maps-gy-to-y |
                     apply(f, apply(g, y)) = y
-                    [by symmetry y-eq]
-                  @witness |
+                    [by symmetry y-equals-f-of-gy]
+                  @y-has-preimage |
                     exists x: Universe; apply(f, x) = y
-                    [by exists_intro(apply(g, y)) f-hits]
+                    [by exists_intro(apply(g, y)) f-maps-gy-to-y]
                 }
-              @surj-all |
+              @f-is-pointwise-surjective |
                 forall y: Universe; exists x: Universe; apply(f, x) = y
-                [by forall_intro surj-body]
-              @surj-def |
+                [by forall_intro generalize-y]
+              @surjective-unfolds |
                 forall ff: Fn;
                   (surjective(ff) -> (forall y: Universe; exists x: Universe; apply(ff, x) = y))
                   and ((forall y: Universe; exists x: Universe; apply(ff, x) = y) -> surjective(ff))
                 [by axiom surjectiveDef]
-              @surj-at |
+              @f-surjective-unfolds |
                 (surjective(f) -> (forall y: Universe; exists x: Universe; apply(f, x) = y))
                 and ((forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f))
-                [by forall_elim(f) surj-def]
-              @surj-bwd |
+                [by forall_elim(f) surjective-unfolds]
+              @pointwise-surjective-gives-surjective |
                 (forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f)
-                [by and_elim_right surj-at]
-              @surjective-f |
+                [by and_elim_right f-surjective-unfolds]
+              @f-is-surjective |
                 surjective(f)
-                [by modus_ponens surj-bwd surj-all]
+                [by modus_ponens pointwise-surjective-gives-surjective f-is-pointwise-surjective]
             }
-          @surj-out |
+          @f-is-surjective-from-inverse |
             surjective(f)
-            [by exists_elim unpacked]
+            [by exists_elim with-inverse-g]
         }
-      @imp |
+      @f-invertible-implies-surjective |
         invertible(f) -> surjective(f)
-        [by implies_intro assume-inv]
+        [by implies_intro given-f-invertible]
     }
   @conclusion |
     forall f: Fn; invertible(f) -> surjective(f)
-    [by forall_intro gen-f]
+    [by forall_intro generalize-f]
 qed
 ```
 
@@ -935,24 +935,24 @@ qed
 theorem invertibleImpliesBijective: forall f: Fn;
   invertible(f) -> (injective(f) and surjective(f))
 proof
-  @gen-f |
+  @generalize-f |
     fix f: Fn {
-      @assume-inv |
+      @given-f-invertible |
         assume invertible(f) {
-          @inv-hyp | invertible(f) [by hypothesis assume-inv]
-          @ii-thm | forall ff: Fn; invertible(ff) -> injective(ff) [by theorem invertibleImpliesInjective]
-          @ii-at | invertible(f) -> injective(f) [by forall_elim(f) ii-thm]
-          @inj-f | injective(f) [by modus_ponens ii-at inv-hyp]
-          @is-thm | forall ff: Fn; invertible(ff) -> surjective(ff) [by theorem invertibleImpliesSurjective]
-          @is-at | invertible(f) -> surjective(f) [by forall_elim(f) is-thm]
-          @surj-f | surjective(f) [by modus_ponens is-at inv-hyp]
-          @both | injective(f) and surjective(f) [by and_intro inj-f surj-f]
+          @f-is-invertible | invertible(f) [by hypothesis given-f-invertible]
+          @invertible-implies-injective-theorem | forall ff: Fn; invertible(ff) -> injective(ff) [by theorem invertibleImpliesInjective]
+          @invertible-implies-injective-at-f | invertible(f) -> injective(f) [by forall_elim(f) invertible-implies-injective-theorem]
+          @f-is-injective | injective(f) [by modus_ponens invertible-implies-injective-at-f f-is-invertible]
+          @invertible-implies-surjective-theorem | forall ff: Fn; invertible(ff) -> surjective(ff) [by theorem invertibleImpliesSurjective]
+          @invertible-implies-surjective-at-f | invertible(f) -> surjective(f) [by forall_elim(f) invertible-implies-surjective-theorem]
+          @f-is-surjective | surjective(f) [by modus_ponens invertible-implies-surjective-at-f f-is-invertible]
+          @f-is-bijective | injective(f) and surjective(f) [by and_intro f-is-injective f-is-surjective]
         }
-      @imp | invertible(f) -> (injective(f) and surjective(f)) [by implies_intro assume-inv]
+      @f-invertible-implies-bijective | invertible(f) -> (injective(f) and surjective(f)) [by implies_intro given-f-invertible]
     }
   @conclusion |
     forall f: Fn; invertible(f) -> (injective(f) and surjective(f))
-    [by forall_intro gen-f]
+    [by forall_intro generalize-f]
 qed
 ```
 
