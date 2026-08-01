@@ -468,7 +468,7 @@ proof
             case on p-parity {
               @p-even |
                 assume divides(TWO, p) {
-                  @done |
+                  @two-divides-p |
                     divides(TWO, p)
                     [by hypothesis p-even]
                 }

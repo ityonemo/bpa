@@ -2087,11 +2087,11 @@ proof
                 c != ZERO -> mul(c, a) = mul(c, b) -> a = b
                 [by implies_intro given-c-nonzero]
             }
-          @close-b |
+          @discharge-b |
             forall b: Nat; c != ZERO -> mul(c, a) = mul(c, b) -> a = b
             [by forall_intro generalize-b]
         }
-      @close-a |
+      @discharge-a |
         forall a, b: Nat; c != ZERO -> mul(c, a) = mul(c, b) -> a = b
         [by forall_intro generalize-a]
     }

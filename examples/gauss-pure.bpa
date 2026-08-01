@@ -86,7 +86,7 @@ proof
                   @right-side-nesting-flipped |
                     add(a, add(c, add(b, d))) = add(add(a, c), add(b, d))
                     [by rewrite right-side-right-nested right-side-refl]
-                  @done |
+                  @quadruple-sum-rearranged |
                     add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
                     [by rewrite right-side-nesting-flipped left-side-with-b-c-swapped]
                 }

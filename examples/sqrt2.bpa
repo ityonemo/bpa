@@ -205,7 +205,7 @@ proof
             gcd_of(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
             [by implies_intro given-coprime]
         }
-      @close-q |
+      @discharge-q |
         forall q: Nat; gcd_of(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
         [by forall_intro generalize-q]
     }

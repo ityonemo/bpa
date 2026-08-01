@@ -52,7 +52,7 @@ qed
 //          but forall_intro derives 'forall n: Nat; is_zero(ZERO)'
 theorem everythingIsZero: forall n: Nat; is_zero(n)
 proof
-  @gen |
+  @generalize-n |
     fix n: Nat {
       @zero-is-zero |
         is_zero(ZERO)
@@ -60,7 +60,7 @@ proof
     }
   @conclusion |
     forall n: Nat; is_zero(n)
-    [by forall_intro gen]
+    [by forall_intro generalize-n]
 qed
 
 // -- wrong proof 3: ignoring a guard ----------------------------------------

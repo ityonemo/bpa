@@ -1283,7 +1283,7 @@ proof
                       @cancel-at-a2-b2 |
                         add(k, a2) = add(k, b2) -> a2 = b2
                         [by forall_elim(a2, b2) inductive-hypothesis]
-                      @done |
+                      @a2-equals-b2 |
                         a2 = b2
                         [by modus_ponens cancel-at-a2-b2 unpadded-sums-are-equal]
                     }
