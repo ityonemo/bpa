@@ -1,6 +1,6 @@
 ---
 name: bpa-query
-description: Inspect and navigate a bpa proof corpus (.bpa files) with the `bpa query` commands — outline a proof's structure, print a theorem's full source or one-line signature, trace an identifier to its origin across alias/import hops, or fuzzy-search for a lemma by name/concept. Use these BEFORE grepping for anything that involves a proof's shape, a theorem's exact statement/binder-order, following an alias to another file, or finding a lemma when you don't recall its name. For plain text searches (label audits, "who uses [by X]", counts) prefer grep — these tools cover only what grep can't do cleanly.
+description: Inspect and navigate a bpa proof corpus (.bpa files) with the `bpa query` commands — outline a proof's structure, print a theorem's full source or one-line signature, trace an identifier to its origin across alias/import hops, fuzzy-search for a lemma by name/concept, audit what a proof depends on (rules + cited axioms/theorems), or flag its oracle-capable steps. Use these BEFORE grepping for anything that involves a proof's shape, a theorem's exact statement/binder-order, following an alias to another file, finding a lemma when you don't recall its name, "which proofs use rule/lemma X" or "what does theorem X depend on", or "is this file pure / where might it taint". For plain text searches (counts, listing declarations, raw label greps) prefer grep — these tools cover only what grep can't do cleanly.
 ---
 
 # bpa query — navigating a proof corpus
@@ -9,16 +9,18 @@ description: Inspect and navigate a bpa proof corpus (.bpa files) with the `bpa 
 blocks are extracted, like `check`) without checking them, for navigation. Build
 the binary first if needed (`zig build`); it lands at `./zig-out/bin/bpa`.
 
-**Guiding principle: we love grep.** grep/sed/awk are the default for text
-searches over the corpus — label audits (`grep -rhoE '@[a-z-]+' std/*.bpa`),
-"who uses `[by arithmetic]`" (`grep -rn '\[by arithmetic\]'`), counts, listing
-`^theorem`/`^forward`. Reach for `bpa query` ONLY for the things grep does
-badly: a proof's *structure*, a theorem's *exact statement* (which may wrap
-across lines), *following aliases across files*, or *finding a lemma by concept*
-when the name is fuzzy. Each command below exists precisely because grep can't
-do that one thing easily or in one step.
+**Guiding principle: we love grep.** grep/sed/awk are the default for plain
+text searches over the corpus — counts, listing `^theorem`/`^forward`/`^axiom`,
+raw label greps (`grep -rhoE '@[a-z-]+' std/*.bpa`). Reach for `bpa query` for
+the things grep does badly: a proof's *structure*, a theorem's *exact statement*
+(which may wrap across lines), *following aliases across files*, *finding a
+lemma by concept* when the name is fuzzy, and — the semantic questions grep gets
+*wrong* — *what a proof depends on* and *which proofs use a rule or lemma*
+(a `[by …]` can wrap across lines and an alias hides the real target, so a grep
+both misses and misreports) and *whether a proof can taint*. Each command below
+exists precisely because grep can't do that one thing correctly in one step.
 
-## The four commands
+## The six commands
 
 ### `bpa query outline <file> [theorem]`
 The proof **skeleton**: one line per step (bare label), with a header on each
@@ -72,9 +74,44 @@ and deterministic (no ML — semantic search is a future, caching-era upgrade).
 
 ```
 $ bpa query search std cancel
+std/peano-ordering.bpa:1094:  theorem lessThanAddCancelLeft: forall c, a, b: Nat; less_than(add(c, a), add(c, b)) -> less_than(a, b)
 std/peano-ordering.bpa:1960:  theorem mulCancelLeft: forall c, a, b: Nat; c != ZERO -> mul(c, a) = mul(c, b) -> a = b
-std/peano.bpa:1210:  theorem addCancelLeft: forall c, a, b: Nat; add(c, a) = add(c, b) -> a = b
 ...
+```
+
+### `bpa query uses <file> [theorem]`
+The **dependency audit** of a proof: per proof, the **rules/tactics** it invokes
+(with counts) and the **external axioms/theorems/schemas** it cites (its own
+step labels excluded). No theorem arg → every proof in the file. This answers
+"**what does theorem X depend on?**" and, run over a file/corpus and filtered,
+"**which proofs use `assoc` / this oracle rule / this lemma?**" — semantic and
+alias-aware, where a multi-line `[by …]` and alias indirection defeat grep.
+
+```
+$ bpa query uses aata/groups.md invProduct
+theorem invProduct
+  rules: assoc axiom×2 forall_elim×4 rewrite×3 theorem modus_ponens symmetry forall_intro×2
+  cites: inverseRight identityLeft inverseUnique
+```
+
+"Which proofs use `assoc`?" — `bpa query uses <file> | grep -B1 'rules:.*assoc'`
+(the query gets the semantics right; grep just filters its clean output).
+
+### `bpa query oracles <file> [theorem]`
+The **purity audit**: per proof, every step whose rule is **oracle-capable**
+(`arithmetic`, `tautology`, `polynomial`, `assoc_commut`, `assoc`, and their
+quantified variants), flagged at its `file:line:col`. These are the steps that
+*could* taint (and do, under `--fast`, when they can't certify). A clean report
+means the file's proofs are pure. `simplify`/`simplify_quantified` never taint,
+so they are never flagged.
+
+```
+$ bpa query oracles examples/peano.bpa
+theorem twoPlusTwo
+  examples/peano.bpa:162:9: arithmetic
+...
+$ bpa query oracles std/peano-gcd.bpa
+no oracle-capable steps — this file's proofs are pure
 ```
 
 ## Typical workflow
@@ -88,4 +125,10 @@ Writing a proof and need a lemma:
 4. `bpa query outline <file> <similar-theorem>` — model your proof's structure
    on an existing one.
 
-For everything textual (labels, tactic-usage sites, counts), just grep.
+Auditing a proof or a file:
+- `bpa query uses <file> <theorem>` — what a proof leans on (before refactoring
+  a lemma: who depends on it? run `uses` over the corpus and filter).
+- `bpa query oracles <file>` — is it pure, and if not, exactly which steps are
+  the taint risk to make certificate-clean.
+
+For plain text (counts, `^theorem`/`^axiom` listings, raw label greps), grep.
