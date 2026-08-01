@@ -194,11 +194,11 @@ theorem identityUnique: forall x: G; (forall g: G; op(x, g) = g) -> x = e
 proof
   @generalize-x |
     fix x: G {
-      @given |
+      @given-x-is-left-identity |
         assume forall g: G; op(x, g) = g {
           @x-left-id |
             forall g: G; op(x, g) = g
-            [by hypothesis given]
+            [by hypothesis given-x-is-left-identity]
           @x-times-e-is-e |
             op(x, e) = e
             [by forall_elim(e) x-left-id]
@@ -214,7 +214,7 @@ proof
         }
       @discharge |
         (forall g: G; op(x, g) = g) -> x = e
-        [by implies_intro given]
+        [by implies_intro given-x-is-left-identity]
     }
   @conclusion |
     forall x: G; (forall g: G; op(x, g) = g) -> x = e
@@ -240,11 +240,11 @@ proof
     fix a: G {
       @generalize-b |
         fix b: G {
-          @given |
+          @given-b-is-right-inverse-of-a |
             assume op(a, b) = e {
               @ab-is-e |
                 op(a, b) = e
-                [by hypothesis given]
+                [by hypothesis given-b-is-right-inverse-of-a]
               @id-left |
                 forall g: G; op(e, g) = g
                 [by axiom identityLeft]
@@ -287,9 +287,9 @@ proof
             }
           @discharge |
             op(a, b) = e -> b = inv(a)
-            [by implies_intro given]
+            [by implies_intro given-b-is-right-inverse-of-a]
         }
-      @close-b |
+      @discharge-b |
         forall b: G; op(a, b) = e -> b = inv(a)
         [by forall_intro generalize-b]
     }
@@ -345,17 +345,17 @@ proof
           @inv-unique |
             forall x, y: G; op(x, y) = e -> y = inv(x)
             [by theorem inverseUnique]
-          @at-prod |
+          @inverse-unique-at-product |
             op(op(a, b), op(inv(b), inv(a))) = e -> op(inv(b), inv(a)) = inv(op(a, b))
             [by forall_elim(op(a, b), op(inv(b), inv(a))) inv-unique]
-          @rhs-is-inv |
+          @product-of-inverses-is-inverse |
             op(inv(b), inv(a)) = inv(op(a, b))
-            [by modus_ponens at-prod product-is-e]
-          @conclusion-inner |
+            [by modus_ponens inverse-unique-at-product product-is-e]
+          @inverse-of-product-is-inverses-swapped |
             inv(op(a, b)) = op(inv(b), inv(a))
-            [by symmetry rhs-is-inv]
+            [by symmetry product-of-inverses-is-inverse]
         }
-      @close-b |
+      @discharge-b |
         forall b: G; inv(op(a, b)) = op(inv(b), inv(a))
         [by forall_intro generalize-b]
     }
@@ -390,12 +390,12 @@ proof
       @inv-unique |
         forall x, y: G; op(x, y) = e -> y = inv(x)
         [by theorem inverseUnique]
-      @at-inva-a |
+      @inverse-unique-at-inva-a |
         op(inv(a), a) = e -> a = inv(inv(a))
         [by forall_elim(inv(a), a) inv-unique]
       @a-is-invinva |
         a = inv(inv(a))
-        [by modus_ponens at-inva-a inva-a-is-e]
+        [by modus_ponens inverse-unique-at-inva-a inva-a-is-e]
       @invinva-is-a |
         inv(inv(a)) = a
         [by symmetry a-is-invinva]
@@ -441,14 +441,14 @@ proof
           @id-right |
             forall g: G; op(g, e) = g
             [by axiom identityRight]
-          @b-e |
+          @b-times-identity-is-b |
             op(b, e) = b
             [by forall_elim(b) id-right]
-          @conclusion-inner |
+          @product-with-inverse-cancels-to-b |
             op(op(b, inv(a)), a) = b
-            [by rewrite b-e with-e]
+            [by rewrite b-times-identity-is-b with-e]
         }
-      @close-b |
+      @discharge-b |
         forall b: G; op(op(b, inv(a)), a) = b
         [by forall_intro generalize-b]
     }
@@ -495,7 +495,7 @@ proof
                           @xa-refl |
                             op(op(x, a), inv(a)) = op(op(x, a), inv(a))
                             [by reflexivity]
-                          @mult |
+                          @right-multiply-by-inva |
                             op(op(x, a), inv(a)) = op(op(y, a), inv(a))
                             [by rewrite xa-ya xa-refl]
                           @assoc-x |
@@ -534,12 +534,12 @@ proof
                           @x-is-mult |
                             x = op(op(x, a), inv(a))
                             [by symmetry lhs-is-x]
-                          @x-is-rhs |
+                          @x-equals-y-side-product |
                             x = op(op(y, a), inv(a))
-                            [by rewrite mult x-is-mult]
+                            [by rewrite right-multiply-by-inva x-is-mult]
                           @x-is-y |
                             x = y
-                            [by rewrite rhs-is-y x-is-rhs]
+                            [by rewrite rhs-is-y x-equals-y-side-product]
                         }
                       @disch-y |
                         op(y, a) = b -> x = y
@@ -549,15 +549,15 @@ proof
                     op(x, a) = b -> op(y, a) = b -> x = y
                     [by implies_intro given-x]
                 }
-              @close-y |
+              @discharge-y |
                 forall y: G; op(x, a) = b -> op(y, a) = b -> x = y
                 [by forall_intro generalize-y]
             }
-          @close-x |
+          @discharge-x |
             forall x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
             [by forall_intro generalize-x]
         }
-      @close-b |
+      @discharge-b |
         forall b, x, y: G; op(x, a) = b -> op(y, a) = b -> x = y
         [by forall_intro generalize-b]
     }
@@ -585,18 +585,18 @@ proof
         fix b: G {
           @generalize-c |
             fix c: G {
-              @given |
+              @given-right-products-equal |
                 assume op(b, a) = op(c, a) {
-                  @hyp |
+                  @right-products-equal |
                     op(b, a) = op(c, a)
-                    [by hypothesis given]
-                  @hyp-refl |
+                    [by hypothesis given-right-products-equal]
+                  @right-product-with-inverse-refl |
                     op(op(b, a), inv(a)) = op(op(b, a), inv(a))
                     [by reflexivity]
-                  @mult |
+                  @right-multiply-by-inva |
                     op(op(b, a), inv(a)) = op(op(c, a), inv(a))
-                    [by rewrite hyp hyp-refl]
-                  @assoc-b |
+                    [by rewrite right-products-equal right-product-with-inverse-refl]
+                  @reassociate-around-b |
                     op(op(b, a), inv(a)) = op(b, op(a, inv(a)))
                     [by assoc(associative)]
                   @a-inva |
@@ -607,7 +607,7 @@ proof
                     [by forall_elim(a) a-inva]
                   @assoc-b-e |
                     op(op(b, a), inv(a)) = op(b, e)
-                    [by rewrite a-inva-is-e assoc-b]
+                    [by rewrite a-inva-is-e reassociate-around-b]
                   @id-right |
                     forall g: G; op(g, e) = g
                     [by axiom identityRight]
@@ -617,12 +617,12 @@ proof
                   @lhs-is-b |
                     op(op(b, a), inv(a)) = b
                     [by rewrite b-e-is-b assoc-b-e]
-                  @assoc-c |
+                  @reassociate-around-c |
                     op(op(c, a), inv(a)) = op(c, op(a, inv(a)))
                     [by assoc(associative)]
                   @assoc-c-e |
                     op(op(c, a), inv(a)) = op(c, e)
-                    [by rewrite a-inva-is-e assoc-c]
+                    [by rewrite a-inva-is-e reassociate-around-c]
                   @c-e-is-c |
                     op(c, e) = c
                     [by forall_elim(c) id-right]
@@ -632,22 +632,22 @@ proof
                   @b-is-mult |
                     b = op(op(b, a), inv(a))
                     [by symmetry lhs-is-b]
-                  @b-is-rhs |
+                  @b-equals-c-side-product |
                     b = op(op(c, a), inv(a))
-                    [by rewrite mult b-is-mult]
+                    [by rewrite right-multiply-by-inva b-is-mult]
                   @b-is-c |
                     b = c
-                    [by rewrite rhs-is-c b-is-rhs]
+                    [by rewrite rhs-is-c b-equals-c-side-product]
                 }
               @discharge |
                 op(b, a) = op(c, a) -> b = c
-                [by implies_intro given]
+                [by implies_intro given-right-products-equal]
             }
-          @close-c |
+          @discharge-c |
             forall c: G; op(b, a) = op(c, a) -> b = c
             [by forall_intro generalize-c]
         }
-      @close-b |
+      @discharge-b |
         forall b, c: G; op(b, a) = op(c, a) -> b = c
         [by forall_intro generalize-b]
     }
@@ -668,18 +668,18 @@ proof
         fix b: G {
           @generalize-c |
             fix c: G {
-              @given |
+              @given-left-products-equal |
                 assume op(a, b) = op(a, c) {
-                  @hyp |
+                  @left-products-equal |
                     op(a, b) = op(a, c)
-                    [by hypothesis given]
-                  @hyp-refl |
+                    [by hypothesis given-left-products-equal]
+                  @left-product-with-inverse-refl |
                     op(inv(a), op(a, b)) = op(inv(a), op(a, b))
                     [by reflexivity]
-                  @mult |
+                  @left-multiply-by-inva |
                     op(inv(a), op(a, b)) = op(inv(a), op(a, c))
-                    [by rewrite hyp hyp-refl]
-                  @assoc-b |
+                    [by rewrite left-products-equal left-product-with-inverse-refl]
+                  @reassociate-around-b |
                     op(op(inv(a), a), b) = op(inv(a), op(a, b))
                     [by assoc(associative)]
                   @inv-left |
@@ -690,7 +690,7 @@ proof
                     [by forall_elim(a) inv-left]
                   @lhs1 |
                     op(e, b) = op(inv(a), op(a, b))
-                    [by rewrite inva-a-is-e assoc-b]
+                    [by rewrite inva-a-is-e reassociate-around-b]
                   @id-left |
                     forall g: G; op(e, g) = g
                     [by axiom identityLeft]
@@ -700,37 +700,37 @@ proof
                   @b-is-lhs |
                     b = op(inv(a), op(a, b))
                     [by rewrite e-b-is-b lhs1]
-                  @b-is-rhs |
+                  @b-equals-c-side-product |
                     b = op(inv(a), op(a, c))
-                    [by rewrite mult b-is-lhs]
-                  @assoc-c |
+                    [by rewrite left-multiply-by-inva b-is-lhs]
+                  @reassociate-around-c |
                     op(op(inv(a), a), c) = op(inv(a), op(a, c))
                     [by assoc(associative)]
                   @rhs1 |
                     op(e, c) = op(inv(a), op(a, c))
-                    [by rewrite inva-a-is-e assoc-c]
+                    [by rewrite inva-a-is-e reassociate-around-c]
                   @e-c-is-c |
                     op(e, c) = c
                     [by forall_elim(c) id-left]
-                  @c-is-rhs |
+                  @c-equals-c-side-product |
                     c = op(inv(a), op(a, c))
                     [by rewrite e-c-is-c rhs1]
                   @rhs-is-c |
                     op(inv(a), op(a, c)) = c
-                    [by symmetry c-is-rhs]
+                    [by symmetry c-equals-c-side-product]
                   @b-is-c |
                     b = c
-                    [by rewrite rhs-is-c b-is-rhs]
+                    [by rewrite rhs-is-c b-equals-c-side-product]
                 }
               @discharge |
                 op(a, b) = op(a, c) -> b = c
-                [by implies_intro given]
+                [by implies_intro given-left-products-equal]
             }
-          @close-c |
+          @discharge-c |
             forall c: G; op(a, b) = op(a, c) -> b = c
             [by forall_intro generalize-c]
         }
-      @close-b |
+      @discharge-b |
         forall b, c: G; op(a, b) = op(a, c) -> b = c
         [by forall_intro generalize-b]
     }
@@ -805,52 +805,52 @@ $ab = (ab)^{-1} = b^{-1}a^{-1} = ba$. (This uses only the $n = 2$, i.e.
 ```bpa
 theorem selfInverse: (forall a: G; op(a, a) = e) -> forall a: G; inv(a) = a
 proof
-  @given |
+  @given-every-square-is-identity |
     assume forall a: G; op(a, a) = e {
-      @sq |
+      @every-square-is-identity |
         forall a: G; op(a, a) = e
-        [by hypothesis given]
+        [by hypothesis given-every-square-is-identity]
       @generalize-a |
         fix a: G {
           @aa-is-e |
             op(a, a) = e
-            [by forall_elim(a) sq]
+            [by forall_elim(a) every-square-is-identity]
           @inv-unique |
             forall x, y: G; op(x, y) = e -> y = inv(x)
             [by theorem inverseUnique]
-          @at |
+          @inverse-unique-at-a-a |
             op(a, a) = e -> a = inv(a)
             [by forall_elim(a, a) inv-unique]
           @a-is-inva |
             a = inv(a)
-            [by modus_ponens at aa-is-e]
+            [by modus_ponens inverse-unique-at-a-a aa-is-e]
           @inva-is-a |
             inv(a) = a
             [by symmetry a-is-inva]
         }
-      @discharge-inner |
+      @every-element-is-its-own-inverse-for-all-a |
         forall a: G; inv(a) = a
         [by forall_intro generalize-a]
     }
   @conclusion |
     (forall a: G; op(a, a) = e) -> forall a: G; inv(a) = a
-    [by implies_intro given]
+    [by implies_intro given-every-square-is-identity]
 qed
 
 theorem squareIdImpliesAbelian:
   (forall a: G; op(a, a) = e) -> forall x, y: G; op(x, y) = op(y, x)
 proof
-  @given |
+  @given-every-square-is-identity |
     assume forall a: G; op(a, a) = e {
-      @sq |
+      @every-square-is-identity |
         forall a: G; op(a, a) = e
-        [by hypothesis given]
+        [by hypothesis given-every-square-is-identity]
       @self-inv-thm |
         (forall a: G; op(a, a) = e) -> forall a: G; inv(a) = a
         [by theorem selfInverse]
       @self-inv |
         forall a: G; inv(a) = a
-        [by modus_ponens self-inv-thm sq]
+        [by modus_ponens self-inv-thm every-square-is-identity]
       @generalize-x |
         fix x: G {
           @generalize-y |
@@ -870,30 +870,30 @@ proof
               @inv-xy-self |
                 inv(op(x, y)) = op(x, y)
                 [by forall_elim(op(x, y)) self-inv]
-              @step1 |
+              @inv-of-xy-equals-y-inv-x |
                 inv(op(x, y)) = op(y, inv(x))
                 [by rewrite inv-y inv-xy]
-              @step2 |
+              @inv-of-xy-equals-y-x |
                 inv(op(x, y)) = op(y, x)
-                [by rewrite inv-x step1]
+                [by rewrite inv-x inv-of-xy-equals-y-inv-x]
               @xy-is-inv |
                 op(x, y) = inv(op(x, y))
                 [by symmetry inv-xy-self]
               @xy-is-yx |
                 op(x, y) = op(y, x)
-                [by rewrite step2 xy-is-inv]
+                [by rewrite inv-of-xy-equals-y-x xy-is-inv]
             }
-          @close-y |
+          @discharge-y |
             forall y: G; op(x, y) = op(y, x)
             [by forall_intro generalize-y]
         }
-      @discharge-inner |
+      @commutes-for-all-x |
         forall x, y: G; op(x, y) = op(y, x)
         [by forall_intro generalize-x]
     }
   @conclusion |
     (forall a: G; op(a, a) = e) -> forall x, y: G; op(x, y) = op(y, x)
-    [by implies_intro given]
+    [by implies_intro given-every-square-is-identity]
 qed
 ```
 
