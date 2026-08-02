@@ -22,7 +22,7 @@ pub fn addTests(
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
     // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2
     // exercises discharged in one line each by the `ext` tactic).
-    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 50 declarations, 19 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 69 declarations, 19 theorems proven\n");
 
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
     // (composition associativity/preservation + invertible⇒bijective
@@ -40,7 +40,7 @@ pub fn addTests(
     // `hole`, so the file needs --draft; default mode rejects it, naming the
     // one remaining hole.
     ctx.ok(&.{ "check", "--draft", "aata/1.2.3-partitions.md" },
-        \\OK: 76 declarations, 3 theorems proven
+        \\OK: 95 declarations, 22 theorems proven
         \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): classesCoverUniverse; re-run `bpa check` (no --draft) once filled.
         \\
     );

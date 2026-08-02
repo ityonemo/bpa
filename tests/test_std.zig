@@ -65,13 +65,12 @@ pub fn addTests(
     // notation; the checked proofs live here.
     ctx.ok(&.{ "check", "std/group.bpa" }, "OK: 20 declarations, 10 theorems proven\n");
 
-    // the set theory (std/set.bpa): axioms only, no theorems — a direct
-    // check materializes nothing and exits nonzero with a warning.
-    ctx.okCode(&.{ "check", "std/set.bpa" },
-        \\OK: 16 declarations, 0 theorems proven
-        \\  — WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).
-        \\
-    , 1);
+    // the set theory (std/set.bpa): the membership axioms + extensionality, and
+    // the 19 set-algebra identities (idempotence, identity, associativity,
+    // commutativity, distributivity, De Morgan, difference laws) proved from them
+    // by the extensionality→unfold→tautology recipe. Available for a structure to
+    // `model` and inherit. The AATA transcription (aata/1.2.1-sets.md) aliases these.
+    ctx.ok(&.{ "check", "std/set.bpa" }, "OK: 35 declarations, 19 theorems proven\n");
 
     // the function theory (std/function.bpa): axioms only, no theorems — a
     // direct check materializes nothing and exits nonzero with a warning.

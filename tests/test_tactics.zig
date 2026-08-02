@@ -49,7 +49,7 @@ pub fn addTests(
     // reduce an equation to its pointwise obligation via the theory's
     // extensionality lemma, unfold the operators, close the residue. SET model
     // (propositional residue → tautology); emits kernel steps.
-    ctx.ok(&.{ "check", "tests/cases/ext_set.bpa" }, "OK: 28 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/ext_set.bpa" }, "OK: 47 declarations, 21 theorems proven\n");
     // FUNCTION model (equational residue → rewrite join) — same `ext` tactic.
     ctx.ok(&.{ "check", "tests/cases/ext_function.bpa" }, "OK: 29 declarations, 3 theorems proven\n");
     // a FALSE set identity: the pointwise residue has a countermodel, so ext
