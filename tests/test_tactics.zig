@@ -56,6 +56,16 @@ pub fn addTests(
         \\
     );
 
+    // Regression: the lemma-free oracle normalizer distributes a wide-sum 4th
+    // power (256 monomials); building each product reallocates the term pool,
+    // which pool.args aliases — the old code read a dangling arg slice and
+    // panicked. Must check clean under --fast (never crash).
+    ctx.ok(&.{ "check", "--fast", "tests/cases/polynomial_oob.bpa" },
+        \\OK: 6 declarations, 1 theorems proven (0 pure, 1 via oracles: polynomial)
+        \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates); re-run `bpa check` before finalizing.
+        \\
+    );
+
     // ac on different multisets reports the mismatch (pure, no taint)
     ctx.fail(&.{ "check", "tests/cases/ac_bad.bpa" }, "tests/cases/ac_bad.bpa:18:17: error: assoc_commut: sides have different summands: 'add(b, add(a, a))' vs 'add(b, a)'\n");
 

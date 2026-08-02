@@ -1,0 +1,20 @@
+// Regression: the lemma-free polynomial ORACLE normalizer (polyNormForm, the
+// --fast path) distributes a wide-sum 4th power to 256 monomials. Building each
+// product term reallocates the term pool's `extra` arena, which `pool.args`
+// aliases — so the old code read a dangling arg slice (poison 0xAAAAAAAA) and
+// panicked with an index-out-of-bounds. polyMonomials/polyFactors now copy the
+// arg ids before recursing. This must check clean under --fast (never crash).
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func add(a: Nat, b: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+
+theorem pow4: forall a, b, c, d: Nat;
+  mul(add(a, add(b, add(c, d))), mul(add(a, add(b, add(c, d))), mul(add(a, add(b, add(c, d))), add(a, add(b, add(c, d)))))) = mul(mul(mul(add(a, add(b, add(c, d))), add(a, add(b, add(c, d)))), add(a, add(b, add(c, d)))), add(a, add(b, add(c, d))))
+proof
+  @conclusion |
+    forall a, b, c, d: Nat;
+      mul(add(a, add(b, add(c, d))), mul(add(a, add(b, add(c, d))), mul(add(a, add(b, add(c, d))), add(a, add(b, add(c, d)))))) = mul(mul(mul(add(a, add(b, add(c, d))), add(a, add(b, add(c, d)))), add(a, add(b, add(c, d)))), add(a, add(b, add(c, d))))
+    [by polynomial_quantified]
+qed

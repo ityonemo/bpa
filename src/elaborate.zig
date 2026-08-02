@@ -1583,9 +1583,13 @@ pub const Elaborator = struct {
     fn flattenSum(self: *Elaborator, add_sym: term.SymId, t: TermId, out: *std.ArrayList(TermId)) ElabError!void {
         const node = self.pool.get(t);
         if (node == .app and symIs(node.app.sym, add_sym) and node.app.args_len == 2) {
+            // copy arg ids before recursing: pool.args aliases pool.extra, so a
+            // walk that grows the pool would dangle the slice (see polyMonomials).
             const args = self.pool.args(node.app);
-            try self.flattenSum(add_sym, args[0], out);
-            try self.flattenSum(add_sym, args[1], out);
+            const a0 = args[0];
+            const a1 = args[1];
+            try self.flattenSum(add_sym, a0, out);
+            try self.flattenSum(add_sym, a1, out);
             return;
         }
         try out.append(self.arena, t);
@@ -2178,12 +2182,17 @@ pub const Elaborator = struct {
             return;
         }
         if (node == .app and symIs(node.app.sym, ns.mul_sym) and node.app.args_len == 2) {
-            // distribute: (sum of A) * (sum of B) = sum over a in A, b in B of a*b
-            const args = self.pool.args(node.app);
+            // distribute: (sum of A) * (sum of B) = sum over a in A, b in B of a*b.
+            // COPY the arg ids out first: pool.args aliases pool.extra, and the
+            // recursion below allocates product terms (polyMonomialProduct ->
+            // addApp), which reallocates extra and would dangle the slice.
+            const margs = self.pool.args(node.app);
+            const m0 = margs[0];
+            const m1 = margs[1];
             var left: std.ArrayList(TermId) = .empty;
             var right: std.ArrayList(TermId) = .empty;
-            try self.polyMonomials(ns, args[0], &left);
-            try self.polyMonomials(ns, args[1], &right);
+            try self.polyMonomials(ns, m0, &left);
+            try self.polyMonomials(ns, m1, &right);
             for (left.items) |a| {
                 for (right.items) |b| {
                     try out.append(self.arena, try self.polyMonomialProduct(ns, a, b));
@@ -2224,9 +2233,13 @@ pub const Elaborator = struct {
     fn polyFactors(self: *Elaborator, ns: PolyNorm, x: TermId, out: *std.ArrayList(TermId)) ElabError!void {
         const node = self.pool.get(x);
         if (node == .app and symIs(node.app.sym, ns.mul_sym) and node.app.args_len == 2) {
-            const args = self.pool.args(node.app);
-            try self.polyFactors(ns, args[0], out);
-            try self.polyFactors(ns, args[1], out);
+            // copy the arg ids before recursing (pool.args aliases pool.extra,
+            // which downstream allocations may grow; see polyMonomials).
+            const fargs = self.pool.args(node.app);
+            const f0 = fargs[0];
+            const f1 = fargs[1];
+            try self.polyFactors(ns, f0, out);
+            try self.polyFactors(ns, f1, out);
             return;
         }
         try out.append(self.arena, x);
