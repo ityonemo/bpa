@@ -1893,3 +1893,30 @@ proof
     forall a, b, c: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
     [by forall_intro generalize-a]
 qed
+
+// add(neg(n), n) = ZERO — the left additive inverse, by commuting to
+// add(n, neg(n)) = ZERO (addNegRight). A discharge lemma for the ring model.
+theorem addNegLeft: forall n: Int; add(neg(n), n) = ZERO
+proof
+  @generalize-n |
+    fix n: Int {
+      @commute |
+        forall a, b: Int; add(a, b) = add(b, a)
+        [by theorem addIsCommutative]
+      @neg-plus-n-commutes |
+        add(neg(n), n) = add(n, neg(n))
+        [by forall_elim(neg(n), n) commute]
+      @n-plus-neg |
+        forall m: Int; add(m, neg(m)) = ZERO
+        [by theorem addNegRight]
+      @n-plus-neg-is-zero |
+        add(n, neg(n)) = ZERO
+        [by forall_elim(n) n-plus-neg]
+      @conclusion-neg-left |
+        add(neg(n), n) = ZERO
+        [by rewrite n-plus-neg-is-zero neg-plus-n-commutes]
+    }
+  @conclusion |
+    forall n: Int; add(neg(n), n) = ZERO
+    [by forall_intro generalize-n]
+qed

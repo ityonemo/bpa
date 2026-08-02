@@ -41,7 +41,7 @@ pub fn addTests(
     // the integers ℤ ring algebra (std/integer-ring.bpa): left/right recursion,
     // commutativity, associativity, the additive-inverse law n+(-n)=0, and the
     // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
-    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 57 declarations, 14 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 58 declarations, 15 theorems proven\n");
 
     // ℤ subtraction (total: a-b = a+(-b)) + the strict order, over the ring
     // algebra: subSelf (a-a=0) and subAddCancel ((a-b)+b=a), proven with no
