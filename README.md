@@ -56,10 +56,10 @@ wrongly-accepted result. This is a structural property, not a promise of
 care: the kernel re-derives every rule application itself and trusts nothing
 the elaborator, parser, or a tactic asserts. There are exactly two claims
 the kernel accepts without re-deriving — a schema *instance* (and it still
-checks the premise-matching) and a named *oracle* verdict — and both are
-made visible rather than hidden: an oracle taints its theorem, the summary
+checks the premise-matching) and a named *accelerated* verdict — and both are
+made visible rather than hidden: an accelerated step marks its theorem accelerated, the summary
 line discloses it, and by default `bpa check` rejects it outright (only the
-opt-in `--fast` accepts an oracle verdict). Ambiguity is
+opt-in `--fast` accepts an accelerated verdict). Ambiguity is
 squeezed out of the surface for the same reason: `:` is only ever sort
 ascription, `|` only ever a step label, connectives are words not symbols,
 and no-shadowing is enforced — so a proof reads one way, and the way it
@@ -73,7 +73,7 @@ zig build
 ```
 
 ```
-OK: 18 declarations, 6 theorems proven (5 pure, 1 via oracles: arithmetic)
+OK: 18 declarations, 6 theorems proven (5 elaborated, 1 accelerated: arithmetic)
 ```
 
 A proof is a sequence of labeled steps, each justified by a rule:
@@ -117,7 +117,7 @@ bpa query search   <file|dir> <query>
 
 `check` verifies a file and everything it imports. By default it verifies
 everything; the speed flags defer work during development and say so loudly
-(`--fast` accepts oracle verdicts, `--faster` also trusts imported proofs,
+(`--fast` accepts accelerated verdicts, `--faster` also trusts imported proofs,
 `--reckless` also trusts imported schemas). Re-run plain `bpa check` to
 finalize. `fmt` normalizes whitespace and indentation in place (`--check`
 reports instead of rewriting).
@@ -164,10 +164,10 @@ across files*, or *finding a lemma by concept* when the name is fuzzy.
   cites (its own step labels excluded). Answers "which proofs use `assoc`?" and
   "what does theorem X depend on?" — semantic and alias-aware, where a
   multi-line `[by …]` defeats `grep`.
-- `query oracles <file> [theorem]` — the **purity audit**: per proof, every step
-  whose rule can fall back to an oracle (`arithmetic`, `tautology`, `polynomial`,
+- `query accelerated <file> [theorem]` — the **elaboration audit**: per proof, every step
+  whose rule can fall back to an accelerated tactic (`arithmetic`, `tautology`, `polynomial`,
   `assoc_commut`, `assoc`, and their quantified variants), flagged at its
-  `file:line:col`. A clean report means the file's proofs are pure.
+  `file:line:col`. A clean report means the file's proofs are fully elaborated.
 
 Query may support semantic searching in the future.
 
@@ -187,8 +187,8 @@ Query may support semantic searching in the future.
   trustworthy as a hand proof. When a decidable goal falls outside the
   certificate fragment, checking fails with a located error by default; the
   opt-in `--fast` flag instead lets a built-in decision procedure (an
-  *oracle*) accept the goal, marks the theorem, and discloses it on the
-  summary line. In other words, the default is certificate-or-error; oracle
+  *accelerated tactic*) accept the goal, marks the theorem, and discloses it on the
+  summary line. In other words, the default is certificate-or-error; accelerated
   verdicts are never accepted unless you ask for `--fast`.
 - **Imports** (`import peano <<< "std/peano.bpa"`) bring in namespaced
   declarations, and by default their proofs are re-verified too. The
@@ -219,16 +219,16 @@ a proof obligation: you must *prove* the divisor is nonzero, or the check
 fails with a located error. The cost is that you carry the obligation; the
 benefit is that the `n / 0` case cannot silently slip into a proof.
 
-In general, bpa inverts the usual relationship with oracles:
+In general, bpa inverts the usual relationship with accelerated tactics:
 
 - **Certificate-by-default.** `by arithmetic` *produces a full kernel-checked
   proof* whenever it can, and the default mode is certificate-or-error — a
   goal it cannot certify is a located error, never a silently trusted step.
   The linear fragment is certificated, including a **Farkas certificate** for
   linear infeasibility (a fixed no-search recipe), so the bulk of arithmetic
-  goals check pure with no oracle at all.
+  goals check elaborated with no accelerated step at all.
 - **A loud, opt-in fast mode for development.** The `--fast` flag *skips*
-  certificate generation and takes the oracle verdict, for quick iteration
+  certificate generation and takes the accelerated verdict, for quick iteration
   while a proof is still being worked out.
 
 Anything that bpa trusts beyond the kernel is **named, transitively propagated,
@@ -254,7 +254,7 @@ at the expense of having longer proofs. This tradeoff is taken for two reasons:
 *The footgun:* `native_decide` expands the trust surface silently, to include
 the compiler and FFI, both places where bugs have been found that enable deriving
 `False`.  These are only visible via `#print axioms`, versus bpa, which always
-discloses oracle use.
+discloses accelerated-tactic use.
 
 ### Isabelle/HOL vs bpa
 
@@ -267,7 +267,7 @@ quantification over predicates).
 
 *The footgun:* the `eval` method / `value` prove by emitting ML, compiling, and
 running it — expanding the trust surface to the code generator, the ML compiler,
-and the runtime, outside the LCF kernel. bpa's oracle is the same shape, but
+and the runtime, outside the LCF kernel. bpa's accelerated tactic is the same shape, but
 rejected in the default mode and disclosed under `--fast` rather than trusted silently.
 
 ### Rocq (Coq) vs bpa
@@ -280,7 +280,7 @@ fill the same role but are fixed built-ins, not a metalanguage.
 
 *The footgun:* `native_compute` (to OCaml) and `vm_compute` (a bytecode VM)
 close goals by computation, folding the compiler or VM into the trusted base —
-discoverable only via `Print Assumptions`. bpa's oracles are the analogue, but
+discoverable only via `Print Assumptions`. bpa's accelerated tactics are the analogue, but
 disclosed and `--fast`-gated, so the trusted surface is always disclosed.
 
 ## Layout
@@ -293,12 +293,12 @@ disclosed and `--fast`-gated, so the trusted surface is always disclosed.
 | `examples/euclid.bpa` | Euclid's gcd, consuming the verified `std/peano-gcd` library |
 | `examples/euclid-compute.bpa` | gcd *run* on concrete numbers: `gcd(9, 6) = 3`, unfolded step by step |
 | `examples/incorrect.bpa` | three classic wrong proofs and their diagnostics |
-| `examples/sqrt2.bpa` | **√2 is irrational** (stated over ℕ), proved pure |
+| `examples/sqrt2.bpa` | **√2 is irrational** (stated over ℕ), proved elaborated |
 | `examples/literate.md` | a **literate** proof: prose + checkable ` ```bpa ` blocks |
 | `std/` | the standard library: arithmetic (`peano`), order + strong induction (`peano-ordering`), subtraction, division/divisibility, the verified `peano-gcd`, even/odd + the parity crux (`peano-parity`), abstract group theory (`group`), set algebra over a universe (`set`), and the theory of mappings (`function`) |
 | `aata/` | **literate transliterations of an abstract-algebra textbook** (Judson's AATA, GFDL) verified in bpa — the book's prose reproduced in order, each stated result followed by a checked proof; see `aata/README` |
 | `agents/` | agent-facing assets, symlinked into `.claude/`: `bpa-query-skill/` (a Skill teaching when to reach for `bpa query` over `grep`) and `style-guide.md` (a path-scoped `.claude/rules/` file surfacing the drift-prone proof-label conventions freshly when a `.bpa`/proof `.md` is edited — the on-demand companion to `CONVENTIONS.md`) |
 | `tests/` | the integration suite: `zig build test` spawns the built `bpa` on each corpus file and asserts its exact stdout/stderr/exit. Gates live in subject-grouped `tests/test_*.zig` (cli, tactics, std, aata, examples, query, imports), each a one-line `ctx.ok`/`ctx.fail` (see `tests/Ctx.zig`); `build.zig` stays build configuration |
-| `GUIDE.md` | every keyword, the kernel design, the built-in oracles |
+| `GUIDE.md` | every keyword, the kernel design, the built-in accelerated tactics |
 | `CONVENTIONS.md` | naming and proof-writing style |
-| `ORACLES.md` | the oracle registry and trust disclosure |
+| `ACCELERATION.md` | the accelerated-tactic registry and trust disclosure |

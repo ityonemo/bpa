@@ -1,6 +1,6 @@
 // The cooper link's declared boundary WITHOUT a fallback: a multi-fixed-
 // variable ∀∀∃ that Presburger decides valid but no certifier can emit, so
-// default mode is a hard error (and --fast takes the oracle verdict). The
+// default mode is a hard error (and --fast takes the accelerated verdict). The
 // fallback variant that closes it purely is cooper_gap.bpa.
 sort Nat
 const ZERO: Nat

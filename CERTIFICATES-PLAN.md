@@ -1,4 +1,4 @@
-# Certificates plan — pure-by-default, fast-mode-for-development
+# Certificates plan — elaborated-by-default, fast-mode-for-development
 
 ## STATUS (2026-07-30): the mode inversion has LANDED, further than this doc anticipated
 
@@ -7,9 +7,9 @@ Implemented: verification is now modeled as independent knobs
 src/elaborate.zig) with the CLI presets `--fast` / `--faster` / `--reckless`
 turning off one layer each. **`--pure` and `--recursive` are removed** —
 full verification (all knobs on) is the default, and there is **no
-tainted-oracle fallback in default mode**: a `by arithmetic` that can't
+accelerated fallback in default mode**: a `by arithmetic` that can't
 certify is a hard error pointing at `--fast`. Each speed flag prints a loud
-"NOT FULLY VERIFIED" banner. So the sequencing below is superseded: steps 2–4
+"ACCELERATED" banner. So the sequencing below is superseded: steps 2–4
 (mode spectrum) are done and collapsed into a two-real-modes design
 (verified-by-default vs. `--fast`), NOT the three-mode spectrum this doc
 described.
@@ -22,7 +22,7 @@ landed alongside: the **theory-argument** surface (`by arithmetic(<module>)`)
 resolving vocabulary + lemmas against a named upstream theory module instead of
 local aliases, and the **certifier chain** (Outcome/Reason) whose terminal
 lists each link's decline reason. What REMAINS is the ∀∃ tail: `examples/peano.bpa`'s
-`evenOrOdd` oracle is **Cooper-QE, not Farkas**, so it still needs `--fast`
+`evenOrOdd` accelerated step is **Cooper-QE, not Farkas**, so it still needs `--fast`
 until Cooper-replay lands (a peer chain link). Coefficient-scaling Farkas
 (`mul`-by-literal bounds) and the `false`-concluding infeasibility form
 (irreflexivity + absurd cap) are the near-term Farkas extensions. The
@@ -38,26 +38,26 @@ with `sub(a,b)` read as an opaque `x`). Presburger says VALID, but the chain
 declines it — equation/order/exists and mixed-skeleton report `out_of_scope`,
 and Farkas only handles *infeasibility* / `false` conclusions and order
 *composition* (`a<b -> b<c -> a<c`), not "equation + `0<b` ⊢ `x<a`". So it
-falls to the oracle under `--fast`. This is why the audit collapsed **no** std
-proofs: rewriting such a hand proof as `by arithmetic` would trade a pure proof
-for an oracle-tainted one. This gap is **distinct from the Cooper-QE tail** —
+falls to the accelerated tactic under `--fast`. This is why the audit collapsed **no** std
+proofs: rewriting such a hand proof as `by arithmetic` would trade an elaborated proof
+for an accelerated one. This gap is **distinct from the Cooper-QE tail** —
 it is quantifier-free and linear, so a new peer chain link (a "positive linear
 order" certifier: rearrange the equation into `lessThanIntro` gap form —
 `add(x, succ(d)) = a` from `add(x, b) = a` and the gap witness of `0 < b` —
 then cite `lessThanIntro`) would close it with a fixed-shape emit, no search.
 Lower priority than Cooper (rare in the corpus; the hand proofs are already
-pure), but the cheaper of the two to build.
+elaborated), but the cheaper of the two to build.
 
 ## The long-term goal (user-decided)
 
-Invert the trust default so **purity is the norm and speed is opt-in**:
+Invert the trust default so **elaboration is the norm and speed is opt-in**:
 
 - **Default `by arithmetic`** produces a *full certificate* — ordinary
-  kernel-checked steps. The oracle is a genuine last resort, not a fallback
-  you silently drift into. A proof that ships is pure unless it truly cannot
-  be.
+  kernel-checked steps. The accelerated tactic is a genuine last resort, not a
+  fallback you silently drift into. A proof that ships is elaborated unless it
+  truly cannot be.
 - **Fast mode** (opt-in, dev-time) skips certificate generation and takes the
-  oracle verdict directly, for quick iteration while you are still finding
+  accelerated verdict directly, for quick iteration while you are still finding
   out whether a proof even goes through. You *develop* in fast mode and
   *finalize* in default mode.
 
@@ -90,13 +90,13 @@ Two facts fix the whole shape of the work:
   `0 < 0`). That combination *is* a kernel proof — a fixed recipe computed
   directly from the infeasibility, no search. This is the single highest-value
   piece: it flips the *entire* QF-linear fragment (most real `by arithmetic`
-  uses) from oracle to pure in one stroke.
+  uses) from accelerated to elaborated in one stroke.
 - **Full quantifier-alternation replay (Cooper QE) is possible but large.**
   Cooper's algorithm is constructive — every elimination step is a logical
   equivalence with a proof — but the `∀`/`∃`-elimination proof expands to a
   big disjunction with divisibility side-conditions, so replaying it as kernel
   steps is deep, careful work. This is the honest candidate to *stay*
-  oracle-backed for a while; the taint/`--pure` disclosure exists precisely
+  accelerated for a while; the accelerated/`--pure` disclosure exists precisely
   for it.
 - **Nonlinear cannot be fully certified at all** (undecidability). Only
   incomplete certifiers exist (Gröbner for equalities, SOS for inequalities);
@@ -106,16 +106,16 @@ Two facts fix the whole shape of the work:
 
 The current `Elaborator.pure: bool` (src/elaborate.zig:49, set from `--pure`)
 generalizes to a mode enum. The seam already exists: `arithmeticJustification`
-(src/elaborate.zig ~2565) is already *certificate-first, oracle-fallback per
+(src/elaborate.zig ~2565) is already *certificate-first, accelerated-fallback per
 use* — this reorders and gates that logic on the mode.
 
-- **`--pure`** — certificate or a located error. Never an oracle. (Exists
+- **`--pure`** — certificate or a located error. Never accelerated. (Exists
   today.) The strict end: a passing proof has provably zero unchecked steps.
 - **default** — certificate-preferred. Attempt the certificate; the behavior
   when it can't certify is the staged decision below.
-- **`--fast`** (or `--draft`) — oracle-preferred. Skip certificate
+- **`--fast`** (or `--draft`) — acceleration-preferred. Skip certificate
   generation, take the verdict. Dev-time only. **Loud, never silent:** the
-  summary reads e.g. `OK: 21 theorems (FAST MODE — oracle verdicts
+  summary reads e.g. `OK: 21 theorems (FAST MODE — accelerated verdicts
   unverified; re-run without --fast before finalizing)`. Consistent with the
   existing disclosure philosophy — fast mode is ergonomic but always
   announced.
@@ -130,19 +130,19 @@ fragment (Cooper QE replay isn't built). So "default = full proof" must
 answer *what happens when the default cannot certify.* Two behaviors, adopted
 in sequence:
 
-- **(b) certificate-preferred, oracle-with-taint** — default tries the
-  certificate, falls back to the oracle *with the existing taint + summary
-  disclosure*. Nothing hard-fails. This is essentially today's behavior with
-  the priority made explicit. **Use during build-out.**
+- **(b) certificate-preferred, accelerated fallback** — default tries the
+  certificate, falls back to the accelerated tactic *with the existing
+  disclosure + summary line*. Nothing hard-fails. This is essentially today's
+  behavior with the priority made explicit. **Use during build-out.**
 - **(a) certificate-or-error for the covered fragment** — once the certifier
   covers enough, a goal *in the certifiable fragment* that somehow fails to
   certify is an error, and only the genuinely-hard tail (Cooper QE) falls
-  back to a tainted oracle. This is what makes "the default is a real proof"
+  back to an accelerated step. This is what makes "the default is a real proof"
   a **guarantee** for the covered fragment, not a hope. **Cut over to this
   when Farkas + the common cases make hard-failing tolerable.**
 
-Target end-state: default mode is pure for everything except the
-quantifier-alternation tail, that tail is tainted-and-disclosed, and `--pure`
+Target end-state: default mode is elaborated for everything except the
+quantifier-alternation tail, that tail is accelerated-and-disclosed, and `--pure`
 rejects even the tail. `--fast` bypasses all of it for development.
 
 ## Sequencing
@@ -155,15 +155,15 @@ coverage comes first.
    the missing piece is *recording the refutation multipliers* during the
    decision and emitting the combination proof (`multiplicationPreservesOrder`
    + `additionPreservesOrder` + `absurd` over the cited hypotheses — a
-   fixed-shape emit, no search). Turns most `by arithmetic` uses pure. RED
+   fixed-shape emit, no search). Turns most `by arithmetic` uses elaborated. RED
    fixture: an inequality-infeasibility goal that currently falls to the
-   oracle, proven pure under `--pure` after.
+   accelerated tactic, proven elaborated under `--pure` after.
 2. **Mode spectrum** — `Elaborator.pure: bool` → a `Mode` enum
    (`pure` / `default` / `fast`); `--fast` flag in src/main.zig + src/root.zig
    (mirror the `--pure` plumbing); loud fast-mode summary line; `--pure` +
    `--fast` mutually-exclusive error. Small, mostly plumbing.
 3. **Default = behavior (b)** — reorder `arithmeticJustification` so default
-   is certificate-preferred with tainted fallback (explicit, not incidental).
+   is certificate-preferred with accelerated fallback (explicit, not incidental).
 4. **Cut default to behavior (a)** for the covered fragment once coverage is
    wide enough to hard-fail without being infuriating.
 5. **Cooper QE replay** (long pole, optional/eventual) — closes the last gap
@@ -178,7 +178,7 @@ fractal-TDD directive, with unit tests in the touched module.
 
 - `zig build test` — existing goldens green + new gates.
 - After step 1: the QF-linear infeasibility fixtures pass under `--pure`
-  (previously oracle-only).
+  (previously accelerated-only).
 - Fast mode: a goal outside the certified fragment passes under `--fast` with
   the loud summary; the same goal under `--pure` is a located error; under
   default it behaves per the current stage (b→a).
@@ -187,9 +187,9 @@ fractal-TDD directive, with unit tests in the touched module.
 ## Relationship to the other plans
 
 - `NONLINEAR-PLAN.md` — the `polynomial` identity tactic and `div`/`mod` are
-  *pure from the start* (equational), so they never enter the oracle at all;
-  they shrink what `arithmetic` is even asked to do.
-- This plan is about the *linear* oracle: making its verdicts certify by
-  default, with Farkas as the lever and Cooper QE as the honest remaining
-  tail. The nonlinear fragment stays permanently partial (undecidable) and is
-  out of scope here.
+  *elaborated from the start* (equational), so they never become accelerated at
+  all; they shrink what `arithmetic` is even asked to do.
+- This plan is about the *linear* accelerated tactic: making its verdicts
+  certify by default, with Farkas as the lever and Cooper QE as the honest
+  remaining tail. The nonlinear fragment stays permanently partial (undecidable)
+  and is out of scope here.

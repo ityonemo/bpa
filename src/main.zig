@@ -56,7 +56,7 @@ const query_usage =
     "       bpa query whereis <file.bpa> <identifier>\n" ++
     "       bpa query search <file.bpa|dir> <query>\n" ++
     "       bpa query uses <file.bpa> [theorem]\n" ++
-    "       bpa query oracles <file.bpa> [theorem]\n";
+    "       bpa query accelerated <file.bpa> [theorem]\n";
 
 /// Print a query op's result (stdout when ok, stderr otherwise) and map to an
 /// exit code.
@@ -149,7 +149,7 @@ fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
         const result = try bpa.query.uses.uses(arena, path, source, thm);
         return emitQuery(result.text, result.ok);
     }
-    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "oracles")) {
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "accelerated")) {
         if (rest.len < 2 or rest.len > 3) return fail(query_usage, .{});
         const path = rest[1];
         const thm: ?[]const u8 = if (rest.len == 3) rest[2] else null;
@@ -157,7 +157,7 @@ fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
             error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
             else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
         };
-        const result = try bpa.query.oracles.oracles(arena, path, source, thm);
+        const result = try bpa.query.accelerated.accelerated(arena, path, source, thm);
         return emitQuery(result.text, result.ok);
     }
     if (rest.len >= 1 and std.mem.eql(u8, rest[0], "search")) {
@@ -263,7 +263,7 @@ pub fn main(init: std.process.Init) !u8 {
             \\       bpa query whereis <file.bpa> <identifier>
             \\       bpa query search <file.bpa|dir> <query>
             \\       bpa query uses <file.bpa> [theorem]
-            \\       bpa query oracles <file.bpa> [theorem]
+            \\       bpa query accelerated <file.bpa> [theorem]
             \\
             \\check reports every failure as
             \\  file:line:col: error: <message>
@@ -272,12 +272,12 @@ pub fn main(init: std.process.Init) !u8 {
             \\($BPA_STD_DIR, default ./std).
             \\
             \\By default check VERIFIES EVERYTHING: `by arithmetic`/`by
-            \\tautology` must produce a checkable certificate (an oracle
-            \\fallback is a hard error), imported proofs are re-checked, and
-            \\imported schemas are re-instantiated. The speed flags defer that
-            \\work to speed up iteration while developing (each run says so
-            \\loudly):
-            \\  --fast      accept oracle verdicts for arithmetic/tautology
+            \\tautology` must produce a checkable certificate (elaborated to
+            \\kernel steps; an accelerated fallback is a hard error), imported
+            \\proofs are re-checked, and imported schemas are re-instantiated.
+            \\The speed flags defer that work to speed up iteration while
+            \\developing (each run says so loudly):
+            \\  --fast      accept accelerated verdicts for arithmetic/tautology
             \\  --faster    also trust imported theorem proofs (skip re-check)
             \\  --reckless  also trust imported schemas (skip re-instantiation)
             \\Re-run plain `bpa check` to fully verify before finalizing.
@@ -296,9 +296,10 @@ pub fn main(init: std.process.Init) !u8 {
             \\to its original definition (the file-chase as one command).
             \\query uses lists, per proof, the rules/tactics it invokes and the
             \\axioms/theorems/schemas it cites (its dependency audit).
-            \\query oracles flags, per proof, every step whose rule can fall back
-            \\to an oracle (arithmetic/tautology/polynomial/assoc_commut/assoc) —
-            \\the potential-taint sites; a clean report means the file is pure.
+            \\query accelerated flags, per proof, every step whose rule can fall
+            \\back to an accelerated verdict (arithmetic/tautology/polynomial/
+            \\assoc_commut/assoc) — the potential acceleration sites; a clean
+            \\report means the file is fully elaborated.
             \\
         );
         try out.flush();
@@ -311,7 +312,7 @@ pub fn main(init: std.process.Init) !u8 {
     if (args.len >= 2 and std.mem.eql(u8, args[1], "query")) {
         return queryCommand(arena, std_root, args[2..]);
     }
-    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query oracles <file.bpa> [theorem]\n";
+    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query accelerated <file.bpa> [theorem]\n";
     if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
         return fail(usage, .{});
     }
@@ -355,9 +356,9 @@ pub fn main(init: std.process.Init) !u8 {
     try out.print("OK: {d} declarations, {d} theorems proven", .{
         result.declarations, result.theorems_proven,
     });
-    if (result.theorems_tainted > 0) {
-        try out.print(" ({d} pure, {d} via oracles: ", .{ result.theorems_pure, result.theorems_tainted });
-        for (result.oracle_names, 0..) |name, i| {
+    if (result.theorems_accelerated > 0) {
+        try out.print(" ({d} elaborated, {d} accelerated: ", .{ result.theorems_elaborated, result.theorems_accelerated });
+        for (result.accelerated_names, 0..) |name, i| {
             if (i > 0) try out.writeAll(", ");
             try out.writeAll(name);
         }
@@ -367,13 +368,13 @@ pub fn main(init: std.process.Init) !u8 {
         try out.print(", {d} imported theorems trusted", .{result.theorems_trusted});
     }
     // loud disclosure: a speed flag deferred verification work — name what was
-    // skipped and remind the reader this run is not fully verified.
+    // not elaborated and remind the reader this run was accelerated.
     if (speed_flag) {
-        try out.writeAll("\n  \u{2014} NOT FULLY VERIFIED (deferred:");
+        try out.writeAll("\n  \u{2014} ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated:");
         if (!verify.certify_arithmetic) try out.writeAll(" arithmetic-certificates");
         if (!verify.recheck_imports) try out.writeAll(" imported-proofs");
         if (!verify.recheck_schemas) try out.writeAll(" imported-schemas");
-        try out.writeAll("); re-run `bpa check` before finalizing.");
+        try out.writeAll("); re-run `bpa check` to elaborate.");
     }
     try out.writeAll("\n");
     // A run that materialized NO theorems (schema-only, axioms-only, or a

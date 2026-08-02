@@ -1,4 +1,4 @@
-//! Integration gates — the `bpa query` subcommands (outline, theorem, whereis, search, uses, oracles).
+//! Integration gates — the `bpa query` subcommands (outline, theorem, whereis, search, uses, accelerated).
 //!
 //! Each gate spawns the built `bpa` binary and asserts its stdout / stderr /
 //! exit code; wired into the `test` step via `test_step.dependOn`.
@@ -62,14 +62,14 @@ pub fn addTests(
         \\
     );
 
-    // `query oracles <file>`: a proof with no oracle-capable rule reports
-    // pure.
-    ctx.ok(&.{ "query", "oracles", "tests/cases/outline.bpa" }, "no oracle-capable steps — this file's proofs are pure\n");
+    // `query accelerated <file>`: a proof with no accelerated tactic reports
+    // fully elaborated.
+    ctx.ok(&.{ "query", "accelerated", "tests/cases/outline.bpa" }, "no accelerated tactics — this file's proofs are fully elaborated\n");
 
-    // `query oracles <file>`: oracle-capable steps flagged at file:line:col
+    // `query accelerated <file>`: accelerated tactics flagged at file:line:col
     // with the rule name — here both `assoc_quantified` and `assoc` (the
-    // quantified variant runs the same oracle-capable core).
-    ctx.ok(&.{ "query", "oracles", "tests/cases/assoc.bpa" },
+    // quantified variant runs the same accelerated core).
+    ctx.ok(&.{ "query", "accelerated", "tests/cases/assoc.bpa" },
         \\theorem reassoc1
         \\  tests/cases/assoc.bpa:19:9: assoc_quantified
         \\

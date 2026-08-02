@@ -1,9 +1,9 @@
-// The assoc_commut ORACLE (--fast, bare form). This theory declares `add` but
+// The assoc_commut ACCELERATED TACTIC (--fast, bare form). This theory declares `add` but
 // proves NONE of the AC lemmas, so `assoc_commut` cannot certify (default:
-// "needs addIsAssociative in scope"). Under --fast the oracle decides the
+// "needs addIsAssociative in scope"). Under --fast the accelerated tactic decides the
 // reordering structurally — TRUSTING that add is associative-commutative, which
 // this theory never proves. That presumption about an uninterpreted operator is
-// exactly why the result is TAINTED (via oracles: assoc_commut).
+// exactly why the result is ACCELERATED (accelerated: assoc_commut).
 sort Nat
 const ZERO: Nat
 func add(a: Nat, b: Nat): Nat

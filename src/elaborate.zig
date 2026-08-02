@@ -36,9 +36,10 @@ const ElabError = error{ Recover, OutOfMemory };
 /// separate booleans, not a flat enum, so a future per-project manifest and
 /// verification cache address the same knobs without rework.
 pub const Verify = struct {
-    /// `by arithmetic`/`by tautology` must produce a checkable certificate;
-    /// an oracle fallback is a hard error. When false, take the oracle verdict
-    /// and record the taint (disclosed in the summary).
+    /// `by arithmetic`/`by tautology` must produce a checkable certificate
+    /// (elaborated to kernel steps); an accelerated fallback is a hard error.
+    /// When false, take the accelerated verdict and record it (disclosed in the
+    /// summary).
     certify_arithmetic: bool = true,
     /// re-check imported theorems' proofs. When false, imported theorem bodies
     /// are trusted (declarations load, proofs are not re-verified).
@@ -74,10 +75,10 @@ pub const Elaborator = struct {
     trusted: bool = false,
     /// which layers to verify (see `Verify`). Default: verify everything.
     verify: Verify = .{},
-    /// oracle names the CURRENT top-level theorem's proof has leaned on
-    /// (directly, or transitively via citations and schema re-checks);
-    /// cleared per theorem, stored on the fact when it proves
-    oracles_used: std.ArrayList(StrId) = .empty,
+    /// accelerated-tactic names the CURRENT top-level theorem's proof has
+    /// leaned on (directly, or transitively via citations and schema
+    /// re-checks); cleared per theorem, stored on the fact when it proves
+    accelerated_used: std.ArrayList(StrId) = .empty,
     /// innermost binding last: quantifier binders, proof vars, func params
     scope: std.ArrayList(ScopeEntry) = .empty,
     /// generator for hygienic binder fvar names ('#' cannot lex, so these can
@@ -387,12 +388,12 @@ pub const Elaborator = struct {
                     fact.proven = true;
                     fact.trusted = true;
                 } else {
-                    self.oracles_used.clearRetainingCapacity();
+                    self.accelerated_used.clearRetainingCapacity();
                     const proven = try self.checkProofSteps(d.steps, typed.id, d.name.start);
                     if (proven) {
                         const fact = &self.env.findStatement(self.file, name).?.theorem;
                         fact.proven = true;
-                        fact.oracles = try self.arena.dupe(StrId, self.oracles_used.items);
+                        fact.accelerated = try self.arena.dupe(StrId, self.accelerated_used.items);
                     }
                 }
             },
@@ -915,7 +916,7 @@ pub const Elaborator = struct {
                 try self.wantRefs(c, 1);
                 const stmt_id = try self.resolveStatementRef(c.refs[0]);
                 const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
-                if (stmt == .theorem) try self.inheritOracles(stmt.theorem.oracles);
+                if (stmt == .theorem) try self.inheritAccelerated(stmt.theorem.accelerated);
                 return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = c.refs[0].start } };
             },
             .hypothesis => {
@@ -1361,8 +1362,8 @@ pub const Elaborator = struct {
     // --- the `simplify` tactic: certificate emitter -------------------------
     // Synthesizes ordinary kernel steps (reflexivity / axiom or theorem
     // citation / forall_elim specialization / rewrite) into the current block
-    // and returns the user's claim justification. Pure: no oracle, the kernel
-    // checks everything.
+    // and returns the user's claim justification. Fully elaborated: no
+    // accelerated step, the kernel checks everything.
 
     // --- universal-prefix peeling (shared by arithmetic / simplify_quantified)
 
@@ -1535,7 +1536,7 @@ pub const Elaborator = struct {
                     },
                     .theorem => |t| {
                         if (!t.proven) return self.fail(ref.start, "cites unproven theorem '{s}'", .{self.text(ref)});
-                        try self.inheritOracles(t.oracles);
+                        try self.inheritAccelerated(t.accelerated);
                         formula = t.formula;
                         source = .{ .theorem = .{ .id = stmt_id, .loc = ref.start } };
                     },
@@ -1569,14 +1570,14 @@ pub const Elaborator = struct {
         return self.emitJoin(low, emit_block, loc, rules.items, s, t, rs, rt);
     }
 
-    // --- the `ac` tactic: associative-commutative reordering (pure) ---------
+    // --- the `ac` tactic: associative-commutative reordering (elaborated) ---
     // Proves s = t when both are sums (over `add`) with the same multiset of
     // opaque atoms, differing only by associativity/commutativity. Each side
     // is re-associated to a right-nested comb (via addIsAssociative as a
     // terminating rewrite), its atoms flattened and bubble-sorted into a
     // canonical order (via addLeftSwap/addIsCommutative, one fabricated
     // rewrite per transposition — the sortTrace machinery), then the two
-    // canonical forms are joined. All kernel-checked; no oracle.
+    // canonical forms are joined. All kernel-checked; no accelerated step.
 
     /// Flatten an `add`-tree into its atom summands (any maximal subterm that
     /// is not itself an `add(_, _)`), left-to-right.
@@ -1703,12 +1704,13 @@ pub const Elaborator = struct {
                 return self.fail(loc, "assoc_commut reorders an add- or mul-sum; the goal's left side is '{s}'", .{try self.renderTerm(s)});
             };
             op_sym = op.sym;
-            // --fast: the ORACLE (bare form only — an explicit triple is checkable,
-            // so it always certifies). Decide AC-equality by comparing the sorted
-            // multiset of summands — NO assoc/comm/swap lemmas resolved, so it
-            // works on a theory too thin to certify, but TRUSTS the operator is
-            // associative-commutative (the theory's laws are never checked). That
-            // presumption about an uncontrolled symbol is why it taints.
+            // --fast: the ACCELERATED path (bare form only — an explicit triple
+            // is checkable, so it always elaborates). Decide AC-equality by
+            // comparing the sorted multiset of summands — NO assoc/comm/swap
+            // lemmas resolved, so it works on a theory too thin to elaborate,
+            // but TRUSTS the operator is associative-commutative (the theory's
+            // laws are never checked). That presumption about an uncontrolled
+            // symbol is why it is accelerated, not elaborated.
             if (!self.verify.certify_arithmetic) {
                 var s_leaves: std.ArrayList(TermId) = .empty;
                 var t_leaves: std.ArrayList(TermId) = .empty;
@@ -1724,8 +1726,8 @@ pub const Elaborator = struct {
                     });
                 }
                 const name = self.interner.intern("assoc_commut") catch return error.OutOfMemory;
-                try self.recordOracle(name, loc);
-                return .{ .oracle = name };
+                try self.recordAccelerated(name, loc);
+                return .{ .accelerated = name };
             }
             // append the well-known triple.
             const assoc = (try self.wellKnownRule(op.assoc, loc)) orelse
@@ -1835,9 +1837,10 @@ pub const Elaborator = struct {
         // one-rule array so emitJoin's rule_idx (0) lines up.
         const rules = [_]simplify_mod.Rule{rule};
 
-        // --fast: the assoc ORACLE. Structurally right-nest both sides over the
-        // operator and compare — WITHOUT emitting the kernel rewrite chain,
-        // presuming associativity rather than discharging it. Taints.
+        // --fast: the accelerated assoc path. Structurally right-nest both
+        // sides over the operator and compare — WITHOUT emitting the kernel
+        // rewrite chain, presuming associativity rather than discharging it.
+        // Accelerated, not elaborated.
         if (!self.verify.certify_arithmetic) {
             var s_leaves: std.ArrayList(TermId) = .empty;
             var t_leaves: std.ArrayList(TermId) = .empty;
@@ -1851,8 +1854,8 @@ pub const Elaborator = struct {
                 });
             }
             const name = self.interner.intern("assoc") catch return error.OutOfMemory;
-            try self.recordOracle(name, loc);
-            return .{ .oracle = name };
+            try self.recordAccelerated(name, loc);
+            return .{ .accelerated = name };
         }
 
         // certify: right-nest each side by the associativity rule (terminating),
@@ -1873,12 +1876,12 @@ pub const Elaborator = struct {
         return self.emitJoin(low, block_id, loc, &rules, s0, t0, rs, rt);
     }
 
-    // -- the `polynomial` tactic (nonlinear identities, pure) ---------------
+    // -- the `polynomial` tactic (nonlinear identities, elaborated) ---------
     //
     // Proves `s = t` when both are polynomials over add/mul with the same
     // expansion. The nonlinear analogue of `ac`: canonicalize each side to a
-    // sorted sum of sorted monomials, then join. Pure — emits a ring-rewrite
-    // certificate (no oracle). Reuses the ac machinery: `normalize` for the
+    // sorted sum of sorted monomials, then join. Elaborated — emits a
+    // ring-rewrite certificate (no accelerated step). Reuses the ac machinery: `normalize` for the
     // terminating distribute/fold passes, `acPlan` for the two sorts.
 
     /// Resolve the optional `(theory)` argument, scoping `theory_file` for the
@@ -2093,12 +2096,13 @@ pub const Elaborator = struct {
         const s0 = goal_node.eq.lhs;
         const t0 = goal_node.eq.rhs;
 
-        // --fast: the polynomial ORACLE. Decide equality by comparing the pure
-        // syntactic semiring normal forms — NO theory lemmas consulted, so it
-        // works on a theory too thin to certify, but it TRUSTS that add/mul are
-        // a commutative semiring (the theory's own laws are never checked). That
-        // presumption about uncontrolled symbols is exactly why it taints. The
-        // default path below discharges the same presumption against the kernel.
+        // --fast: the accelerated polynomial path. Decide equality by comparing
+        // the bare syntactic semiring normal forms — NO theory lemmas consulted,
+        // so it works on a theory too thin to elaborate, but it TRUSTS that
+        // add/mul are a commutative semiring (the theory's own laws are never
+        // checked). That presumption about uncontrolled symbols is exactly why
+        // it is accelerated, not elaborated. The default path below discharges
+        // the same presumption against the kernel.
         if (!self.verify.certify_arithmetic) {
             const add_sym = (try self.wellKnownSym("add")) orelse
                 return self.fail(loc, "polynomial: arithmetic vocabulary (add, mul) not in scope", .{});
@@ -2115,12 +2119,13 @@ pub const Elaborator = struct {
                 });
             }
             const name = self.interner.intern("polynomial") catch return error.OutOfMemory;
-            try self.recordOracle(name, loc);
-            return .{ .oracle = name };
+            try self.recordAccelerated(name, loc);
+            return .{ .accelerated = name };
         }
 
-        // default: the pure certificate — resolve the ring lemmas, canonicalize
-        // both sides recording a replayable trace, and emit the kernel join.
+        // default: the elaborated certificate — resolve the ring lemmas,
+        // canonicalize both sides recording a replayable trace, and emit the
+        // kernel join.
         const pr = (try self.polyRules(loc)) orelse
             return self.fail(loc, "polynomial: arithmetic vocabulary (add, mul) not in scope", .{});
 
@@ -2136,12 +2141,12 @@ pub const Elaborator = struct {
         return self.emitJoin(low, block_id, loc, pr.rules, s0, t0, rs, rt);
     }
 
-    // -- the polynomial ORACLE's lemma-free canonical form ------------------
+    // -- the accelerated polynomial path's lemma-free canonical form --------
     //
-    // A pure structural semiring normalizer: it flattens/sorts add and mul
+    // A bare structural semiring normalizer: it flattens/sorts add and mul
     // trees ASSUMING commutativity, associativity, distributivity, and 0/1
     // identities hold — without resolving or citing any theory lemma. Used only
-    // by the --fast oracle path (the default path certifies via resolved
+    // by the --fast accelerated path (the default path elaborates via resolved
     // lemmas + kernel recheck). Deterministic, so its output is a true canonical
     // form; two terms are semiring-equal iff their normal forms are alphaEq.
 
@@ -2301,7 +2306,7 @@ pub const Elaborator = struct {
 
     /// Resolve an `assoc_commut(assoc, comm, swap)` argument — a bare name
     /// expression — into a rewrite rule (reusing resolveRewriteRule's step /
-    /// statement resolution + taint inheritance).
+    /// statement resolution + accelerated-tactic inheritance).
     fn acArgRule(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, arg: *const ast.Expr) ElabError!simplify_mod.Rule {
         if (arg.* != .name) {
             return self.fail(exprLoc(arg), "assoc_commut argument must name an equation lemma", .{});
@@ -2310,7 +2315,7 @@ pub const Elaborator = struct {
     }
 
     /// Resolve one cited ref (step label or statement) into an L→R rewrite
-    /// rule, with the same accessibility/taint checks as simplify. `who` names
+    /// rule, with the same accessibility/acceleration checks as simplify. `who` names
     /// the citing tactic for error messages.
     fn resolveRewriteRule(self: *Elaborator, low: *Lowering, emit_block: kernel.BlockId, ref: lexer.Token, comptime who: []const u8) ElabError!simplify_mod.Rule {
         const name = try self.internTok(ref);
@@ -2335,7 +2340,7 @@ pub const Elaborator = struct {
                 },
                 .theorem => |t| {
                     if (!t.proven) return self.fail(ref.start, "cites unproven theorem '{s}'", .{self.text(ref)});
-                    try self.inheritOracles(t.oracles);
+                    try self.inheritAccelerated(t.accelerated);
                     formula = t.formula;
                     source = .{ .theorem = .{ .id = stmt_id, .loc = ref.start } };
                 },
@@ -2416,7 +2421,7 @@ pub const Elaborator = struct {
     }
 
     // --- C2: arithmetic certificates ----------------------------------------
-    // Certificate stages for the `arithmetic` rule, all pure and
+    // Certificate stages for the `arithmetic` rule, all elaborated and
     // kernel-checked. C2a: ground equations replay as simplify chains over
     // the well-known peano recursion axioms. C2b: universally-quantified
     // linear equations normalize to succ-towers over sorted sums (the
@@ -2424,7 +2429,7 @@ pub const Elaborator = struct {
     // rewrites), and simple order goals a < b synthesize the witness
     // difference d, certify add(a, succ(d)) = b, and close with a
     // lessThanIntro instance. Anything outside — hypotheses, missing
-    // lemmas, unjoinable forms — returns null and falls back to the oracle.
+    // lemmas, unjoinable forms — returns null and falls back to the accelerated path.
 
     const wk_term_rule_names = [_][]const u8{
         "addZeroLeft",  "addZeroRight",     "addSuccLeft", "addSuccRight",
@@ -2496,7 +2501,7 @@ pub const Elaborator = struct {
     }
 
     /// Resolve a well-known fact by name in this file's scope; unproven and
-    /// tainted facts are unusable (they would poison the certificate).
+    /// accelerated facts are unusable (they would poison the certificate).
     /// The scope arithmetic well-known names resolve in: the named theory
     /// module if `arithmetic(<mod>)` set one, else local scope.
     fn theoryScope(self: *const Elaborator) FileId {
@@ -2510,7 +2515,7 @@ pub const Elaborator = struct {
         switch (stmt) {
             .axiom => |a| return .{ .formula = a.formula, .source = .{ .axiom = .{ .id = stmt_id, .loc = loc } } },
             .theorem => |t| {
-                if (!t.proven or t.oracles.len != 0) return null;
+                if (!t.proven or t.accelerated.len != 0) return null;
                 return .{ .formula = t.formula, .source = .{ .theorem = .{ .id = stmt_id, .loc = loc } } };
             },
             .schema => return null,
@@ -2649,7 +2654,7 @@ pub const Elaborator = struct {
         return whole;
     }
 
-    /// Plan a pure proof of s = t: normalize both sides with the
+    /// Plan an elaborated proof of s = t: normalize both sides with the
     /// terminating rules, then sort the residual sums. Null when the sides
     /// do not join.
     fn planEquation(
@@ -2691,7 +2696,7 @@ pub const Elaborator = struct {
         };
     }
 
-    /// Plan a pure proof of less_than(s, t): synthesize the difference
+    /// Plan an elaborated proof of less_than(s, t): synthesize the difference
     /// witness d from the normalized towers, certify add(s, succ(d)) = t,
     /// and instantiate lessThanIntro.
     fn planLess(
@@ -2803,7 +2808,7 @@ pub const Elaborator = struct {
         const loc = c.rule.start;
 
         // resolve the cited hypotheses (resolvePremises already validated
-        // accessibility and existence on the oracle path)
+        // accessibility and existence on the accelerated path)
         var premises: std.ArrayList(CertPremise) = .empty;
         for (c.refs) |ref| {
             const name = try self.internTok(ref);
@@ -2822,8 +2827,8 @@ pub const Elaborator = struct {
                         statement = .{ .id = stmt_id, .is_axiom = true };
                     },
                     .theorem => |t| {
-                        // a tainted premise poisons the certificate
-                        if (!t.proven or t.oracles.len != 0) return null;
+                        // an accelerated premise poisons the certificate
+                        if (!t.proven or t.accelerated.len != 0) return null;
                         formula = t.formula;
                         statement = .{ .id = stmt_id, .is_axiom = false };
                     },
@@ -2833,7 +2838,7 @@ pub const Elaborator = struct {
             const node = self.pool.get(formula);
             const kind_ok = node == .eq or
                 (node == .pred and symIs(node.pred.sym, symbols.less_than) and node.pred.args_len == 2);
-            if (!kind_ok) return null; // quantified or foreign hypotheses: oracle
+            if (!kind_ok) return null; // quantified or foreign hypotheses: accelerated path
             try premises.append(self.arena, .{
                 .formula = formula,
                 .step = step,
@@ -3017,35 +3022,37 @@ pub const Elaborator = struct {
         return .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } };
     }
 
-    // --- the `tautology` oracle: propositional consequence ------------------
+    // --- the `tautology` accelerated tactic: propositional consequence ------
     // The engine (src/smt.zig) decides; a `.valid` verdict becomes an
-    // `.oracle` kernel step the kernel accepts without a derivation. The
-    // oracle name taints the enclosing theorem; see ORACLES.md.
+    // `.accelerated` kernel step the kernel accepts without a derivation. The
+    // accelerated-tactic name marks the enclosing theorem accelerated; see
+    // ACCELERATION.md.
 
-    /// Record that the current proof leans on oracle `name`. By default this is
-    /// a hard error — the goal must certify; the oracle is only accepted in
-    /// `--fast` (verify.certify_arithmetic = false), where it taints the theorem.
-    fn recordOracle(self: *Elaborator, name: StrId, loc: u32) ElabError!void {
+    /// Record that the current proof leans on accelerated tactic `name`. By
+    /// default this is a hard error — the goal must certify; the accelerated
+    /// verdict is only accepted in `--fast` (verify.certify_arithmetic = false),
+    /// where it marks the theorem accelerated.
+    fn recordAccelerated(self: *Elaborator, name: StrId, loc: u32) ElabError!void {
         if (self.verify.certify_arithmetic) {
-            return self.fail(loc, "'{s}' could not be certified here; use --fast to accept the oracle verdict", .{self.interner.str(name)});
+            return self.fail(loc, "'{s}' could not be elaborated here; use --fast to accept the accelerated verdict", .{self.interner.str(name)});
         }
-        for (self.oracles_used.items) |o| {
+        for (self.accelerated_used.items) |o| {
             if (o == name) return;
         }
-        try self.oracles_used.append(self.arena, name);
+        try self.accelerated_used.append(self.arena, name);
     }
 
     /// The certifier chain's terminal: reached when every link declined a
-    /// decided-valid goal. Under `--fast`, accept the oracle verdict (taint).
+    /// decided-valid goal. Under `--fast`, accept the accelerated verdict.
     /// Under the default, hard-error listing each link's decline reason (flat —
     /// the audience is an LLM, so every reason is equally machine-readable
     /// text), so a valid goal on a thin theory yields an actionable fix.
     /// `arithmetic ... fallback(<thm>)`: the certifier chain declined a valid
-    /// goal, so cite the named theorem as the certificate. Pure — no oracle,
-    /// no --fast — as long as <thm> is a proven theorem whose statement matches
-    /// the goal. The kernel re-checks the match (a theorem_ref must equal the
-    /// step claim); we also inherit <thm>'s own oracle taint, so a fallback onto
-    /// a tainted proof stays honestly tainted.
+    /// goal, so cite the named theorem as the certificate. Elaborated — no
+    /// accelerated step, no --fast — as long as <thm> is a proven theorem whose
+    /// statement matches the goal. The kernel re-checks the match (a theorem_ref
+    /// must equal the step claim); we also inherit <thm>'s own accelerated-tactic
+    /// names, so a fallback onto an accelerated proof stays honestly accelerated.
     fn arithmeticFallback(self: *Elaborator, fb: lexer.Token, goal: TermId) ElabError!kernel.Justification {
         const stmt_id = self.env.findStatementId(self.file, try self.internTok(fb)) orelse
             return self.fail(fb.start, "fallback names unknown theorem '{s}'", .{self.text(fb)});
@@ -3056,7 +3063,7 @@ pub const Elaborator = struct {
                 if (!self.pool.alphaEq(t.formula, goal)) {
                     return self.fail(fb.start, "fallback theorem '{s}' does not prove this goal", .{self.text(fb)});
                 }
-                try self.inheritOracles(t.oracles);
+                try self.inheritAccelerated(t.accelerated);
                 return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = fb.start } };
             },
             .axiom => return self.fail(fb.start, "fallback cites an axiom '{s}'; use a theorem", .{self.text(fb)}),
@@ -3065,14 +3072,14 @@ pub const Elaborator = struct {
     }
 
     fn arithmeticTerminal(self: *Elaborator, loc: u32, reasons: []const Reason) ElabError!kernel.Justification {
-        const oracle_name = self.interner.intern("arithmetic") catch return error.OutOfMemory;
+        const accelerated_name = self.interner.intern("arithmetic") catch return error.OutOfMemory;
         if (!self.verify.certify_arithmetic) {
-            // --fast: take the oracle verdict, record the taint
-            for (self.oracles_used.items) |o| {
-                if (o == oracle_name) return .{ .oracle = oracle_name };
+            // --fast: take the accelerated verdict, record it
+            for (self.accelerated_used.items) |o| {
+                if (o == accelerated_name) return .{ .accelerated = accelerated_name };
             }
-            try self.oracles_used.append(self.arena, oracle_name);
-            return .{ .oracle = oracle_name };
+            try self.accelerated_used.append(self.arena, accelerated_name);
+            return .{ .accelerated = accelerated_name };
         }
         // default: hard error listing why each link declined
         var msg: std.Io.Writer.Allocating = .init(self.arena);
@@ -3093,22 +3100,22 @@ pub const Elaborator = struct {
             };
             msg.writer.print("\n  - {s}: {s}", .{ link.name, detail }) catch return error.OutOfMemory;
         }
-        msg.writer.writeAll("\nuse --fast to accept the oracle verdict") catch return error.OutOfMemory;
+        msg.writer.writeAll("\nuse --fast to accept the accelerated verdict") catch return error.OutOfMemory;
         return self.fail(loc, "{s}", .{msg.written()});
     }
 
-    /// Citing a fact inherits its taint.
-    fn inheritOracles(self: *Elaborator, oracles: []const StrId) Allocator.Error!void {
-        outer: for (oracles) |name| {
-            for (self.oracles_used.items) |o| {
+    /// Citing a fact inherits its accelerated-tactic names.
+    fn inheritAccelerated(self: *Elaborator, names: []const StrId) Allocator.Error!void {
+        outer: for (names) |name| {
+            for (self.accelerated_used.items) |o| {
                 if (o == name) continue :outer;
             }
-            try self.oracles_used.append(self.arena, name);
+            try self.accelerated_used.append(self.arena, name);
         }
     }
 
-    /// Resolve an oracle rule's premise refs to formulas (accessible step
-    /// labels first, then statements); theorem citations inherit taint.
+    /// Resolve an accelerated tactic's premise refs to formulas (accessible step
+    /// labels first, then statements); theorem citations inherit accelerated-tactic names.
     fn resolvePremises(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, c: ast.Step.Claim, comptime rule: []const u8) ElabError![]const TermId {
         const premises = try self.arena.alloc(TermId, c.refs.len);
         for (c.refs, premises) |ref, *out| {
@@ -3129,7 +3136,7 @@ pub const Elaborator = struct {
                     .axiom => |a| out.* = a.formula,
                     .theorem => |t| {
                         if (!t.proven) return self.fail(ref.start, "cites unproven theorem '{s}'", .{self.text(ref)});
-                        try self.inheritOracles(t.oracles);
+                        try self.inheritAccelerated(t.accelerated);
                         out.* = t.formula;
                     },
                     .schema => return self.fail(ref.start, "'{s}' is a schema; " ++ rule ++ " takes formulas", .{self.text(ref)}),
@@ -3146,15 +3153,15 @@ pub const Elaborator = struct {
         switch (verdict) {
             .valid => {
                 // certificate first: replay the truth search as ordinary
-                // kernel steps — pure, no taint
+                // kernel steps — elaborated, no accelerated step
                 if (try self.tautologyCertificate(low, block_id, goal, c)) |just| {
                     return just;
                 }
-                // over budget: fall back to the oracle verdict, tainting
+                // over budget: fall back to the accelerated verdict, marking
                 // this use only
-                const oracle_name = self.interner.intern("tautology") catch return error.OutOfMemory;
-                try self.recordOracle(oracle_name, loc);
-                return .{ .oracle = oracle_name };
+                const accelerated_name = self.interner.intern("tautology") catch return error.OutOfMemory;
+                try self.recordAccelerated(accelerated_name, loc);
+                return .{ .accelerated = accelerated_name };
             },
             .too_many_atoms => |n| {
                 return self.fail(loc, "tautology: {d} distinct atoms exceeds the limit of {d}", .{ n, smt_mod.atom_limit });
@@ -3179,9 +3186,9 @@ pub const Elaborator = struct {
     // double_negation shape) and an or_elim over the two assumption branches;
     // leaves either derive the goal structurally from the literal
     // assumptions (trueJust/falseJust) or explode a refuted premise with
-    // absurd. The kernel checks every step, so this path carries no taint. A
+    // absurd. The kernel checks every step, so this path stays elaborated. A
     // step budget bounds the exponential replay; past it the synthesized
-    // steps roll back and the caller falls back to the oracle.
+    // steps roll back and the caller falls back to the accelerated path.
 
     /// Attempt a certificate for a goal the engine already decided valid.
     /// Returns null (with no steps emitted) when the budget runs out.
@@ -3521,8 +3528,8 @@ pub const Elaborator = struct {
 
     /// D2: a mixed goal (opaque + arithmetic atoms) replays as a
     /// tautology-style skeleton certificate whose boolean dead ends close
-    /// via the arithmetic certificate core (theoryLeaf). Pure; an
-    /// underivable leaf or exhausted budget rolls back to the oracle.
+    /// via the arithmetic certificate core (theoryLeaf). Elaborated; an
+    /// underivable leaf or exhausted budget rolls back to the accelerated path.
     fn arithMixedCertificate(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim, symbols: presburger_mod.Symbols) ElabError!?kernel.Justification {
         const loc = c.rule.start;
         const steps_mark = low.steps.items.len;
@@ -3546,10 +3553,10 @@ pub const Elaborator = struct {
                         .ref = try self.emitStep(low, block_id, loc, a.formula, .{ .axiom_ref = .{ .stmt = stmt_id, .loc = loc } }),
                     },
                     .theorem => |t| {
-                        if (!t.proven or t.oracles.len != 0) {
+                        if (!t.proven or t.accelerated.len != 0) {
                             low.steps.shrinkRetainingCapacity(steps_mark);
                             low.blocks.shrinkRetainingCapacity(blocks_mark);
-                            return null; // a tainted premise poisons the certificate
+                            return null; // an accelerated premise poisons the certificate
                         }
                         out.* = .{
                             .formula = t.formula,
@@ -3620,9 +3627,9 @@ pub const Elaborator = struct {
         return .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } };
     }
 
-    // --- the `arithmetic` oracle: Presburger arithmetic over Nat ------------
+    // --- the `arithmetic` accelerated tactic: Presburger arithmetic over Nat -
     // The engine (src/presburger.zig) decides by quantifier elimination; a
-    // `.valid` verdict becomes an `.oracle` kernel step. See ORACLES.md.
+    // `.valid` verdict becomes an `.accelerated` kernel step. See ACCELERATION.md.
 
     /// The arithmetic vocabulary, resolved by well-known name in this file's
     /// scope. Absent names shrink the fragment.
@@ -4670,8 +4677,8 @@ pub const Elaborator = struct {
                     }
                 }
                 // every link declined: valid but not certifiable here. A
-                // `fallback(<thm>)` cites a manual proof (pure) instead; else
-                // hard error (default) listing the reasons, or oracle (--fast).
+                // `fallback(<thm>)` cites a manual proof (elaborated) instead; else
+                // hard error (default) listing the reasons, or accelerated (--fast).
                 if (c.fallback) |fb| return self.arithmeticFallback(fb, goal);
                 return self.arithmeticTerminal(loc, &reasons);
             },

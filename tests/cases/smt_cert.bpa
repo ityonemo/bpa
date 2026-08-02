@@ -1,7 +1,7 @@
-// D2: mixed goals replay as pure certificates — opaque atoms case-split
+// D2: mixed goals replay as elaborated certificates — opaque atoms case-split
 // with an inline excluded middle, and arithmetic dead ends close by
 // deriving the conflicting literal from the branch's assumptions. No
-// oracle, so --pure is satisfied.
+// accelerated tactic, so --pure is satisfied.
 import peano <<< "std/peano.bpa"
 import ordering <<< "std/peano-ordering.bpa"
 sort Nat = peano.Nat

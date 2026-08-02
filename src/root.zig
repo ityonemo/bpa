@@ -27,7 +27,7 @@ pub const query = struct {
     pub const whereis = @import("query/whereis.zig");
     pub const search = @import("query/search.zig");
     pub const uses = @import("query/uses.zig");
-    pub const oracles = @import("query/oracles.zig");
+    pub const accelerated = @import("query/accelerated.zig");
 };
 
 pub const CheckResult = struct {
@@ -83,11 +83,11 @@ pub const ProjectResult = struct {
     declarations: usize,
     theorems_proven: usize,
     theorems_trusted: usize,
-    /// proven theorems split by taint: pure + tainted = proven
-    theorems_pure: usize,
-    theorems_tainted: usize,
-    /// distinct oracle names across tainted theorems, first-use order
-    oracle_names: []const []const u8,
+    /// proven theorems split by trust: elaborated + accelerated = proven
+    theorems_elaborated: usize,
+    theorems_accelerated: usize,
+    /// distinct accelerated-tactic names across accelerated theorems, first-use order
+    accelerated_names: []const []const u8,
 
     pub fn ok(self: *const ProjectResult) bool {
         return self.sink.list.items.len == 0;
@@ -214,25 +214,25 @@ pub fn checkProject(
 
     var proven: usize = 0;
     var trusted: usize = 0;
-    var pure_count: usize = 0;
-    var tainted: usize = 0;
-    var oracle_names: std.ArrayList([]const u8) = .empty;
+    var elaborated_count: usize = 0;
+    var accelerated: usize = 0;
+    var accelerated_names: std.ArrayList([]const u8) = .empty;
     for (environment.statements.items) |stmt| {
         if (stmt != .theorem) continue;
         if (stmt.theorem.trusted) {
             trusted += 1;
         } else if (stmt.theorem.proven) {
             proven += 1;
-            if (stmt.theorem.oracles.len == 0) {
-                pure_count += 1;
+            if (stmt.theorem.accelerated.len == 0) {
+                elaborated_count += 1;
             } else {
-                tainted += 1;
-                outer: for (stmt.theorem.oracles) |o| {
+                accelerated += 1;
+                outer: for (stmt.theorem.accelerated) |o| {
                     const s = interner.str(o);
-                    for (oracle_names.items) |seen| {
+                    for (accelerated_names.items) |seen| {
                         if (std.mem.eql(u8, seen, s)) continue :outer;
                     }
-                    try oracle_names.append(arena, s);
+                    try accelerated_names.append(arena, s);
                 }
             }
         }
@@ -243,9 +243,9 @@ pub fn checkProject(
         .declarations = loader.declarations,
         .theorems_proven = proven,
         .theorems_trusted = trusted,
-        .theorems_pure = pure_count,
-        .theorems_tainted = tainted,
-        .oracle_names = oracle_names.items,
+        .theorems_elaborated = elaborated_count,
+        .theorems_accelerated = accelerated,
+        .accelerated_names = accelerated_names.items,
     };
 }
 
@@ -256,6 +256,6 @@ test {
     std.testing.refAllDecls(query.whereis);
     std.testing.refAllDecls(query.search);
     std.testing.refAllDecls(query.uses);
-    std.testing.refAllDecls(query.oracles);
+    std.testing.refAllDecls(query.accelerated);
     std.testing.refAllDecls(literate);
 }

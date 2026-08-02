@@ -1,12 +1,12 @@
-//! TRUSTED ORACLE: linear (Presburger) arithmetic over Nat (surface rule
-//! `arithmetic`; registry entry in ORACLES.md).
+//! TRUSTED ACCELERATED TACTIC: linear (Presburger) arithmetic over Nat (surface
+//! rule `arithmetic`; registry entry in ACCELERATION.md).
 //!
-//! Trust surface: a `.valid` verdict becomes an `.oracle` kernel step the
+//! Trust surface: a `.valid` verdict becomes an `.accelerated` kernel step the
 //! kernel accepts without a derivation — a bug here can admit a false
-//! theorem. Every use is disclosed: the oracle name taints the enclosing
-//! theorem (transitively, through citations), the summary line reports the
-//! taint, and `--pure` rejects it. Certificate replay (milestone C2) will
-//! shrink this trust surface without changing the surface rule.
+//! theorem. Every use is disclosed: the accelerated-tactic name marks the
+//! enclosing theorem accelerated (transitively, through citations), the summary
+//! line reports it, and `--pure` rejects it. Certificate replay (milestone C2)
+//! will shrink this trust surface without changing the surface rule.
 //!
 //! Engine: compiles premises AND not(goal) into a formula over linear
 //! integer atoms — Nat is the nonnegative integers, so every variable
@@ -74,7 +74,7 @@ pub const SatResult = union(enum) {
 // The decision procedure above discards the elimination disjunction it builds.
 // `trace` re-runs the SAME Cooper elimination on a single `exists y; body`
 // goal but RECORDS what it did into `Replay`: the certifier in elaborate.zig
-// reads this to emit pure kernel steps (the ⟸ witness assembly and the ⟹
+// reads this to emit elaborated kernel steps (the ⟸ witness assembly and the ⟹
 // induction). Plain data — no TermId, no kernel — so the trusted-engine
 // surface stays put and the certifier owns all term/kernel work.
 
@@ -129,7 +129,7 @@ pub fn decide(arena: Allocator, pool: *Pool, symbols: Symbols, premises: []const
 }
 
 /// Record the Cooper elimination of a single `exists y: Nat; body` goal so the
-/// certifier can replay it as pure kernel steps. Returns `.not_applicable`
+/// certifier can replay it as elaborated kernel steps. Returns `.not_applicable`
 /// (never an error verdict) when the goal is not that shape or leaves the
 /// linear fragment — the certifier link simply declines and the chain moves on.
 pub fn trace(arena: Allocator, pool: *Pool, symbols: Symbols, premises: []const TermId, goal: TermId) Allocator.Error!TraceResult {

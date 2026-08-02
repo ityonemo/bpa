@@ -1,7 +1,7 @@
 // The `polynomial` tactic: proves an add/mul identity `s = t` when both sides
 // expand to the same sorted sum of sorted monomials. The nonlinear analogue of
-// `ac` — it distributes, sorts monomials, sorts the sum, and folds. Pure: it
-// emits a ring-rewrite certificate the kernel re-checks (no oracle).
+// `ac` — it distributes, sorts monomials, sorts the sum, and folds. Elaborated: it
+// emits a ring-rewrite certificate the kernel re-checks (no accelerated step).
 //
 // `polynomial(peano)` resolves the ring vocabulary + lemmas against the named
 // theory module (peano) — no local aliasing of add/mul/the ring lemmas needed.

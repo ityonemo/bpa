@@ -24,7 +24,7 @@ pub fn addTests(
             "       bpa query whereis <file.bpa> <identifier>\n" ++
             "       bpa query search <file.bpa|dir> <query>\n" ++
             "       bpa query uses <file.bpa> [theorem]\n" ++
-            "       bpa query oracles <file.bpa> [theorem]\n",
+            "       bpa query accelerated <file.bpa> [theorem]\n",
     );
     no_args.expectExitCode(1);
     test_step.dependOn(&no_args.step);
@@ -132,7 +132,7 @@ pub fn addTests(
     // eta-sugar: a schema Nat->Prop param accepts a bare predicate name
     ctx.ok(&.{ "check", "tests/cases/schema_eta.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
 
-    // the `case` construct: a 3-way disjunction split checks pure
+    // the `case` construct: a 3-way disjunction split checks elaborated
     ctx.ok(&.{ "check", "tests/cases/case_split.bpa" }, "OK: 11 declarations, 1 theorems proven\n");
 
     // a `case` arm assuming the wrong disjunct is a located error

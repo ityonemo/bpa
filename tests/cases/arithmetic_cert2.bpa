@@ -1,7 +1,7 @@
-// C2b: universally-quantified linear goals replay as pure certificates —
+// C2b: universally-quantified linear goals replay as elaborated certificates —
 // normalization to sorted sums (addLeftSwap/addIsCommutative handle the
 // residual permutation) and a synthesized lessThanIntro witness for order
-// goals. No oracle, so --pure is satisfied. The vocabulary arrives by
+// goals. No accelerated tactic, so --pure is satisfied. The vocabulary arrives by
 // alias from std/peano.
 import peano <<< "std/peano.bpa"
 import ordering <<< "std/peano-ordering.bpa"

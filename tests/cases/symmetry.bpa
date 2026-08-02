@@ -1,5 +1,5 @@
 // symmetry: from a proven equation x = y, conclude y = x in one step —
-// replacing the reflexivity + rewrite idiom. Pure (kernel-checked), so
+// replacing the reflexivity + rewrite idiom. Elaborated (kernel-checked), so
 // --pure accepts it.
 sort Nat
 const ZERO: Nat

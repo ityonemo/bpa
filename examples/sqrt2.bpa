@@ -12,7 +12,7 @@
 // q² = 2k², so 2 | q. Now 2 divides both p and q, hence 2 | gcd(p, q) = 1 — but
 // nothing but 1 divides 1 (`twoNotDivideOne`). Contradiction.
 //
-// Everything is PURE — no oracle. The nonlinear algebra is `polynomial(peano)`;
+// Everything is ELABORATED — no accelerated step. The nonlinear algebra is `polynomial(peano)`;
 // the cancellation is `mulCancelLeft`; the parity is `std/peano-parity.bpa`.
 
 import peano <<< "std/peano.bpa"

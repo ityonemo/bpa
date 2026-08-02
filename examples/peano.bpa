@@ -3,13 +3,13 @@
 // signature, same theorems, a fraction of the steps. Three rungs appear:
 //
 //   1. `simplify` collapses each induction case's equational grind into one
-//      step citing the rewrite rules (still pure: it emits kernel steps);
-//   2. `arithmetic` proves decidable goals in one step, emitting a pure
+//      step citing the rewrite rules (still elaborated: it emits kernel steps);
+//   2. `arithmetic` proves decidable goals in one step, emitting an elaborated
 //      certificate when the recursion facts above are in scope;
 //   3. where a goal genuinely needs induction (evenOrOdd), no certificate
-//      exists — the ORACLE decides it, the theorem is tainted, and the
-//      summary line discloses it. `bpa check --pure` rejects exactly that
-//      step. See ORACLES.md.
+//      exists — the accelerated tactic decides it, the theorem is marked
+//      accelerated, and the summary line discloses it. `bpa check --pure`
+//      rejects exactly that step. See ACCELERATION.md.
 
 // -- signature --------------------------------------------------------------
 
@@ -172,9 +172,9 @@ proof
 qed
 
 // Decidable, but the quantifier alternation needs induction to replay — no
-// certificate exists, so the ORACLE decides it and this theorem is tainted.
-// The summary discloses it; `bpa check --pure examples/peano.bpa` rejects
-// exactly this step.
+// certificate exists, so the accelerated tactic decides it and this theorem is
+// marked accelerated. The summary discloses it; `bpa check --pure
+// examples/peano.bpa` rejects exactly this step.
 theorem evenOrOdd: forall x: Nat; exists y: Nat; x = add(y, y) or x = succ(add(y, y))
 proof
   @conclusion |

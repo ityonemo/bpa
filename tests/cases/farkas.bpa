@@ -1,7 +1,7 @@
 // Farkas: QF-linear INFEASIBILITY certifies purely under the default. These
 // goals combine several hypothesis inequalities into a contradiction — the
 // shape the equation/order certifiers cannot do (they normalize ONE
-// (in)equality; Farkas combines several). Today they fall to the oracle.
+// (in)equality; Farkas combines several). Today they fall to the accelerated path.
 //
 // The vocabulary + lemmas are NOT aliased into local scope: the theory is
 // named explicitly via `by arithmetic(ordering)`, and the certifier resolves

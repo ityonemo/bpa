@@ -158,7 +158,7 @@ steps, no filler:
     [by tautology remainder-is-determined-nine-six six-is-nonzero three-is-below-six sum-is-nine]
   ```
 
-  (`tautology` replays as a pure certificate here — a Horn-shaped discharge
+  (`tautology` replays as an elaborated certificate here — a Horn-shaped discharge
   never approaches its atom cap or step budget. If a discharge ever exceeds
   the 16-atom cap, fall back to named `modus_ponens` steps.)
 
@@ -206,10 +206,10 @@ steps, no filler:
   every symbol the goal uses, or the check hard-errors naming the gap.
 - **Trust model**: `bpa check` verifies everything by default — arithmetic
   must certify, imported proofs are re-checked, schemas re-instantiate. The
-  speed flags defer layers for iteration (`--fast` accepts arithmetic oracle
-  verdicts; `--faster` also trusts imported proofs, reporting them as trusted;
-  `--reckless` also trusts imported schemas), always with a loud
-  not-fully-verified banner. Re-run plain `bpa check` before finalizing.
+  speed flags defer layers for iteration (`--fast` accepts arithmetic
+  accelerated verdicts; `--faster` also trusts imported proofs, reporting them
+  as trusted; `--reckless` also trusts imported schemas), always with a loud
+  accelerated banner. Re-run plain `bpa check` before finalizing.
 
 ## Layout of steps
 

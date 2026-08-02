@@ -91,13 +91,13 @@ pub const Justification = union(enum) {
     /// lowering). The kernel still checks the premise-peeling: each premise
     /// must match the instance's next antecedent, in order.
     schema_instance: struct { instance: TermId, premises: []const SRef },
-    /// An oracle verdict (elaborator-licensed): the named decision procedure
-    /// accepted the claim, and there is no derivation to check. Trust is
-    /// disclosed rather than established — the elaborator taints the
-    /// enclosing theorem with the oracle name (transitively, through
-    /// citations), the summary reports the taint, and --pure rejects the
-    /// step. Registry: ORACLES.md.
-    oracle: StrId,
+    /// An accelerated verdict (elaborator-licensed): the named decision
+    /// procedure accepted the claim, and there is no derivation to check. Trust
+    /// is disclosed rather than established — the elaborator marks the
+    /// enclosing theorem accelerated under this tactic name (transitively,
+    /// through citations), the summary reports it, and --pure rejects the
+    /// step. Registry: ACCELERATION.md.
+    accelerated: StrId,
 };
 
 pub const Proof = struct {
@@ -554,8 +554,8 @@ pub const Kernel = struct {
                 const swapped = try self.pool.add(.{ .eq = .{ .lhs = node.eq.rhs, .rhs = node.eq.lhs } });
                 try self.requireClaim(step, "symmetry", swapped);
             },
-            // the claim stands on the named oracle's verdict; nothing to check
-            .oracle => {},
+            // the claim stands on the named accelerated tactic's verdict; nothing to check
+            .accelerated => {},
             .schema_instance => |r| {
                 var cur = r.instance;
                 for (r.premises) |pr| {

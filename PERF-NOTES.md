@@ -59,7 +59,7 @@ DEPCHECK-PLAN.md narrowing consequence taken to its sharpest form, and it is
 **accepted as a reasonable long-run tradeoff (user ruling)**. The mitigations
 are mandatory, in the house style that silence must never imply verification:
 
-- **Disclosure on the summary line** (the oracle-taint ethos applied to
+- **Disclosure on the summary line** (the accelerated-disclosure ethos applied to
   laziness): count the undemanded, e.g.
   `OK: 12 theorems proven (closure of 3 roots); 41 declared, 29 unchecked`.
   A reader must never infer "in the file" ⇒ "checked".
@@ -199,7 +199,7 @@ remains useful as a *scheduling hint* that makes suspensions rare.
   references under append** (the ArrayList-realloc aliasing hazard, now on
   `env.statements`). Internal ids become schedule-dependent, which is exactly
   why every *output* is canonicalized by content/source order, never by id.
-  Prove jobs flip `proven` and record oracle taint, published with
+  Prove jobs flip `proven` and record accelerated steps, published with
   release/acquire on completion (ordered by the waitlist edges).
 - **The interner is the one genuinely shared mutable map** (fresh `x#N` names
   are interned mid-proof). Solvable — striped locking, or per-worker id ranges

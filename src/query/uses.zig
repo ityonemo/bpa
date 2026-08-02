@@ -10,7 +10,7 @@
 //!     declarations this proof depends on, as opposed to its own step labels.
 //!
 //! This is the semantic answer to "which proofs use `assoc`?", "who cites this
-//! oracle rule?", and "what does theorem X depend on?" — questions `grep` botches
+//! accelerated tactic?", and "what does theorem X depend on?" — questions `grep` botches
 //! because `[by …]` can wrap across lines and an alias hides the real target.
 //!
 //! With a theorem argument, audits that one proof; without, audits EVERY

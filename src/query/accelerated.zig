@@ -1,20 +1,22 @@
-//! `bpa query oracles <file> [theorem]` — the oracle-taint audit of a proof.
+//! `bpa query accelerated <file> [theorem]` — the acceleration audit of a proof.
 //!
 //! Walks the parsed AST (never elaborates) and reports every step whose
-//! justification rule is **oracle-capable** — one that, when it cannot emit a
-//! certificate, falls back to a decision-procedure verdict the kernel does not
-//! re-derive (and that `bpa check` rejects by default, admitting only under
-//! `--fast`). Those rules are `arithmetic`, `tautology`, `polynomial`,
-//! `assoc_commut`, and `assoc` (the ORACLES.md registry) plus the quantified
-//! variants `assoc_commut_quantified` / `assoc_quantified`, which run the same
-//! oracle-capable core. (`simplify` and `simplify_quantified` are pure by
-//! construction — the certificate IS the rewrite chain — so they never taint.)
+//! justification rule is an **accelerated tactic** — one that, when it cannot
+//! emit a certificate, falls back to a decision-procedure verdict the kernel
+//! does not re-derive (and that `bpa check` rejects by default, admitting only
+//! under `--fast`). Those rules are `arithmetic`, `tautology`, `polynomial`,
+//! `assoc_commut`, and `assoc` (the ACCELERATION.md registry) plus the
+//! quantified variants `assoc_commut_quantified` / `assoc_quantified`, which run
+//! the same accelerated core. (`simplify` and `simplify_quantified` are
+//! elaborated by construction — the certificate IS the rewrite chain — so they
+//! never accelerate.)
 //!
-//! This is the "is my file pure?" audit: it lists, per proof, the `file:line`
-//! of every step that *could* taint. It is a syntactic upper bound — a step may
-//! still certify and stay pure — so a clean report (no oracle-capable steps)
-//! guarantees purity, while a flagged step is "check this one under a real
-//! `bpa check`". Pure over the AST, like `outline`/`uses`: no elaboration.
+//! This is the "is my file fully elaborated?" audit: it lists, per proof, the
+//! `file:line` of every step that *could* be accelerated. It is a syntactic
+//! upper bound — a step may still certify and stay elaborated — so a clean
+//! report (no accelerated tactics) guarantees full elaboration, while a flagged
+//! step is "check this one under a real `bpa check`". Pure over the AST, like
+//! `outline`/`uses`: no elaboration.
 //!
 //! With a theorem argument, audits that one proof; without, audits EVERY
 //! proof-carrying declaration in the file.
@@ -32,23 +34,24 @@ pub const Result = struct {
     ok: bool,
 };
 
-/// The oracle-capable rules (ORACLES.md registry). A step citing one of these
-/// is a potential taint site; every other rule is always kernel-checked.
-const oracle_rules = [_][]const u8{
+/// The accelerated tactics (ACCELERATION.md registry). A step citing one of
+/// these is a potential acceleration site; every other rule is always
+/// kernel-checked.
+const accelerated_rules = [_][]const u8{
     "arithmetic",  "tautology",
     "polynomial",  "assoc_commut",
     "assoc",       "assoc_commut_quantified",
     "assoc_quantified",
 };
 
-fn isOracleRule(name: []const u8) bool {
-    for (oracle_rules) |r| {
+fn isAcceleratedRule(name: []const u8) bool {
+    for (accelerated_rules) |r| {
         if (std.mem.eql(u8, r, name)) return true;
     }
     return false;
 }
 
-pub fn oracles(
+pub fn accelerated(
     arena: Allocator,
     path: []const u8,
     source: []const u8,
@@ -90,7 +93,7 @@ fn asProof(decl: ast.Decl) ?Proof {
     };
 }
 
-/// One oracle-capable step: its rule and where it sits.
+/// One accelerated-tactic step: its rule and where it sits.
 const Hit = struct { rule: []const u8, line: usize, col: usize };
 
 fn renderAll(arena: Allocator, w: *std.Io.Writer, path: []const u8, source: []const u8, file: ast.File) !bool {
@@ -104,7 +107,7 @@ fn renderAll(arena: Allocator, w: *std.Io.Writer, path: []const u8, source: []co
         any = true;
         try renderProof(w, path, source, proof, hits.items);
     }
-    if (!any) try w.writeAll("no oracle-capable steps — this file's proofs are pure\n");
+    if (!any) try w.writeAll("no accelerated tactics — this file's proofs are fully elaborated\n");
     return true;
 }
 
@@ -115,7 +118,7 @@ fn renderOne(arena: Allocator, w: *std.Io.Writer, path: []const u8, source: []co
         var hits: std.ArrayList(Hit) = .empty;
         try collect(arena, source, proof.steps, &hits);
         if (hits.items.len == 0) {
-            try w.print("theorem {s}: no oracle-capable steps — pure\n", .{name});
+            try w.print("theorem {s}: no accelerated tactics — fully elaborated\n", .{name});
         } else {
             try renderProof(w, path, source, proof, hits.items);
         }
@@ -137,7 +140,7 @@ fn collect(arena: Allocator, source: []const u8, steps: []const ast.Step, hits: 
         switch (step.body) {
             .claim => |c| {
                 const rule = tokenText(source, c.rule);
-                if (isOracleRule(rule)) {
+                if (isAcceleratedRule(rule)) {
                     const lc = lineCol(source, c.rule.start);
                     try hits.append(arena, .{ .rule = rule, .line = lc.line, .col = lc.col });
                 }

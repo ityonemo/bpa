@@ -1,47 +1,50 @@
-# Oracle registry
+# Accelerated-tactic registry
 
-An **oracle** is a decision procedure whose verdict the checker accepts
-without a kernel derivation. Oracles are the deliberate exception to bpa's
-otherwise-closed trust story: the kernel checks every ordinary step, but an
-`.oracle` step stands on the named procedure being correct.
+An **accelerated tactic** is a decision procedure whose verdict the checker can
+accept without a kernel derivation. Accelerated tactics are the deliberate
+exception to bpa's otherwise-closed trust story: the kernel checks every
+ordinary step, but an `.accelerated` step stands on the named procedure being
+correct. Each invocation is either **elaborated** (it emitted a full chain of
+kernel steps) or **accelerated** (it trusted the procedure without a chain).
 
 The trust is disclosed, never silent:
 
-- every oracle-backed step **taints** its theorem with the oracle's name;
-- citing a tainted theorem (directly, via `simplify` rules, as a `tautology`
-  premise, or through a schema instantiation whose proof cites one) inherits
-  the taint **transitively**;
+- every accelerated step **marks** its theorem accelerated with the tactic's
+  name;
+- citing an accelerated theorem (directly, via `simplify` rules, as a
+  `tautology` premise, or through a schema instantiation whose proof cites one)
+  inherits the accelerated-tactic names **transitively**;
 - the summary line reports the split, e.g.
-  `OK: 9 declarations, 5 theorems proven (1 pure, 4 via oracles: tautology)`;
-- by default `bpa check` **rejects every oracle-backed step with a located
-  error** — the goal must certify. The oracle verdict is accepted only under
-  `--fast` (which then discloses the taint under a loud not-fully-verified
-  banner).
+  `OK: 9 declarations, 5 theorems proven (1 elaborated, 4 accelerated: tautology)`;
+- by default `bpa check` **rejects every accelerated step with a located
+  error** — the goal must elaborate. The accelerated verdict is accepted only
+  under `--fast` (which then discloses it under a loud accelerated banner).
 
 Under `--faster`/`--reckless`, imported theorems are *trusted* (their proofs
-are not re-checked), which supersedes any oracle disclosure; the summary
+are not re-checked), which supersedes any acceleration disclosure; the summary
 reports those separately.
 
 Tactics are **certificate-first**: an invocation that can emit ordinary
-kernel steps does so and stays pure. Certificates are produced by an ordered
-**certifier chain** (equation/order/exists → mixed-skeleton → Farkas →
+kernel steps does so and stays elaborated. Certificates are produced by an
+ordered **certifier chain** (equation/order/exists → mixed-skeleton → Farkas →
 future Cooper-replay/manual), walked first-success-wins; each link either
 emits kernel steps or **declines with a reason**. When every link declines,
 the default is a hard error listing each link's reason (so a valid goal on a
 thin theory names the missing symbol/lemma to add — an actionable fix, not
-"write a manual proof"); `--fast` accepts the oracle verdict for that goal,
-tainting that use only. Certificate stages grow over time, monotonically
-shrinking what needs `--fast` with no surface change.
+"write a manual proof"); `--fast` accepts the accelerated verdict for that
+goal, marking that use accelerated only. Certificate stages grow over time,
+monotonically shrinking what needs `--fast` with no surface change.
 
-The same certify-by-default / `--fast`-oracle split applies to the equational
-tactics `polynomial` and `assoc_commut` (below): their default path emits
-kernel-checked rewrites citing the theory's proven ring/AC lemmas, and only
-`--fast` presumes the vocabulary's algebra structurally and taints. A tactic is
-oracle-shaped precisely when it depends on a well-known stdlib function and
-presumes its behavior — the taint discloses that presumption; the theory
-argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
+The same elaborate-by-default / `--fast`-accelerated split applies to the
+equational tactics `polynomial` and `assoc_commut` (below): their default path
+emits kernel-checked rewrites citing the theory's proven ring/AC lemmas, and
+only `--fast` presumes the vocabulary's algebra structurally and accelerates. A
+tactic is acceleration-shaped precisely when it depends on a well-known stdlib
+function and presumes its behavior — the acceleration discloses that
+presumption; the theory argument (`polynomial(peano)`, `arithmetic(peano)`)
+pins it to a vetted theory.
 
-## Registered oracles
+## Registered accelerated tactics
 
 ### `tautology` — propositional consequence
 
@@ -51,15 +54,15 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
 - **Verdict semantics**: atoms are the maximal subformulas that are not
   `and`/`or`/`not`/`->` (predicates, equations, quantified formulas — all
   opaque). `.valid` means premises AND not(goal) has no truth assignment over
-  those atoms. Failures are located errors, never taint: a satisfiable
+  those atoms. Failures are located errors, never accelerated: a satisfiable
   skeleton reports its countermodel; more than 16 distinct atoms reports the
   cap.
 - **Certificate status**: certificate-first (B2). Every valid goal within
   the step budget replays as ordinary kernel steps — an inline excluded
   middle plus or_elim per split atom, structural derivation at the leaves —
-  so typical uses are pure and check green by default. The oracle verdict is
-  admitted only under `--fast` as the over-budget fallback, tainting that use
-  only.
+  so typical uses are elaborated and check green by default. The accelerated
+  verdict is admitted only under `--fast` as the over-budget fallback, marking
+  that use accelerated only.
 
 ### `arithmetic` — linear (Presburger) arithmetic over Nat
 
@@ -71,21 +74,22 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   vocabulary + certificate lemmas by well-known name in **local scope** (the
   self-contained case). `arithmetic(<theory>)` resolves them against an
   imported module's scope regardless of local aliases — so a downstream or
-  subdomain file certifies without dragging the arithmetic vocabulary into its
+  subdomain file elaborates without dragging the arithmetic vocabulary into its
   namespace. A **named** theory must provide every symbol the goal uses (a gap
   is a hard error naming it); a missing certificate *lemma* makes the relevant
   certifier decline (soft), surfaced at the terminal.
 - **Fallback**: `[by arithmetic ... fallback(<thm>)]` names a manually-proven
   theorem to cite when the certifier chain declines a valid goal — instead of
-  the hard error (default) or the oracle verdict (`--fast`). The kernel checks
-  `<thm>`'s statement α-matches the goal, so the step stays **pure** (no taint),
-  and any taint `<thm>` itself carries is inherited. This is for goals the
-  Presburger oracle *decides* but no certifier can *emit* — e.g. multi-fixed-
-  variable `∀∀∃` (`tests/cases/cooper_gap.bpa`: `sumParity` reduces to the
-  cooper-certified single-variable `evenOrOddArith` via a hand proof, and
-  `fallback` cites it). `fallback` is a contextual modifier on `arithmetic`
-  only (not a keyword — `fallback` is an ordinary identifier elsewhere); it is
-  the decision-vs-certification escape hatch for a decision-backed oracle, so
+  the hard error (default) or the accelerated verdict (`--fast`). The kernel
+  checks `<thm>`'s statement α-matches the goal, so the step stays
+  **elaborated** (not accelerated), and any accelerated-tactic names `<thm>`
+  itself carries are inherited. This is for goals the Presburger procedure
+  *decides* but no certifier can *emit* — e.g. multi-fixed-variable `∀∀∃`
+  (`tests/cases/cooper_gap.bpa`: `sumParity` reduces to the cooper-certified
+  single-variable `evenOrOddArith` via a hand proof, and `fallback` cites it).
+  `fallback` is a contextual modifier on `arithmetic` only (not a keyword —
+  `fallback` is an ordinary identifier elsewhere); it is the
+  decision-vs-certification escape hatch for a decision-backed procedure, so
   the structural presumers (`assoc`/`assoc_commut`) will never carry it.
 - **Fragment**: terms over `ZERO`, `ONE`, `succ`, `add`, and `mul` where one
   side folds to a literal — all resolved by those well-known names in the
@@ -106,7 +110,7 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   negation reports countermodel values for the fixed variables when a small
   witness exists.
 - **Certificate status**: certificate-first (C2a–C2c, premise handling,
-  D2). Goals replay as pure kernel steps when the well-known peano lemmas
+  D2). Goals replay as elaborated kernel steps when the well-known peano lemmas
   resolve in the use site's scope: ground and universally-quantified
   linear *equations* normalize to succ-towers over sorted sums (recursion
   axioms plus `addZeroRight`/`addSuccRight`/`mulZeroRight`/`mulSuccRight`/
@@ -132,53 +136,57 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   `additionPreservesOrder` + `addIsCommutative` + transitivity). *Cooper-replay*
   (the `cooper` link, `src/presburger.zig` trace + `src/elaborate.zig`
   `cooperInduction`) closes the **quantifier-alternation tail**: a
-  `forall x…; exists y; body` goal replays its Cooper elimination as pure kernel
-  steps — for a period-1 trace, a boundary witness under an `or_intro`; for a
-  period-D trace (e.g. the parity `evenOrOdd`, `forall x; exists y; x=2y ∨
+  `forall x…; exists y; body` goal replays its Cooper elimination as elaborated
+  kernel steps — for a period-1 trace, a boundary witness under an `or_intro`;
+  for a period-D trace (e.g. the parity `evenOrOdd`, `forall x; exists y; x=2y ∨
   x=2y+1`), a SYNTHESIZED induction on the fixed variable (predicate `P(k)` =
   the body, base `P(ZERO)`, step `P(k)→P(succ(k))` by unpacking the IH witness
   and shifting it per residue-class arm, then `instantiate induction`). Still
-  oracle-backed, honestly disclosed: quantified arithmetic subformulas used as
-  skeleton atoms, and multi-variable / nested (`∀∃∀`) alternation (the cooper
-  link declines these, so they fall to `--fast`).
+  accelerated when it cannot elaborate, honestly disclosed: quantified
+  arithmetic subformulas used as skeleton atoms, and multi-variable / nested
+  (`∀∃∀`) alternation (the cooper link declines these, so they fall to
+  `--fast`).
 
 ### `polynomial` — nonlinear ring identities
 
 - **Module**: `src/elaborate.zig` (`polynomialEquation` / `polyCanon` for the
-  certify path; `polyNormForm` for the oracle path)
+  elaborated path; `polyNormForm` for the accelerated path)
 - **Surface rule**: `[by polynomial(<theory>)]` / `[by
   polynomial_quantified(<theory>)]`. Theory-parameterized exactly like
   `arithmetic` (bare = local scope; `(theory)` = that imported module).
-- **Certify path is the DEFAULT and is NOT an oracle.** Under the default,
+- **Elaborated path is the DEFAULT and is NOT accelerated.** Under the default,
   `polynomial` canonicalizes both sides to a sorted sum of sorted monomials by
   *resolving the theory's ring lemmas* (`mulAddDistrib*`, `mulIsAssociative`,
   `mulLeftSwap`, one/zero folds) and emitting a rewrite chain that CITES them —
-  every step kernel-rechecked. Sound relative to the theory's proofs; pure; no
-  taint. A theory too thin (lemmas absent) is a located decline, not a taint.
-- **Oracle verdict (only under `--fast`)**: skip the lemmas entirely and compare
-  the *pure syntactic semiring normal forms* (`polyNormForm` — flatten/sort
-  add/mul trees assuming commutativity, associativity, distributivity, 0/1
-  identities). `.valid` = the two normal forms are `alphaEq`. A false identity
-  is still REJECTED (the oracle decides). What taints is the **presumption that
-  `add`/`mul` form a commutative semiring** — the theory's own laws are never
-  checked, so a pathological/wrong `add`/`mul` could make the presumed identity
-  false. Oracle name: `polynomial`.
-- **Why an oracle at all**: it decides on theories too thin to certify, and it
-  trusts the ring structure of symbols it does not control — the honest, tainted
-  counterpart to the default's kernel-discharged trust.
+  every step kernel-rechecked. Sound relative to the theory's proofs;
+  elaborated; not accelerated. A theory too thin (lemmas absent) is a located
+  decline, not an acceleration.
+- **Accelerated verdict (only under `--fast`)**: skip the lemmas entirely and
+  compare the *bare syntactic semiring normal forms* (`polyNormForm` —
+  flatten/sort add/mul trees assuming commutativity, associativity,
+  distributivity, 0/1 identities). `.valid` = the two normal forms are
+  `alphaEq`. A false identity is still REJECTED (the procedure decides). What
+  is accelerated (not elaborated) is the **presumption that `add`/`mul` form a
+  commutative semiring** — the theory's own laws are never checked, so a
+  pathological/wrong `add`/`mul` could make the presumed identity false.
+  Accelerated-tactic name: `polynomial`.
+- **Why an accelerated tactic at all**: it decides on theories too thin to
+  elaborate, and it trusts the ring structure of symbols it does not control —
+  the honest, accelerated counterpart to the default's kernel-discharged trust.
 - **No `fallback` (settled — don't relitigate).** Unlike `arithmetic` (whose
   Cooper decision genuinely exceeds what the certifier can emit — the ∀∀∃ /
   nested-alternation tail — so `fallback` bridges a real gap), `polynomial`'s
-  certify path and oracle decide the *same* fragment: semiring identities over
-  `add`/`mul`. **When the ring lemmas are present, the certify path always
-  succeeds** on a true identity (terminating normalization, every rewrite cites
-  a present lemma) — stress-tested to a wide-sum 4th power (256 monomials),
-  100-factor reversed products, `succ`-atoms, and 0/1 folds. The only case the
-  oracle "wins" is a **thin theory** (`needs <lemma> in scope`), whose fix is to
-  *add the lemma*, not to hand-prove around it. So there is no
-  decision-vs-certification gap for `polynomial` to bridge, and it carries no
-  `fallback`. (The audit also surfaced — and fixed — a stale-slice OOB crash in
-  the oracle normalizer on large expansions: `tests/cases/polynomial_oob.bpa`.)
+  elaborated path and accelerated path decide the *same* fragment: semiring
+  identities over `add`/`mul`. **When the ring lemmas are present, the
+  elaborated path always succeeds** on a true identity (terminating
+  normalization, every rewrite cites a present lemma) — stress-tested to a
+  wide-sum 4th power (256 monomials), 100-factor reversed products,
+  `succ`-atoms, and 0/1 folds. The only case the accelerated path "wins" is a
+  **thin theory** (`needs <lemma> in scope`), whose fix is to *add the lemma*,
+  not to hand-prove around it. So there is no decision-vs-certification gap for
+  `polynomial` to bridge, and it carries no `fallback`. (The audit also
+  surfaced — and fixed — a stale-slice OOB crash in the accelerated normalizer
+  on large expansions: `tests/cases/polynomial_oob.bpa`.)
 
 ### `assoc_commut` — associative-commutative reordering
 
@@ -188,19 +196,21 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   assoc_commut(assoc, comm, swap)]` supplying the AC lemmas for a **custom
   operator** (operator recovered from the commutativity lemma's shape). Trailing
   refs are distributivity/pre-normalization lemmas. Exactly 0 or 3 args.
-- **Certify path is the DEFAULT and is NOT an oracle.** Re-associate + bubble-
-  sort by the operator's assoc/comm/swap lemmas, emitting kernel-checked swaps
-  that cite them. The **explicit-triple form is ALWAYS certify** (the triple is
-  checkable) — it has no oracle path.
-- **Oracle verdict (only under `--fast`, bare form only)**: compare sorted
-  multisets of summands structurally, resolving NO assoc/comm/swap lemma. `.valid`
-  = same sorted multiset. A different multiset is still rejected. What taints is
-  the **presumption that the operator is associative-commutative** — never
-  checked, so an operator that is not (subtraction, function composition, matrix
-  mul, …) could make the presumed reordering false. Oracle name: `assoc_commut`.
+- **Elaborated path is the DEFAULT and is NOT accelerated.** Re-associate +
+  bubble-sort by the operator's assoc/comm/swap lemmas, emitting kernel-checked
+  swaps that cite them. The **explicit-triple form is ALWAYS elaborated** (the
+  triple is checkable) — it has no accelerated path.
+- **Accelerated verdict (only under `--fast`, bare form only)**: compare sorted
+  multisets of summands structurally, resolving NO assoc/comm/swap lemma.
+  `.valid` = same sorted multiset. A different multiset is still rejected. What
+  is accelerated (not elaborated) is the **presumption that the operator is
+  associative-commutative** — never checked, so an operator that is not
+  (subtraction, function composition, matrix mul, …) could make the presumed
+  reordering false. Accelerated-tactic name: `assoc_commut`.
 - **Relation to `polynomial`**: `assoc_commut` is the single-operator special
   case; `polynomial` additionally distributes `mul` over `add`. Same trust
-  story — both presume the vocabulary's algebra where the certify path proves it.
+  story — both presume the vocabulary's algebra where the elaborated path
+  proves it.
 
 ### `assoc` — associativity-only reordering
 
@@ -210,15 +220,16 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   `add`/`mul` assumption); the operator is recovered from the lemma's shape
   `f(f(a,b),c) = f(a,f(b,c))`. The non-commutative sibling of `assoc_commut`
   (for group theory etc.), where reordering is forbidden — only re-nesting.
-- **Certify path is the DEFAULT and is NOT an oracle.** Right-nest each side by
-  the cited associativity rule (confluent + terminating → canonical form),
-  `alphaEq`-compare, and emit a kernel-checked rewrite chain that cites the
-  lemma. Sides that differ by more than associativity are a located error.
-- **Oracle verdict (only under `--fast`)**: structurally right-nest both sides
-  over the operator and compare, WITHOUT emitting/kernel-checking the rewrite
-  chain. A shape that isn't associativity-equal is still rejected. What taints
-  is the **presumption that the operator is associative** — the rewrite is not
-  discharged against the kernel. Oracle name: `assoc`. (Unlike `assoc_commut`,
-  the lemma is always resolved even in the oracle path, since it's required to
-  identify the operator; the taint is for the *undischarged rewrite*, not for an
+- **Elaborated path is the DEFAULT and is NOT accelerated.** Right-nest each
+  side by the cited associativity rule (confluent + terminating → canonical
+  form), `alphaEq`-compare, and emit a kernel-checked rewrite chain that cites
+  the lemma. Sides that differ by more than associativity are a located error.
+- **Accelerated verdict (only under `--fast`)**: structurally right-nest both
+  sides over the operator and compare, WITHOUT emitting/kernel-checking the
+  rewrite chain. A shape that isn't associativity-equal is still rejected. What
+  is accelerated (not elaborated) is the **presumption that the operator is
+  associative** — the rewrite is not discharged against the kernel.
+  Accelerated-tactic name: `assoc`. (Unlike `assoc_commut`, the lemma is always
+  resolved even in the accelerated path, since it's required to identify the
+  operator; the acceleration is for the *undischarged rewrite*, not for an
   unresolved lemma.)

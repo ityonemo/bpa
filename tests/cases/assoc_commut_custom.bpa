@@ -1,7 +1,7 @@
 // `assoc_commut(assoc, comm, swap)` — the explicit-triple form, for a CUSTOM
 // operator whose AC lemmas are NOT named by the well-known convention. The
 // three lemmas are supplied directly; the operator is recovered from the
-// commutativity lemma's shape. Pure (the triple is kernel-checked).
+// commutativity lemma's shape. Elaborated (the triple is kernel-checked).
 //
 // Two forms only: bare `assoc_commut` (well-known add/mul) or exactly three
 // args. No partials — see tests/cases/assoc_commut_bad_arity.bpa.
