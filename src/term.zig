@@ -300,6 +300,94 @@ pub const Pool = struct {
         if (!changed) return id;
         return self.addApp(kind, a.sym, new_args);
     }
+
+    /// A structure-interpretation mapping for `remapFormula`: rewrite each
+    /// SortId and SymId of a source theory to its image in the target. The maps
+    /// are small association lists (a theory's primitives: a carrier + a few
+    /// ops), looked up linearly. An entry absent from a map is left unchanged
+    /// (sorts/syms the mapping doesn't mention — e.g. `Prop`, shared builtins —
+    /// pass through). `guard`, when set, relativizes: every quantifier over the
+    /// mapped `carrier` sort gets its body wrapped `guard(x) -> body`.
+    pub const Remap = struct {
+        sorts: []const struct { from: SortId, to: SortId },
+        syms: []const struct { from: SymId, to: SymId },
+        /// carrier-guard relativization (guarded models); null = unguarded
+        guard: ?struct { pred: SymId, carrier: SortId } = null,
+
+        fn sort(self: Remap, s: SortId) SortId {
+            for (self.sorts) |m| if (m.from == s) return m.to;
+            return s;
+        }
+        fn sym(self: Remap, s: SymId) SymId {
+            for (self.syms) |m| if (m.from == s) return m.to;
+            return s;
+        }
+    };
+
+    /// Rewrite a source-theory formula through a structure interpretation
+    /// (`Remap`): substitute every SortId and SymId to its image, and — for a
+    /// guarded model — inject `guard(x) ->` at each quantifier over the mapped
+    /// carrier. Locally-nameless representation makes this capture-free: binder
+    /// STRUCTURE (de Bruijn indices, nesting) is preserved exactly; only the
+    /// sorts/syms decorating it change. This is the `model` transfer engine —
+    /// run OUT (remap a source theorem to the target goal) and IN (remap a
+    /// source axiom to check the discharging local fact). See MODEL-DESIGN.md.
+    ///
+    /// NOTE the `carrier` in `guard` is the SOURCE sort (pre-remap): the guard
+    /// fires on a `quant` whose (source) sort is the carrier, so we test before
+    /// substituting. The injected `guard(bvar 0)` references the just-bound
+    /// variable; because we inject INSIDE the quantifier body the de Bruijn
+    /// index 0 is correct (innermost binder).
+    pub fn remapFormula(self: *Pool, id: TermId, remap: Remap) Allocator.Error!TermId {
+        switch (self.get(id)) {
+            .bvar => return id,
+            .fvar => |v| {
+                const s = remap.sort(v.sort);
+                if (s == v.sort) return id;
+                return self.add(.{ .fvar = .{ .name = v.name, .sort = s } });
+            },
+            .app => |a| return self.remapApp(.app, a, remap),
+            .pred => |a| return self.remapApp(.pred, a, remap),
+            .eq => |p| {
+                const lhs = try self.remapFormula(p.lhs, remap);
+                const rhs = try self.remapFormula(p.rhs, remap);
+                return self.add(.{ .eq = .{ .lhs = lhs, .rhs = rhs } });
+            },
+            .not => |inner| return self.add(.{ .not = try self.remapFormula(inner, remap) }),
+            .bin => |b| {
+                const lhs = try self.remapFormula(b.lhs, remap);
+                const rhs = try self.remapFormula(b.rhs, remap);
+                return self.add(.{ .bin = .{ .op = b.op, .lhs = lhs, .rhs = rhs } });
+            },
+            .quant => |q| {
+                var body = try self.remapFormula(q.body, remap);
+                // guard relativization: if this binder is over the (source)
+                // carrier, wrap the body `guard(bvar 0) -> body`.
+                if (remap.guard) |g| {
+                    if (q.sort == g.carrier) {
+                        const bound = try self.add(.{ .bvar = 0 });
+                        const guard_app = try self.addApp(.pred, g.pred, &.{bound});
+                        body = try self.add(.{ .bin = .{ .op = .implies, .lhs = guard_app, .rhs = body } });
+                    }
+                }
+                return self.add(.{ .quant = .{
+                    .q = q.q,
+                    .sort = remap.sort(q.sort),
+                    .hint = q.hint,
+                    .body = body,
+                } });
+            },
+        }
+    }
+
+    fn remapApp(self: *Pool, kind: AppKind, a: Node.App, remap: Remap) Allocator.Error!TermId {
+        // args() aliases extra.items; recursion may grow it (stale-slice trap,
+        // see walkApp) — copy argument ids out before recursing.
+        const old_args = try self.arena.dupe(TermId, self.args(a));
+        const new_args = try self.arena.alloc(TermId, old_args.len);
+        for (old_args, new_args) |arg, *out| out.* = try self.remapFormula(arg, remap);
+        return self.addApp(kind, remap.sym(a.sym), new_args);
+    }
 };
 
 // --- tests ---
@@ -464,4 +552,113 @@ fn invert(o: std.math.Order) std.math.Order {
         .gt => .lt,
         .eq => .eq,
     };
+}
+
+fn ssort(n: u32) SortId {
+    return @enumFromInt(n);
+}
+
+test "remapFormula: unguarded sort+sym substitution over a quantified formula" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    // source theory: sort Grp = 1, op = sym 1.
+    // formula: forall a: Grp; op(a, a) = a   (a group-flavoured shape)
+    const grp = ssort(1);
+    const rat = ssort(2);
+    const op = tsym(1);
+    const add = tsym(2);
+
+    const a_fv = try p.add(.{ .fvar = .{ .name = sid(1), .sort = grp } });
+    const op_aa = try p.addApp(.app, op, &.{ a_fv, a_fv });
+    const eq = try p.add(.{ .eq = .{ .lhs = op_aa, .rhs = a_fv } });
+    const body = try p.close(eq, sid(1));
+    const src = try p.add(.{ .quant = .{ .q = .forall, .sort = grp, .hint = sid(1), .body = body } });
+
+    // remap Grp->Rat, op->add.
+    const remap: Pool.Remap = .{
+        .sorts = &.{.{ .from = grp, .to = rat }},
+        .syms = &.{.{ .from = op, .to = add }},
+    };
+    const out = try p.remapFormula(src, remap);
+
+    // expected: forall a: Rat; add(a, a) = a
+    const a2 = try p.add(.{ .fvar = .{ .name = sid(1), .sort = rat } });
+    const add_aa = try p.addApp(.app, add, &.{ a2, a2 });
+    const eq2 = try p.add(.{ .eq = .{ .lhs = add_aa, .rhs = a2 } });
+    const body2 = try p.close(eq2, sid(1));
+    const want = try p.add(.{ .quant = .{ .q = .forall, .sort = rat, .hint = sid(1), .body = body2 } });
+
+    try testing.expect(p.alphaEq(out, want));
+}
+
+test "remapFormula: guarded model injects guard(x) -> at the carrier binder" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    // source: forall a: Grp; op(a, a) = a   remapped Grp->Rat, op->mul,
+    // GUARDED by nonzero (pred sym 9) over the carrier Grp.
+    const grp = ssort(1);
+    const rat = ssort(2);
+    const op = tsym(1);
+    const mul = tsym(3);
+    const nonzero = tsym(9);
+
+    const a_fv = try p.add(.{ .fvar = .{ .name = sid(1), .sort = grp } });
+    const op_aa = try p.addApp(.app, op, &.{ a_fv, a_fv });
+    const eq = try p.add(.{ .eq = .{ .lhs = op_aa, .rhs = a_fv } });
+    const body = try p.close(eq, sid(1));
+    const src = try p.add(.{ .quant = .{ .q = .forall, .sort = grp, .hint = sid(1), .body = body } });
+
+    const remap: Pool.Remap = .{
+        .sorts = &.{.{ .from = grp, .to = rat }},
+        .syms = &.{.{ .from = op, .to = mul }},
+        .guard = .{ .pred = nonzero, .carrier = grp },
+    };
+    const out = try p.remapFormula(src, remap);
+
+    // expected: forall a: Rat; nonzero(a) -> mul(a, a) = a
+    // build the body with a bvar-0 guard antecedent.
+    const a2 = try p.add(.{ .fvar = .{ .name = sid(1), .sort = rat } });
+    const mul_aa = try p.addApp(.app, mul, &.{ a2, a2 });
+    const eq2 = try p.add(.{ .eq = .{ .lhs = mul_aa, .rhs = a2 } });
+    const guard_a = try p.addApp(.pred, nonzero, &.{a2});
+    const impl = try p.add(.{ .bin = .{ .op = .implies, .lhs = guard_a, .rhs = eq2 } });
+    // close over BOTH occurrences (guard's a and body's a share name sid(1))
+    const body2 = try p.close(impl, sid(1));
+    const want = try p.add(.{ .quant = .{ .q = .forall, .sort = rat, .hint = sid(1), .body = body2 } });
+
+    try testing.expect(p.alphaEq(out, want));
+}
+
+test "remapFormula: sorts/syms absent from the map pass through unchanged" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    // formula mentions Prop-level pred `related` (sym 5) over sort 1, plus a
+    // sort 3 the map doesn't touch — remap only sort 1 -> 2.
+    const s1 = ssort(1);
+    const s3 = ssort(3);
+    const related = tsym(5);
+
+    const a_fv = try p.add(.{ .fvar = .{ .name = sid(1), .sort = s1 } });
+    const b_fv = try p.add(.{ .fvar = .{ .name = sid(2), .sort = s3 } });
+    const rel = try p.addApp(.pred, related, &.{ a_fv, b_fv });
+
+    const remap: Pool.Remap = .{
+        .sorts = &.{.{ .from = s1, .to = ssort(2) }},
+        .syms = &.{}, // related untouched
+    };
+    const out = try p.remapFormula(rel, remap);
+    const on = p.get(out).pred;
+    // related stays; first arg's sort became 2; second arg's sort stays 3.
+    try testing.expectEqual(related, on.sym);
+    try testing.expectEqual(ssort(2), p.get(p.args(on)[0]).fvar.sort);
+    try testing.expectEqual(s3, p.get(p.args(on)[1]).fvar.sort);
 }
