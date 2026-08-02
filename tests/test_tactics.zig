@@ -49,12 +49,59 @@ pub fn addTests(
     // reduce an equation to its pointwise obligation via the theory's
     // extensionality lemma, unfold the operators, close the residue. SET model
     // (propositional residue → tautology); emits kernel steps.
-    ctx.ok(&.{ "check", "tests/cases/ext_set.bpa" }, "OK: 28 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/ext_set.bpa" }, "OK: 47 declarations, 21 theorems proven\n");
     // FUNCTION model (equational residue → rewrite join) — same `ext` tactic.
     ctx.ok(&.{ "check", "tests/cases/ext_function.bpa" }, "OK: 29 declarations, 3 theorems proven\n");
     // a FALSE set identity: the pointwise residue has a countermodel, so ext
     // declines with a located error (exit 1) — never accepts a false equation.
     ctx.fail(&.{ "check", "tests/cases/ext_bad.bpa" }, "tests/cases/ext_bad.bpa:18:9: error: ext: could not close the pointwise obligation propositionally (is the identity true?)\n");
+
+    // `model`: structure reuse. The source theory (a carrier + op + left-unit +
+    // one proven theorem) is modeled by a concrete sort, and its theorem
+    // transfers, remapped through the model. See MODEL-DESIGN.md.
+    ctx.ok(&.{ "check", "tests/cases/model_source.bpa" }, "OK: 6 declarations, 2 theorems proven\n");
+
+    // --fast trusts the transfer wholesale (remap the source theorem, α-match the
+    // goal, taint accelerated: model) — checks nothing about the source proof.
+    ctx.ok(&.{ "check", "--fast", "tests/cases/model_transfer.bpa" },
+        \\OK: 13 declarations, 3 theorems proven (1 accelerated: model)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
+        \\
+    );
+    // default (strict) MATERIALIZES the remapped source proof as a synthetic
+    // kernel-checked theorem (suppressed from the count) and cites it — so it
+    // passes with NO taint. The transfer is genuinely kernel-verified.
+    ctx.ok(&.{ "check", "tests/cases/model_transfer.bpa" }, "OK: 13 declarations, 3 theorems proven\n");
+
+    // DEPENDENCY WALK: transferring a source theorem whose proof cites ANOTHER
+    // source theorem forces strict materialization to recurse into it (memoized —
+    // the shared dependency materializes once across both cites). Kernel-checked.
+    ctx.ok(&.{ "check", "tests/cases/model_recurse.bpa" }, "OK: 14 declarations, 4 theorems proven\n");
+    ctx.ok(&.{ "check", "--fast", "tests/cases/model_recurse.bpa" },
+        \\OK: 14 declarations, 4 theorems proven (2 accelerated: model)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
+        \\
+    );
+
+    // MATERIALIZATION CITATION RULE: a materialized model proof may cite another
+    // materialized theorem; a substitution-INVARIANT theorem/axiom (as-is, walk
+    // ends); or a substituted axiom mapped (to a theorem OR an axiom). It may NOT
+    // cite a fact the substitution AFFECTS but the model doesn't map.
+    // OK exercises invariant-theorem + invariant-axiom + axiom→theorem + axiom→axiom:
+    ctx.ok(&.{ "check", "tests/cases/model_cite_ok.bpa" }, "OK: 20 declarations, 4 theorems proven\n");
+    // BAD leaves an affected axiom (opUnitRight, cited by the transferred proof)
+    // unmapped → rejected, naming it.
+    ctx.fail(&.{ "check", "tests/cases/model_cite_bad.bpa" }, "tests/cases/model_cite_bad.bpa:33:27: error: model materialization cites axiom 'opUnitRight', which the substitution affects but the model does not map; add a mapping for it\n");
+
+    // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
+    // goal — a flipped-equation goal is rejected (you can't prove what the source
+    // theorem doesn't say).
+    ctx.fail(&.{ "check", "--fast", "tests/cases/model_bad.bpa" },
+        \\tests/cases/model_bad.bpa:24:9: error: model transfer of 'source.opUnitLeftTwice' does not match the goal:
+        \\  transferred: forall a: Thing; combine(ZED, combine(ZED, a)) = combine(ZED, a)
+        \\  goal:        forall a: Thing; combine(ZED, a) = combine(ZED, combine(ZED, a))
+        \\
+    );
 
     // the polynomial ACCELERATED TACTIC: a thin theory (no ring lemmas) DECLINES under
     // the default (needs a lemma), but --fast decides it structurally and

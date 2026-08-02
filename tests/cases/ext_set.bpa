@@ -3,7 +3,7 @@
 // element, unfold `member` via the operator lemmas, and close the propositional
 // residue with tautology. One line replaces the ~85-line hand element-chase.
 import set <<< "std/set.bpa"
-sort Universe = set.Universe
+sort Element = set.Element
 sort Set = set.Set
 const emptyset = set.emptyset
 func union = set.union

@@ -13,14 +13,16 @@ pub fn addTests(
 ) void {
     const ctx = Ctx.init(b, exe, test_step);
 
-    // AATA group theory: the literate translation of Groups basic-
-    // properties (5 propositions) + 5 in-scope exercises, verified (proven; no accelerated tactic).
-    ctx.ok(&.{ "check", "aata/3.2-groups.md" }, "OK: 29 declarations, 10 theorems proven\n");
+    // AATA group theory: the literate translation of Groups basic-properties (5
+    // propositions) + 5 in-scope exercises. The 10 theorems now ALIAS the library
+    // proofs in std/group.bpa (the .md is book-notation presentation; the checked
+    // derivations live in std) — verified (proven; no accelerated tactic).
+    ctx.ok(&.{ "check", "aata/3.2-groups.md" }, "OK: 40 declarations, 10 theorems proven\n");
 
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
     // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2
     // exercises discharged in one line each by the `ext` tactic).
-    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 50 declarations, 19 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 69 declarations, 19 theorems proven\n");
 
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
     // (composition associativity/preservation + invertible⇒bijective
@@ -38,7 +40,7 @@ pub fn addTests(
     // `hole`, so the file needs --draft; default mode rejects it, naming the
     // one remaining hole.
     ctx.ok(&.{ "check", "--draft", "aata/1.2.3-partitions.md" },
-        \\OK: 76 declarations, 3 theorems proven
+        \\OK: 95 declarations, 22 theorems proven
         \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): classesCoverUniverse; re-run `bpa check` (no --draft) once filled.
         \\
     );
@@ -48,12 +50,9 @@ pub fn addTests(
         \\
     );
 
-    // AATA Chapter 2 "The Integers": the §2.1 induction example base case is
-    // proven; the full ∀n≥0 3|(4ⁿ−1) is a `hole` (inductive step in progress),
-    // so the file needs --draft.
-    ctx.ok(&.{ "check", "--draft", "aata/2-integers.md" },
-        \\OK: 154 declarations, 20 theorems proven
-        \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): fourthPowerMinusOne; re-run `bpa check` (no --draft) once filled.
-        \\
-    );
+    // AATA Chapter 2 "The Integers": §2.1 Mathematical Induction, fully proven —
+    // the base case AND the ∀n≥0 3|(4ⁿ−1) nonneg-induction (its inductive step
+    // splits 4^(k+1)−1 = 4(4ᵏ−1)+3 and uses dividesMul/dividesAdd). No hole; the
+    // file checks WITHOUT --draft.
+    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 184 declarations, 27 theorems proven\n");
 }

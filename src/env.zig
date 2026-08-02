@@ -10,6 +10,7 @@ const Allocator = std.mem.Allocator;
 const intern = @import("intern.zig");
 const StrId = intern.StrId;
 const term = @import("term.zig");
+const kernel = @import("kernel.zig");
 const SortId = term.SortId;
 const SymId = term.SymId;
 const TermId = term.TermId;
@@ -67,6 +68,25 @@ pub const Statement = union(enum) {
         /// theorem depends on (transitively), for the rejection enumeration.
         is_hole: bool = false,
         holes: []const StrId = &.{},
+        /// a `model`-materialized theorem (`Model$thm`): kernel-checked machinery,
+        /// not authored — SUPPRESSED from the user-facing declaration/theorem count.
+        synthetic: bool = false,
+        /// the LOWERED kernel proof (steps + blocks), RETAINED for proven
+        /// theorems so a `model` transfer can materialize a remapped copy in
+        /// strict mode (remap each step's formula via remapFormula + translate
+        /// its justification's ids through the model). Kernel steps are id-based,
+        /// so the remap is clean (unlike the text-token AST). null for
+        /// axioms/holes and for trusted (unchecked) imports. Arena-allocated.
+        proof: ?LoweredProof = null,
+    };
+
+    /// A checked theorem's lowered kernel proof, retained for `model` transfer
+    /// materialization. Mirrors the `kernel.Proof` shape (steps + blocks) but
+    /// stored here to avoid an env->kernel import cycle; the fields are
+    /// structurally the kernel's `Step`/`Block` slices.
+    pub const LoweredProof = struct {
+        steps: []const kernel.Step,
+        blocks: []const kernel.Block,
     };
     pub const Schema = struct {
         name: StrId,

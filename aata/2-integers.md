@@ -34,6 +34,13 @@ pred does_divide = divides.divides
 axiom addZeroRight = integer.addZeroRight
 axiom mulZeroRight = integer.mulZeroRight
 axiom mulSuccRight = integer.mulSuccRight
+axiom addSuccRight = integer.addSuccRight
+axiom addPrevRight = integer.addPrevRight
+axiom negSucc = integer.negSucc
+axiom negZero = integer.negZero
+axiom oneIsSuccZero = integer.oneIsSuccZero
+axiom succPrev = integer.succPrev
+axiom prevSucc = integer.prevSucc
 axiom powZero = divides.powZero
 axiom powSucc = divides.powSucc
 axiom dividesIntro = divides.dividesIntro
@@ -43,8 +50,13 @@ axiom nonnegInduction = nonneg.nonnegInduction
 theorem addZeroLeft = ring.addZeroLeft
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
+theorem addSuccLeft = ring.addSuccLeft
+theorem addPrevLeft = ring.addPrevLeft
 theorem mulOneRight = ring.mulOneRight
 theorem subSelf = order.subSelf
+theorem dividesRefl = divides.dividesRefl
+theorem dividesMul = divides.dividesMul
+theorem dividesAdd = divides.dividesAdd
 
 define TWO = succ(ONE)
 define THREE = succ(TWO)
@@ -123,11 +135,107 @@ proof
 qed
 ```
 
-The inductive step and the full ∀n≥0 statement follow. (Proof to fill: from
-$3 \mid 4^k - 1$, write $4^{k+1} - 1 = 4\cdot 4^k - 1 = 4(4^k - 1) + 3$; both
-$4(4^k-1)$ and $3$ are divisible by 3, so their sum is.)
+The inductive step rests on the algebraic identity $4^{k+1} - 1 = 4(4^k - 1) +
+3$: multiplying the difference $4^k - 1$ by $4$ and adding $3$ recovers the next
+difference $4^{k+1} - 1$. Written with $x = 4^k$ that is $(x-1)\cdot 4 + 3 = x
+\cdot 4 - 1$, a pure arithmetic fact. Both sides unfold — through the recursion
+axioms for $\times$ and $+$, distributing the constant $4$ and cancelling
+$\operatorname{succ}/\operatorname{prev}$ — to the same normal form, so
+`simplify` discharges it.
 
 ```bpa
-  hole fourthPowerMinusOne:
+theorem successorDifferenceIdentity: forall x: Int;
+  add(mul(sub(x, ONE), FOUR), THREE) = sub(mul(x, FOUR), ONE)
+proof
+  @generalize-x |
+    fix x: Int {
+      @conclusion-difference-splits-off-three |
+        add(mul(sub(x, ONE), FOUR), THREE) = sub(mul(x, FOUR), ONE)
+        [by simplify subDef mulZeroRight mulSuccRight addZeroRight addZeroLeft addSuccRight addPrevRight addSuccLeft addPrevLeft negSucc negZero oneIsSuccZero succPrev prevSucc addIsAssociative]
+    }
+  @conclusion |
+    forall x: Int; add(mul(sub(x, ONE), FOUR), THREE) = sub(mul(x, FOUR), ONE)
+    [by forall_intro generalize-x]
+qed
+```
+
+Now induction closes the theorem. The base case is `baseCase` above. For the
+step, assume $3 \mid 4^k - 1$; then $3 \mid 4(4^k-1)$ (a multiple of a multiple
+of 3) and $3 \mid 3$, so $3$ divides their sum $4(4^k-1)+3$, which the identity
+above equals $4^{k+1}-1$.
+
+```bpa
+theorem fourthPowerMinusOne:
   forall n: Int; is_nonneg(n) -> does_divide(THREE, sub(pow(FOUR, n), ONE))
+proof
+  @induction-step |
+    fix k: Int {
+      @given-inductive-hypothesis |
+        assume does_divide(THREE, sub(pow(FOUR, k), ONE)) {
+          @inductive-hypothesis |
+            does_divide(THREE, sub(pow(FOUR, k), ONE))
+            [by hypothesis given-inductive-hypothesis]
+          @divides-mul-rule |
+            forall d, a, c: Int; does_divide(d, a) -> does_divide(d, mul(a, c))
+            [by theorem dividesMul]
+          @multiplying-preserves-divisibility |
+            does_divide(THREE, sub(pow(FOUR, k), ONE)) -> does_divide(THREE, mul(sub(pow(FOUR, k), ONE), FOUR))
+            [by forall_elim(THREE, sub(pow(FOUR, k), ONE), FOUR) divides-mul-rule]
+          @three-divides-difference-times-four |
+            does_divide(THREE, mul(sub(pow(FOUR, k), ONE), FOUR))
+            [by modus_ponens multiplying-preserves-divisibility inductive-hypothesis]
+          @divides-refl-rule |
+            forall d: Int; does_divide(d, d)
+            [by theorem dividesRefl]
+          @three-divides-three |
+            does_divide(THREE, THREE)
+            [by forall_elim(THREE) divides-refl-rule]
+          @divides-add-rule |
+            forall d, a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, add(a, b))
+            [by theorem dividesAdd]
+          @adding-preserves-divisibility |
+            does_divide(THREE, mul(sub(pow(FOUR, k), ONE), FOUR)) -> does_divide(THREE, THREE) -> does_divide(THREE, add(mul(sub(pow(FOUR, k), ONE), FOUR), THREE))
+            [by forall_elim(THREE, mul(sub(pow(FOUR, k), ONE), FOUR), THREE) divides-add-rule]
+          @three-divides-sum |
+            does_divide(THREE, add(mul(sub(pow(FOUR, k), ONE), FOUR), THREE))
+            [by tautology adding-preserves-divisibility three-divides-difference-times-four three-divides-three]
+          @successor-difference-identity |
+            forall x: Int; add(mul(sub(x, ONE), FOUR), THREE) = sub(mul(x, FOUR), ONE)
+            [by theorem successorDifferenceIdentity]
+          @sum-splits-the-successor-difference |
+            add(mul(sub(pow(FOUR, k), ONE), FOUR), THREE) = sub(mul(pow(FOUR, k), FOUR), ONE)
+            [by forall_elim(pow(FOUR, k)) successor-difference-identity]
+          @three-divides-successor-power-product |
+            does_divide(THREE, sub(mul(pow(FOUR, k), FOUR), ONE))
+            [by rewrite sum-splits-the-successor-difference three-divides-sum]
+          @power-successor-rule |
+            forall b, e: Int; pow(b, succ(e)) = mul(pow(b, e), b)
+            [by axiom powSucc]
+          @successor-power-unfolds |
+            pow(FOUR, succ(k)) = mul(pow(FOUR, k), FOUR)
+            [by forall_elim(FOUR, k) power-successor-rule]
+          @product-is-successor-power |
+            mul(pow(FOUR, k), FOUR) = pow(FOUR, succ(k))
+            [by symmetry successor-power-unfolds]
+          @three-divides-successor-difference |
+            does_divide(THREE, sub(pow(FOUR, succ(k)), ONE))
+            [by rewrite product-is-successor-power three-divides-successor-power-product]
+        }
+      @inductive-hypothesis-implies-successor |
+        does_divide(THREE, sub(pow(FOUR, k), ONE)) -> does_divide(THREE, sub(pow(FOUR, succ(k)), ONE))
+        [by implies_intro given-inductive-hypothesis]
+      @induction-step-at-k |
+        is_nonneg(k) -> does_divide(THREE, sub(pow(FOUR, k), ONE)) -> does_divide(THREE, sub(pow(FOUR, succ(k)), ONE))
+        [by tautology inductive-hypothesis-implies-successor]
+    }
+  @induction-step-for-all-k |
+    forall k: Int; is_nonneg(k) -> does_divide(THREE, sub(pow(FOUR, k), ONE)) -> does_divide(THREE, sub(pow(FOUR, succ(k)), ONE))
+    [by forall_intro induction-step]
+  @base-case |
+    does_divide(THREE, sub(pow(FOUR, ZERO), ONE))
+    [by theorem baseCase]
+  @conclusion |
+    forall n: Int; is_nonneg(n) -> does_divide(THREE, sub(pow(FOUR, n), ONE))
+    [by instantiate nonnegInduction((fun m: Int => does_divide(THREE, sub(pow(FOUR, m), ONE)))) base-case induction-step-for-all-k]
+qed
 ```

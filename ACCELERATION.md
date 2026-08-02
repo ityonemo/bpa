@@ -44,6 +44,45 @@ function and presumes its behavior — the acceleration discloses that
 presumption; the theory argument (`polynomial(peano)`, `arithmetic(peano)`)
 pins it to a vetted theory.
 
+## Naming couplings — hardcoded defaults are fine, but MUST be overridable
+
+Accelerators routinely *expect* conventional names: `ext` looks for a lemma
+called `extensionality`/`funcExtensionality`; `arithmetic`/`polynomial` presume
+a well-known `add`/`mul`/`succ`/`ZERO` vocabulary; a schema-driven tactic may
+expect an `induction`. **Hardcoding such a default name is fine** — it keeps the
+common case terse. The invariant is not "no hardcoded strings"; it is:
+
+> **Every name an accelerator expects MUST be overridable — the user must be
+> able to satisfy the expectation from a bpa file, never from editing the
+> checker.** A hardcoded name that is *neither* overridable *nor* structurally
+> derivable is a silent, unescapable coupling, and is forbidden.
+
+The override mechanism is **the language's own remapping**, not a bespoke
+argument on each tactic:
+
+- **`alias`** overrides a single name. Your theory proves set-equality as `setEq`?
+  `axiom extensionality = mytheory.setEq` and `ext` finds it. (This is exactly
+  what the `aata/*.md` files do — aliasing the book's notation onto the std
+  names — and what `set.bpa` did aliasing the element sort.)
+- **`model`** overrides a whole signature at once — the industrial-strength
+  version of the same idea (see `MODEL-DESIGN.md`). Aliasing remaps one name; a
+  `model` remaps an entire structure's worth of names, so a structure that spells
+  everything its own way can satisfy an accelerator's expectations wholesale.
+- The **theory argument** (`arithmetic(peano)`, `ext(set)`) already pins *which*
+  vetted theory's names to use — itself a form of override/selection.
+
+**Prefer structural derivation when the entity is recoverable from a cited
+lemma's shape.** `ext` reads its element sort off the extensionality lemma's
+obligation binder (`forall x: <elementSort>; …`) rather than demanding a sort
+named `Universe` — so there is no name to override at all. This is the strongest
+form (zero coupling), and is preferred where the shape makes it available; it is
+a *preference*, not a mandate (a hardcoded-but-overridable default is acceptable).
+
+Historical note: `ext` once looked the element sort up by the literal name
+`"Universe"`. Renaming that sort to `Element` broke the tactic — the coupling was
+invisible until it fired. The fix derived the sort structurally, which is why the
+tactic is now name-agnostic. That episode is the canonical example of this rule.
+
 ## Registered accelerated tactics
 
 ### `tautology` — propositional consequence
@@ -201,9 +240,11 @@ pins it to a vetted theory.
   function equations (`ext(function)`), and any future extensional theory.
   Prior art: Lean's `ext`.
 - **What it does (emits kernel steps by default)**: resolves the theory's
-  extensionality lemma (`extensionality` / `funcExtensionality`) and the element
-  sort `Universe`; instantiates the lemma at (LHS, RHS) to reduce `LHS = RHS` to
-  its pointwise obligation(s); for each obligation `fix x: Universe`, unfolds the
+  extensionality lemma (`extensionality` / `funcExtensionality`) and reads the
+  element sort **structurally** off that lemma's first obligation binder
+  (`forall x: <elementSort>; …`) — NOT by a hardcoded sort name (see *Naming
+  couplings* below); instantiates the lemma at (LHS, RHS) to reduce `LHS = RHS`
+  to its pointwise obligation(s); for each obligation `fix x: <elementSort>`, unfolds the
   operators appearing in the goal via their characterization lemmas
   (`<op>Member` for sets, `<op>Apply` for functions, resolved by well-known
   name), and closes the residue — dispatching on its shape:
@@ -215,8 +256,8 @@ pins it to a vetted theory.
   Then `forall_intro` each obligation and `modus_ponens` the chain to the
   equation. Every step is a kernel tactic, so `ext` emits (kernel-checked).
 - **Declines** (accelerated-tactic contract): goal not an equation
-  (`out_of_scope`); no extensionality lemma / `Universe` sort in scope; an
-  operator without a characterization lemma; a residue with a countermodel (the
+  (`out_of_scope`); no extensionality lemma with an element-sort obligation in
+  scope; an operator without a characterization lemma; a residue with a countermodel (the
   identity is likely FALSE) → the closer's own located diagnostic.
 - **Why an accelerated tactic**: it presumes the theory's extensionality
   principle + operator characterizations (resolved by well-known name), the same

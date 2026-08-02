@@ -2,7 +2,7 @@
 // extensionality, unfolds membership, but the propositional residue has a
 // countermodel — the tautology closer reports it, exit 1 (not accepted).
 import set <<< "std/set.bpa"
-sort Universe = set.Universe
+sort Element = set.Element
 sort Set = set.Set
 func union = set.union
 func intersection = set.intersection

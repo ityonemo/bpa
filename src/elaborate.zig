@@ -105,7 +105,31 @@ pub const Elaborator = struct {
     /// enclosing statement/step; an undischarged obligation fails the check.
     pending_tccs: std.ArrayList(Tcc) = .empty,
 
+    /// declared `model`s, keyed by instance name. A cite `[by model(Name) thm]`
+    /// looks the model up here and remaps `thm`'s formula through its `Remap`.
+    models: std.AutoHashMapUnmanaged(StrId, Model) = .empty,
+
     const Tcc = struct { formula: TermId, loc: u32 };
+
+    /// A resolved `model` declaration: the interpretation (`remap`) plus the
+    /// source theory's file (to resolve cited source theorems at their origin)
+    /// and a location for diagnostics. Owned slices live in the arena.
+    const Model = struct {
+        remap: term.Pool.Remap,
+        source_file: FileId,
+        loc: u32,
+        name: StrId,
+        /// axiom obligations: source-axiom StatementId -> the local fact that
+        /// discharges it. Strict materialization repoints an `axiom_ref` to a
+        /// source axiom through this map. Absent source axioms are undischarged.
+        stmt_map: []const StmtPair,
+        /// memo of already-materialized source theorems (strict mode): source
+        /// theorem StatementId -> the synthetic `Model$thm` StatementId. Keyed
+        /// per model so all cites share the materialized copies. Grows lazily.
+        materialized: std.AutoHashMapUnmanaged(StatementId, StatementId) = .empty,
+    };
+
+    const StmtPair = struct { from: StatementId, to: StatementId };
 
     const ScopeEntry = struct {
         /// user-facing name (what source text resolves against)
@@ -411,16 +435,99 @@ pub const Elaborator = struct {
                 } else {
                     self.accelerated_used.clearRetainingCapacity();
                     self.holes_used.clearRetainingCapacity();
-                    const proven = try self.checkProofSteps(d.steps, typed.id, d.name.start);
-                    if (proven) {
+                    const lowered = try self.checkProofSteps(d.steps, typed.id, d.name.start);
+                    if (lowered) |proof| {
                         const fact = &self.env.findStatement(self.file, name).?.theorem;
                         fact.proven = true;
                         fact.accelerated = try self.arena.dupe(StrId, self.accelerated_used.items);
                         fact.holes = try self.arena.dupe(StrId, self.holes_used.items);
+                        // retain the lowered kernel proof so a `model` transfer
+                        // can materialize a remapped copy in strict mode.
+                        fact.proof = proof;
                     }
                 }
             },
+            .model => |d| try self.elaborateModel(d),
         }
+    }
+
+    /// Resolve a `model <Name> = <carrier> [where <guard>] { src: tgt ... }`
+    /// declaration into a stored `Model` (an interpretation), keyed by name.
+    /// Each mapping's source (a qualified theory entity) and target (a local
+    /// entity) are resolved to ids; sorts feed the sort-map, funcs/consts/preds
+    /// the sym-map. Axiom mappings are recorded but NOT checked here (the MVP
+    /// `--fast` transfer trusts them; strict-mode obligation discharge is a
+    /// later stage). See MODEL-DESIGN.md.
+    fn elaborateModel(self: *Elaborator, d: anytype) ElabError!void {
+        const name = try self.internTok(d.name);
+        try self.checkFreshName(name, d.name);
+
+        // carrier: a local sort.
+        const carrier = self.env.findSort(self.file, try self.internTok(d.carrier)) orelse
+            return self.fail(d.carrier.start, "model carrier '{s}' is not a sort in scope", .{self.text(d.carrier)});
+
+        // optional guard: a local UNARY predicate over the carrier.
+        var guard: ?term.Pool.Remap.Guard = null;
+        if (d.guard) |g| {
+            const gsym_id = self.env.findSym(self.file, try self.internTok(g)) orelse
+                return self.fail(g.start, "model guard '{s}' is not a predicate in scope", .{self.text(g)});
+            const gsym = self.env.sym(gsym_id);
+            if (gsym.kind != .pred or gsym.arg_sorts.len != 1 or gsym.arg_sorts[0] != carrier) {
+                return self.fail(g.start, "model guard '{s}' must be a unary predicate over the carrier sort", .{self.text(g)});
+            }
+            guard = .{ .pred = gsym_id, .carrier = carrier };
+        }
+
+        var sort_map: std.ArrayList(term.Pool.Remap.SortPair) = .empty;
+        var sym_map: std.ArrayList(term.Pool.Remap.SymPair) = .empty;
+        var stmt_map: std.ArrayList(StmtPair) = .empty;
+        var source_file: ?FileId = null;
+
+        for (d.mappings) |m| {
+            const src = try self.resolveTarget(m.source);
+            const tgt = try self.resolveTarget(m.target);
+            // every source must be qualified (name a theory); record its file so
+            // cited source theorems resolve at their origin.
+            if (src.file == self.file) {
+                return self.fail(m.source.start, "model mapping source '{s}' must name the abstract theory (e.g. group.op)", .{self.text(m.source)});
+            }
+            if (source_file) |sf| {
+                if (sf != src.file) return self.fail(m.source.start, "all model mappings must come from one source theory", .{});
+            } else source_file = src.file;
+
+            // dispatch on what the source entity is: sort, symbol, or statement.
+            if (self.env.findSort(src.file, src.base)) |from_sort| {
+                const to_sort = self.env.findSort(tgt.file, tgt.base) orelse
+                    return self.fail(m.target.start, "'{s}' is not a sort", .{self.text(m.target)});
+                try sort_map.append(self.arena, .{ .from = from_sort, .to = to_sort });
+            } else if (self.env.findSym(src.file, src.base)) |from_sym| {
+                const to_sym = self.env.findSym(tgt.file, tgt.base) orelse
+                    return self.fail(m.target.start, "'{s}' is not a function/predicate", .{self.text(m.target)});
+                try sym_map.append(self.arena, .{ .from = from_sym, .to = to_sym });
+            } else if (self.env.findStatementId(src.file, src.base)) |from_stmt| {
+                // axiom obligation: the local fact `to_stmt` discharges the
+                // source axiom `from_stmt`. Strict materialization repoints an
+                // `axiom_ref` to the source axiom through this map.
+                const to_stmt = self.env.findStatementId(tgt.file, tgt.base) orelse
+                    return self.fail(m.target.start, "'{s}' is not an axiom/theorem", .{self.text(m.target)});
+                try stmt_map.append(self.arena, .{ .from = from_stmt, .to = to_stmt });
+            } else {
+                return self.fail(m.source.start, "unknown model mapping source '{s}'", .{self.text(m.source)});
+            }
+        }
+
+        const remap: term.Pool.Remap = .{
+            .sorts = try sort_map.toOwnedSlice(self.arena),
+            .syms = try sym_map.toOwnedSlice(self.arena),
+            .guard = guard,
+        };
+        try self.models.put(self.arena, name, .{
+            .remap = remap,
+            .source_file = source_file orelse self.file,
+            .loc = d.name.start,
+            .name = name,
+            .stmt_map = try stmt_map.toOwnedSlice(self.arena),
+        });
     }
 
     // --- proof lowering: surface Fitch tree -> kernel steps + blocks ---
@@ -433,9 +540,10 @@ pub const Elaborator = struct {
         const LabelTarget = union(enum) { step: kernel.StepId, block: kernel.BlockId };
     };
 
-    /// Lower and kernel-check a proof. Returns true if proven. Lowering
-    /// errors record a diagnostic and yield false (the file continues).
-    fn checkProofSteps(self: *Elaborator, steps: []const ast.Step, goal: TermId, goal_loc: u32) Allocator.Error!bool {
+    /// Lower and kernel-check a proof. Returns the LOWERED proof if proven
+    /// (retained on the Fact for `model` materialization), else null. Lowering
+    /// errors record a diagnostic and yield null (the file continues).
+    fn checkProofSteps(self: *Elaborator, steps: []const ast.Step, goal: TermId, goal_loc: u32) Allocator.Error!?Statement.LoweredProof {
         var low: Lowering = .{};
         const root_label = try self.interner.intern("proof");
         try low.blocks.append(self.arena, .{
@@ -447,7 +555,7 @@ pub const Elaborator = struct {
         });
         self.lowerSteps(&low, steps, @enumFromInt(0)) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
-            error.Recover => return false,
+            error.Recover => return null,
         };
         low.blocks.items[0].last_step = @intCast(low.steps.items.len);
 
@@ -458,11 +566,13 @@ pub const Elaborator = struct {
             .interner = self.interner,
             .sink = self.sink,
         };
-        return k.check(
+        const proven = k.check(
             .{ .steps = low.steps.items, .blocks = low.blocks.items },
             goal,
             goal_loc,
         );
+        if (!(try proven)) return null;
+        return .{ .steps = low.steps.items, .blocks = low.blocks.items };
     }
 
     /// Lower a block's sibling steps. Labels resolve across the whole block
@@ -869,6 +979,7 @@ pub const Elaborator = struct {
         arithmetic,
         ext,
         ext_quantified,
+        model,
     };
 
     const rule_names = std.StaticStringMap(RuleKind).initComptime(.{
@@ -906,6 +1017,7 @@ pub const Elaborator = struct {
         .{ "arithmetic", .arithmetic },
         .{ "ext", .ext },
         .{ "ext_quantified", .ext_quantified },
+        .{ "model", .model },
     });
 
     fn lowerJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
@@ -1114,6 +1226,9 @@ pub const Elaborator = struct {
             },
             .ext_quantified => {
                 return self.extJustification(low, block_id, goal, c, true);
+            },
+            .model => {
+                return self.modelJustification(goal, c);
             },
             .instantiate => {
                 const name_tok = c.schema.?; // parser guarantees presence
@@ -1383,7 +1498,7 @@ pub const Elaborator = struct {
             // schema's stored proven-ness and skips the re-instantiation.
             if (self.verify.recheck_schemas) {
                 if (schema.proof) |steps| {
-                    if (!try self.checkProofSteps(steps, inst.id, schema.loc)) break :blk null;
+                    if (try self.checkProofSteps(steps, inst.id, schema.loc) == null) break :blk null;
                 }
             }
             break :blk inst.id;
@@ -3087,6 +3202,246 @@ pub const Elaborator = struct {
         try self.accelerated_used.append(self.arena, name);
     }
 
+    /// `[by model(<Instance>) <source.theorem>]` — transfer a source theory's
+    /// theorem to the goal through a declared model. Look up the model, resolve
+    /// the cited source theorem, `remapFormula` its statement through the
+    /// interpretation, and check it α-matches the goal.
+    ///
+    /// Two modes (MODEL-DESIGN.md):
+    ///  - `--fast` (`!certify_arithmetic`): trust the transfer — taint
+    ///    `accelerated: model`, check nothing about the source proof.
+    ///  - default (strict): MATERIALIZE the source proof remapped as a synthetic
+    ///    checked theorem `Model$thm` (recursively for its cited children), then
+    ///    cite it via `theorem_ref` — kernel-checked, untainted.
+    fn modelJustification(self: *Elaborator, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
+        const loc = c.rule.start;
+        const inst_tok = c.schema orelse
+            return self.fail(loc, "model requires an instance: model(<Instance>) <source.theorem>", .{});
+        if (c.refs.len != 1) {
+            return self.fail(loc, "model(<Instance>) cites exactly one source theorem; got {d}", .{c.refs.len});
+        }
+        const inst_name = try self.internTok(inst_tok);
+        const model = self.models.getPtr(inst_name) orelse
+            return self.fail(inst_tok.start, "unknown model '{s}'", .{self.text(inst_tok)});
+
+        const stmt_id = try self.resolveStatementRef(c.refs[0]);
+        const src_formula = switch (self.env.statements.items[@intFromEnum(stmt_id)]) {
+            .axiom => |f| f.formula,
+            .theorem => |f| f.formula,
+            .schema => return self.fail(c.refs[0].start, "model cannot transfer a schema; cite a plain axiom/theorem", .{}),
+        };
+        const transferred = self.pool.remapFormula(src_formula, model.remap) catch return error.OutOfMemory;
+        if (!self.pool.alphaEq(transferred, goal)) {
+            return self.fail(loc, "model transfer of '{s}' does not match the goal:\n  transferred: {s}\n  goal:        {s}", .{
+                self.text(c.refs[0]),
+                try self.renderTerm(transferred),
+                try self.renderTerm(goal),
+            });
+        }
+
+        if (!self.verify.certify_arithmetic) {
+            // --fast: trust the transfer wholesale.
+            const name = self.interner.intern("model") catch return error.OutOfMemory;
+            try self.recordAccelerated(name, loc);
+            return .{ .accelerated = name };
+        }
+
+        // strict: materialize the remapped source proof and cite it. Inherit the
+        // materialized theorem's provenance (if the source proof leaned on an
+        // accelerated tactic or a hole, the transfer discloses it transitively),
+        // exactly like `fallback`.
+        const mat_id = try self.materializeModelTheorem(model, stmt_id, c.refs[0].start);
+        const mat = self.env.statements.items[@intFromEnum(mat_id)].theorem;
+        try self.inheritAccelerated(mat.accelerated);
+        try self.inheritHoles(mat.holes);
+        return .{ .theorem_ref = .{ .stmt = mat_id, .loc = loc } };
+    }
+
+    /// Materialize a source theorem's proof, remapped through `model`, as a
+    /// synthetic kernel-checked theorem `Model$thm` in the current file — then
+    /// return its StatementId. Recursively materializes any source theorem the
+    /// proof cites (memoized per model, so a diamond emits once). Source axioms
+    /// cited by the proof are repointed through the model's `stmt_map` to their
+    /// discharging local facts; an unmapped axiom is an undischarged obligation.
+    fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId, loc: u32) ElabError!StatementId {
+        if (model.materialized.get(source)) |existing| return existing;
+
+        const stmt = self.env.statements.items[@intFromEnum(source)];
+        const fact = switch (stmt) {
+            .theorem => |t| t,
+            .axiom => return self.fail(loc, "model materialization reached an axiom without a mapping; add it to the model", .{}),
+            .schema => return self.fail(loc, "model cannot materialize a schema", .{}),
+        };
+        const proof = fact.proof orelse
+            return self.fail(loc, "model cannot materialize '{s}': its proof was not retained (trusted import?)", .{self.interner.str(fact.name)});
+
+        // mangled name `Model$sourcename`, bound in the current file. `$` is not
+        // a lexable identifier char, so it cannot collide with a user name.
+        const mangled = try self.mangledModelName(model.name, fact.name);
+        const remapped_formula = self.pool.remapFormula(fact.formula, model.remap) catch return error.OutOfMemory;
+
+        // register (unproven) FIRST so a self/mutual citation resolves; memoize
+        // before recursing so a cycle terminates.
+        const mat_id = try self.env.addStatement(self.file, mangled, .{ .theorem = .{
+            .name = mangled,
+            .formula = remapped_formula,
+            .loc = loc,
+            .proven = false,
+            .synthetic = true,
+        } });
+        try model.materialized.put(self.arena, source, mat_id);
+
+        // remap each step's formula + justification ids.
+        const new_steps = try self.arena.alloc(kernel.Step, proof.steps.len);
+        for (proof.steps, new_steps) |s, *out| {
+            out.* = .{
+                .formula = self.pool.remapFormula(s.formula, model.remap) catch return error.OutOfMemory,
+                .just = try self.remapJustification(model, s.just, loc),
+                .block = s.block,
+                .label = s.label,
+                .loc = loc,
+            };
+        }
+
+        // remap each block's sort-bearing data: a `fix` eigenvariable's sort, an
+        // `assume` formula, an `unpack` witness sort. (SRef/BRef indices and the
+        // step ranges are structural — unchanged.)
+        const new_blocks = try self.arena.alloc(kernel.Block, proof.blocks.len);
+        for (proof.blocks, new_blocks) |b, *out| {
+            out.* = b;
+            out.kind = switch (b.kind) {
+                .root => .root,
+                .assume => |f| .{ .assume = self.pool.remapFormula(f, model.remap) catch return error.OutOfMemory },
+                .fix => |v| .{ .fix = .{ .name = v.name, .sort = model.remap.sort(v.sort) } },
+                .unpack => |u| .{ .unpack = .{
+                    .v = .{ .name = u.v.name, .sort = model.remap.sort(u.v.sort) },
+                    .source = u.source,
+                } },
+            };
+        }
+
+        var k: kernel.Kernel = .{
+            .arena = self.arena,
+            .pool = self.pool,
+            .env = self.env,
+            .interner = self.interner,
+            .sink = self.sink,
+        };
+        const ok = try k.check(.{ .steps = new_steps, .blocks = new_blocks }, remapped_formula, loc);
+        if (!ok) {
+            return self.fail(loc, "model transfer of '{s}' does not kernel-check under the interpretation (an obligation is undischarged?)", .{self.interner.str(fact.name)});
+        }
+        // the materialized theorem inherits the source proof's provenance: if the
+        // source leaned on an accelerated tactic or a hole, so does the transfer.
+        const mat_fact = &self.env.statements.items[@intFromEnum(mat_id)].theorem;
+        mat_fact.proven = true;
+        mat_fact.accelerated = fact.accelerated;
+        mat_fact.holes = fact.holes;
+        // RETAIN the materialized lowered proof, so an OUTER model can re-materialize
+        // through this synthetic theorem — the multi-level model chain
+        // (e.g. ℤ models ring models group). Without this, `proof` is null and a
+        // second-level transfer fails "proof not retained".
+        mat_fact.proof = .{ .steps = new_steps, .blocks = new_blocks };
+        return mat_id;
+    }
+
+    /// Remap a justification's embedded ids through the model: TermId fields via
+    /// remapFormula, StatementId fields (axiom/theorem refs) through the model's
+    /// mappings (axioms via `stmt_map`; theorems recursively materialized).
+    /// Intra-proof SRef/BRef indices are structural — unchanged.
+    fn remapJustification(self: *Elaborator, model: *Model, j: kernel.Justification, loc: u32) ElabError!kernel.Justification {
+        return switch (j) {
+            // a cited statement (axiom or theorem) in a materialized proof. The
+            // citation rule (MODEL-DESIGN.md): it may cite the mapped target (in
+            // the substitution list); an existing fact NOT affected by the
+            // substitution (as-is, walk ends); or, for a source theorem affected
+            // but unmapped, its recursive materialization. It may NOT cite a fact
+            // that IS affected by the substitution but is absent from the mapping.
+            .axiom_ref => |r| try self.remapCitation(model, r.stmt, false, loc),
+            .theorem_ref => |r| try self.remapCitation(model, r.stmt, true, loc),
+            .forall_elim => |r| .{ .forall_elim = .{
+                .step = r.step,
+                .with = self.pool.remapFormula(r.with, model.remap) catch return error.OutOfMemory,
+                .with_loc = loc,
+            } },
+            .exists_intro => |r| .{ .exists_intro = .{
+                .step = r.step,
+                .witness = self.pool.remapFormula(r.witness, model.remap) catch return error.OutOfMemory,
+                .witness_loc = loc,
+            } },
+            .schema_instance => |r| .{ .schema_instance = .{
+                .instance = self.pool.remapFormula(r.instance, model.remap) catch return error.OutOfMemory,
+                .premises = r.premises,
+            } },
+            // all other justifications carry only intra-proof SRef/BRef indices
+            // (unchanged by the remap) or nothing.
+            else => j,
+        };
+    }
+
+    /// Repoint a cited statement (`source`, `is_theorem` = it was a theorem_ref)
+    /// through the model, per the materialization citation rule (MODEL-DESIGN.md):
+    ///  - in the mapping  → cite the mapped target, kind-matched;
+    ///  - not affected by the substitution → cite as-is, walk ends (its meaning
+    ///    is unchanged by the interpretation);
+    ///  - affected + a theorem → recursively materialize it;
+    ///  - affected + an axiom, unmapped → FORBIDDEN (its meaning shifts under the
+    ///    interpretation with nothing accounting for it) → error.
+    fn remapCitation(self: *Elaborator, model: *Model, source: StatementId, is_theorem: bool, loc: u32) ElabError!kernel.Justification {
+        _ = is_theorem;
+        // in the substitution list → cite the mapped target.
+        for (model.stmt_map) |p| {
+            if (p.from == source) return self.citeStatement(p.to, loc);
+        }
+        // not in the list: decide by whether the remap affects the fact.
+        const stmt = self.env.statements.items[@intFromEnum(source)];
+        const formula = switch (stmt) {
+            .axiom => |f| f.formula,
+            .theorem => |f| f.formula,
+            .schema => return self.fail(loc, "model cannot transfer a proof citing a schema", .{}),
+        };
+        if (!model.remap.affects(self.pool, formula)) {
+            // substitution-invariant: cite as-is, walk ends.
+            return self.citeStatement(source, loc);
+        }
+        // affected but unmapped: a theorem is materialized; an axiom is forbidden.
+        switch (stmt) {
+            .theorem => {
+                const mat = try self.materializeModelTheorem(model, source, loc);
+                return .{ .theorem_ref = .{ .stmt = mat, .loc = loc } };
+            },
+            .axiom => |f| return self.fail(loc, "model materialization cites axiom '{s}', which the substitution affects but the model does not map; add a mapping for it", .{self.interner.str(f.name)}),
+            .schema => unreachable,
+        }
+    }
+
+    fn mangledModelName(self: *Elaborator, model_name: StrId, source_name: StrId) ElabError!StrId {
+        const text_ = std.fmt.allocPrint(self.arena, "{s}${s}", .{
+            self.interner.str(model_name), self.interner.str(source_name),
+        }) catch return error.OutOfMemory;
+        return self.interner.intern(text_) catch return error.OutOfMemory;
+    }
+
+    fn statementNameOf(self: *Elaborator, id: StatementId) StrId {
+        return switch (self.env.statements.items[@intFromEnum(id)]) {
+            .axiom => |f| f.name,
+            .theorem => |f| f.name,
+            .schema => |s| s.name,
+        };
+    }
+
+    /// A citation of a statement by the justification matching its kind — so a
+    /// model obligation (an abstract axiom) discharged by a proven local theorem
+    /// cites it as `theorem_ref`, and one discharged by a local axiom as
+    /// `axiom_ref`. (A schema can't discharge an obligation — rejected earlier.)
+    fn citeStatement(self: *Elaborator, id: StatementId, loc: u32) kernel.Justification {
+        return switch (self.env.statements.items[@intFromEnum(id)]) {
+            .axiom => .{ .axiom_ref = .{ .stmt = id, .loc = loc } },
+            .theorem => .{ .theorem_ref = .{ .stmt = id, .loc = loc } },
+            .schema => .{ .axiom_ref = .{ .stmt = id, .loc = loc } }, // unreachable in practice
+        };
+    }
+
     /// The certifier chain's terminal: reached when every link declined a
     /// decided-valid goal. Under `--fast`, accept the accelerated verdict.
     /// Under the default, hard-error listing each link's decline reason (flat —
@@ -3218,7 +3573,7 @@ pub const Elaborator = struct {
         universe: term.SortId,
         lemma: TermId,
         lemma_source: simplify_mod.Source,
-        /// each obligation is `forall x: Universe; <body>`; count = 1 (function)
+        /// each obligation is `forall x: <elementSort>; <body>`; count = 1 (function)
         /// or 2 (set, the two inclusions). Read from the lemma.
         obligation_count: usize,
     };
@@ -3269,7 +3624,7 @@ pub const Elaborator = struct {
     fn extEquation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, loc: u32) ElabError!kernel.Justification {
         const eq = self.pool.get(goal).eq;
         const model = (try self.extModel(loc)) orelse
-            return self.fail(loc, "ext: no extensionality lemma (or Universe sort) in scope", .{});
+            return self.fail(loc, "ext: no extensionality lemma (with an element-sort obligation) in scope", .{});
 
         // instantiate the ext lemma at (lhs, rhs): forall A, B; … peel two
         // binders with the goal's sides.
@@ -3285,7 +3640,7 @@ pub const Elaborator = struct {
         // is this tactic's returned justification, not an emitted step.
         for (0..model.obligation_count) |i| {
             const imp = self.pool.get(chain_formula).bin;
-            const ob = imp.lhs; // forall x: Universe; body
+            const ob = imp.lhs; // forall x: <elementSort>; body
             const ob_ref = try self.extObligation(low, block_id, ob, model, loc);
             const mp: kernel.Justification = .{ .modus_ponens = .{ .implication = chain_ref, .antecedent = ob_ref } };
             chain_formula = imp.rhs;
@@ -3308,11 +3663,11 @@ pub const Elaborator = struct {
         };
     }
 
-    /// Prove one obligation `forall x: Universe; body`. `fix x`, unfold every
+    /// Prove one obligation `forall x: <elementSort>; body`. `fix x`, unfold every
     /// operator characterization lemma relevant to `body`, close the residue,
     /// forall_intro. Returns the step proving the obligation.
     fn extObligation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, ob: TermId, model: ExtModel, loc: u32) ElabError!kernel.SRef {
-        const q = self.pool.get(ob).quant; // forall x: Universe; body
+        const q = self.pool.get(ob).quant; // forall x: <elementSort>; body
         const x: term.Node.Fvar = .{ .name = try self.freshNamed("x"), .sort = model.universe };
         const x_id = try self.pool.add(.{ .fvar = x });
         const body = try self.pool.open(q.body, x_id);
@@ -3465,11 +3820,12 @@ pub const Elaborator = struct {
     }
 
     /// Resolve the extensionality model in the current theory scope. Tries
-    /// `extensionality` then `funcExtensionality`; reads Universe + obligation
-    /// count from the lemma's shape.
+    /// `extensionality` then `funcExtensionality`; reads the element sort +
+    /// obligation count from the lemma's shape. The element sort is derived
+    /// STRUCTURALLY from the first obligation's binder (`forall x: <sort>; …`),
+    /// not looked up by name — so the tactic works whatever that sort is called
+    /// (`Element`, `Universe`, …).
     fn extModel(self: *Elaborator, loc: u32) ElabError!?ExtModel {
-        const universe_name = self.interner.intern("Universe") catch return error.OutOfMemory;
-        const universe = self.env.findSort(self.theoryScope(), universe_name) orelse return null;
         const fact = (try self.wellKnownFact("extensionality", loc)) orelse
             (try self.wellKnownFact("funcExtensionality", loc)) orelse return null;
         // count the leading obligations: peel `forall A, B;` then count the
@@ -3480,11 +3836,18 @@ pub const Elaborator = struct {
             const fv = try self.pool.add(.{ .fvar = .{ .name = try self.freshNamed("s"), .sort = self.pool.get(body).quant.sort } });
             body = try self.pool.open(self.pool.get(body).quant.body, fv);
         }
+        // the element sort is the binder sort of the first obligation
+        // `forall x: <elementSort>; …` (lhs of the first implication).
+        var universe: ?term.SortId = null;
         var obligations: usize = 0;
         while (self.pool.get(body) == .bin and self.pool.get(body).bin.op == .implies) : (obligations += 1) {
+            const premise = self.pool.get(body).bin.lhs;
+            if (universe == null and self.pool.get(premise) == .quant) {
+                universe = self.pool.get(premise).quant.sort;
+            }
             body = self.pool.get(body).bin.rhs;
         }
-        return .{ .universe = universe, .lemma = fact.formula, .lemma_source = fact.source, .obligation_count = obligations };
+        return .{ .universe = universe orelse return null, .lemma = fact.formula, .lemma_source = fact.source, .obligation_count = obligations };
     }
 
     fn tautologyJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {

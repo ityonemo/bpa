@@ -95,7 +95,11 @@ form is a fine content label: `@add-is-commutative`.)
   out (`addZeroLeft`, not `addZ`; `addIsCommutative`, not `addComm`);
   equation-shaped names encode the argument position (`addZeroLeft` =
   `add(ZERO,b)=b`, `addZeroRight` = `add(n,ZERO)=n`); variables `snake_case`,
-  one letter only for conventional scalars (`a,b,m,n` Nat; `i,j,k` indices).
+  one letter only for conventional scalars (`a,b,m,n` Nat; `i,j,k` indices). A
+  theory's element-domain sort (the underlying individuals it quantifies over —
+  set members, function points, relation relata) is preferably **`Element`**, not
+  the structure's own carrier (`Set`/`Grp`/`Int` stay themselves); older
+  `Universe` spellings are reconciled, don't retrofit.
 - **Proof variables**: no shadowing (checker-enforced); when generalizing a
   statement binder, reuse the statement's own binder name; induction variable is
   `k`; re-fixing a conceptual var in a disjoint subproof appends an index
