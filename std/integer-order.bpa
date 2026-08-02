@@ -1,0 +1,136 @@
+// std/integer-order.bpa — subtraction and the order on ℤ, over std/integer.bpa
+// and its ring algebra (std/integer-ring.bpa).
+//
+// Over ℤ subtraction is TOTAL and trivial: `sub(a, b) = a + (-b)` (no
+// truncation, unlike Peano) — one defining axiom, and the useful facts
+// (sub(a,a)=0, add(sub(a,b),b)=a, ...) are proven from the ring algebra with no
+// induction. The order `less_than(a, b)` is `∃d ≥ 0; b = a + succ(d)` — a is
+// below b iff b exceeds a by a positive amount — with the same intro/elim shape
+// as Peano's `less_than`.
+
+import integer <<< "std/integer.bpa"
+import ring <<< "std/integer-ring.bpa"
+
+sort Int = integer.Int
+const ZERO = integer.ZERO
+const ONE = integer.ONE
+func succ = integer.succ
+func prev = integer.prev
+func add = integer.add
+func mul = integer.mul
+func neg = integer.neg
+axiom addZeroRight = integer.addZeroRight
+axiom addSuccRight = integer.addSuccRight
+theorem addZeroLeft = ring.addZeroLeft
+theorem addSuccLeft = ring.addSuccLeft
+theorem addIsCommutative = ring.addIsCommutative
+theorem addIsAssociative = ring.addIsAssociative
+theorem addNegRight = ring.addNegRight
+
+// -- subtraction: sub(a, b) = a + (-b) --------------------------------------
+
+func sub(a: Int, b: Int): Int
+axiom subDef: forall a, b: Int; sub(a, b) = add(a, neg(b))
+
+// -- the strict order: a < b iff b = a + succ(d) for some d ----------------
+
+pred less_than(a: Int, b: Int)
+axiom lessThanIntro: forall b, a, d: Int; add(a, succ(d)) = b -> less_than(a, b)
+axiom lessThanElim: forall b, a: Int; less_than(a, b) -> exists d: Int; add(a, succ(d)) = b
+
+// -- subtraction facts (proven from the ring algebra, no induction) ---------
+
+// a - a = 0: sub(a, a) = a + (-a) = 0.
+theorem subSelf: forall a: Int; sub(a, a) = ZERO
+proof
+  @generalize-a |
+    fix a: Int {
+      @sub-definition |
+        forall x, y: Int; sub(x, y) = add(x, neg(y))
+        [by axiom subDef]
+      @sub-a-a |
+        sub(a, a) = add(a, neg(a))
+        [by forall_elim(a, a) sub-definition]
+      @add-neg |
+        forall n: Int; add(n, neg(n)) = ZERO
+        [by theorem addNegRight]
+      @a-plus-neg-a |
+        add(a, neg(a)) = ZERO
+        [by forall_elim(a) add-neg]
+      @conclusion-sub |
+        sub(a, a) = ZERO
+        [by rewrite a-plus-neg-a sub-a-a]
+    }
+  @conclusion |
+    forall a: Int; sub(a, a) = ZERO
+    [by forall_intro generalize-a]
+qed
+
+// (a - b) + b = a: subtraction inverts addition. sub(a,b)+b = (a+(-b))+b
+// = a+((-b)+b) = a+0 = a. Uses associativity, commutativity (for (-b)+b=0
+// from b+(-b)=0), and the inverse law.
+theorem subAddCancel: forall a, b: Int; add(sub(a, b), b) = a
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @sub-definition |
+            forall x, y: Int; sub(x, y) = add(x, neg(y))
+            [by axiom subDef]
+          @sub-is |
+            sub(a, b) = add(a, neg(b))
+            [by forall_elim(a, b) sub-definition]
+          @assoc |
+            forall x, y, z: Int; add(add(x, y), z) = add(x, add(y, z))
+            [by theorem addIsAssociative]
+          @commute |
+            forall x, y: Int; add(x, y) = add(y, x)
+            [by theorem addIsCommutative]
+          @add-neg |
+            forall n: Int; add(n, neg(n)) = ZERO
+            [by theorem addNegRight]
+          @add-zero |
+            forall x: Int; add(x, ZERO) = x
+            [by axiom addZeroRight]
+          // start from add(sub(a,b), b), rewrite sub, associate, cancel.
+          @step0 |
+            add(sub(a, b), b) = add(add(a, neg(b)), b)
+            [by rewrite sub-is refl0]
+          @refl0 |
+            add(sub(a, b), b) = add(sub(a, b), b)
+            [by reflexivity]
+          @assoc-at |
+            add(add(a, neg(b)), b) = add(a, add(neg(b), b))
+            [by forall_elim(a, neg(b), b) assoc]
+          @step1 |
+            add(sub(a, b), b) = add(a, add(neg(b), b))
+            [by rewrite assoc-at step0]
+          // neg(b)+b = b+neg(b) = 0
+          @b-plus-negb |
+            add(b, neg(b)) = ZERO
+            [by forall_elim(b) add-neg]
+          @commute-at |
+            add(neg(b), b) = add(b, neg(b))
+            [by forall_elim(neg(b), b) commute]
+          @negb-plus-b |
+            add(neg(b), b) = ZERO
+            [by rewrite b-plus-negb commute-at]
+          @step2 |
+            add(sub(a, b), b) = add(a, ZERO)
+            [by rewrite negb-plus-b step1]
+          @a-plus-zero |
+            add(a, ZERO) = a
+            [by forall_elim(a) add-zero]
+          @conclusion-cancel |
+            add(sub(a, b), b) = a
+            [by rewrite a-plus-zero step2]
+        }
+      @discharge-b |
+        forall b: Int; add(sub(a, b), b) = a
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Int; add(sub(a, b), b) = a
+    [by forall_intro generalize-a]
+qed

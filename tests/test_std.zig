@@ -43,6 +43,11 @@ pub fn addTests(
     // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
     ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 52 declarations, 9 theorems proven\n");
 
+    // ℤ subtraction (total: a-b = a+(-b)) + the strict order, over the ring
+    // algebra: subSelf (a-a=0) and subAddCancel ((a-b)+b=a), proven with no
+    // induction from the inverse law; order via less_than intro/elim.
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 76 declarations, 11 theorems proven\n");
+
     // the group theory (std/group.bpa): axioms only, no theorems — so a
     // direct check materializes nothing and exits nonzero with a warning
     // (the theory is a valid dependency, but checking it alone proves 0).
