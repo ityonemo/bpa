@@ -32,6 +32,7 @@ pub const Token = struct {
         keyword_proof,
         keyword_qed,
         keyword_requires,
+        keyword_where,
         // proof keywords
         keyword_assume,
         keyword_fix,
@@ -90,6 +91,7 @@ pub const Token = struct {
                 .keyword_proof => "proof",
                 .keyword_qed => "qed",
                 .keyword_requires => "requires",
+                .keyword_where => "where",
                 .keyword_assume => "assume",
                 .keyword_fix => "fix",
                 .keyword_unpack => "unpack",
@@ -142,6 +144,7 @@ const keywords = std.StaticStringMap(Token.Tag).initComptime(.{
     .{ "proof", .keyword_proof },
     .{ "qed", .keyword_qed },
     .{ "requires", .keyword_requires },
+    .{ "where", .keyword_where },
     .{ "assume", .keyword_assume },
     .{ "fix", .keyword_fix },
     .{ "unpack", .keyword_unpack },

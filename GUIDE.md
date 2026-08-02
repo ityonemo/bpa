@@ -196,6 +196,86 @@ axiom addZeroLeft = peano.addZeroLeft
 theorem addIsCommutative = peano.addIsCommutative
 ```
 
+### `model` *(forthcoming — design settled, not yet implemented)*
+
+Declares that a local sort **is a model of** an imported abstract theory, so
+that theory's whole proven corpus transfers to the local sort. Where an alias
+identifies one entity with another, a `model` identifies a *whole structure* —
+you map each of the theory's primitives (its carrier sort, operations,
+constants) and discharge each of its axioms, and in exchange every theorem the
+theory proves becomes citable at your sort.
+
+```bpa
+import group <<< "std/group.bpa"
+
+model Rat as AdditiveGroup {
+  group.Grp:      Rat               // carrier sort
+  group.E:        ZERO              // primitives: source symbol : local symbol
+  group.op:       add
+  group.inverse:  neg
+  group.opAssoc:  addIsAssociative  // axiom obligations: source axiom : local fact
+  // ... one line per remaining group axiom
+}
+```
+
+Read every line **`source : target`** — the abstract theory's entity on the
+left, the local thing that plays it on the right. Primitive lines map symbols;
+axiom lines discharge an obligation by naming a local axiom or theorem whose
+formula, seen through the mapping, *is* that axiom. The mapping must be total:
+every primitive and every axiom of the source theory needs a line, or the
+declaration is rejected naming what's missing.
+
+The instance is **named** (`as AdditiveGroup`) because one sort can model one
+theory more than one way — ℚ is a group under `+` *and* (on ℚ∖{0}) under `×`.
+Each named model keeps its own mapping; a use names which.
+
+**Guarded carriers.** A model may relativize its carrier to a subdomain with
+`where <unaryPred>`:
+
+```bpa
+model Rat where nonzero as MultiplicativeGroup {
+  group.Grp:      Rat
+  group.op:       mul
+  group.E:        ONE
+  group.inverse:  reciprocal
+  // ... axiom obligations, each already guarded by `nonzero`
+}
+```
+
+`where nonzero` means the carrier is the `nonzero` elements; every transferred
+theorem picks up a `nonzero(...)` guard on each of its bound variables (a
+`forall a: Grp; P(a)` becomes `forall a: Rat; nonzero(a) -> P(a)`), and the
+local facts discharging the axioms must carry the same guards. The guard is a
+**single unary predicate** over the carrier sort; for a compound condition,
+`pred`-declare or `define` it first and name that.
+
+**Using a transferred theorem** — cite it through the model with the `model`
+justification rule (see *Justification rules* / *Automation*):
+
+```bpa
+theorem addCancelLeft: forall a, x, y: Rat; add(a, x) = add(a, y) -> x = y
+proof
+  @conclusion |
+    forall a, x, y: Rat; add(a, x) = add(a, y) -> x = y
+    [by model AdditiveGroup with group.cancelLeft]
+qed
+```
+
+`[by model AdditiveGroup with group.cancelLeft]` takes `group`'s abstract
+theorem, rewrites it through the `AdditiveGroup` mapping (relativizing by the
+guard if any), and checks the result equals the goal. It is an **accelerant**:
+under `--fast` the transfer is trusted wholesale and marks the theorem
+accelerated (disclosed in the summary); in default mode it is legitimate because
+the model's axiom obligations were themselves checked and the source theorem was
+already proven over the abstract sort — so nothing is trusted that wasn't
+derived.
+
+> `model` is bpa's lightweight take on what typeclasses (Lean), locales
+> (Isabelle), and module functors (Rocq) do — but explicit and search-free: you
+> name the instance at every use, the mapping is one level deep, and the transfer
+> is a checked source-to-source rewrite that never enters the kernel. No instance
+> resolution, no coherence machinery. (See `MODEL-DESIGN.md`.)
+
 ## Formulas
 
 Quantifier binders end with a semicolon; connectives are words; `->` is
@@ -369,6 +449,7 @@ names for citations). Rules taking a term argument write it in parens:
 | `polynomial_quantified(theory)` | tactic: `polynomial` under a `forall` prefix, without a hand `fix` (see Automation) |
 | `tautology refs...` | tactic: propositional consequence (see Automation) |
 | `arithmetic refs...` | tactic: linear arithmetic over Nat (see Automation) |
+| `model INSTANCE with source.theorem` | *(forthcoming)* transfer an abstract theory's theorem to a sort that models it, remapped through the named model (see `model` under Declaration keywords) |
 
 ## The kernel
 
