@@ -105,7 +105,20 @@ pub const Elaborator = struct {
     /// enclosing statement/step; an undischarged obligation fails the check.
     pending_tccs: std.ArrayList(Tcc) = .empty,
 
+    /// declared `model`s, keyed by instance name. A cite `[by model(Name) thm]`
+    /// looks the model up here and remaps `thm`'s formula through its `Remap`.
+    models: std.AutoHashMapUnmanaged(StrId, Model) = .empty,
+
     const Tcc = struct { formula: TermId, loc: u32 };
+
+    /// A resolved `model` declaration: the interpretation (`remap`) plus the
+    /// source theory's file (to resolve cited source theorems at their origin)
+    /// and a location for diagnostics. Owned slices live in the arena.
+    const Model = struct {
+        remap: term.Pool.Remap,
+        source_file: FileId,
+        loc: u32,
+    };
 
     const ScopeEntry = struct {
         /// user-facing name (what source text resolves against)
@@ -420,7 +433,81 @@ pub const Elaborator = struct {
                     }
                 }
             },
+            .model => |d| try self.elaborateModel(d),
         }
+    }
+
+    /// Resolve a `model <Name> = <carrier> [where <guard>] { src: tgt ... }`
+    /// declaration into a stored `Model` (an interpretation), keyed by name.
+    /// Each mapping's source (a qualified theory entity) and target (a local
+    /// entity) are resolved to ids; sorts feed the sort-map, funcs/consts/preds
+    /// the sym-map. Axiom mappings are recorded but NOT checked here (the MVP
+    /// `--fast` transfer trusts them; strict-mode obligation discharge is a
+    /// later stage). See MODEL-DESIGN.md.
+    fn elaborateModel(self: *Elaborator, d: anytype) ElabError!void {
+        const name = try self.internTok(d.name);
+        try self.checkFreshName(name, d.name);
+
+        // carrier: a local sort.
+        const carrier = self.env.findSort(self.file, try self.internTok(d.carrier)) orelse
+            return self.fail(d.carrier.start, "model carrier '{s}' is not a sort in scope", .{self.text(d.carrier)});
+
+        // optional guard: a local UNARY predicate over the carrier.
+        var guard: ?term.Pool.Remap.Guard = null;
+        if (d.guard) |g| {
+            const gsym_id = self.env.findSym(self.file, try self.internTok(g)) orelse
+                return self.fail(g.start, "model guard '{s}' is not a predicate in scope", .{self.text(g)});
+            const gsym = self.env.sym(gsym_id);
+            if (gsym.kind != .pred or gsym.arg_sorts.len != 1 or gsym.arg_sorts[0] != carrier) {
+                return self.fail(g.start, "model guard '{s}' must be a unary predicate over the carrier sort", .{self.text(g)});
+            }
+            guard = .{ .pred = gsym_id, .carrier = carrier };
+        }
+
+        var sort_map: std.ArrayList(term.Pool.Remap.SortPair) = .empty;
+        var sym_map: std.ArrayList(term.Pool.Remap.SymPair) = .empty;
+        var source_file: ?FileId = null;
+
+        for (d.mappings) |m| {
+            const src = try self.resolveTarget(m.source);
+            const tgt = try self.resolveTarget(m.target);
+            // every source must be qualified (name a theory); record its file so
+            // cited source theorems resolve at their origin.
+            if (src.file == self.file) {
+                return self.fail(m.source.start, "model mapping source '{s}' must name the abstract theory (e.g. group.op)", .{self.text(m.source)});
+            }
+            if (source_file) |sf| {
+                if (sf != src.file) return self.fail(m.source.start, "all model mappings must come from one source theory", .{});
+            } else source_file = src.file;
+
+            // dispatch on what the source entity is: sort, symbol, or statement.
+            if (self.env.findSort(src.file, src.base)) |from_sort| {
+                const to_sort = self.env.findSort(tgt.file, tgt.base) orelse
+                    return self.fail(m.target.start, "'{s}' is not a sort", .{self.text(m.target)});
+                try sort_map.append(self.arena, .{ .from = from_sort, .to = to_sort });
+            } else if (self.env.findSym(src.file, src.base)) |from_sym| {
+                const to_sym = self.env.findSym(tgt.file, tgt.base) orelse
+                    return self.fail(m.target.start, "'{s}' is not a function/predicate", .{self.text(m.target)});
+                try sym_map.append(self.arena, .{ .from = from_sym, .to = to_sym });
+            } else if (self.env.findStatementId(src.file, src.base)) |_| {
+                // axiom obligation: recorded structurally by the source theorem
+                // transfer at cite time; the target fact discharges it. The MVP
+                // --fast path does not check the discharge here.
+            } else {
+                return self.fail(m.source.start, "unknown model mapping source '{s}'", .{self.text(m.source)});
+            }
+        }
+
+        const remap: term.Pool.Remap = .{
+            .sorts = try sort_map.toOwnedSlice(self.arena),
+            .syms = try sym_map.toOwnedSlice(self.arena),
+            .guard = guard,
+        };
+        try self.models.put(self.arena, name, .{
+            .remap = remap,
+            .source_file = source_file orelse self.file,
+            .loc = d.name.start,
+        });
     }
 
     // --- proof lowering: surface Fitch tree -> kernel steps + blocks ---
@@ -869,6 +956,7 @@ pub const Elaborator = struct {
         arithmetic,
         ext,
         ext_quantified,
+        model,
     };
 
     const rule_names = std.StaticStringMap(RuleKind).initComptime(.{
@@ -906,6 +994,7 @@ pub const Elaborator = struct {
         .{ "arithmetic", .arithmetic },
         .{ "ext", .ext },
         .{ "ext_quantified", .ext_quantified },
+        .{ "model", .model },
     });
 
     fn lowerJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
@@ -1114,6 +1203,9 @@ pub const Elaborator = struct {
             },
             .ext_quantified => {
                 return self.extJustification(low, block_id, goal, c, true);
+            },
+            .model => {
+                return self.modelJustification(goal, c);
             },
             .instantiate => {
                 const name_tok = c.schema.?; // parser guarantees presence
@@ -3085,6 +3177,47 @@ pub const Elaborator = struct {
             if (o == name) return;
         }
         try self.accelerated_used.append(self.arena, name);
+    }
+
+    /// `[by model(<Instance>) <source.theorem>]` — transfer a source theory's
+    /// theorem to the goal through a declared model. Look up the model by the
+    /// instance name (parsed into the `schema` slot), resolve the cited source
+    /// theorem at its origin, `remapFormula` it through the model's interpretation
+    /// (relativizing by the guard, if any), and check the result α-matches the
+    /// goal. MVP: an ACCELERANT — `--fast` accepts the transfer wholesale (marks
+    /// the theorem accelerated-by-`model`); default mode rejects (the strict
+    /// obligation-discharge path is a later stage). See MODEL-DESIGN.md.
+    fn modelJustification(self: *Elaborator, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
+        const loc = c.rule.start;
+        const inst_tok = c.schema orelse
+            return self.fail(loc, "model requires an instance: model(<Instance>) <source.theorem>", .{});
+        if (c.refs.len != 1) {
+            return self.fail(loc, "model(<Instance>) cites exactly one source theorem; got {d}", .{c.refs.len});
+        }
+        const inst_name = try self.internTok(inst_tok);
+        const model = self.models.get(inst_name) orelse
+            return self.fail(inst_tok.start, "unknown model '{s}'", .{self.text(inst_tok)});
+
+        // resolve the cited source theorem at its origin and remap its formula.
+        const stmt_id = try self.resolveStatementRef(c.refs[0]);
+        const src_formula = switch (self.env.statements.items[@intFromEnum(stmt_id)]) {
+            .axiom => |f| f.formula,
+            .theorem => |f| f.formula,
+            .schema => return self.fail(c.refs[0].start, "model cannot transfer a schema; cite a plain axiom/theorem", .{}),
+        };
+        const transferred = self.pool.remapFormula(src_formula, model.remap) catch return error.OutOfMemory;
+
+        if (!self.pool.alphaEq(transferred, goal)) {
+            return self.fail(loc, "model transfer of '{s}' does not match the goal:\n  transferred: {s}\n  goal:        {s}", .{
+                self.text(c.refs[0]),
+                try self.renderTerm(transferred),
+                try self.renderTerm(goal),
+            });
+        }
+
+        const name = self.interner.intern("model") catch return error.OutOfMemory;
+        try self.recordAccelerated(name, loc);
+        return .{ .accelerated = name };
     }
 
     /// The certifier chain's terminal: reached when every link declined a

@@ -72,8 +72,8 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
         // where does this token want to go?
         const wants_new_line: bool, const indent: u32 = decide: {
             switch (tok.tag) {
-                // inside [by ...], `axiom`/`theorem` are citations, not decls
-                .keyword_import, .keyword_forward, .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_theorem => {
+                // inside [by ...], `axiom`/`theorem`/`model` are citations, not decls
+                .keyword_import, .keyword_forward, .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_theorem, .keyword_model => {
                     if (in_bracket) break :decide .{ false, 0 };
                     break :decide .{ true, 0 };
                 },
@@ -221,7 +221,9 @@ fn needSpace(prev: Tag, cur: Tag) bool {
         .r_paren, .r_bracket, .comma, .dot, .colon, .semicolon => return false,
         // a step label reads `label |` — a space separates the tag from its pipe
         .pipe => return true,
-        .l_paren => return prev != .identifier and prev != .kebab_identifier and prev != .l_paren,
+        // `model(Instance)` cites with no space, like `arithmetic(peano)` —
+        // `model` is a keyword here, not an identifier, so admit it explicitly.
+        .l_paren => return prev != .identifier and prev != .kebab_identifier and prev != .l_paren and prev != .keyword_model,
         else => {},
     }
     switch (prev) {

@@ -309,10 +309,14 @@ pub const Pool = struct {
     /// pass through). `guard`, when set, relativizes: every quantifier over the
     /// mapped `carrier` sort gets its body wrapped `guard(x) -> body`.
     pub const Remap = struct {
-        sorts: []const struct { from: SortId, to: SortId },
-        syms: []const struct { from: SymId, to: SymId },
+        pub const SortPair = struct { from: SortId, to: SortId };
+        pub const SymPair = struct { from: SymId, to: SymId };
+        pub const Guard = struct { pred: SymId, carrier: SortId };
+
+        sorts: []const SortPair,
+        syms: []const SymPair,
         /// carrier-guard relativization (guarded models); null = unguarded
-        guard: ?struct { pred: SymId, carrier: SortId } = null,
+        guard: ?Guard = null,
 
         fn sort(self: Remap, s: SortId) SortId {
             for (self.sorts) |m| if (m.from == s) return m.to;

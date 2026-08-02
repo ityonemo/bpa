@@ -56,6 +56,32 @@ pub fn addTests(
     // declines with a located error (exit 1) — never accepts a false equation.
     ctx.fail(&.{ "check", "tests/cases/ext_bad.bpa" }, "tests/cases/ext_bad.bpa:18:9: error: ext: could not close the pointwise obligation propositionally (is the identity true?)\n");
 
+    // `model`: structure reuse. The source theory (a carrier + op + left-unit +
+    // one proven theorem) is modeled by a concrete sort, and its theorem
+    // transfers, remapped through the model. See MODEL-DESIGN.md.
+    ctx.ok(&.{ "check", "tests/cases/model_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
+
+    // the transfer is an ACCELERANT: --fast trusts it wholesale (remap the source
+    // theorem, α-match the goal, taint accelerated: model)...
+    ctx.ok(&.{ "check", "--fast", "tests/cases/model_transfer.bpa" },
+        \\OK: 12 declarations, 2 theorems proven (1 accelerated: model)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
+        \\
+    );
+    // ...and default mode REJECTS it (strict obligation-discharge is a later
+    // stage; the MVP's default path has nothing to elaborate, so it points at --fast).
+    ctx.fail(&.{ "check", "tests/cases/model_transfer.bpa" }, "tests/cases/model_transfer.bpa:25:9: error: 'model' could not be emitted as kernel steps here; use --fast to accept the accelerated verdict\n");
+
+    // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
+    // goal — a flipped-equation goal is rejected (you can't prove what the source
+    // theorem doesn't say).
+    ctx.fail(&.{ "check", "--fast", "tests/cases/model_bad.bpa" },
+        \\tests/cases/model_bad.bpa:24:9: error: model transfer of 'source.opUnitLeftTwice' does not match the goal:
+        \\  transferred: forall a: Thing; combine(ZED, combine(ZED, a)) = combine(ZED, a)
+        \\  goal:        forall a: Thing; combine(ZED, a) = combine(ZED, combine(ZED, a))
+        \\
+    );
+
     // the polynomial ACCELERATED TACTIC: a thin theory (no ring lemmas) DECLINES under
     // the default (needs a lemma), but --fast decides it structurally and
     // is accelerated (accelerated: polynomial).

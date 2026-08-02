@@ -30,7 +30,8 @@ fn isTheoryRule(name: []const u8) bool {
         std.mem.eql(u8, name, "polynomial") or
         std.mem.eql(u8, name, "polynomial_quantified") or
         std.mem.eql(u8, name, "ext") or
-        std.mem.eql(u8, name, "ext_quantified");
+        std.mem.eql(u8, name, "ext_quantified") or
+        std.mem.eql(u8, name, "model");
 }
 
 pub const Parser = struct {
@@ -102,7 +103,7 @@ pub const Parser = struct {
 
     fn isTopLevelKeyword(tag: Token.Tag) bool {
         return switch (tag) {
-            .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_hole, .keyword_theorem, .keyword_import, .keyword_forward => true,
+            .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_hole, .keyword_theorem, .keyword_import, .keyword_forward, .keyword_model => true,
             else => false,
         };
     }
@@ -227,8 +228,38 @@ pub const Parser = struct {
                 _ = try self.expect(.keyword_qed);
                 return .{ .theorem = .{ .name = name, .formula = formula, .steps = steps } };
             },
+            .keyword_model => {
+                _ = self.advance();
+                const name = try self.expect(.identifier);
+                // head is alias-SHAPED (`Name = carrier`) but carries a block,
+                // so parse it directly rather than via maybeAlias.
+                _ = try self.expect(.equal);
+                const carrier = try self.expect(.identifier);
+                var guard: ?Token = null;
+                if (self.tok.tag == .keyword_where) {
+                    _ = self.advance();
+                    guard = try self.expect(.identifier);
+                }
+                const mappings = try self.parseModelMappings();
+                return .{ .model = .{ .name = name, .carrier = carrier, .guard = guard, .mappings = mappings } };
+            },
             else => return self.fail("expected a declaration, got '{s}'", .{self.describe()}),
         }
+    }
+
+    /// `{ <source>: <target> ... }` — the mapping lines of a `model` block, each
+    /// binding a source-theory entity (a qualified ident) to a local one.
+    fn parseModelMappings(self: *Parser) ParseError![]const ast.Mapping {
+        _ = try self.expect(.l_brace);
+        var mappings: std.ArrayList(ast.Mapping) = .empty;
+        while (self.tok.tag != .r_brace) {
+            const source = try self.expect(.identifier);
+            _ = try self.expect(.colon);
+            const target = try self.expect(.identifier);
+            try mappings.append(self.arena, .{ .source = source, .target = target });
+        }
+        _ = try self.expect(.r_brace);
+        return mappings.toOwnedSlice(self.arena);
     }
 
     /// `<kind> name = target` — an alias declaration, if `=` follows the name.
@@ -337,10 +368,10 @@ pub const Parser = struct {
                 //     [by rule refs...]
                 _ = try self.expect(.l_bracket);
                 _ = try self.expect(.keyword_by);
-                // rule position admits `axiom` and `theorem` (citation rules)
-                // even though they are declaration keywords
+                // rule position admits `axiom`, `theorem`, and `model` (citation
+                // rules) even though they are declaration keywords
                 const rule = switch (self.tok.tag) {
-                    .identifier, .keyword_axiom, .keyword_theorem => self.advance(),
+                    .identifier, .keyword_axiom, .keyword_theorem, .keyword_model => self.advance(),
                     else => return self.fail("expected a rule name, got '{s}'", .{self.describe()}),
                 };
                 // `instantiate NAME(args)` cites a schema by name

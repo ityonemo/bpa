@@ -138,6 +138,7 @@ fn declName(source: []const u8, decl: ast.Decl) ?Named {
         .hole => |d| d.name,
         .schema => |d| d.name,
         .theorem => |d| d.name,
+        .model => |d| d.name,
         .forward => return null,
     };
     return .{ .name = source[t.start..t.end], .token = t };

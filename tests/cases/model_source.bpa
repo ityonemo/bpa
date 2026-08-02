@@ -1,0 +1,27 @@
+// A tiny abstract theory to exercise `model` transfer: a sort with a binary
+// `op`, a left-identity `UNIT`, and one PROVEN theorem over it. The theorem is
+// what a `model` of this theory transfers to a concrete carrier.
+sort Carrier
+const UNIT: Carrier
+func op(a: Carrier, b: Carrier): Carrier
+
+// left-identity axiom: op(UNIT, a) = a
+axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
+
+// a derived theorem over the abstract carrier — transferable by `model`.
+// (from the axiom at `op(UNIT, a)`: op(UNIT, op(UNIT, a)) = op(UNIT, a).)
+theorem opUnitLeftTwice: forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+proof
+  @generalize-a |
+    fix a: Carrier {
+      @unit-left |
+        forall b: Carrier; op(UNIT, b) = b
+        [by axiom opUnitLeft]
+      @conclusion-twice |
+        op(UNIT, op(UNIT, a)) = op(UNIT, a)
+        [by forall_elim(op(UNIT, a)) unit-left]
+    }
+  @conclusion |
+    forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+    [by forall_intro generalize-a]
+qed

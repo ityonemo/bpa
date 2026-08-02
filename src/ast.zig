@@ -114,7 +114,21 @@ pub const Decl = union(enum) {
         steps: ?[]const Step,
     },
     theorem: struct { name: Token, formula: *const Expr, steps: []const Step },
+    /// `model <Name> = <carrier> [where <guard>] { <src>: <tgt> ... }` — declares
+    /// the carrier sort a model of an imported theory. Each `Mapping` binds a
+    /// source-theory entity (`group.op`, `group.opAssoc` — a qualified token) to
+    /// the local symbol/fact that plays it. `guard` is an optional unary pred
+    /// (carrier relativization). See MODEL-DESIGN.md.
+    model: struct {
+        name: Token,
+        carrier: Token,
+        guard: ?Token,
+        mappings: []const Mapping,
+    },
 };
+
+/// One `<source>: <target>` line in a `model` block.
+pub const Mapping = struct { source: Token, target: Token };
 
 pub const File = struct { decls: []const Decl };
 
