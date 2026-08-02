@@ -3162,7 +3162,7 @@ pub const Elaborator = struct {
     // discharging that obligation by unfolding the operators (the theory's
     // characterization lemmas) and closing the residue (propositional →
     // `tautology`; equational → the equation certifier). A structure tactic,
-    // model-parameterized: `ext(set)` / `ext(function)`. See EXT-PLAN.md.
+    // model-parameterized: `ext(set)` / `ext(function)`. See ACCELERATION.md.
 
     /// A resolved extensionality model: the element sort, the extensionality
     /// lemma, and — read off the lemma's obligation — the characterization
