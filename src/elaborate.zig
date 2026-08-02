@@ -3257,6 +3257,77 @@ pub const Elaborator = struct {
         return .{ .theorem_ref = .{ .stmt = mat_id, .loc = loc } };
     }
 
+    /// Register a synthetic (mangled-name, count-suppressed) theorem as UNPROVEN
+    /// and return its id. Split from `finishSyntheticTheorem` so a caller can bind
+    /// the id BEFORE building the proof steps (needed when the steps cite the
+    /// theorem itself — model's recursive materialization). `$` in the name is
+    /// lexically impossible for a user, so no collision.
+    fn beginSyntheticTheorem(self: *Elaborator, name: StrId, formula: TermId, loc: u32) ElabError!StatementId {
+        return try self.env.addStatement(self.file, name, .{ .theorem = .{
+            .name = name,
+            .formula = formula,
+            .loc = loc,
+            .proven = false,
+            .synthetic = true,
+        } });
+    }
+
+    /// Kernel-check a synthetic theorem's proof `{steps, blocks}` against its
+    /// stated `formula`, and on success mark it proven, retain the lowered proof
+    /// (so an outer materialization can re-use it), and record its provenance
+    /// (`accelerated`/`holes` it leans on). The `k.check` here is the soundness
+    /// anchor — it ALWAYS runs when a synthetic theorem is produced, and is never
+    /// skipped by `--faster`/`--reckless` (those imply `certify_arithmetic=false`,
+    /// so no synthetic theorem is produced at all). `on_fail` is the located error.
+    fn finishSyntheticTheorem(
+        self: *Elaborator,
+        id: StatementId,
+        steps: []const kernel.Step,
+        blocks: []const kernel.Block,
+        accelerated: []const StrId,
+        holes: []const StrId,
+        loc: u32,
+        on_fail: []const u8,
+    ) ElabError!void {
+        const formula = self.env.statements.items[@intFromEnum(id)].theorem.formula;
+        var k: kernel.Kernel = .{
+            .arena = self.arena,
+            .pool = self.pool,
+            .env = self.env,
+            .interner = self.interner,
+            .sink = self.sink,
+        };
+        const ok = try k.check(.{ .steps = steps, .blocks = blocks }, formula, loc);
+        if (!ok) return self.fail(loc, "{s}", .{on_fail});
+        const fact = &self.env.statements.items[@intFromEnum(id)].theorem;
+        fact.proven = true;
+        fact.accelerated = accelerated;
+        fact.holes = holes;
+        fact.proof = .{ .steps = steps, .blocks = blocks };
+    }
+
+    /// The one-shot form: register + check + finalize a synthetic theorem whose
+    /// proof does NOT cite itself. Returns the id (caller cites it via
+    /// `theorem_ref`, or `forall_elim` of it). This is the shared "wrap kernel
+    /// steps into a named theorem" primitive — used by accelerant certificate
+    /// production (the steps an accelerant would have spliced inline become this
+    /// theorem's proof). See MODEL-DESIGN.md / the accelerant-unification plan.
+    fn wrapAsTheorem(
+        self: *Elaborator,
+        name: StrId,
+        formula: TermId,
+        steps: []const kernel.Step,
+        blocks: []const kernel.Block,
+        accelerated: []const StrId,
+        holes: []const StrId,
+        loc: u32,
+        on_fail: []const u8,
+    ) ElabError!StatementId {
+        const id = try self.beginSyntheticTheorem(name, formula, loc);
+        try self.finishSyntheticTheorem(id, steps, blocks, accelerated, holes, loc, on_fail);
+        return id;
+    }
+
     /// Materialize a source theorem's proof, remapped through `model`, as a
     /// synthetic kernel-checked theorem `Model$thm` in the current file — then
     /// return its StatementId. Recursively materializes any source theorem the
@@ -3282,13 +3353,7 @@ pub const Elaborator = struct {
 
         // register (unproven) FIRST so a self/mutual citation resolves; memoize
         // before recursing so a cycle terminates.
-        const mat_id = try self.env.addStatement(self.file, mangled, .{ .theorem = .{
-            .name = mangled,
-            .formula = remapped_formula,
-            .loc = loc,
-            .proven = false,
-            .synthetic = true,
-        } });
+        const mat_id = try self.beginSyntheticTheorem(mangled, remapped_formula, loc);
         try model.materialized.put(self.arena, source, mat_id);
 
         // remap each step's formula + justification ids.
@@ -3320,28 +3385,12 @@ pub const Elaborator = struct {
             };
         }
 
-        var k: kernel.Kernel = .{
-            .arena = self.arena,
-            .pool = self.pool,
-            .env = self.env,
-            .interner = self.interner,
-            .sink = self.sink,
-        };
-        const ok = try k.check(.{ .steps = new_steps, .blocks = new_blocks }, remapped_formula, loc);
-        if (!ok) {
-            return self.fail(loc, "model transfer of '{s}' does not kernel-check under the interpretation (an obligation is undischarged?)", .{self.interner.str(fact.name)});
-        }
-        // the materialized theorem inherits the source proof's provenance: if the
-        // source leaned on an accelerated tactic or a hole, so does the transfer.
-        const mat_fact = &self.env.statements.items[@intFromEnum(mat_id)].theorem;
-        mat_fact.proven = true;
-        mat_fact.accelerated = fact.accelerated;
-        mat_fact.holes = fact.holes;
-        // RETAIN the materialized lowered proof, so an OUTER model can re-materialize
-        // through this synthetic theorem — the multi-level model chain
-        // (e.g. ℤ models ring models group). Without this, `proof` is null and a
-        // second-level transfer fails "proof not retained".
-        mat_fact.proof = .{ .steps = new_steps, .blocks = new_blocks };
+        // kernel-check the remapped proof, mark proven, retain it, and inherit the
+        // source proof's provenance (accelerated/holes) — retention lets an OUTER
+        // model re-materialize through this synthetic theorem (the multi-level
+        // chain ℤ models ring models group).
+        const on_fail = try std.fmt.allocPrint(self.arena, "model transfer of '{s}' does not kernel-check under the interpretation (an obligation is undischarged?)", .{self.interner.str(fact.name)});
+        try self.finishSyntheticTheorem(mat_id, new_steps, new_blocks, fact.accelerated, fact.holes, loc, on_fail);
         return mat_id;
     }
 
