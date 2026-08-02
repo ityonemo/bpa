@@ -47,4 +47,13 @@ pub fn addTests(
         \\  - classesCoverUniverse  (aata/1.2.3-partitions.md:596)
         \\
     );
+
+    // AATA Chapter 2 "The Integers": the §2.1 induction example base case is
+    // proven; the full ∀n≥0 3|(4ⁿ−1) is a `hole` (inductive step in progress),
+    // so the file needs --draft.
+    ctx.ok(&.{ "check", "--draft", "aata/2-integers.md" },
+        \\OK: 154 declarations, 20 theorems proven
+        \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): fourthPowerMinusOne; re-run `bpa check` (no --draft) once filled.
+        \\
+    );
 }
