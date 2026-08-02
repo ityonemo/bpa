@@ -1,13 +1,13 @@
-// std/group.bpa — the theory of a GROUP, per Judson's *Abstract Algebra*
-// (vendor/aata, Definition, "Definitions and Examples"): a set with an
-// associative operation, a two-sided identity, and two-sided inverses.
+// std/group.bpa — the theory of a GROUP: a set with an associative operation, a
+// two-sided identity, and two-sided inverses, plus the elementary properties
+// proved from those axioms.
 //
-// This is a reusable abstract theory (like std/peano), imported by the AATA
-// literate translations in aata/. It is driven ENTIRELY by its own cited
-// axioms — proofs use `[by assoc(opAssoc)]`, `[by rewrite opIdentityLeft ...]`,
-// etc., naming these axioms explicitly. Do NOT invoke `polynomial`/`arithmetic`
-// here: those tactics presume a commutative-semiring `add`/`mul`, which a
-// (possibly non-abelian) group's `op` is not.
+// This is a reusable abstract theory (like std/peano). It is driven ENTIRELY by
+// its own cited axioms — proofs use `[by assoc(opAssoc)]`,
+// `[by rewrite opIdentityLeft ...]`, etc., naming these axioms explicitly. Do NOT
+// invoke `polynomial`/`arithmetic` here: those tactics presume a
+// commutative-semiring `add`/`mul`, which a (possibly non-abelian) group's `op`
+// is not.
 
 sort Grp
 const E: Grp
@@ -30,11 +30,8 @@ axiom opInverseRight: forall a: Grp; op(a, inverse(a)) = E
 // non-abelian one simply never touches it.
 axiom opCommutative: forall a, b: Grp; op(a, b) = op(b, a)
 
-// -- basic properties (Judson §3.2) ---------------------------------------
-// The elementary group theorems proved from the axioms above. The AATA
-// transcription (aata/3.2-groups.md) presents these in the book's notation
-// and prose, aliasing back to these library proofs — so the math lives here,
-// the exposition there.
+// -- basic properties -----------------------------------------------------
+// The elementary group theorems proved from the axioms above.
 
 theorem identityUnique: forall x: Grp; (forall g: Grp; op(x, g) = g) -> x = E
 proof
@@ -274,7 +271,7 @@ proof
                             op(x, a) = op(y, a)
                             [by rewrite b-ya xa-b]
                           // uniqueness = right-multiply by inverse(a) and simplify
-                          // each side via z·(a·a⁻¹) = z·E = z (the book's
+                          // each side via z·(a·a⁻¹) = z·E = z (the standard
                           // x = a⁻¹ax argument, here on the right).
                           @xa-refl |
                             op(op(x, a), inverse(a)) = op(op(x, a), inverse(a))
