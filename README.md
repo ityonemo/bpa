@@ -166,7 +166,7 @@ across files*, or *finding a lemma by concept* when the name is fuzzy.
   multi-line `[by …]` defeats `grep`.
 - `query accelerated <file> [theorem]` — the **acceleration audit**: per proof, every step
   whose rule can fall back to an accelerated tactic (`arithmetic`, `tautology`, `polynomial`,
-  `assoc_commut`, `assoc`, and their quantified variants), flagged at its
+  `assoc_commut`, `assoc`, `ext`, and their quantified variants), flagged at its
   `file:line:col`. A clean report means every step in the file is kernel-checked.
 
 Query may support semantic searching in the future.

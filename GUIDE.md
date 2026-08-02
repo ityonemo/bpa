@@ -544,6 +544,37 @@ laws are never checked is why the result is **accelerated** (`accelerated:
 polynomial`). A false identity is still rejected (the accelerated tactic *decides*); the
 acceleration is for the unproven ring-structure assumption, not for the comparison.
 
+### `ext` — extensionality-reduction
+
+`[by ext(theory)]` proves an equation `LHS = RHS` between extensional objects
+by the *element-chase*: reduce `LHS = RHS`, through the theory's extensionality
+lemma, to its pointwise obligation; fix an element; unfold the operators; and
+close the residue. It is the mapping/set analogue of `polynomial` — a
+**structure tactic, model-parameterized**: the SAME tactic proves set equations
+and function equations (and any future extensional theory), selected by the
+theory argument. (Prior art: Lean's `ext`.)
+
+```bpa
+@intersection-commutes |
+  forall a, b: Set; intersection(a, b) = intersection(b, a)
+  [by ext_quantified(set)]
+
+@compose-associates |
+  forall h, g, f: Fn; compose(compose(h, g), f) = compose(h, compose(g, f))
+  [by ext_quantified(function)]
+```
+
+It reads the residue's shape to pick its closer: a **set** equation unfolds
+`member(x, ·)` via the `<op>Member` lemmas and closes the propositional residue
+with `tautology`; a **function** equation unfolds `apply(·, x)` via the
+`<op>Apply` lemmas and closes the equational residue with the rewrite join. One
+`[by ext…]` line replaces the ~85-line hand element-chase. Like `arithmetic`, it
+is **theory-parameterized** (`ext(set)` / `ext(function)` resolve the
+extensionality lemma, the `Universe` sort, and the operator lemmas against the
+named module); **under a `forall` prefix**, use `ext_quantified`. A false
+identity is rejected — the pointwise residue reports a countermodel or the
+values differ. It emits kernel steps (its closers do), so uses are kernel-checked.
+
 ### `tautology` — propositional consequence
 
 `[by tautology refs...]` proves any goal that follows propositionally from
