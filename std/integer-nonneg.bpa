@@ -1,0 +1,33 @@
+// std/integer-nonneg.bpa — the nonnegative integers (ℕ embedded in ℤ) and
+// UPWARD induction from 0. Chapter 2's induction examples and its ℕ-indexed
+// statements (powers, sums) range over n ≥ 0, but ℤ's built-in induction is
+// bidirectional (∀n ∈ ℤ), which does not prove an ℕ-only statement (it fails at
+// negatives). So we carve out ℕ as a predicate and give it the ordinary
+// upward-from-0 induction principle.
+//
+// `nonneg(n)` is the SMALLEST class containing ZERO and closed under succ — i.e.
+// exactly {0, 1, 2, ...}. Its induction principle (nonnegInduction) is the "for
+// all integers n ≥ 0" principle of §2.1's first form: prove P(0) and that P(k)
+// gives P(succ k) for nonnegative k, and P holds on all of ℕ. This is an axiom
+// family, justified as the induction principle for this inductively-defined
+// subclass (as std/peano.bpa's `induction` is for Nat).
+
+import integer <<< "std/integer.bpa"
+
+sort Int = integer.Int
+const ZERO = integer.ZERO
+const ONE = integer.ONE
+func succ = integer.succ
+
+pred nonneg(n: Int)
+
+// ℕ ⊂ ℤ: 0 is nonnegative, and the successor of a nonnegative is nonnegative.
+axiom nonnegZero: nonneg(ZERO)
+axiom nonnegSucc: forall n: Int; nonneg(n) -> nonneg(succ(n))
+
+// upward induction from 0 (the §2.1 first principle, at n0 = 0): a property that
+// holds at 0 and is preserved by succ on the nonnegatives holds on all of ℕ.
+axiom nonnegInduction(prop: Int -> Prop):
+  prop(ZERO)
+  -> (forall k: Int; nonneg(k) -> prop(k) -> prop(succ(k)))
+  -> forall n: Int; nonneg(n) -> prop(n)

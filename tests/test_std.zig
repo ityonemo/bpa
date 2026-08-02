@@ -48,6 +48,10 @@ pub fn addTests(
     // induction from the inverse law; order via less_than intro/elim.
     ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 76 declarations, 11 theorems proven\n");
 
+    // ℤ divisibility + powers (std/integer-divides.bpa): divides intro/elim +
+    // pow recursion; dividesRefl proven.
+    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 77 declarations, 10 theorems proven\n");
+
     // the group theory (std/group.bpa): axioms only, no theorems — so a
     // direct check materializes nothing and exits nonzero with a warning
     // (the theory is a valid dependency, but checking it alone proves 0).

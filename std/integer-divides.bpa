@@ -1,0 +1,72 @@
+// std/integer-divides.bpa — divisibility and (nonneg-exponent) powers on ℤ,
+// over std/integer.bpa + its ring algebra. Supports the §2.1 induction examples
+// and the §2.2/§2.3 divisibility content of Chapter 2.
+//
+// `divides(d, n)` = "d divides n" = ∃k; n = d·k, with the same intro/elim shape
+// as Peano's. `pow(base, e)` = base^e, recursive on the exponent e (pow(b,0)=1,
+// pow(b,succ e)=pow(b,e)·b) — the exponent is an Int, but only its nonnegative
+// (0, succ, succ², ...) values are constrained by the recursion, which is all
+// the induction-from-0 examples use.
+
+import integer <<< "std/integer.bpa"
+import ring <<< "std/integer-ring.bpa"
+
+sort Int = integer.Int
+const ZERO = integer.ZERO
+const ONE = integer.ONE
+func succ = integer.succ
+func prev = integer.prev
+func add = integer.add
+func mul = integer.mul
+func neg = integer.neg
+axiom addZeroRight = integer.addZeroRight
+axiom mulZeroRight = integer.mulZeroRight
+axiom mulSuccRight = integer.mulSuccRight
+theorem addZeroLeft = ring.addZeroLeft
+theorem addIsCommutative = ring.addIsCommutative
+theorem addIsAssociative = ring.addIsAssociative
+theorem mulOneRight = ring.mulOneRight
+axiom induction = integer.induction
+
+// -- divisibility -----------------------------------------------------------
+
+pred divides(d: Int, n: Int)
+axiom dividesIntro: forall d, n, k: Int; n = mul(d, k) -> divides(d, n)
+axiom dividesElim: forall d, n: Int; divides(d, n) -> exists k: Int; n = mul(d, k)
+
+// -- powers (recursive on the exponent) -------------------------------------
+
+func pow(base: Int, e: Int): Int
+axiom powZero: forall b: Int; pow(b, ZERO) = ONE
+axiom powSucc: forall b, e: Int; pow(b, succ(e)) = mul(pow(b, e), b)
+
+// -- basic divisibility facts -----------------------------------------------
+
+// d | d, witnessed by 1: d = d·1.
+theorem dividesRefl: forall d: Int; divides(d, d)
+proof
+  @generalize-d |
+    fix d: Int {
+      @mul-one |
+        forall n: Int; mul(n, ONE) = n
+        [by theorem mulOneRight]
+      @d-is-d-times-one |
+        mul(d, ONE) = d
+        [by forall_elim(d) mul-one]
+      @d-eq |
+        d = mul(d, ONE)
+        [by symmetry d-is-d-times-one]
+      @intro |
+        forall a, n, k: Int; n = mul(a, k) -> divides(a, n)
+        [by axiom dividesIntro]
+      @intro-at |
+        d = mul(d, ONE) -> divides(d, d)
+        [by forall_elim(d, d, ONE) intro]
+      @conclusion-divides |
+        divides(d, d)
+        [by modus_ponens intro-at d-eq]
+    }
+  @conclusion |
+    forall d: Int; divides(d, d)
+    [by forall_intro generalize-d]
+qed
