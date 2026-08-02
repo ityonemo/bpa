@@ -208,7 +208,7 @@ theory proves becomes citable at your sort.
 ```bpa
 import group <<< "std/group.bpa"
 
-model Rat as AdditiveGroup {
+model AdditiveGroup = Rat {
   group.Grp:      Rat               // carrier sort
   group.E:        ZERO              // primitives: source symbol : local symbol
   group.op:       add
@@ -221,19 +221,26 @@ model Rat as AdditiveGroup {
 Read every line **`source : target`** — the abstract theory's entity on the
 left, the local thing that plays it on the right. Primitive lines map symbols;
 axiom lines discharge an obligation by naming a local axiom or theorem whose
-formula, seen through the mapping, *is* that axiom. The mapping must be total:
-every primitive and every axiom of the source theory needs a line, or the
-declaration is rejected naming what's missing.
+formula, seen through the mapping, *is* that axiom.
 
-The instance is **named** (`as AdditiveGroup`) because one sort can model one
-theory more than one way — ℚ is a group under `+` *and* (on ℚ∖{0}) under `×`.
-Each named model keeps its own mapping; a use names which.
+A model **may leave some axioms unmapped** — at the prover's risk. In default
+(strict) mode, citing a transferred theorem whose proof depends on an unmapped
+axiom is **rejected**, naming the missing obligation. Under `--fast` the same cite
+**passes** (the transfer is trusted without checking which axioms it needed) —
+disclosed as accelerated, but a loaded gun: treat a `--fast` pass over a partial
+model as provisional until it also passes strict mode.
+
+The head reads like any bpa alias/definition — the name being declared is left of
+`=`, what it's a model *over* is on the right (`model AdditiveGroup = Rat`). The
+instance is **named** because one sort can model one theory more than one way — ℚ
+is a group under `+` *and* (on ℚ∖{0}) under `×`. Each named model keeps its own
+mapping; a use names which.
 
 **Guarded carriers.** A model may relativize its carrier to a subdomain with
-`where <unaryPred>`:
+`where <unaryPred>` (on the carrier, right of `=`):
 
 ```bpa
-model Rat where nonzero as MultiplicativeGroup {
+model MultiplicativeGroup = Rat where nonzero {
   group.Grp:      Rat
   group.op:       mul
   group.E:        ONE
@@ -257,11 +264,11 @@ theorem addCancelLeft: forall a, x, y: Rat; add(a, x) = add(a, y) -> x = y
 proof
   @conclusion |
     forall a, x, y: Rat; add(a, x) = add(a, y) -> x = y
-    [by model AdditiveGroup with group.cancelLeft]
+    [by model(AdditiveGroup) group.cancelLeft]
 qed
 ```
 
-`[by model AdditiveGroup with group.cancelLeft]` takes `group`'s abstract
+`[by model(AdditiveGroup) group.cancelLeft]` takes `group`'s abstract
 theorem, rewrites it through the `AdditiveGroup` mapping (relativizing by the
 guard if any), and checks the result equals the goal. It is an **accelerant**:
 under `--fast` the transfer is trusted wholesale and marks the theorem
@@ -449,7 +456,7 @@ names for citations). Rules taking a term argument write it in parens:
 | `polynomial_quantified(theory)` | tactic: `polynomial` under a `forall` prefix, without a hand `fix` (see Automation) |
 | `tautology refs...` | tactic: propositional consequence (see Automation) |
 | `arithmetic refs...` | tactic: linear arithmetic over Nat (see Automation) |
-| `model INSTANCE with source.theorem` | *(forthcoming)* transfer an abstract theory's theorem to a sort that models it, remapped through the named model (see `model` under Declaration keywords) |
+| `model(INSTANCE) source.theorem` | *(forthcoming)* transfer an abstract theory's theorem to a sort that models it, remapped through the named model (see `model` under Declaration keywords) |
 
 ## The kernel
 

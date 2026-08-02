@@ -35,7 +35,7 @@ NOT claiming to do something they cannot. The distinctiveness is in the SHAPE:
 > concepts.** Same expressive target; opposite implementation values.
 
 - **Explicit over implicit — no resolution engine.** Lean *searches* for the
-  instance; `model` is NAMED at the cite site (`[by model AdditiveGroup with
+  instance; `model` is NAMED at the cite site (`[by model(AdditiveGroup)
   group.cancelLeft]`). Zig has no trait search; you pass/name the thing. The named
   cite IS the Zig answer to instance resolution: refuse action-at-a-distance.
 - **Structural over nominal.** `Rat` does not *declare conformance* to `Grp`; you
@@ -79,7 +79,7 @@ Concretely, these would BREAK the distinctiveness and are therefore NON-GOALS:
 ### Declaration
 
 ```
-model <carrier> [where <guardPred>] as <InstanceName> {
+model <InstanceName> = <carrier> [where <guardPred>] {
   <source.primitive>: <localSymbol>    // sort + op maps
   ...
   <source.axiom>:     <localFact>      // axiom OBLIGATIONS, discharged by naming
@@ -97,15 +97,20 @@ model <carrier> [where <guardPred>] as <InstanceName> {
   lines map an obligation to a local FACT (not a proof block) — you *name* a local
   axiom/theorem whose formula already has the remapped shape. No
   `theorem … proof … qed` inside the block.
-- **`as <InstanceName>`** — mandatory. Two models of one theory coexist on one
-  sort (`AdditiveGroup`, `MultiplicativeGroup`), disambiguated by name.
-- **`where <guardPred>`** — optional carrier relativization. `Rat where nonzero`
-  means the carrier is the `nonzero` subdomain; every source `Grp`-binder picks up
-  a `nonzero(bound) ->` antecedent (see Relativization).
+- **`model <InstanceName> = <carrier>`** — the head follows bpa's alias/definition
+  shape (`sort Nat = peano.Nat`, `define TWO = …`): the name being declared is on
+  the LEFT of `=`, what it's a model *over* is on the right. No `as` keyword (bpa
+  has none; we don't invent one — same call as dropping `with` on the cite). The
+  instance name is mandatory: two models of one theory coexist on one sort
+  (`AdditiveGroup`, `MultiplicativeGroup`), disambiguated by name.
+- **`where <guardPred>`** — optional carrier relativization, riding on the carrier
+  (right of `=`). `= Rat where nonzero` means the carrier is the `nonzero`
+  subdomain; every source `Grp`-binder picks up a `nonzero(bound) ->` antecedent
+  (see Relativization).
 
 Example (guard-free):
 ```
-model Rat as AdditiveGroup {
+model AdditiveGroup = Rat {
   group.Grp:      Rat
   group.E:        ZERO
   group.op:       add
@@ -116,7 +121,7 @@ model Rat as AdditiveGroup {
 
 Guarded:
 ```
-model Rat where nonzero as MultiplicativeGroup {
+model MultiplicativeGroup = Rat where nonzero {
   group.Grp:      Rat
   group.E:        ONE
   group.op:       mul
@@ -132,18 +137,23 @@ theorem addCancelLeft: forall a, x, y: Rat; add(a, x) = add(a, y) -> x = y
 proof
   @conclusion |
     forall a, x, y: Rat; add(a, x) = add(a, y) -> x = y
-    [by model <InstanceName> with <source.theorem>]
+    [by model(<InstanceName>) <source.theorem>]
 qed
 ```
 
 `model` is a **built-in justification-verb** (like `axiom`, `rewrite`) — NOT a
-user-defined tactic (bpa has none). `[by model AdditiveGroup with group.cancelLeft]`
+user-defined tactic (bpa has none). `[by model(AdditiveGroup) group.cancelLeft]`
 remaps `group.cancelLeft`'s formula through the `AdditiveGroup` mapping and checks
 it equals the step goal. The cite names BOTH the instance (which mapping) and the
 source theorem (what to transfer) — necessary because a sort has multiple models.
-(Cite spelling: `[by model <InstanceName> with <source.thm>]`; the redundant
-`<carrier> as` before the instance name is dropped since the name resolves the
-carrier. TBD if we keep the short form.)
+
+Spelling follows bpa's parameterized-tactic convention: the **instance is
+parenthesized** (the mode selector, exactly like `assoc(opAssoc)`,
+`polynomial(theory)`, `forall_elim(t) step`) and the **source theorem is a bare
+ref** (the fact operated on). No `with` particle — the `by` grammar has none
+anywhere; parens carry the configuration/operand distinction. The redundant
+`<carrier> as` before the instance name is dropped since the name alone resolves
+the carrier.
 
 ## The engine: `remapFormula`
 
@@ -181,7 +191,7 @@ Classified with `assoc`/`arithmetic`/Cooper-replay. (Vocabulary per
 `accelerated-elaborated-vocab`: kernel-checked vs. accelerated/disclosed; flag is
 `--fast` vs. default. There is NO `--pure`.)
 
-- `[by model … with …]` **taints** the citing theorem — `accelerated` gains
+- `[by model(…) …]` **taints** the citing theorem — `accelerated` gains
   `"model"` — **disclosed in the summary**.
 - **`--fast`**: trust the transfer wholesale — take the remapped formula, skip the
   obligation-discharge check and the source proof. (MVP path.)
@@ -193,6 +203,59 @@ Classified with `assoc`/`arithmetic`/Cooper-replay. (Vocabulary per
 Subtlety vs. other accelerants: `model`'s soundness is **compositional**
 (faithful-interpretation + source-proof-valid), not a decision procedure. That is
 an internal detail of *how* it elaborates, not new vocabulary or a new flag.
+
+### Partial models are LEGAL — at the prover's risk (THE WARNING)
+
+A model **need not map every source axiom.** A partial mapping is allowed; it is
+an interpretation with an undischarged obligation. This is decided (was the
+"completeness policy" open question): allow partial, and let the MODE enforce the
+consequence.
+
+The two modes make the risk asymmetric — and this asymmetry IS the feature:
+
+- **`--fast`**: the transfer is trusted wholesale and NEVER inspects which source
+  axioms the transferred theorem's proof depended on. So if you `[by model(M) …]`
+  a theorem whose `group`-proof used `opInverseLeft`, and `M` never mapped
+  `opInverseLeft`, **it PASSES.** The gap is invisible to `--fast` by construction
+  (it checks nothing). Disclosed only as accelerated-by-`model` in the summary.
+- **default (strict)**: elaboration checks that every source axiom the transferred
+  theorem *depends on* is discharged by the model. It reaches the unmapped
+  `opInverseLeft`, finds no discharging fact, and **REJECTS**, naming the missing
+  obligation. The gap cannot hide.
+
+> **THE WARNING.** A `--fast` green build over a partial model is a loaded gun the
+> summary warns about; the SAME model may FAIL default/strict mode. If you lean on
+> a transferred theorem that needs an axiom you didn't map, `--fast` lets it
+> through and strict mode catches it. Treat a `--fast` pass with any partial model
+> as provisional until it also passes strict.
+
+Consequence for implementation: the per-axiom **dependency check lives only on the
+default/strict path** (it must know which source axioms a source theorem's proof
+cites, to reject precisely). `--fast` needs no dependency analysis at all —
+"remap + taint" — which is also why `--fast` partial transfer is the natural MVP
+and strict discharge is the follow-up. (An unmapped obligation is morally a
+structure-level `hole`; whether it's tracked via the `holes` machinery or a
+distinct "unmapped-axiom" marker is an implementation choice — either way it is
+tracked+disclosed, never silent.)
+
+### Partial models as a reverse-mathematics probe (a *feature*, not just a risk)
+
+Because strict mode rejects precisely the transferred theorems whose proofs
+*depend on* an unmapped axiom, a partial model is an **axiom-dependency probe**:
+implement a full model, then **comment out one obligation line and re-run strict
+mode** — the checker names exactly the transferred theorems that break, i.e. the
+ones that genuinely used that axiom. This is reverse mathematics ("which axioms
+are *necessary* for this theorem?") turned into comment-and-recheck:
+
+- "Does `cancelLeft` actually need inverses, or only associativity + identity?"
+  Unmap `group.opInverseLeft`, check strict: if `cancelLeft` still passes, its
+  proof never touched inverses.
+- Bisect the axiom set — unmap obligations one at a time — to reconstruct the
+  corpus's dependency lattice empirically, no hand proof-tracing.
+
+Sound as a probe precisely because strict rejection means the proof genuinely
+cited the missing axiom (no false positives from the checker's side). This is why
+partial models earn their place on principle, not just convenience.
 
 ## Relativization (the guarded case)
 
@@ -210,23 +273,23 @@ at every quantifier over the mapped carrier — applied UNIFORMLY in both direct
 
 1. **`--fast` transfer first** — parse `model` block, build the id→id mapping,
    `remapFormula` the cited source theorem (unguarded case), check it matches the
-   goal, taint. This alone proves the whole mechanism (sort-map + theorem-remap).
-   Test: `Rat`/`Int` gets `cancelLeft`/`inverseUnique`/etc. under `--fast`.
-2. **default-mode obligation discharge** — check every `group.*` axiom is mapped to
-   a local fact whose remap matches; then transferred theorems are un-tainted.
+   goal, taint. NO dependency analysis, NO obligation check — a partial model
+   transfers just fine here (that's the whole point / the WARNING). This alone
+   proves the mechanism (sort-map + theorem-remap). Test: `Rat`/`Int` gets
+   `cancelLeft`/`inverseUnique`/etc. under `--fast`.
+2. **default-mode obligation discharge** — the strict path: for a transferred
+   theorem, check every source axiom its proof DEPENDS ON is discharged by a mapped
+   local fact (remap-and-match); reject naming any unmapped/mismatched obligation.
+   Needs source-theorem→axiom dependency info. Then sound transfers are un-tainted.
 3. **guarded models** — relativization pass; `where nonzero`; ℚ∖{0} mult-group and
    nonneg-ℤ-is-a-ℕ.
 
 ## Still open (not yet decided)
 
-- Cite short form: keep `[by model <Instance> with <thm>]` or allow/require the
-  full `<carrier> as <Instance>`?
 - Do transferred theorems ALSO materialize as citable namespaced facts
   (`AdditiveGroup.cancelLeft`) at declaration time, or ONLY reachable via the
-  `[by model … with …]` cite? (Namespace-shadowing was raised then set aside; the
+  `[by model(…) …]` cite? (Namespace-shadowing was raised then set aside; the
   cite-verb form is what's settled. Materializing would let other tactics see them.)
-- Completeness policy: MUST every source axiom be mapped (total), or may a model be
-  partial (map a sub-signature)? Total is the clean default.
 - `where <guard>` for guards that aren't a single unary pred (e.g. a conjunction).
 - Multi-sort source theories (a theory with two carrier sorts) — mapping scales,
   but not exercised by group/monoid.
