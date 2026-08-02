@@ -25,5 +25,5 @@ pub fn addTests(
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
     // (composition associativity/preservation + invertible⇒bijective
     // forward), verified (proven; no accelerated tactic). The backward direction is a marked wall.
-    ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 39 declarations, 7 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 46 declarations, 11 theorems proven\n");
 }
