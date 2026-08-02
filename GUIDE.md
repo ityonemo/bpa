@@ -23,6 +23,8 @@ each, and say so loudly in the summary:
 - `--fast` — accept accelerated verdicts for arithmetic/tautology
 - `--faster` — also trust imported theorem proofs (skip re-check)
 - `--reckless` — also trust imported schemas (skip re-instantiation)
+- `--draft` — allow `hole`s (aspirational placeholders); orthogonal to the
+  above. Default mode rejects any file with holes and lists them.
 
 Re-run plain `bpa check` to fully verify before finalizing. `bpa fmt`
 normalizes whitespace and indentation (`--check` reports instead of
@@ -101,6 +103,26 @@ proof
   ...
 qed
 ```
+
+### `hole`
+
+An **aspirational placeholder** — a claim stated up front, accepted mechanically
+like an `axiom`, but tracked as a hole. Use it to **scaffold** (state a lemma,
+build the proof that needs it, fill it in later) or to **reason conditionally**
+("suppose an odd perfect number exists; here is what follows"). Cited exactly
+like an axiom: `[by axiom myHole]`.
+
+```bpa
+hole zeroIsEven: even(ZERO)
+```
+
+Holes are **disclosed, never silent**: a theorem that (transitively) rests on a
+hole is tracked, and **default mode REJECTS the file** — it exits nonzero and
+lists each hole with its `file:line` and the theorems that depend on it, so a
+hole-bearing result is never mistaken for complete. `--draft` allows holes
+(exit 0) with a loud banner naming them. Holes are **orthogonal** to the speed
+flags: `--fast` never accepts a hole; only `--draft` does. Once you prove a
+hole, turn it into a `theorem`.
 
 ### Schematic axioms and theorems
 

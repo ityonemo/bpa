@@ -88,6 +88,17 @@ pub const ProjectResult = struct {
     theorems_accelerated: usize,
     /// distinct accelerated-tactic names across accelerated theorems, first-use order
     accelerated_names: []const []const u8,
+    /// every declared `hole`, each with where it sits and which theorems rest on
+    /// it (transitively). Default mode rejects a nonempty list; --draft allows.
+    holes: []const Hole,
+
+    pub const Hole = struct {
+        name: []const u8,
+        path: []const u8,
+        line: usize,
+        /// theorem names that (transitively) rest on this hole
+        dependents: []const []const u8,
+    };
 
     pub fn ok(self: *const ProjectResult) bool {
         return self.sink.list.items.len == 0;
@@ -240,6 +251,34 @@ pub fn checkProject(
             }
         }
     }
+    // enumerate holes: each `hole` decl (an axiom-kind Fact with is_hole), with
+    // its location and the theorems that transitively rest on it.
+    var holes: std.ArrayList(ProjectResult.Hole) = .empty;
+    for (environment.statements.items) |stmt| {
+        if (stmt != .axiom or !stmt.axiom.is_hole) continue;
+        const h = stmt.axiom;
+        var dependents: std.ArrayList([]const u8) = .empty;
+        for (environment.statements.items) |dep| {
+            if (dep != .theorem) continue;
+            for (dep.theorem.holes) |hn| {
+                if (hn == h.name) {
+                    try dependents.append(arena, interner.str(dep.theorem.name));
+                    break;
+                }
+            }
+        }
+        const src = loader.files.items[@intFromEnum(h.file)].source;
+        var line: usize = 1;
+        for (src[0..@min(h.loc, src.len)]) |ch| {
+            if (ch == '\n') line += 1;
+        }
+        try holes.append(arena, .{
+            .name = interner.str(h.name),
+            .path = loader.files.items[@intFromEnum(h.file)].path,
+            .line = line,
+            .dependents = dependents.items,
+        });
+    }
     return .{
         .files = loader.files.items,
         .sink = sink,
@@ -248,6 +287,7 @@ pub fn checkProject(
         .theorems_trusted = trusted,
         .theorems_accelerated = accelerated,
         .accelerated_names = accelerated_names.items,
+        .holes = holes.items,
     };
 }
 

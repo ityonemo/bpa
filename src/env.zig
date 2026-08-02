@@ -45,6 +45,9 @@ pub const Statement = union(enum) {
         name: StrId,
         formula: TermId,
         loc: u32,
+        /// the file this fact was declared in (set by addStatement); used to
+        /// render a hole's location in the rejection report.
+        file: FileId = @enumFromInt(0),
         proven: bool = true,
         /// proven-by-trust: an imported theorem whose proof was NOT checked
         /// (no --recursive). Reported separately in the summary.
@@ -53,6 +56,17 @@ pub const Statement = union(enum) {
         /// citations (empty = every step kernel-checked). Disclosed in the summary; rejected
         /// by --pure.
         accelerated: []const StrId = &.{},
+        /// a `hole` — an axiom-shaped placeholder for ASPIRATIONAL work: a claim
+        /// stated up front so a proof can build on it before it is filled in
+        /// (scaffolding), or a claim deliberately assumed to explore what follows
+        /// ("suppose an odd perfect number exists; here are facts about it" —
+        /// conditional reasoning). Accepted mechanically like an axiom, but
+        /// default mode REJECTS any proof that (transitively) rests on one so the
+        /// result is never mistaken for unconditional; `--draft` allows it.
+        /// `is_hole` marks the declaration; `holes` lists the hole names a
+        /// theorem depends on (transitively), for the rejection enumeration.
+        is_hole: bool = false,
+        holes: []const StrId = &.{},
     };
     pub const Schema = struct {
         name: StrId,
@@ -132,6 +146,11 @@ pub const Env = struct {
     pub fn addStatement(self: *Env, file: FileId, name: StrId, stmt: Statement) !StatementId {
         const id: StatementId = @enumFromInt(self.statements.items.len);
         try self.statements.append(self.arena, stmt);
+        // record the defining file on Facts (holes need it to render location)
+        switch (self.statements.items[@intFromEnum(id)]) {
+            .axiom, .theorem => |*fact| fact.file = file,
+            .schema => {},
+        }
         try self.scope(file).statement_names.put(self.arena, name, id);
         return id;
     }

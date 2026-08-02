@@ -135,6 +135,7 @@ fn declName(source: []const u8, decl: ast.Decl) ?Named {
         .func => |d| d.name,
         .pred => |d| d.name,
         .axiom => |d| d.name,
+        .hole => |d| d.name,
         .schema => |d| d.name,
         .theorem => |d| d.name,
         .forward => return null,

@@ -17,7 +17,7 @@ pub fn addTests(
     const no_args = b.addRunArtifact(exe);
     no_args.has_side_effects = true;
     no_args.expectStdErrEqual(
-        "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n" ++
+        "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n" ++
             "       bpa fmt [--check] <file.bpa|.md>\n" ++
             "       bpa query outline <file.bpa> [theorem]\n" ++
             "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
@@ -195,4 +195,32 @@ pub fn addTests(
     // Review fix: a block whose only content is a nested subproof has no
     // conclusion to discharge (was: kernel panic)
     ctx.fail(&.{ "check", "tests/cases/no_conclusion_bad.bpa" }, "tests/cases/no_conclusion_bad.bpa:18:23: error: subproof 'b' has no concluding step of its own\n");
+
+    // `hole`: an aspirational axiom-shaped placeholder. Default mode REJECTS a
+    // file that rests on one, enumerating each hole with its location and the
+    // theorems that depend on it.
+    ctx.fail(&.{ "check", "tests/cases/hole.bpa" },
+        \\error: 1 hole(s) remain (default mode rejects holes; use --draft while filling them):
+        \\  - zeroIsEven  (tests/cases/hole.bpa:10)  — rested on by: restsOnHole
+        \\
+    );
+    // --draft allows holes (exit 0) with a loud disclosure banner naming them.
+    ctx.ok(&.{ "check", "--draft", "tests/cases/hole.bpa" },
+        \\OK: 6 declarations, 1 theorems proven
+        \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): zeroIsEven; re-run `bpa check` (no --draft) once filled.
+        \\
+    );
+    // holes are ORTHOGONAL to acceleration: --fast alone still rejects them.
+    ctx.fail(&.{ "check", "--fast", "tests/cases/hole.bpa" },
+        \\error: 1 hole(s) remain (default mode rejects holes; use --draft while filling them):
+        \\  - zeroIsEven  (tests/cases/hole.bpa:10)  — rested on by: restsOnHole
+        \\
+    );
+    // holes propagate transitively across imports: a theorem citing a
+    // hole-tainted theorem inherits the hole (blast radius shows both).
+    ctx.fail(&.{ "check", "tests/cases/hole_transitive.bpa" },
+        \\error: 1 hole(s) remain (default mode rejects holes; use --draft while filling them):
+        \\  - zeroIsEven  (tests/cases/hole.bpa:10)  — rested on by: restsOnHole, transitiveHole
+        \\
+    );
 }

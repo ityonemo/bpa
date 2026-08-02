@@ -256,7 +256,7 @@ pub fn main(init: std.process.Init) !u8 {
         try out.writeAll(
             \\bpa — a proof checker
             \\
-            \\usage: bpa check [--fast | --faster | --reckless] <file.bpa>
+            \\usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>
             \\       bpa fmt [--check] <file.bpa|.md>
             \\       bpa query outline <file.bpa> [theorem]
             \\       bpa query theorem <file.bpa> <theorem> [--sig]
@@ -312,7 +312,7 @@ pub fn main(init: std.process.Init) !u8 {
     if (args.len >= 2 and std.mem.eql(u8, args[1], "query")) {
         return queryCommand(arena, std_root, args[2..]);
     }
-    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query accelerated <file.bpa> [theorem]\n";
+    const usage = "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query accelerated <file.bpa> [theorem]\n";
     if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
         return fail(usage, .{});
     }
@@ -320,6 +320,7 @@ pub fn main(init: std.process.Init) !u8 {
     // Each preset turns off one more layer; at most one may be given.
     var verify: bpa.Verify = .{};
     var speed_flag = false;
+    var draft = false; // --draft: allow holes (orthogonal to the speed flags)
     var path: ?[]const u8 = null;
     for (args[2..]) |arg| {
         const preset: ?bpa.Verify =
@@ -328,6 +329,8 @@ pub fn main(init: std.process.Init) !u8 {
             if (speed_flag) return fail("error: at most one of --fast / --faster / --reckless\n", .{});
             verify = p;
             speed_flag = true;
+        } else if (std.mem.eql(u8, arg, "--draft")) {
+            draft = true;
         } else if (path == null) {
             path = arg;
         } else {
@@ -347,6 +350,28 @@ pub fn main(init: std.process.Init) !u8 {
         var fw: Io.File.Writer = .init(.stderr(), io, &buf);
         const err = &fw.interface;
         try result.sink.render(err, result.files);
+        try err.flush();
+        return 1;
+    }
+    // Holes: aspirational placeholders. Default mode REJECTS any file that has
+    // them (they are enumerated with their dependents as the reason) so a
+    // hole-bearing result is never mistaken for complete; --draft allows them.
+    if (result.holes.len > 0 and !draft) {
+        var buf: [4096]u8 = undefined;
+        var fw: Io.File.Writer = .init(.stderr(), io, &buf);
+        const err = &fw.interface;
+        try err.print("error: {d} hole(s) remain (default mode rejects holes; use --draft while filling them):\n", .{result.holes.len});
+        for (result.holes) |h| {
+            try err.print("  - {s}  ({s}:{d})", .{ h.name, h.path, h.line });
+            if (h.dependents.len > 0) {
+                try err.writeAll("  — rested on by: ");
+                for (h.dependents, 0..) |d, i| {
+                    if (i > 0) try err.writeAll(", ");
+                    try err.writeAll(d);
+                }
+            }
+            try err.writeAll("\n");
+        }
         try err.flush();
         return 1;
     }
@@ -381,6 +406,15 @@ pub fn main(init: std.process.Init) !u8 {
         if (!verify.recheck_imports) try out.writeAll(" imported proofs were trusted, not re-checked;");
         if (!verify.recheck_schemas) try out.writeAll(" imported schemas were trusted, not re-instantiated;");
         try out.writeAll(" re-run `bpa check` to fully verify.");
+    }
+    // --draft with holes: loud disclosure that the result rests on aspirational
+    // placeholders, listing them (like the --fast banner). Exit stays 0.
+    if (draft and result.holes.len > 0) {
+        try out.print("\n  \u{2014} DRAFT — {d} hole(s) unfilled (aspirational; the result is conditional on them):", .{result.holes.len});
+        for (result.holes) |h| {
+            try out.print(" {s}", .{h.name});
+        }
+        try out.writeAll("; re-run `bpa check` (no --draft) once filled.");
     }
     try out.writeAll("\n");
     // A run that materialized NO theorems (schema-only, axioms-only, or a

@@ -103,6 +103,9 @@ pub const Decl = union(enum) {
     func: struct { name: Token, params: []const Binder, result: Token, requires: ?*const Expr },
     pred: struct { name: Token, params: []const Binder },
     axiom: struct { name: Token, formula: *const Expr },
+    /// `hole name: formula` — an aspirational placeholder, accepted like an
+    /// axiom but disclosed as a hole (default mode rejects; --draft allows).
+    hole: struct { name: Token, formula: *const Expr },
     schema: struct {
         name: Token,
         params: []const SchemaParam,

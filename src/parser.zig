@@ -102,7 +102,7 @@ pub const Parser = struct {
 
     fn isTopLevelKeyword(tag: Token.Tag) bool {
         return switch (tag) {
-            .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_theorem, .keyword_import, .keyword_forward => true,
+            .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_hole, .keyword_theorem, .keyword_import, .keyword_forward => true,
             else => false,
         };
     }
@@ -195,6 +195,15 @@ pub const Parser = struct {
                 }
                 _ = try self.expect(.colon);
                 return .{ .axiom = .{ .name = name, .formula = try self.parseExpr() } };
+            },
+            .keyword_hole => {
+                _ = self.advance();
+                const name = try self.expect(.identifier);
+                _ = try self.expect(.colon);
+                if (self.tok.tag == .keyword_proof) {
+                    return self.fail("a hole is a placeholder and carries no proof; once you prove it, make it a theorem", .{});
+                }
+                return .{ .hole = .{ .name = name, .formula = try self.parseExpr() } };
             },
             .keyword_theorem => {
                 _ = self.advance();
@@ -777,6 +786,33 @@ test "arithmetic fallback(<thm>) parses; fallback stays an ordinary identifier e
     try testing.expect(hyp.fallback == null);
     try testing.expectEqual(1, hyp.refs.len);
     try testing.expectEqualStrings("fallback", source[hyp.refs[0].start..hyp.refs[0].end]);
+}
+
+test "hole declaration parses as ast.Decl.hole; carrying a proof is an error" {
+    const arena_alloc = std.testing.allocator;
+    var arena_state: std.heap.ArenaAllocator = .init(arena_alloc);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
+    {
+        const source = "pred p\nhole aspirational: p\n";
+        var sink: Diagnostics.Sink = .init(arena);
+        var p: Parser = .init(arena, source, &sink);
+        const file = try p.parseFile();
+        try testing.expectEqual(0, sink.list.items.len);
+        try testing.expectEqual(2, file.decls.len);
+        try testing.expect(file.decls[1] == .hole);
+        const h = file.decls[1].hole;
+        try testing.expectEqualStrings("aspirational", source[h.name.start..h.name.end]);
+    }
+    {
+        // a hole with a proof body is rejected (once proved, it's a theorem)
+        const source = "pred p\nhole bad: p\nproof\n  @c | p [by axiom pa]\nqed\n";
+        var sink: Diagnostics.Sink = .init(arena);
+        var p: Parser = .init(arena, source, &sink);
+        _ = p.parseFile() catch {};
+        try testing.expect(sink.list.items.len > 0);
+    }
 }
 
 test "@label step definitions; the label name interns without the sigil; refs stay bare" {

@@ -79,6 +79,11 @@ pub const Elaborator = struct {
     /// leaned on (directly, or transitively via citations and schema
     /// re-checks); cleared per theorem, stored on the fact when it proves
     accelerated_used: std.ArrayList(StrId) = .empty,
+    /// hole names the CURRENT top-level theorem's proof rests on (a cited hole,
+    /// or a cited theorem that itself rests on holes); cleared per theorem,
+    /// stored on the fact when it proves. Same accumulate-then-store shape as
+    /// accelerated_used.
+    holes_used: std.ArrayList(StrId) = .empty,
     /// innermost binding last: quantifier binders, proof vars, func params
     scope: std.ArrayList(ScopeEntry) = .empty,
     /// generator for hygienic binder fvar names ('#' cannot lex, so these can
@@ -346,6 +351,22 @@ pub const Elaborator = struct {
                     .loc = d.name.start,
                 } });
             },
+            .hole => |d| {
+                // mechanically an axiom, but marked a hole: default mode rejects
+                // any proof that (transitively) rests on it; --draft allows it.
+                const name = try self.internTok(d.name);
+                try self.checkFreshName(name, d.name);
+                const f = try self.elaborateExpr(d.formula);
+                const typed = try self.requireProp(f, d.formula);
+                try self.dischargeTccs(null, @enumFromInt(0), 0);
+                _ = try self.env.addStatement(self.file, name, .{ .axiom = .{
+                    .name = name,
+                    .formula = typed.id,
+                    .loc = d.name.start,
+                    .is_hole = true,
+                    .holes = try self.arena.dupe(StrId, &.{name}),
+                } });
+            },
             .schema => |d| {
                 const name = try self.internTok(d.name);
                 try self.checkFreshName(name, d.name);
@@ -389,11 +410,13 @@ pub const Elaborator = struct {
                     fact.trusted = true;
                 } else {
                     self.accelerated_used.clearRetainingCapacity();
+                    self.holes_used.clearRetainingCapacity();
                     const proven = try self.checkProofSteps(d.steps, typed.id, d.name.start);
                     if (proven) {
                         const fact = &self.env.findStatement(self.file, name).?.theorem;
                         fact.proven = true;
                         fact.accelerated = try self.arena.dupe(StrId, self.accelerated_used.items);
+                        fact.holes = try self.arena.dupe(StrId, self.holes_used.items);
                     }
                 }
             },
@@ -914,13 +937,21 @@ pub const Elaborator = struct {
         switch (kind) {
             .axiom => {
                 try self.wantRefs(c, 1);
-                return .{ .axiom_ref = .{ .stmt = try self.resolveStatementRef(c.refs[0]), .loc = c.refs[0].start } };
+                const stmt_id = try self.resolveStatementRef(c.refs[0]);
+                // a `hole` is stored as an axiom-kind Fact with is_hole set;
+                // citing one makes the current theorem rest on that hole.
+                const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
+                if (stmt == .axiom and stmt.axiom.is_hole) try self.inheritHoles(stmt.axiom.holes);
+                return .{ .axiom_ref = .{ .stmt = stmt_id, .loc = c.refs[0].start } };
             },
             .theorem => {
                 try self.wantRefs(c, 1);
                 const stmt_id = try self.resolveStatementRef(c.refs[0]);
                 const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
-                if (stmt == .theorem) try self.inheritAccelerated(stmt.theorem.accelerated);
+                if (stmt == .theorem) {
+                    try self.inheritAccelerated(stmt.theorem.accelerated);
+                    try self.inheritHoles(stmt.theorem.holes);
+                }
                 return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = c.refs[0].start } };
             },
             .hypothesis => {
@@ -1541,12 +1572,14 @@ pub const Elaborator = struct {
                 const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
                 switch (stmt) {
                     .axiom => |a| {
+                        if (a.is_hole) try self.inheritHoles(a.holes);
                         formula = a.formula;
                         source = .{ .axiom = .{ .id = stmt_id, .loc = ref.start } };
                     },
                     .theorem => |t| {
                         if (!t.proven) return self.fail(ref.start, "cites unproven theorem '{s}'", .{self.text(ref)});
                         try self.inheritAccelerated(t.accelerated);
+                        try self.inheritHoles(t.holes);
                         formula = t.formula;
                         source = .{ .theorem = .{ .id = stmt_id, .loc = ref.start } };
                     },
@@ -2345,12 +2378,14 @@ pub const Elaborator = struct {
             const stmt_id = try self.resolveStatementRef(ref);
             switch (self.env.statements.items[@intFromEnum(stmt_id)]) {
                 .axiom => |a| {
+                    if (a.is_hole) try self.inheritHoles(a.holes);
                     formula = a.formula;
                     source = .{ .axiom = .{ .id = stmt_id, .loc = ref.start } };
                 },
                 .theorem => |t| {
                     if (!t.proven) return self.fail(ref.start, "cites unproven theorem '{s}'", .{self.text(ref)});
                     try self.inheritAccelerated(t.accelerated);
+                    try self.inheritHoles(t.holes);
                     formula = t.formula;
                     source = .{ .theorem = .{ .id = stmt_id, .loc = ref.start } };
                 },
@@ -3074,6 +3109,7 @@ pub const Elaborator = struct {
                     return self.fail(fb.start, "fallback theorem '{s}' does not prove this goal", .{self.text(fb)});
                 }
                 try self.inheritAccelerated(t.accelerated);
+                try self.inheritHoles(t.holes);
                 return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = fb.start } };
             },
             .axiom => return self.fail(fb.start, "fallback cites an axiom '{s}'; use a theorem", .{self.text(fb)}),
@@ -3121,6 +3157,17 @@ pub const Elaborator = struct {
                 if (o == name) continue :outer;
             }
             try self.accelerated_used.append(self.arena, name);
+        }
+    }
+
+    /// Record hole dependence for the current theorem: `names` are the holes a
+    /// cited fact rests on (a hole is [its own name]; a theorem is its `holes`).
+    fn inheritHoles(self: *Elaborator, names: []const StrId) Allocator.Error!void {
+        outer: for (names) |name| {
+            for (self.holes_used.items) |o| {
+                if (o == name) continue :outer;
+            }
+            try self.holes_used.append(self.arena, name);
         }
     }
 
