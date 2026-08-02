@@ -13,9 +13,11 @@ pub fn addTests(
 ) void {
     const ctx = Ctx.init(b, exe, test_step);
 
-    // AATA group theory: the literate translation of Groups basic-
-    // properties (5 propositions) + 5 in-scope exercises, verified (proven; no accelerated tactic).
-    ctx.ok(&.{ "check", "aata/3.2-groups.md" }, "OK: 29 declarations, 10 theorems proven\n");
+    // AATA group theory: the literate translation of Groups basic-properties (5
+    // propositions) + 5 in-scope exercises. The 10 theorems now ALIAS the library
+    // proofs in std/group.bpa (the .md is book-notation presentation; the checked
+    // derivations live in std) — verified (proven; no accelerated tactic).
+    ctx.ok(&.{ "check", "aata/3.2-groups.md" }, "OK: 40 declarations, 10 theorems proven\n");
 
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
     // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2

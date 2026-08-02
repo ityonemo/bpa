@@ -52,14 +52,12 @@ pub fn addTests(
     // pow recursion; dividesRefl proven.
     ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 86 declarations, 17 theorems proven\n");
 
-    // the group theory (std/group.bpa): axioms only, no theorems — so a
-    // direct check materializes nothing and exits nonzero with a warning
-    // (the theory is a valid dependency, but checking it alone proves 0).
-    ctx.okCode(&.{ "check", "std/group.bpa" },
-        \\OK: 9 declarations, 0 theorems proven
-        \\  — WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).
-        \\
-    , 1);
+    // the group theory (std/group.bpa): the 5 group axioms + an opt-in
+    // `opCommutative`, and the 10 basic-property theorems (identityUnique,
+    // inverseUnique, invProduct, cancelLeft, …) proved from the axioms alone.
+    // The AATA transcription (aata/3.2-groups.md) aliases these under book
+    // notation; the checked proofs live here.
+    ctx.ok(&.{ "check", "std/group.bpa" }, "OK: 20 declarations, 10 theorems proven\n");
 
     // the set theory (std/set.bpa): axioms only, no theorems — a direct
     // check materializes nothing and exits nonzero with a warning.
