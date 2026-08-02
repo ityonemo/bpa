@@ -1,5 +1,24 @@
 # COOPER-REPLAY-PLAN.md — general Cooper-QE-replay certificates
 
+## STATUS (2026-08-01): LANDED — all three layers
+
+All three layers are built and green:
+- **Layer 1** (`2dd2b09`): trace-emitting Cooper engine (`presburger.trace` →
+  `Replay`; `cooperTraced` shares the `prepared` prelude with `cooper`).
+- **Layer 2** (`cc0d965`): the `cooper` certifier link, period-1 witness
+  direction (`tests/cases/cooper_witness.bpa`, pure in default mode).
+- **Layer 3**: induction synthesis (`cooperInduction` in `elaborate.zig`) —
+  period-D goals certify via a synthesized induction. `tests/cases/cooper_
+  parity.bpa` and the target `examples/peano.bpa` `evenOrOdd` both check PURE in
+  default mode (`OK: 18 declarations, 6 theorems proven`, no oracle taint).
+
+Declared boundaries (the `cooper` link declines these → `--fast`): multi-fixed-
+variable goals, and nested/deeper alternation (`∀∃∀`). The witness search is a
+bounded shift-table (constant towers + IH-witness towers) — sufficient for the
+parity family and period ≤ small; a goal needing an unlisted witness declines
+cleanly rather than emitting an unsound proof. The rest of this document is the
+original design, kept for the layer detail.
+
 ## 0. Summary and non-goals
 
 **Goal.** Make `by arithmetic` goals with quantifier alternation (∀∃) certify PURE — emit ordinary kernel steps instead of an `.oracle` verdict — so `bpa check` in **default mode** accepts them. Canonical target: `examples/peano.bpa:182`

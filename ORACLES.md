@@ -117,10 +117,18 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   with `lessThanIrreflexive`, `absurd`), COEFFICIENT SCALING (`mul`-by-literal
   bounds scaled via `multiplicationPreservesOrder`), and SUMS of distinct-
   variable bounds (`a<b ∧ c<d -> add(a,c)<add(b,d)`, via
-  `additionPreservesOrder` + `addIsCommutative` + transitivity). Still
+  `additionPreservesOrder` + `addIsCommutative` + transitivity). *Cooper-replay*
+  (the `cooper` link, `src/presburger.zig` trace + `src/elaborate.zig`
+  `cooperInduction`) closes the **quantifier-alternation tail**: a
+  `forall x…; exists y; body` goal replays its Cooper elimination as pure kernel
+  steps — for a period-1 trace, a boundary witness under an `or_intro`; for a
+  period-D trace (e.g. the parity `evenOrOdd`, `forall x; exists y; x=2y ∨
+  x=2y+1`), a SYNTHESIZED induction on the fixed variable (predicate `P(k)` =
+  the body, base `P(ZERO)`, step `P(k)→P(succ(k))` by unpacking the IH witness
+  and shifting it per residue-class arm, then `instantiate induction`). Still
   oracle-backed, honestly disclosed: quantified arithmetic subformulas used as
-  skeleton atoms, variable (input-dependent) existential witnesses, and full
-  quantifier-elimination replay (`evenOrOdd`, ∀∃).
+  skeleton atoms, and multi-variable / nested (`∀∃∀`) alternation (the cooper
+  link declines these, so they fall to `--fast`).
 
 ### `polynomial` — nonlinear ring identities (`--fast` oracle only)
 

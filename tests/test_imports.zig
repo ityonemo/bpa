@@ -36,9 +36,11 @@ pub fn addTests(
         \\
     );
 
-    // --fast re-checks the imported proofs but accepts the imported oracle
+    // --fast re-checks the imported proofs; since Cooper-replay certifies the
+    // once-oracle evenOrOdd, nothing is deferred and all seven are pure (the
+    // --fast banner still fires).
     ctx.ok(&.{ "check", "--fast", "examples/peano-imports.bpa" },
-        \\OK: 24 declarations, 7 theorems proven (6 pure, 1 via oracles: arithmetic)
+        \\OK: 24 declarations, 7 theorems proven
         \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates); re-run `bpa check` before finalizing.
         \\
     );

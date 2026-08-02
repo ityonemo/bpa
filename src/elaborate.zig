@@ -1304,12 +1304,22 @@ pub const Elaborator = struct {
             }
         }
 
-        // the schema body/proof elaborate hygienically: the use-site scope is
-        // masked so generic text can never capture use-site variables
+        return (try self.instantiateSchemaCore(stmt_id, schema, schema_ctx, &args_map)) orelse
+            self.fail(name_tok.start, "instantiation of schema '{s}' failed here", .{self.text(name_tok)});
+    }
+
+    /// Monomorphize a schema's stored body/proof at a completed `args_map`
+    /// (params -> value/lambda). Shared by the surface `instantiate` path
+    /// (which builds args_map from written-down arguments) and synthesizing
+    /// certifiers (which build a lambda arg directly from a TermId predicate —
+    /// e.g. the Cooper-replay induction). Returns the monomorphized instance
+    /// formula, or null on failure. The body/proof resolve in the schema's own
+    /// defining file, hygienically masked from the use-site scope.
+    fn instantiateSchemaCore(self: *Elaborator, stmt_id: StatementId, schema: *const Statement.Schema, schema_ctx: Ctx, args_map: *const SchemaArgs) ElabError!?TermId {
         const saved_scope = self.scope;
         const saved_args = self.schema_args;
         self.scope = .empty;
-        self.schema_args = &args_map;
+        self.schema_args = args_map;
         try self.instantiating.append(self.arena, stmt_id);
         defer {
             self.scope = saved_scope;
@@ -1317,8 +1327,6 @@ pub const Elaborator = struct {
             _ = self.instantiating.pop();
         }
 
-        // the schema's body/proof resolve names in ITS defining file, its
-        // tokens index ITS source, and its diagnostics blame ITS file
         const use_ctx = self.swapCtx(schema_ctx);
         const checked: ?TermId = blk: {
             const inst = self.requireProp(self.elaborateExpr(schema.body) catch |e| switch (e) {
@@ -1339,8 +1347,7 @@ pub const Elaborator = struct {
             break :blk inst.id;
         };
         _ = self.swapCtx(use_ctx);
-        return checked orelse
-            self.fail(name_tok.start, "instantiation of schema '{s}' failed here", .{self.text(name_tok)});
+        return checked;
     }
 
     fn wantRefs(self: *Elaborator, c: ast.Step.Claim, n: usize) ElabError!void {
@@ -3890,11 +3897,88 @@ pub const Elaborator = struct {
         return try self.buildTower(symbols, succs, base);
     }
 
-    /// The Cooper certifier link (layers 2-3). Layer 2: a `forall x…; exists y;
-    /// body` goal whose Cooper elimination has period 1 is certified by picking
-    /// a boundary witness `y := b + j`, proving the body at it (an or-intro over
-    /// an equation/order arm), and `exists_intro`. Period > 1 needs the layer-3
-    /// induction; nested/multi-var alternation declines (out of scope).
+    /// Prove `exists_body` (an `exists y; disjunction`) in `block` by finding a
+    /// witness (from `candidates`) whose opened body — a right/left nest of
+    /// `or` — has a provable arm (equation/order, under `premises`). Emits the
+    /// arm proof, lifts it through the or-intro path, and returns the
+    /// `exists_intro` justification (NOT yet emitted as a step). Returns null
+    /// when no candidate witness proves the body. Shared by the period-1 layer,
+    /// the induction base case, and each induction step arm.
+    fn emitExistsWitness(
+        self: *Elaborator,
+        low: *Lowering,
+        block: kernel.BlockId,
+        exists_body: TermId, // exists y; disj
+        candidates: []const TermId,
+        ar: ArithRules,
+        symbols: presburger_mod.Symbols,
+        premises: []CertPremise,
+        loc: u32,
+    ) ElabError!?kernel.Justification {
+        _ = ar;
+        const en = self.pool.get(exists_body);
+        if (en != .quant or en.quant.q != .exists) return null;
+        for (candidates) |witness| {
+            const instance = try self.pool.open(en.quant.body, witness);
+            // find a provable arm of the (possibly disjunctive) instance; prove
+            // it via arithCertCore (which handles the cited premises), then lift
+            // through the or-intro path.
+            const found = (try self.proveDisjArm(low, block, instance, symbols, premises, loc)) orelse continue;
+            var arm_ref = found.ref;
+            var pi = found.path.len;
+            while (pi > 0) {
+                pi -= 1;
+                const disj = try self.disjunctionAt(instance, found.path[0..pi]);
+                const just: kernel.Justification = if (found.path[pi])
+                    .{ .or_intro_right = arm_ref }
+                else
+                    .{ .or_intro_left = arm_ref };
+                arm_ref = try self.emitStep(low, block, loc, disj, just);
+            }
+            return .{ .exists_intro = .{ .step = arm_ref, .witness = witness, .witness_loc = loc } };
+        }
+        return null;
+    }
+
+    /// Prove one arm of a right/left `or`-nest `instance` via arithCertCore
+    /// (using `premises`), emitting the arm's proof step. Returns the arm's
+    /// step ref and the or-intro path to it, or null if no arm is provable.
+    fn proveDisjArm(
+        self: *Elaborator,
+        low: *Lowering,
+        block: kernel.BlockId,
+        instance: TermId,
+        symbols: presburger_mod.Symbols,
+        premises: []CertPremise,
+        loc: u32,
+    ) ElabError!?struct { ref: kernel.SRef, path: []const bool } {
+        var path: std.ArrayList(bool) = .empty;
+        var cur = instance;
+        while (true) {
+            const node = self.pool.get(cur);
+            if (node == .bin and node.bin.op == .or_op) {
+                if (try self.arithCertCore(low, block, node.bin.lhs, premises, symbols, loc)) |just| {
+                    const ref = try self.emitStep(low, block, loc, node.bin.lhs, just);
+                    try path.append(self.arena, false);
+                    return .{ .ref = ref, .path = try self.arena.dupe(bool, path.items) };
+                }
+                try path.append(self.arena, true);
+                cur = node.bin.rhs;
+                continue;
+            }
+            if (try self.arithCertCore(low, block, cur, premises, symbols, loc)) |just| {
+                const ref = try self.emitStep(low, block, loc, cur, just);
+                return .{ .ref = ref, .path = try self.arena.dupe(bool, path.items) };
+            }
+            return null;
+        }
+    }
+
+    /// The Cooper certifier link (layers 2-3). Layer 2 (period 1): pick a
+    /// boundary witness and prove the body directly. Layer 3 (period > 1):
+    /// synthesize an induction on the fixed variable (the periodicity/−∞
+    /// residue is provable over Nat only inductively). Nested/multi-var
+    /// alternation declines (out of scope).
     fn cooperCertificate(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim, symbols: presburger_mod.Symbols, loc: u32) ElabError!Outcome {
         _ = c;
         if (symbols.nat == null) return .{ .declined = .out_of_scope };
@@ -3908,30 +3992,42 @@ pub const Elaborator = struct {
         const traced = try presburger_mod.trace(self.arena, self.pool, symbols, &.{}, u.body);
         if (traced != .replay) return .{ .declined = .out_of_scope };
         const replay = traced.replay;
-        if (replay.period != 1) return .{ .declined = .out_of_scope }; // layer 3
 
         const ar = (try self.arithRules(loc)) orelse return .{ .declined = .{ .missing_lemma = "addZeroLeft" } };
 
-        // try each boundary witness `b + j` (and each j in 1..period=1): pick
-        // the first that reconstructs as a Nat term AND proves the opened body.
-        const chosen: ?struct { witness: TermId, instance: TermId, plan: DisjPlan } = blk: {
-            for (replay.disjuncts) |d| {
-                const bw = switch (d) {
-                    .minus_inf => continue, // no finite witness; period-1 goals close on a boundary
-                    .boundary => |b| b,
-                };
-                const witness = (try self.buildWitness(symbols, replay, replay.boundaries[bw.b_index], bw.j, u.fix_vars)) orelse continue;
-                const instance = try self.pool.open(body_node.quant.body, witness);
-                if (try self.planDisjunction(symbols, ar, instance, loc)) |plan| {
-                    break :blk .{ .witness = witness, .instance = instance, .plan = plan };
-                }
-            }
-            break :blk null;
-        };
-        const pick = chosen orelse return .{ .declined = .out_of_scope };
+        if (replay.period != 1) return self.cooperInduction(low, block_id, u, symbols, ar, loc);
 
-        // emit: fix blocks, then the arm proof -> or_intro path -> exists_intro,
-        // folded back out through the fix blocks.
+        // period 1: the boundary witnesses (reconstructed as Nat terms) are the
+        // candidate witnesses; prove the body at the first that works.
+        var candidates: std.ArrayList(TermId) = .empty;
+        for (replay.disjuncts) |d| {
+            const bw = switch (d) {
+                .minus_inf => continue,
+                .boundary => |b| b,
+            };
+            if (try self.buildWitness(symbols, replay, replay.boundaries[bw.b_index], bw.j, u.fix_vars)) |w| {
+                try candidates.append(self.arena, w);
+            }
+        }
+        const carry = (try self.emitExistsWitnessInFix(low, block_id, u, u.body, candidates.items, ar, symbols, loc)) orelse
+            return .{ .declined = .out_of_scope };
+        return .{ .certified = carry };
+    }
+
+    /// Emit `u.body` (an existential) inside the peeled forall's fix blocks and
+    /// fold back out with forall_intro. `exists_body` is proved by
+    /// `emitExistsWitness` at one of `candidates`.
+    fn emitExistsWitnessInFix(
+        self: *Elaborator,
+        low: *Lowering,
+        block_id: kernel.BlockId,
+        u: Universal,
+        exists_body: TermId,
+        candidates: []const TermId,
+        ar: ArithRules,
+        symbols: presburger_mod.Symbols,
+        loc: u32,
+    ) ElabError!?kernel.Justification {
         var blocks: std.ArrayList(kernel.BlockId) = .empty;
         var parent = block_id;
         for (u.fix_vars) |fv| {
@@ -3939,26 +4035,9 @@ pub const Elaborator = struct {
             try blocks.append(self.arena, b);
             parent = b;
         }
-
-        // prove the chosen arm atom, then lift through the or-intro path to the
-        // full disjunction (the exists body opened at the witness).
-        const inner_just = try self.emitInner(low, parent, loc, pick.plan.inner);
-        var arm_ref = try self.emitStep(low, parent, loc, pick.plan.atom, inner_just);
-        // walk the path outward: each enclosing `or` lifts the proof one level.
-        var pi = pick.plan.path.len;
-        while (pi > 0) {
-            pi -= 1;
-            const disj = try self.disjunctionAt(pick.instance, pick.plan.path[0..pi]);
-            const just: kernel.Justification = if (pick.plan.path[pi])
-                .{ .or_intro_right = arm_ref }
-            else
-                .{ .or_intro_left = arm_ref };
-            arm_ref = try self.emitStep(low, parent, loc, disj, just);
-        }
-
-        const carry: kernel.Justification = .{ .exists_intro = .{ .step = arm_ref, .witness = pick.witness, .witness_loc = loc } };
-        if (blocks.items.len == 0) return .{ .certified = carry };
-        _ = try self.emitStep(low, blocks.items[blocks.items.len - 1], loc, u.body, carry);
+        const carry = (try self.emitExistsWitness(low, parent, exists_body, candidates, ar, symbols, &.{}, loc)) orelse return null;
+        if (blocks.items.len == 0) return carry;
+        _ = try self.emitStep(low, blocks.items[blocks.items.len - 1], loc, exists_body, carry);
         var i = blocks.items.len;
         while (i > 1) {
             i -= 1;
@@ -3966,7 +4045,176 @@ pub const Elaborator = struct {
             _ = try self.emitStep(low, blocks.items[i - 1], loc, u.opened[i], .{ .forall_intro = .{ .id = blocks.items[i], .loc = loc } });
         }
         self.closeBlock(low, blocks.items[0]);
-        return .{ .certified = .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } } };
+        return .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } };
+    }
+
+    /// Candidate existential witnesses for the induction base/step, built from
+    /// the fixed vars (`ZERO`, small towers) and, in the step, the unpacked IH
+    /// witness `y0` (`y0`, `succ(y0)`, `succ(succ(y0))`). The shift table for
+    /// arbitrary period is realized by this bounded search: one of these proves
+    /// the residue-class arm at succ(k).
+    fn witnessCandidates(self: *Elaborator, symbols: presburger_mod.Symbols, ih_witness: ?TermId) ElabError![]const TermId {
+        var out: std.ArrayList(TermId) = .empty;
+        const zero_sym = symbols.zero orelse return out.items;
+        const zero = try self.pool.addApp(.app, zero_sym, &.{});
+        // constant towers ZERO..3 (base case classes)
+        for (0..4) |k| {
+            if (try self.buildTower(symbols, k, zero)) |w| try out.append(self.arena, w);
+        }
+        // shifted IH witness (step case classes)
+        if (ih_witness) |y0| {
+            for (0..3) |k| {
+                if (try self.buildTower(symbols, k, y0)) |w| try out.append(self.arena, w);
+            }
+        }
+        return out.items;
+    }
+
+    /// Layer 3: synthesize an induction on the single fixed variable to certify
+    /// a period-D `forall x; exists y; body`. Predicate P(k) = body[x:=k];
+    /// base P(ZERO) and step `forall k; P(k) -> P(succ(k))` are proved by the
+    /// witness search (the step unpacks the IH witness and case-splits its
+    /// disjunction, shifting the witness per arm), then `induction` is
+    /// instantiated at P. Declines (out_of_scope) on multi-variable goals.
+    fn cooperInduction(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, u: Universal, symbols: presburger_mod.Symbols, ar: ArithRules, loc: u32) ElabError!Outcome {
+        // layer 3 handles a single fixed variable (the induction variable).
+        if (u.fix_vars.len != 1) return .{ .declined = .out_of_scope };
+        const nat = symbols.nat.?;
+
+        // the induction schema must be in scope (a parameterized axiom = a
+        // proofless schema); resolve it for the instance construction.
+        const induction_id = self.env.findStatementId(self.theoryScope(), self.interner.intern("induction") catch return error.OutOfMemory) orelse
+            return .{ .declined = .{ .missing_lemma = "induction" } };
+        const induction_stmt = &self.env.statements.items[@intFromEnum(induction_id)];
+        if (induction_stmt.* != .schema or induction_stmt.schema.proof != null) return .{ .declined = .{ .missing_lemma = "induction" } };
+
+        // P as a closed body over the induction variable: P[t] = open(P_closed, t)
+        const x = u.fix_vars[0];
+        const x_id = try self.pool.add(.{ .fvar = x });
+        const p_closed = try self.pool.close(u.body, x.name);
+
+        const zero_sym = symbols.zero orelse return .{ .declined = .{ .missing_symbol = "ZERO" } };
+        const succ_sym = symbols.succ orelse return .{ .declined = .{ .missing_symbol = "succ" } };
+
+        // --- base case: P(ZERO) ------------------------------------------
+        const zero = try self.pool.addApp(.app, zero_sym, &.{});
+        const p_zero = try self.pool.open(p_closed, zero);
+        const base_candidates = try self.witnessCandidates(symbols, null);
+        const base_just = (try self.emitExistsWitness(low, block_id, p_zero, base_candidates, ar, symbols, &.{}, loc)) orelse
+            return .{ .declined = .out_of_scope };
+        const base_ref = try self.emitStep(low, block_id, loc, p_zero, base_just);
+
+        // --- step: forall k; P(k) -> P(succ(k)) --------------------------
+        const k: term.Node.Fvar = .{ .name = try self.freshNamed("k"), .sort = nat };
+        const k_id = try self.pool.add(.{ .fvar = k });
+        const p_k = try self.pool.open(p_closed, k_id);
+        const succ_k = try self.pool.addApp(.app, succ_sym, &.{k_id});
+        const p_succ_k = try self.pool.open(p_closed, succ_k);
+        const step_impl_open = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = p_k, .rhs = p_succ_k } });
+        const step_forall = try self.closeForall(step_impl_open, k, nat);
+
+        const fix_k = try self.newBlock(low, try self.freshNamed("induction-step"), block_id, .{ .fix = k });
+        const assume_pk = try self.newBlock(low, try self.freshNamed("given-inductive-hypothesis"), fix_k, .{ .assume = p_k });
+        const ih_ref = try self.emitStep(low, assume_pk, loc, p_k, .{ .hypothesis = .{ .id = assume_pk, .loc = loc } });
+
+        // unpack the IH existential witness y0
+        const ih_ex = self.pool.get(p_k);
+        if (ih_ex != .quant or ih_ex.quant.q != .exists) return .{ .declined = .out_of_scope };
+        const y0: term.Node.Fvar = .{ .name = try self.freshNamed("y"), .sort = ih_ex.quant.sort };
+        const y0_id = try self.pool.add(.{ .fvar = y0 });
+        const ih_body = try self.pool.open(ih_ex.quant.body, y0_id); // the disjunction at y0
+        const unpack_block = try self.newBlock(low, try self.freshNamed("with-witness-y"), assume_pk, .{ .unpack = .{ .v = y0, .source = ih_ref } });
+        const ih_body_ref = try self.emitStep(low, unpack_block, loc, ih_body, .{ .hypothesis = .{ .id = unpack_block, .loc = loc } });
+
+        // prove P(succ(k)) by case-splitting ih_body; each arm gives a case
+        // hypothesis (an equation over k, y0) used as a premise for the witness
+        // search on P(succ(k)).
+        const step_candidates = try self.witnessCandidates(symbols, y0_id);
+        const case_just = (try self.emitInductionCases(low, unpack_block, ih_body, ih_body_ref, p_succ_k, step_candidates, ar, symbols, loc)) orelse
+            return .{ .declined = .out_of_scope };
+        _ = try self.emitStep(low, unpack_block, loc, p_succ_k, case_just);
+        self.closeBlock(low, unpack_block);
+
+        // export P(succ(k)) out of the unpack (exists_elim), the assume
+        // (implies_intro), and the fix (forall_intro).
+        _ = try self.emitStep(low, assume_pk, loc, p_succ_k, .{ .exists_elim = .{ .id = unpack_block, .loc = loc } });
+        self.closeBlock(low, assume_pk);
+        _ = try self.emitStep(low, fix_k, loc, step_impl_open, .{ .implies_intro = .{ .id = assume_pk, .loc = loc } });
+        self.closeBlock(low, fix_k);
+        const step_ref = try self.emitStep(low, block_id, loc, step_forall, .{ .forall_intro = .{ .id = fix_k, .loc = loc } });
+
+        // --- instantiate induction at P ----------------------------------
+        const instance = (try self.instantiateInduction(induction_id, &induction_stmt.schema, p_closed, nat, loc)) orelse
+            return .{ .declined = .out_of_scope };
+        // the instance concludes `forall n; P(n)`, which is exactly the goal
+        // (alpha-equal). Cite base and step as the two premises.
+        const premises = try self.arena.dupe(kernel.SRef, &.{ base_ref, step_ref });
+        _ = x_id;
+        return .{ .certified = .{ .schema_instance = .{ .instance = instance, .premises = premises } } };
+    }
+
+    /// Wrap `body` (mentioning fvar `v`) in `forall v.name; …`.
+    fn closeForall(self: *Elaborator, body: TermId, v: term.Node.Fvar, sort: term.SortId) ElabError!TermId {
+        const closed = try self.pool.close(body, v.name);
+        return self.pool.add(.{ .quant = .{ .q = .forall, .sort = sort, .hint = v.name, .body = closed } });
+    }
+
+    /// Prove `goal` (= P(succ(k))) by an or_elim over `disj` (the IH witness
+    /// disjunction at y0). Each arm assumes one disjunct — an equation over
+    /// k, y0 — and proves `goal` by the witness search using that equation as a
+    /// rewrite premise. Returns the or_elim justification, or null if any arm
+    /// fails. Handles a right-nested chain of `or` recursively.
+    fn emitInductionCases(
+        self: *Elaborator,
+        low: *Lowering,
+        parent: kernel.BlockId,
+        disj: TermId,
+        disj_ref: kernel.SRef,
+        goal: TermId,
+        candidates: []const TermId,
+        ar: ArithRules,
+        symbols: presburger_mod.Symbols,
+        loc: u32,
+    ) ElabError!?kernel.Justification {
+        const node = self.pool.get(disj);
+        if (node != .bin or node.bin.op != .or_op) return null;
+
+        // left arm: assume the lhs disjunct, prove goal at some witness.
+        const left = try self.newBlock(low, try self.freshNamed("when-even"), parent, .{ .assume = node.bin.lhs });
+        const lhyp = try self.emitStep(low, left, loc, node.bin.lhs, .{ .hypothesis = .{ .id = left, .loc = loc } });
+        const lprem = try self.arena.dupe(CertPremise, &.{.{ .formula = node.bin.lhs, .step = lhyp, .statement = null, .rule_idx = undefined, .elim = null }});
+        const ljust = (try self.emitExistsWitness(low, left, goal, candidates, ar, symbols, lprem, loc)) orelse return null;
+        _ = try self.emitStep(low, left, loc, goal, ljust);
+        self.closeBlock(low, left);
+
+        // right arm: the rhs disjunct (possibly itself an or, recursed).
+        const right = try self.newBlock(low, try self.freshNamed("when-odd"), parent, .{ .assume = node.bin.rhs });
+        const rhyp = try self.emitStep(low, right, loc, node.bin.rhs, .{ .hypothesis = .{ .id = right, .loc = loc } });
+        const rn = self.pool.get(node.bin.rhs);
+        if (rn == .bin and rn.bin.op == .or_op) {
+            const inner = (try self.emitInductionCases(low, right, node.bin.rhs, rhyp, goal, candidates, ar, symbols, loc)) orelse return null;
+            _ = try self.emitStep(low, right, loc, goal, inner);
+        } else {
+            const rprem = try self.arena.dupe(CertPremise, &.{.{ .formula = node.bin.rhs, .step = rhyp, .statement = null, .rule_idx = undefined, .elim = null }});
+            const rjust = (try self.emitExistsWitness(low, right, goal, candidates, ar, symbols, rprem, loc)) orelse return null;
+            _ = try self.emitStep(low, right, loc, goal, rjust);
+        }
+        self.closeBlock(low, right);
+
+        return .{ .or_elim = .{ .disj = disj_ref, .left = .{ .id = left, .loc = loc }, .right = .{ .id = right, .loc = loc } } };
+    }
+
+    /// Instantiate the `induction` schema at predicate `p_closed` (a body closed
+    /// over the induction variable), producing the instance formula
+    /// `P(ZERO) -> (forall k; P(k) -> P(succ(k))) -> forall n; P(n)`.
+    fn instantiateInduction(self: *Elaborator, induction_id: StatementId, schema: *const Statement.Schema, p_closed: TermId, nat: term.SortId, loc: u32) ElabError!?TermId {
+        _ = loc;
+        if (schema.params.len != 1) return null;
+        const pname = try self.internTok(schema.params[0].name);
+        var args_map: SchemaArgs = .empty;
+        args_map.put(self.arena, pname, .{ .lambda = .{ .body = p_closed, .arg_sort = nat, .result_sort = .prop } }) catch return error.OutOfMemory;
+        const schema_ctx: Ctx = .{ .source = schema.source, .file = schema.file, .diag = @intFromEnum(schema.file) };
+        return self.instantiateSchemaCore(induction_id, schema, schema_ctx, &args_map);
     }
 
     /// Descend `instance` (a right/left nest of `or`) along `path` to the

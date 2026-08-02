@@ -173,6 +173,13 @@ pub fn addTests(
     // picks a boundary witness and emits exists_intro over an or-intro arm.
     ctx.ok(&.{ "check", "tests/cases/cooper_witness.bpa" }, "OK: 12 declarations, 1 theorems proven\n");
 
+    // Cooper-replay layer 3 (periodicity direction): a period-2 (parity) ∀∃
+    // goal certifies PURE via a SYNTHESIZED induction — the cooper link builds
+    // predicate P(k), proves base P(ZERO) and step P(k)->P(succ(k)) (unpacking
+    // the IH witness and shifting it per parity arm), then instantiates the
+    // `induction` schema. This is `evenOrOdd` (add-form), fully oracle-free.
+    ctx.ok(&.{ "check", "tests/cases/cooper_parity.bpa" }, "OK: 15 declarations, 1 theorems proven\n");
+
     // Milestone D2: mixed skeletons replay as pure certificates
     ctx.ok(&.{ "check", "tests/cases/smt_cert.bpa" }, "OK: 143 declarations, 40 theorems proven\n");
 
