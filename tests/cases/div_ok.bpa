@@ -33,7 +33,7 @@ proof
     fix d: Nat {
       @hb2 |
         assume d != ZERO {
-      // div's guard here is discharged by the assumption in scope
+          // div's guard here is discharged by the assumption in scope
           @refl-in |
             div(ONE, d) = div(ONE, d)
             [by reflexivity]

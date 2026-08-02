@@ -18,7 +18,7 @@ pub fn addTests(
     no_args.has_side_effects = true;
     no_args.expectStdErrEqual(
         "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n" ++
-            "       bpa fmt [--check] <file.bpa>\n" ++
+            "       bpa fmt [--check] <file.bpa|.md>\n" ++
             "       bpa query outline <file.bpa> [theorem]\n" ++
             "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
             "       bpa query whereis <file.bpa> <identifier>\n" ++
@@ -29,8 +29,10 @@ pub fn addTests(
     no_args.expectExitCode(1);
     test_step.dependOn(&no_args.step);
 
-    // fmt --check: the exemplars are canonically formatted
-    for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/set.bpa", "std/function.bpa", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa", "tests/cases/axiom_as_step_bad.bpa" }) |path| {
+    // fmt --check: the exemplars are canonically formatted. The `.md` entries
+    // exercise the literate path (formatLiterate reflows the ```bpa blocks and
+    // leaves prose verbatim); the rest are plain `.bpa` sources.
+    for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/set.bpa", "std/function.bpa", "aata/groups.md", "aata/sets.md", "aata/functions.md", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa", "tests/cases/axiom_as_step_bad.bpa" }) |path| {
         const fmt_check = b.addRunArtifact(exe);
         fmt_check.has_side_effects = true;
         fmt_check.setCwd(b.path("."));

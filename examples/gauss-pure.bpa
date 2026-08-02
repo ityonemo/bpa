@@ -61,11 +61,11 @@ proof
             fix b: Nat {
               @generalize-a |
                 fix a: Nat {
-          // right-nest the left side: (a+b)+(c+d) = a+(b+(c+d))
+                  // right-nest the left side: (a+b)+(c+d) = a+(b+(c+d))
                   @lhs-right-nested |
                     add(add(a, b), add(c, d)) = add(a, add(b, add(c, d)))
                     [by simplify addIsAssociative]
-          // swap b past c inside the inner triple
+                  // swap b past c inside the inner triple
                   @left-swap |
                     forall r, y, x: Nat; add(x, add(y, r)) = add(y, add(x, r))
                     [by theorem addLeftSwap]
@@ -75,8 +75,8 @@ proof
                   @lhs-with-b-c-swapped |
                     add(add(a, b), add(c, d)) = add(a, add(c, add(b, d)))
                     [by rewrite b-swaps-past-c lhs-right-nested]
-          // right-nest the target's right side identically, then flip it so
-          // the shared form a+(c+(b+d)) can be rewritten back
+                  // right-nest the target's right side identically, then flip it so
+                  // the shared form a+(c+(b+d)) can be rewritten back
                   @rhs-right-nested |
                     add(add(a, c), add(b, d)) = add(a, add(c, add(b, d)))
                     [by simplify addIsAssociative]
@@ -138,14 +138,14 @@ proof
             add(sumTo(k), sumTo(k)) = mul(k, succ(k))
             [by hypothesis given-inductive-hypothesis]
 
-      // unfold both copies of sumTo(succ k) = sumTo(k) + succ(k)
+          // unfold both copies of sumTo(succ k) = sumTo(k) + succ(k)
           @both-copies-unfolded |
             add(sumTo(succ(k)), sumTo(succ(k))) = add(add(sumTo(k), succ(k)), add(sumTo(k), succ(k)))
             [by simplify sumToSucc]
 
-      // regroup (s+c)+(s+c) into (s+s)+(c+c) via the exchange lemma,
-      // instantiated at a = c' = sumTo(k), b = d' = succ(k)
-      // (binders bind d, c, b, a outermost-first)
+          // regroup (s+c)+(s+c) into (s+s)+(c+c) via the exchange lemma,
+          // instantiated at a = c' = sumTo(k), b = d' = succ(k)
+          // (binders bind d, c, b, a outermost-first)
           @sum-exchange |
             forall d, c, b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
             [by theorem sumSwap]
@@ -156,13 +156,13 @@ proof
             add(sumTo(succ(k)), sumTo(succ(k))) = add(add(sumTo(k), sumTo(k)), add(succ(k), succ(k)))
             [by rewrite exchange-groups-the-sums both-copies-unfolded]
 
-      // fold the inductive hypothesis into the first summand
+          // fold the inductive hypothesis into the first summand
           @first-summand-is-k-times-succ-k |
             add(sumTo(succ(k)), sumTo(succ(k))) = add(mul(k, succ(k)), add(succ(k), succ(k)))
             [by rewrite inductive-hypothesis regrouped-into-sums-and-successors]
 
-      // k*(k+1) + 2*(k+1) = (k+1)*(k+2): expand every product and right-nest
-      // the additive residue; both sides normalize to succ(succ(k*k + 3k))
+          // k*(k+1) + 2*(k+1) = (k+1)*(k+2): expand every product and right-nest
+          // the additive residue; both sides normalize to succ(succ(k*k + 3k))
           @arithmetic-closes-the-product |
             add(mul(k, succ(k)), add(succ(k), succ(k))) = mul(succ(k), succ(succ(k)))
             [by simplify mulSuccLeft mulSuccRight addSuccLeft addSuccRight addZeroLeft addZeroRight mulZeroLeft mulZeroRight addIsAssociative]

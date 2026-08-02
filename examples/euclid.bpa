@@ -26,8 +26,8 @@ proof
     fix a: Nat {
       @generalize-b |
         fix b: Nat {
-      // gcdDividesBoth is stated `forall b, a` (b outermost); specialize it
-      // at these fixed a, b, then take the left conjunct
+          // gcdDividesBoth is stated `forall b, a` (b outermost); specialize it
+          // at these fixed a, b, then take the left conjunct
           @gcd-divides-both |
             forall bb, aa: Nat; divides(gcd_of(aa, bb), aa) and divides(gcd_of(aa, bb), bb)
             [by theorem gcd.gcdDividesBoth]

@@ -526,7 +526,7 @@ proof
                       @d-divides-b |
                         divides(d, b)
                         [by hypothesis given-d-divides-b]
-            // mul(b, q) + r = a  where q = div(a,b), r = mod(a,b)
+                      // mul(b, q) + r = a  where q = div(a,b), r = mod(a,b)
                       @quotient-remainder-decomposition |
                         forall aa, bb: Nat; bb != ZERO -> add(mul(bb, div(aa, bb)), mod(aa, bb)) = aa
                         [by axiom divModProperty]
@@ -536,7 +536,7 @@ proof
                       @a-decomposes |
                         add(mul(b, div(a, b)), mod(a, b)) = a
                         [by modus_ponens decomposition-holds-if-nonzero b-nonzero]
-            // d | mul(b, q)  [dividesMul: d|b -> d|mul(b, q)]
+                      // d | mul(b, q)  [dividesMul: d|b -> d|mul(b, q)]
                       @divisor-divides-multiple |
                         forall kk, aa, dd: Nat; divides(dd, aa) -> divides(dd, mul(aa, kk))
                         [by theorem dividesMul]
@@ -546,8 +546,8 @@ proof
                       @d-divides-b-times-quotient |
                         divides(d, mul(b, div(a, b)))
                         [by modus_ponens d-divides-b-times-quotient-if-divides-b d-divides-b]
-            // r = sub(a, mul(b, q)): commute divModProperty to add(r, mul(b,q)) = a
-            // then subAddCancel gives sub(a, mul(b,q)) = r.
+                      // r = sub(a, mul(b, q)): commute divModProperty to add(r, mul(b,q)) = a
+                      // then subAddCancel gives sub(a, mul(b,q)) = r.
                       @add-is-commutative |
                         forall bb, aa: Nat; add(aa, bb) = add(bb, aa)
                         [by theorem peano.addIsCommutative]
@@ -560,14 +560,14 @@ proof
                       @a-is-remainder-plus-multiple |
                         a = add(mod(a, b), mul(b, div(a, b)))
                         [by rewrite decomposition-commutes a-is-decomposition]
-            // sac: sub(add(r, x), x) = r  with x = mul(b,q)
+                      // sac: sub(add(r, x), x) = r  with x = mul(b,q)
                       @subtract-added-term-cancels |
                         forall bb, aa: Nat; sub(add(aa, bb), bb) = aa
                         [by theorem subAddCancel]
                       @remainder-recovered-by-subtraction |
                         sub(add(mod(a, b), mul(b, div(a, b))), mul(b, div(a, b))) = mod(a, b)
                         [by forall_elim(mul(b, div(a, b)), mod(a, b)) subtract-added-term-cancels]
-            // rewrite add(r, x) -> a using a-is-remainder-plus-multiple (backwards)
+                      // rewrite add(r, x) -> a using a-is-remainder-plus-multiple (backwards)
                       @remainder-plus-multiple-is-a |
                         add(mod(a, b), mul(b, div(a, b))) = a
                         [by symmetry a-is-remainder-plus-multiple]
@@ -575,7 +575,7 @@ proof
                         sub(a, mul(b, div(a, b))) = mod(a, b)
                         [by rewrite remainder-plus-multiple-is-a remainder-recovered-by-subtraction]
 
-            // FORWARD: d|a -> d|r.  d|a, d|mul(b,q) -> d|sub(a, mul(b,q)) = d|r.
+                      // FORWARD: d|a -> d|r.  d|a, d|mul(b,q) -> d|sub(a, mul(b,q)) = d|r.
                       @when-d-divides-a |
                         assume divides(d, a) {
                           @d-divides-a |
@@ -598,7 +598,7 @@ proof
                         divides(d, a) -> divides(d, mod(a, b))
                         [by implies_intro when-d-divides-a]
 
-            // BACKWARD: d|r -> d|a.  d|mul(b,q), d|r -> d|add(mul(b,q), r) = d|a.
+                      // BACKWARD: d|r -> d|a.  d|mul(b,q), d|r -> d|add(mul(b,q), r) = d|a.
                       @when-d-divides-remainder |
                         assume divides(d, mod(a, b)) {
                           @d-divides-remainder |
@@ -682,7 +682,7 @@ proof
                                       @q1-below-q2 |
                                         less_than(q1, q2)
                                         [by hypothesis given-q1-below-q2]
-                    // q1 < q2 -> exists k: add(q1, succ(k)) = q2
+                                      // q1 < q2 -> exists k: add(q1, succ(k)) = q2
                                       @below-yields-gap |
                                         forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
                                         [by axiom ordering.lessThanElim]
@@ -697,9 +697,9 @@ proof
                                           @q2-is-q1-plus-successor-gap |
                                             add(q1, succ(k)) = q2
                                             [by hypothesis with-gap-k]
-                      // mul(b, q2) = mul(b, add(q1, succ(k)))
-                      //            = add(mul(b, q1), mul(b, succ(k)))     [distrib left]
-                      //            = add(mul(b, q1), add(mul(b, k), b))   [mulSuccRight]
+                                          // mul(b, q2) = mul(b, add(q1, succ(k)))
+                                          //            = add(mul(b, q1), mul(b, succ(k)))     [distrib left]
+                                          //            = add(mul(b, q1), add(mul(b, k), b))   [mulSuccRight]
                                           @q2-as-gap-sum |
                                             q2 = add(q1, succ(k))
                                             [by symmetry q2-is-q1-plus-successor-gap]
@@ -718,7 +718,7 @@ proof
                                           @b-times-q2-is-split |
                                             mul(b, q2) = add(mul(b, q1), mul(b, succ(k)))
                                             [by rewrite b-times-gap-sum-distributes b-times-q2-over-gap-sum]
-                      // mul(b, succ(k)) = add(mul(b, k), b)  [mulSuccRight]
+                                          // mul(b, succ(k)) = add(mul(b, k), b)  [mulSuccRight]
                                           @multiple-of-successor-adds-base |
                                             forall e, m: Nat; mul(m, succ(e)) = add(mul(m, e), m)
                                             [by theorem mulSuccRight]
@@ -728,7 +728,7 @@ proof
                                           @b-times-q2-includes-a-full-b |
                                             mul(b, q2) = add(mul(b, q1), add(mul(b, k), b))
                                             [by rewrite b-times-successor-gap-adds-b b-times-q2-is-split]
-                      // substitute into decompositions-equal
+                                          // substitute into decompositions-equal
                                           @right-decomposition-is-itself |
                                             add(mul(b, q2), r2) = add(mul(b, q2), r2)
                                             [by reflexivity]
@@ -738,7 +738,7 @@ proof
                                           @left-decomposition-expanded |
                                             add(mul(b, q1), r1) = add(add(mul(b, q1), add(mul(b, k), b)), r2)
                                             [by rewrite right-decomposition-expanded decompositions-equal]
-                      // reassociate RHS: add(add(mul(b,q1), X), r2) = add(mul(b,q1), add(X, r2))
+                                          // reassociate RHS: add(add(mul(b,q1), X), r2) = add(mul(b,q1), add(X, r2))
                                           @addition-reassociates |
                                             forall c, bb, aa: Nat; add(add(aa, bb), c) = add(aa, add(bb, c))
                                             [by theorem addIsAssociative]
@@ -748,7 +748,7 @@ proof
                                           @decomposition-over-common-prefix |
                                             add(mul(b, q1), r1) = add(mul(b, q1), add(add(mul(b, k), b), r2))
                                             [by rewrite rhs-reassociates left-decomposition-expanded]
-                      // cancel mul(b, q1): r1 = add(add(mul(b,k), b), r2)
+                                          // cancel mul(b, q1): r1 = add(add(mul(b,k), b), r2)
                                           @addition-cancels-on-left |
                                             forall c, aa, bb: Nat; add(c, aa) = add(c, bb) -> aa = bb
                                             [by theorem addCancelLeft]
@@ -758,8 +758,8 @@ proof
                                           @r1-contains-a-full-b |
                                             r1 = add(add(mul(b, k), b), r2)
                                             [by modus_ponens cancel-common-prefix decomposition-over-common-prefix]
-                      // now r1 contains a full b as a summand; rearrange to the
-                      // form add(b, Y) so the assumed less_than(r1, b) collapses.
+                                          // now r1 contains a full b as a summand; rearrange to the
+                                          // form add(b, Y) so the assumed less_than(r1, b) collapses.
                                           @addition-is-commutative |
                                             forall y, x: Nat; add(x, y) = add(y, x)
                                             [by theorem addIsCommutative]
@@ -775,7 +775,7 @@ proof
                                           @r1-is-b-plus-remainder |
                                             r1 = add(b, add(mul(b, k), r2))
                                             [by rewrite base-prefix-reassociates r1-with-base-in-front]
-                      // less_than(r1, b) with r1 = add(b, Y): substitute, then cancel b.
+                                          // less_than(r1, b) with r1 = add(b, Y): substitute, then cancel b.
                                           @r1-below-b-restated |
                                             less_than(r1, b)
                                             [by hypothesis given-r1-below-b]
@@ -893,7 +893,7 @@ proof
                                       @decompositions-equal |
                                         add(mul(b, q1), r1) = add(mul(b, q2), r2)
                                         [by hypothesis given-decompositions-equal]
-                    // neither quotient can be strictly below the other
+                                      // neither quotient can be strictly below the other
                                       @smaller-quotient-impossible |
                                         forall bb, p1, p2, s1, s2: Nat; bb != ZERO -> less_than(s1, bb) -> add(mul(bb, p1), s1) = add(mul(bb, p2), s2) -> (not less_than(p1, p2))
                                         [by theorem quotientCannotBeLess]
@@ -903,7 +903,7 @@ proof
                                       @q1-not-below-q2 |
                                         not less_than(q1, q2)
                                         [by tautology q1-not-below-q2-under-hypotheses b-nonzero r1-below-b decompositions-equal]
-                    // swapped roles, with the equation flipped
+                                      // swapped roles, with the equation flipped
                                       @decompositions-equal-flipped |
                                         add(mul(b, q2), r2) = add(mul(b, q1), r1)
                                         [by symmetry decompositions-equal]
@@ -913,15 +913,15 @@ proof
                                       @q2-not-below-q1 |
                                         not less_than(q2, q1)
                                         [by tautology q2-not-below-q1-under-hypotheses b-nonzero r2-below-b decompositions-equal-flipped]
-                    // trichotomy(q1, q2): q1<q2 or q1=q2 or q2<q1
+                                      // trichotomy(q1, q2): q1<q2 or q1=q2 or q2<q1
                                       @quotients-are-trichotomous |
                                         forall x, y: Nat; less_than(x, y) or x = y or less_than(y, x)
                                         [by theorem trichotomy]
                                       @q1-q2-trichotomy |
                                         less_than(q1, q2) or q1 = q2 or less_than(q2, q1)
                                         [by forall_elim(q1, q2) quotients-are-trichotomous]
-                    // three-way case-split on trichotomy; the < arms are
-                    // impossible (they contradict the not-below facts).
+                                      // three-way case-split on trichotomy; the < arms are
+                                      // impossible (they contradict the not-below facts).
                                       @quotients-are-equal |
                                         q1 = q2
                                         case on q1-q2-trichotomy {
@@ -1017,7 +1017,7 @@ proof
                               @decomposition-equals-a |
                                 add(mul(b, q), r) = a
                                 [by hypothesis given-decomposition-equals-a]
-                // the canonical decomposition: b*div(a,b) + mod(a,b) = a
+                              // the canonical decomposition: b*div(a,b) + mod(a,b) = a
                               @canonical-decomposition |
                                 forall aa, bb: Nat; bb != ZERO -> add(mul(bb, div(aa, bb)), mod(aa, bb)) = aa
                                 [by axiom divModProperty]
@@ -1027,7 +1027,7 @@ proof
                               @a-canonically-decomposes |
                                 add(mul(b, div(a, b)), mod(a, b)) = a
                                 [by modus_ponens canonical-holds-if-nonzero b-nonzero]
-                // mod(a, b) < b
+                              // mod(a, b) < b
                               @remainder-is-bounded |
                                 forall aa, bb: Nat; bb != ZERO -> less_than(mod(aa, bb), bb)
                                 [by axiom modBound]
@@ -1037,14 +1037,14 @@ proof
                               @canonical-remainder-below-b |
                                 less_than(mod(a, b), b)
                                 [by modus_ponens remainder-bounded-if-nonzero b-nonzero]
-                // equate the two decompositions: b*q + r = a = b*div(a,b) + mod(a,b)
+                              // equate the two decompositions: b*q + r = a = b*div(a,b) + mod(a,b)
                               @a-is-canonical-decomposition |
                                 a = add(mul(b, div(a, b)), mod(a, b))
                                 [by symmetry a-canonically-decomposes]
                               @decompositions-agree |
                                 add(mul(b, q), r) = add(mul(b, div(a, b)), mod(a, b))
                                 [by rewrite a-is-canonical-decomposition decomposition-equals-a]
-                // quotientUnique gives q = div(a, b)
+                              // quotientUnique gives q = div(a, b)
                               @quotients-are-unique |
                                 forall bb, p1, p2, s1, s2: Nat; bb != ZERO -> less_than(s1, bb) -> less_than(s2, bb) -> add(mul(bb, p1), s1) = add(mul(bb, p2), s2) -> p1 = p2
                                 [by theorem quotientUnique]
@@ -1054,8 +1054,8 @@ proof
                               @quotient-equals-canonical |
                                 q = div(a, b)
                                 [by tautology quotient-equals-canonical-under-hypotheses b-nonzero r-below-b canonical-remainder-below-b decompositions-agree]
-                // now mul(b, q) = mul(b, div(a, b)), so add(mul(b,q), r) = add(mul(b,q), mod(a,b))
-                // and cancel to get r = mod(a, b), then symmetry.
+                              // now mul(b, q) = mul(b, div(a, b)), so add(mul(b,q), r) = add(mul(b,q), mod(a,b))
+                              // and cancel to get r = mod(a, b), then symmetry.
                               @b-times-quotient-is-itself |
                                 mul(b, q) = mul(b, q)
                                 [by reflexivity]

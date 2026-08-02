@@ -11,7 +11,7 @@ theorem flip: forall n: Nat; n = add(ZERO, n)
 proof
   @generalize-n |
     fix n: Nat {
-    // `flipped` cites `unfolded`, which is defined AFTER it
+      // `flipped` cites `unfolded`, which is defined AFTER it
       @flipped |
         n = add(ZERO, n)
         [by symmetry unfolded]

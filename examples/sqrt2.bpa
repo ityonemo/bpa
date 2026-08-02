@@ -61,7 +61,7 @@ proof
                     mul(p, p) = mul(TWO, mul(q, q))
                     [by hypothesis suppose-square]
 
-          // 2 | p²  (witness q²)
+                  // 2 | p²  (witness q²)
                   @intro |
                     forall d, n, k: Nat; n = mul(d, k) -> divides(d, n)
                     [by axiom dividesIntro]
@@ -72,7 +72,7 @@ proof
                     divides(TWO, mul(p, p))
                     [by modus_ponens intro-psq square-eq]
 
-          // 2 | p
+                  // 2 | p
                   @sq-even-thm |
                     forall n: Nat; divides(TWO, mul(n, n)) -> divides(TWO, n)
                     [by theorem evenSquareEven]
@@ -83,7 +83,7 @@ proof
                     divides(TWO, p)
                     [by modus_ponens sq-even-at-p two-div-psq]
 
-          // p = 2k
+                  // p = 2k
                   @elim |
                     forall d, n: Nat; divides(d, n) -> exists k: Nat; n = mul(d, k)
                     [by axiom dividesElim]
@@ -99,7 +99,7 @@ proof
                         p = mul(TWO, k)
                         [by hypothesis with-k]
 
-            // substitute p = 2k into p² = 2q²
+                      // substitute p = 2k into p² = 2q²
                       @sq-refl |
                         mul(p, p) = mul(p, p)
                         [by reflexivity]
@@ -110,19 +110,19 @@ proof
                         mul(p, p) = mul(mul(TWO, k), mul(TWO, k))
                         [by rewrite p-is-2k sq-1]
 
-            // (2k)² = 2·(2·k²)
+                      // (2k)² = 2·(2·k²)
                       @expand |
                         mul(mul(TWO, k), mul(TWO, k)) = mul(TWO, mul(TWO, mul(k, k)))
                         [by polynomial(peano)]
                       @lhs-expanded |
                         mul(p, p) = mul(TWO, mul(TWO, mul(k, k)))
                         [by rewrite expand sq-2]
-            // so 2·(2k²) = 2q²
+                      // so 2·(2k²) = 2q²
                       @two-two-ksq-eq-two-qsq |
                         mul(TWO, mul(TWO, mul(k, k))) = mul(TWO, mul(q, q))
                         [by rewrite lhs-expanded square-eq]
 
-            // cancel the left 2:  2k² = q²  (TWO = 1+1 = succ(1) != 0)
+                      // cancel the left 2:  2k² = q²  (TWO = 1+1 = succ(1) != 0)
                       @two-as-succ |
                         add(ONE, ONE) = succ(add(ZERO, ONE))
                         [by simplify addSuccLeft oneIsSuccZero]
@@ -154,7 +154,7 @@ proof
                         mul(q, q) = mul(TWO, mul(k, k))
                         [by symmetry two-ksq-eq-qsq]
 
-            // 2 | q²  (witness k²), then 2 | q
+                      // 2 | q²  (witness k²), then 2 | q
                       @intro-qsq |
                         mul(q, q) = mul(TWO, mul(k, k)) -> divides(TWO, mul(q, q))
                         [by forall_elim(TWO, mul(q, q), mul(k, k)) intro]
@@ -168,7 +168,7 @@ proof
                         divides(TWO, q)
                         [by modus_ponens sq-even-at-q two-div-qsq]
 
-            // 2 | gcd(p, q) = 1
+                      // 2 | gcd(p, q) = 1
                       @greatest |
                         forall b, a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
                         [by theorem gcdGreatest]
@@ -185,7 +185,7 @@ proof
                         divides(TWO, ONE)
                         [by rewrite coprime two-div-gcd]
 
-            // but 2 does not divide 1
+                      // but 2 does not divide 1
                       @not-two-div-one |
                         not divides(TWO, ONE)
                         [by theorem twoNotDivideOne]

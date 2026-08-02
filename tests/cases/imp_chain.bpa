@@ -7,7 +7,7 @@ proof
     assume p {
       @inner |
         assume q {
-      // strategy: p is still in scope from the outer block
+          // strategy: p is still in scope from the outer block
           @got-p |
             p
             [by hypothesis outer]

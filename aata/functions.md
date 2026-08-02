@@ -267,7 +267,7 @@ proof
                     [by axiom injectiveDef]
                   @g-injective-unfolds |
                     (injective(g) -> (forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b))
-                    and ((forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b) -> injective(g))
+                      and ((forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b) -> injective(g))
                     [by forall_elim(g) injective-unfolds]
                   @g-injective-gives-pointwise |
                     injective(g) -> (forall a, b: Universe; apply(g, a) = apply(g, b) -> a = b)
@@ -280,7 +280,7 @@ proof
                     [by modus_ponens g-injective-gives-pointwise g-is-injective]
                   @f-injective-unfolds |
                     (injective(f) -> (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b))
-                    and ((forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
+                      and ((forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
                     [by forall_elim(f) injective-unfolds]
                   @f-injective-gives-pointwise |
                     injective(f) -> (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b)
@@ -345,7 +345,7 @@ proof
                     [by forall_intro generalize-a]
                   @composite-injective-unfolds |
                     (injective(compose(g, f)) -> (forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b))
-                    and ((forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b) -> injective(compose(g, f)))
+                      and ((forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b) -> injective(compose(g, f)))
                     [by forall_elim(compose(g, f)) injective-unfolds]
                   @pointwise-injective-gives-injective |
                     (forall a, b: Universe; apply(compose(g, f), a) = apply(compose(g, f), b) -> a = b) -> injective(compose(g, f))
@@ -398,7 +398,7 @@ proof
                     [by axiom surjectiveDef]
                   @g-surjective-unfolds |
                     (surjective(g) -> (forall y: Universe; exists x: Universe; apply(g, x) = y))
-                    and ((forall y: Universe; exists x: Universe; apply(g, x) = y) -> surjective(g))
+                      and ((forall y: Universe; exists x: Universe; apply(g, x) = y) -> surjective(g))
                     [by forall_elim(g) surjective-unfolds]
                   @g-surjective-gives-pointwise |
                     surjective(g) -> (forall y: Universe; exists x: Universe; apply(g, x) = y)
@@ -411,7 +411,7 @@ proof
                     [by modus_ponens g-surjective-gives-pointwise g-is-surjective]
                   @f-surjective-unfolds |
                     (surjective(f) -> (forall y: Universe; exists x: Universe; apply(f, x) = y))
-                    and ((forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f))
+                      and ((forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f))
                     [by forall_elim(f) surjective-unfolds]
                   @f-surjective-gives-pointwise |
                     surjective(f) -> (forall y: Universe; exists x: Universe; apply(f, x) = y)
@@ -473,7 +473,7 @@ proof
                     [by forall_intro generalize-c]
                   @composite-surjective-unfolds |
                     (surjective(compose(g, f)) -> (forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y))
-                    and ((forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y) -> surjective(compose(g, f)))
+                      and ((forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y) -> surjective(compose(g, f)))
                     [by forall_elim(compose(g, f)) surjective-unfolds]
                   @pointwise-surjective-gives-surjective |
                     (forall y: Universe; exists x: Universe; apply(compose(g, f), x) = y) -> surjective(compose(g, f))
@@ -517,28 +517,48 @@ proof
             assume injective(g) and surjective(g) {
               @given-f-bijective |
                 assume injective(f) and surjective(f) {
-                  @g-is-bijective | injective(g) and surjective(g) [by hypothesis given-g-bijective]
-                  @f-is-bijective | injective(f) and surjective(f) [by hypothesis given-f-bijective]
-                  @g-is-injective | injective(g) [by and_elim_left g-is-bijective]
-                  @g-is-surjective | surjective(g) [by and_elim_right g-is-bijective]
-                  @f-is-injective | injective(f) [by and_elim_left f-is-bijective]
-                  @f-is-surjective | surjective(f) [by and_elim_right f-is-bijective]
+                  @g-is-bijective |
+                    injective(g) and surjective(g)
+                    [by hypothesis given-g-bijective]
+                  @f-is-bijective |
+                    injective(f) and surjective(f)
+                    [by hypothesis given-f-bijective]
+                  @g-is-injective |
+                    injective(g)
+                    [by and_elim_left g-is-bijective]
+                  @g-is-surjective |
+                    surjective(g)
+                    [by and_elim_right g-is-bijective]
+                  @f-is-injective |
+                    injective(f)
+                    [by and_elim_left f-is-bijective]
+                  @f-is-surjective |
+                    surjective(f)
+                    [by and_elim_right f-is-bijective]
                   @composeInjective-theorem |
                     forall gg, ff: Fn; injective(gg) -> injective(ff) -> injective(compose(gg, ff))
                     [by theorem composeInjective]
                   @composeInjective-at-g-f |
                     injective(g) -> injective(f) -> injective(compose(g, f))
                     [by forall_elim(g, f) composeInjective-theorem]
-                  @f-injective-gives-composite-injective | injective(f) -> injective(compose(g, f)) [by modus_ponens composeInjective-at-g-f g-is-injective]
-                  @composite-is-injective | injective(compose(g, f)) [by modus_ponens f-injective-gives-composite-injective f-is-injective]
+                  @f-injective-gives-composite-injective |
+                    injective(f) -> injective(compose(g, f))
+                    [by modus_ponens composeInjective-at-g-f g-is-injective]
+                  @composite-is-injective |
+                    injective(compose(g, f))
+                    [by modus_ponens f-injective-gives-composite-injective f-is-injective]
                   @composeSurjective-theorem |
                     forall gg, ff: Fn; surjective(gg) -> surjective(ff) -> surjective(compose(gg, ff))
                     [by theorem composeSurjective]
                   @composeSurjective-at-g-f |
                     surjective(g) -> surjective(f) -> surjective(compose(g, f))
                     [by forall_elim(g, f) composeSurjective-theorem]
-                  @f-surjective-gives-composite-surjective | surjective(f) -> surjective(compose(g, f)) [by modus_ponens composeSurjective-at-g-f g-is-surjective]
-                  @composite-is-surjective | surjective(compose(g, f)) [by modus_ponens f-surjective-gives-composite-surjective f-is-surjective]
+                  @f-surjective-gives-composite-surjective |
+                    surjective(f) -> surjective(compose(g, f))
+                    [by modus_ponens composeSurjective-at-g-f g-is-surjective]
+                  @composite-is-surjective |
+                    surjective(compose(g, f))
+                    [by modus_ponens f-surjective-gives-composite-surjective f-is-surjective]
                   @composite-is-bijective |
                     injective(compose(g, f)) and surjective(compose(g, f))
                     [by and_intro composite-is-injective composite-is-surjective]
@@ -549,7 +569,7 @@ proof
             }
           @g-bijective-implies-composite-bijective |
             (injective(g) and surjective(g)) -> (injective(f) and surjective(f))
-            -> (injective(compose(g, f)) and surjective(compose(g, f)))
+              -> (injective(compose(g, f)) and surjective(compose(g, f)))
             [by implies_intro given-g-bijective]
         }
       @discharge-f |
@@ -689,14 +709,14 @@ proof
           @invertible-unfolds |
             forall ff: Fn;
               (invertible(ff) ->
-                (exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id))
+              (exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id))
               and ((exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id)
-                -> invertible(ff))
+              -> invertible(ff))
             [by axiom invertibleDef]
           @f-invertible-unfolds |
             (invertible(f) ->
               (exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id))
-            and ((exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
+              and ((exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
               -> invertible(f))
             [by forall_elim(f) invertible-unfolds]
           @f-invertible-gives-inverse |
@@ -800,7 +820,7 @@ proof
                 [by axiom injectiveDef]
               @f-injective-unfolds |
                 (injective(f) -> (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b))
-                and ((forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
+                  and ((forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
                 [by forall_elim(f) injective-unfolds]
               @pointwise-injective-gives-injective |
                 (forall a, b: Universe; apply(f, a) = apply(f, b) -> a = b) -> injective(f)
@@ -838,14 +858,14 @@ proof
           @invertible-unfolds |
             forall ff: Fn;
               (invertible(ff) ->
-                (exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id))
+              (exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id))
               and ((exists gg: Fn; compose(gg, ff) = id and compose(ff, gg) = id)
-                -> invertible(ff))
+              -> invertible(ff))
             [by axiom invertibleDef]
           @f-invertible-unfolds |
             (invertible(f) ->
               (exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id))
-            and ((exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
+              and ((exists gg: Fn; compose(gg, f) = id and compose(f, gg) = id)
               -> invertible(f))
             [by forall_elim(f) invertible-unfolds]
           @f-invertible-gives-inverse |
@@ -905,7 +925,7 @@ proof
                 [by axiom surjectiveDef]
               @f-surjective-unfolds |
                 (surjective(f) -> (forall y: Universe; exists x: Universe; apply(f, x) = y))
-                and ((forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f))
+                  and ((forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f))
                 [by forall_elim(f) surjective-unfolds]
               @pointwise-surjective-gives-surjective |
                 (forall y: Universe; exists x: Universe; apply(f, x) = y) -> surjective(f)
@@ -939,16 +959,34 @@ proof
     fix f: Fn {
       @given-f-invertible |
         assume invertible(f) {
-          @f-is-invertible | invertible(f) [by hypothesis given-f-invertible]
-          @invertible-implies-injective-theorem | forall ff: Fn; invertible(ff) -> injective(ff) [by theorem invertibleImpliesInjective]
-          @invertible-implies-injective-at-f | invertible(f) -> injective(f) [by forall_elim(f) invertible-implies-injective-theorem]
-          @f-is-injective | injective(f) [by modus_ponens invertible-implies-injective-at-f f-is-invertible]
-          @invertible-implies-surjective-theorem | forall ff: Fn; invertible(ff) -> surjective(ff) [by theorem invertibleImpliesSurjective]
-          @invertible-implies-surjective-at-f | invertible(f) -> surjective(f) [by forall_elim(f) invertible-implies-surjective-theorem]
-          @f-is-surjective | surjective(f) [by modus_ponens invertible-implies-surjective-at-f f-is-invertible]
-          @f-is-bijective | injective(f) and surjective(f) [by and_intro f-is-injective f-is-surjective]
+          @f-is-invertible |
+            invertible(f)
+            [by hypothesis given-f-invertible]
+          @invertible-implies-injective-theorem |
+            forall ff: Fn; invertible(ff) -> injective(ff)
+            [by theorem invertibleImpliesInjective]
+          @invertible-implies-injective-at-f |
+            invertible(f) -> injective(f)
+            [by forall_elim(f) invertible-implies-injective-theorem]
+          @f-is-injective |
+            injective(f)
+            [by modus_ponens invertible-implies-injective-at-f f-is-invertible]
+          @invertible-implies-surjective-theorem |
+            forall ff: Fn; invertible(ff) -> surjective(ff)
+            [by theorem invertibleImpliesSurjective]
+          @invertible-implies-surjective-at-f |
+            invertible(f) -> surjective(f)
+            [by forall_elim(f) invertible-implies-surjective-theorem]
+          @f-is-surjective |
+            surjective(f)
+            [by modus_ponens invertible-implies-surjective-at-f f-is-invertible]
+          @f-is-bijective |
+            injective(f) and surjective(f)
+            [by and_intro f-is-injective f-is-surjective]
         }
-      @f-invertible-implies-bijective | invertible(f) -> (injective(f) and surjective(f)) [by implies_intro given-f-invertible]
+      @f-invertible-implies-bijective |
+        invertible(f) -> (injective(f) and surjective(f))
+        [by implies_intro given-f-invertible]
     }
   @conclusion |
     forall f: Fn; invertible(f) -> (injective(f) and surjective(f))

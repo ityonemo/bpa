@@ -195,7 +195,7 @@ proof
         fix x: Universe {
           @a-union-a-membership-at-x |
             (member(x, union(a, a)) -> (member(x, a) or member(x, a)))
-            and ((member(x, a) or member(x, a)) -> member(x, union(a, a)))
+              and ((member(x, a) or member(x, a)) -> member(x, union(a, a)))
             [by forall_elim(x) a-union-a-membership]
           @given-x-in-a-union-a |
             assume member(x, union(a, a)) {
@@ -217,7 +217,7 @@ proof
         fix y: Universe {
           @a-union-a-membership-at-y |
             (member(y, union(a, a)) -> (member(y, a) or member(y, a)))
-            and ((member(y, a) or member(y, a)) -> member(y, union(a, a)))
+              and ((member(y, a) or member(y, a)) -> member(y, union(a, a)))
             [by forall_elim(y) a-union-a-membership]
           @given-y-in-a |
             assume member(y, a) {
@@ -243,12 +243,12 @@ proof
         [by axiom extensional]
       @extensionality-at-the-two-sides |
         (forall x: Universe; member(x, union(a, a)) -> member(x, a)) ->
-        (forall x: Universe; member(x, a) -> member(x, union(a, a))) ->
-        union(a, a) = a
+          (forall x: Universe; member(x, a) -> member(x, union(a, a))) ->
+          union(a, a) = a
         [by forall_elim(union(a, a), a) set-extensionality]
       @backward-inclusion-gives-equality |
         (forall x: Universe; member(x, a) -> member(x, union(a, a))) ->
-        union(a, a) = a
+          union(a, a) = a
         [by modus_ponens extensionality-at-the-two-sides a-union-a-included-in-a]
       @a-union-a-equals-a |
         union(a, a) = a
@@ -279,7 +279,7 @@ proof
         fix x: Universe {
           @a-intersect-a-membership-at-x |
             (member(x, intersection(a, a)) -> (member(x, a) and member(x, a)))
-            and ((member(x, a) and member(x, a)) -> member(x, intersection(a, a)))
+              and ((member(x, a) and member(x, a)) -> member(x, intersection(a, a)))
             [by forall_elim(x) a-intersect-a-membership]
           @given-x-in-a-intersect-a |
             assume member(x, intersection(a, a)) {
@@ -301,7 +301,7 @@ proof
         fix y: Universe {
           @a-intersect-a-membership-at-y |
             (member(y, intersection(a, a)) -> (member(y, a) and member(y, a)))
-            and ((member(y, a) and member(y, a)) -> member(y, intersection(a, a)))
+              and ((member(y, a) and member(y, a)) -> member(y, intersection(a, a)))
             [by forall_elim(y) a-intersect-a-membership]
           @given-y-in-a |
             assume member(y, a) {
@@ -327,12 +327,12 @@ proof
         [by axiom extensional]
       @extensionality-at-the-two-sides |
         (forall x: Universe; member(x, intersection(a, a)) -> member(x, a)) ->
-        (forall x: Universe; member(x, a) -> member(x, intersection(a, a))) ->
-        intersection(a, a) = a
+          (forall x: Universe; member(x, a) -> member(x, intersection(a, a))) ->
+          intersection(a, a) = a
         [by forall_elim(intersection(a, a), a) set-extensionality]
       @backward-inclusion-gives-equality |
         (forall x: Universe; member(x, a) -> member(x, intersection(a, a))) ->
-        intersection(a, a) = a
+          intersection(a, a) = a
         [by modus_ponens extensionality-at-the-two-sides a-intersect-a-included-in-a]
       @a-intersect-a-equals-a |
         intersection(a, a) = a
@@ -366,7 +366,7 @@ proof
         fix x: Universe {
           @a-minus-a-membership-at-x |
             (member(x, difference(a, a)) -> (member(x, a) and (not member(x, a))))
-            and ((member(x, a) and (not member(x, a))) -> member(x, difference(a, a)))
+              and ((member(x, a) and (not member(x, a))) -> member(x, difference(a, a)))
             [by forall_elim(x) a-minus-a-membership]
           @empty-membership-at-x |
             not member(x, emptyset)
@@ -391,7 +391,7 @@ proof
         fix y: Universe {
           @a-minus-a-membership-at-y |
             (member(y, difference(a, a)) -> (member(y, a) and (not member(y, a))))
-            and ((member(y, a) and (not member(y, a))) -> member(y, difference(a, a)))
+              and ((member(y, a) and (not member(y, a))) -> member(y, difference(a, a)))
             [by forall_elim(y) a-minus-a-membership]
           @empty-membership-at-y |
             not member(y, emptyset)
@@ -420,12 +420,12 @@ proof
         [by axiom extensional]
       @extensionality-at-the-two-sides |
         (forall x: Universe; member(x, difference(a, a)) -> member(x, emptyset)) ->
-        (forall x: Universe; member(x, emptyset) -> member(x, difference(a, a))) ->
-        difference(a, a) = emptyset
+          (forall x: Universe; member(x, emptyset) -> member(x, difference(a, a))) ->
+          difference(a, a) = emptyset
         [by forall_elim(difference(a, a), emptyset) set-extensionality]
       @backward-inclusion-gives-equality |
         (forall x: Universe; member(x, emptyset) -> member(x, difference(a, a))) ->
-        difference(a, a) = emptyset
+          difference(a, a) = emptyset
         [by modus_ponens extensionality-at-the-two-sides a-minus-a-included-in-empty]
       @a-minus-a-equals-empty |
         difference(a, a) = emptyset
@@ -464,7 +464,7 @@ proof
         fix x: Universe {
           @a-union-empty-membership-at-x |
             (member(x, union(a, emptyset)) -> (member(x, a) or member(x, emptyset)))
-            and ((member(x, a) or member(x, emptyset)) -> member(x, union(a, emptyset)))
+              and ((member(x, a) or member(x, emptyset)) -> member(x, union(a, emptyset)))
             [by forall_elim(x) a-union-empty-membership]
           @empty-membership-at-x |
             not member(x, emptyset)
@@ -489,7 +489,7 @@ proof
         fix y: Universe {
           @a-union-empty-membership-at-y |
             (member(y, union(a, emptyset)) -> (member(y, a) or member(y, emptyset)))
-            and ((member(y, a) or member(y, emptyset)) -> member(y, union(a, emptyset)))
+              and ((member(y, a) or member(y, emptyset)) -> member(y, union(a, emptyset)))
             [by forall_elim(y) a-union-empty-membership]
           @empty-membership-at-y |
             not member(y, emptyset)
@@ -518,12 +518,12 @@ proof
         [by axiom extensional]
       @extensionality-at-the-two-sides |
         (forall x: Universe; member(x, union(a, emptyset)) -> member(x, a)) ->
-        (forall x: Universe; member(x, a) -> member(x, union(a, emptyset))) ->
-        union(a, emptyset) = a
+          (forall x: Universe; member(x, a) -> member(x, union(a, emptyset))) ->
+          union(a, emptyset) = a
         [by forall_elim(union(a, emptyset), a) set-extensionality]
       @backward-inclusion-gives-equality |
         (forall x: Universe; member(x, a) -> member(x, union(a, emptyset))) ->
-        union(a, emptyset) = a
+          union(a, emptyset) = a
         [by modus_ponens extensionality-at-the-two-sides a-union-empty-included-in-a]
       @a-union-empty-equals-a |
         union(a, emptyset) = a
@@ -557,7 +557,7 @@ proof
         fix x: Universe {
           @a-intersect-empty-membership-at-x |
             (member(x, intersection(a, emptyset)) -> (member(x, a) and member(x, emptyset)))
-            and ((member(x, a) and member(x, emptyset)) -> member(x, intersection(a, emptyset)))
+              and ((member(x, a) and member(x, emptyset)) -> member(x, intersection(a, emptyset)))
             [by forall_elim(x) a-intersect-empty-membership]
           @empty-membership-at-x |
             not member(x, emptyset)
@@ -582,7 +582,7 @@ proof
         fix y: Universe {
           @a-intersect-empty-membership-at-y |
             (member(y, intersection(a, emptyset)) -> (member(y, a) and member(y, emptyset)))
-            and ((member(y, a) and member(y, emptyset)) -> member(y, intersection(a, emptyset)))
+              and ((member(y, a) and member(y, emptyset)) -> member(y, intersection(a, emptyset)))
             [by forall_elim(y) a-intersect-empty-membership]
           @empty-membership-at-y |
             not member(y, emptyset)
@@ -611,12 +611,12 @@ proof
         [by axiom extensional]
       @extensionality-at-the-two-sides |
         (forall x: Universe; member(x, intersection(a, emptyset)) -> member(x, emptyset)) ->
-        (forall x: Universe; member(x, emptyset) -> member(x, intersection(a, emptyset))) ->
-        intersection(a, emptyset) = emptyset
+          (forall x: Universe; member(x, emptyset) -> member(x, intersection(a, emptyset))) ->
+          intersection(a, emptyset) = emptyset
         [by forall_elim(intersection(a, emptyset), emptyset) set-extensionality]
       @backward-inclusion-gives-equality |
         (forall x: Universe; member(x, emptyset) -> member(x, intersection(a, emptyset))) ->
-        intersection(a, emptyset) = emptyset
+          intersection(a, emptyset) = emptyset
         [by modus_ponens extensionality-at-the-two-sides a-intersect-empty-included-in-empty]
       @a-intersect-empty-equals-empty |
         intersection(a, emptyset) = emptyset
@@ -670,19 +670,19 @@ proof
                 fix x: Universe {
                   @b-union-c-membership-at-x |
                     (member(x, union(b, c)) -> (member(x, b) or member(x, c)))
-                    and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
+                      and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
                     [by forall_elim(x) b-union-c-membership]
                   @a-union-b-union-c-right-membership-at-x |
                     (member(x, union(a, union(b, c))) -> (member(x, a) or member(x, union(b, c))))
-                    and ((member(x, a) or member(x, union(b, c))) -> member(x, union(a, union(b, c))))
+                      and ((member(x, a) or member(x, union(b, c))) -> member(x, union(a, union(b, c))))
                     [by forall_elim(x) a-union-b-union-c-right-membership]
                   @a-union-b-membership-at-x |
                     (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                    and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                      and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
                     [by forall_elim(x) a-union-b-membership]
                   @a-union-b-union-c-left-membership-at-x |
                     (member(x, union(union(a, b), c)) -> (member(x, union(a, b)) or member(x, c)))
-                    and ((member(x, union(a, b)) or member(x, c)) -> member(x, union(union(a, b), c)))
+                      and ((member(x, union(a, b)) or member(x, c)) -> member(x, union(union(a, b), c)))
                     [by forall_elim(x) a-union-b-union-c-left-membership]
                   @given-x-in-a-union-b-union-c-right |
                     assume member(x, union(a, union(b, c))) {
@@ -704,19 +704,19 @@ proof
                 fix y: Universe {
                   @b-union-c-membership-at-y |
                     (member(y, union(b, c)) -> (member(y, b) or member(y, c)))
-                    and ((member(y, b) or member(y, c)) -> member(y, union(b, c)))
+                      and ((member(y, b) or member(y, c)) -> member(y, union(b, c)))
                     [by forall_elim(y) b-union-c-membership]
                   @a-union-b-union-c-right-membership-at-y |
                     (member(y, union(a, union(b, c))) -> (member(y, a) or member(y, union(b, c))))
-                    and ((member(y, a) or member(y, union(b, c))) -> member(y, union(a, union(b, c))))
+                      and ((member(y, a) or member(y, union(b, c))) -> member(y, union(a, union(b, c))))
                     [by forall_elim(y) a-union-b-union-c-right-membership]
                   @a-union-b-membership-at-y |
                     (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                    and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                      and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
                     [by forall_elim(y) a-union-b-membership]
                   @a-union-b-union-c-left-membership-at-y |
                     (member(y, union(union(a, b), c)) -> (member(y, union(a, b)) or member(y, c)))
-                    and ((member(y, union(a, b)) or member(y, c)) -> member(y, union(union(a, b), c)))
+                      and ((member(y, union(a, b)) or member(y, c)) -> member(y, union(union(a, b), c)))
                     [by forall_elim(y) a-union-b-union-c-left-membership]
                   @given-y-in-a-union-b-union-c-left |
                     assume member(y, union(union(a, b), c)) {
@@ -742,12 +742,12 @@ proof
                 [by axiom extensional]
               @extensionality-at-the-two-groupings |
                 (forall x: Universe; member(x, union(a, union(b, c))) -> member(x, union(union(a, b), c))) ->
-                (forall x: Universe; member(x, union(union(a, b), c)) -> member(x, union(a, union(b, c)))) ->
-                union(a, union(b, c)) = union(union(a, b), c)
+                  (forall x: Universe; member(x, union(union(a, b), c)) -> member(x, union(a, union(b, c)))) ->
+                  union(a, union(b, c)) = union(union(a, b), c)
                 [by forall_elim(union(a, union(b, c)), union(union(a, b), c)) set-extensionality]
               @backward-inclusion-gives-equality |
                 (forall x: Universe; member(x, union(union(a, b), c)) -> member(x, union(a, union(b, c)))) ->
-                union(a, union(b, c)) = union(union(a, b), c)
+                  union(a, union(b, c)) = union(union(a, b), c)
                 [by modus_ponens extensionality-at-the-two-groupings a-union-b-union-c-right-included-in-left]
               @union-is-associative |
                 union(a, union(b, c)) = union(union(a, b), c)
@@ -805,19 +805,19 @@ proof
                 fix x: Universe {
                   @b-intersect-c-membership-at-x |
                     (member(x, intersection(b, c)) -> (member(x, b) and member(x, c)))
-                    and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
+                      and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
                     [by forall_elim(x) b-intersect-c-membership]
                   @a-intersect-b-intersect-c-right-membership-at-x |
                     (member(x, intersection(a, intersection(b, c))) -> (member(x, a) and member(x, intersection(b, c))))
-                    and ((member(x, a) and member(x, intersection(b, c))) -> member(x, intersection(a, intersection(b, c))))
+                      and ((member(x, a) and member(x, intersection(b, c))) -> member(x, intersection(a, intersection(b, c))))
                     [by forall_elim(x) a-intersect-b-intersect-c-right-membership]
                   @a-intersect-b-membership-at-x |
                     (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                    and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                      and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
                     [by forall_elim(x) a-intersect-b-membership]
                   @a-intersect-b-intersect-c-left-membership-at-x |
                     (member(x, intersection(intersection(a, b), c)) -> (member(x, intersection(a, b)) and member(x, c)))
-                    and ((member(x, intersection(a, b)) and member(x, c)) -> member(x, intersection(intersection(a, b), c)))
+                      and ((member(x, intersection(a, b)) and member(x, c)) -> member(x, intersection(intersection(a, b), c)))
                     [by forall_elim(x) a-intersect-b-intersect-c-left-membership]
                   @given-x-in-a-intersect-b-intersect-c-right |
                     assume member(x, intersection(a, intersection(b, c))) {
@@ -839,19 +839,19 @@ proof
                 fix y: Universe {
                   @b-intersect-c-membership-at-y |
                     (member(y, intersection(b, c)) -> (member(y, b) and member(y, c)))
-                    and ((member(y, b) and member(y, c)) -> member(y, intersection(b, c)))
+                      and ((member(y, b) and member(y, c)) -> member(y, intersection(b, c)))
                     [by forall_elim(y) b-intersect-c-membership]
                   @a-intersect-b-intersect-c-right-membership-at-y |
                     (member(y, intersection(a, intersection(b, c))) -> (member(y, a) and member(y, intersection(b, c))))
-                    and ((member(y, a) and member(y, intersection(b, c))) -> member(y, intersection(a, intersection(b, c))))
+                      and ((member(y, a) and member(y, intersection(b, c))) -> member(y, intersection(a, intersection(b, c))))
                     [by forall_elim(y) a-intersect-b-intersect-c-right-membership]
                   @a-intersect-b-membership-at-y |
                     (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                    and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                      and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
                     [by forall_elim(y) a-intersect-b-membership]
                   @a-intersect-b-intersect-c-left-membership-at-y |
                     (member(y, intersection(intersection(a, b), c)) -> (member(y, intersection(a, b)) and member(y, c)))
-                    and ((member(y, intersection(a, b)) and member(y, c)) -> member(y, intersection(intersection(a, b), c)))
+                      and ((member(y, intersection(a, b)) and member(y, c)) -> member(y, intersection(intersection(a, b), c)))
                     [by forall_elim(y) a-intersect-b-intersect-c-left-membership]
                   @given-y-in-a-intersect-b-intersect-c-left |
                     assume member(y, intersection(intersection(a, b), c)) {
@@ -877,12 +877,12 @@ proof
                 [by axiom extensional]
               @extensionality-at-the-two-groupings |
                 (forall x: Universe; member(x, intersection(a, intersection(b, c))) -> member(x, intersection(intersection(a, b), c))) ->
-                (forall x: Universe; member(x, intersection(intersection(a, b), c)) -> member(x, intersection(a, intersection(b, c)))) ->
-                intersection(a, intersection(b, c)) = intersection(intersection(a, b), c)
+                  (forall x: Universe; member(x, intersection(intersection(a, b), c)) -> member(x, intersection(a, intersection(b, c)))) ->
+                  intersection(a, intersection(b, c)) = intersection(intersection(a, b), c)
                 [by forall_elim(intersection(a, intersection(b, c)), intersection(intersection(a, b), c)) set-extensionality]
               @backward-inclusion-gives-equality |
                 (forall x: Universe; member(x, intersection(intersection(a, b), c)) -> member(x, intersection(a, intersection(b, c)))) ->
-                intersection(a, intersection(b, c)) = intersection(intersection(a, b), c)
+                  intersection(a, intersection(b, c)) = intersection(intersection(a, b), c)
                 [by modus_ponens extensionality-at-the-two-groupings a-intersect-b-intersect-c-right-included-in-left]
               @intersection-is-associative |
                 intersection(a, intersection(b, c)) = intersection(intersection(a, b), c)
@@ -930,11 +930,11 @@ proof
             fix x: Universe {
               @a-union-b-membership-at-x |
                 (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
                 [by forall_elim(x) a-union-b-membership]
               @b-union-a-membership-at-x |
                 (member(x, union(b, a)) -> (member(x, b) or member(x, a)))
-                and ((member(x, b) or member(x, a)) -> member(x, union(b, a)))
+                  and ((member(x, b) or member(x, a)) -> member(x, union(b, a)))
                 [by forall_elim(x) b-union-a-membership]
               @given-x-in-a-union-b |
                 assume member(x, union(a, b)) {
@@ -956,11 +956,11 @@ proof
             fix y: Universe {
               @a-union-b-membership-at-y |
                 (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                  and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
                 [by forall_elim(y) a-union-b-membership]
               @b-union-a-membership-at-y |
                 (member(y, union(b, a)) -> (member(y, b) or member(y, a)))
-                and ((member(y, b) or member(y, a)) -> member(y, union(b, a)))
+                  and ((member(y, b) or member(y, a)) -> member(y, union(b, a)))
                 [by forall_elim(y) b-union-a-membership]
               @given-y-in-b-union-a |
                 assume member(y, union(b, a)) {
@@ -986,12 +986,12 @@ proof
             [by axiom extensional]
           @extensionality-at-the-two-unions |
             (forall x: Universe; member(x, union(a, b)) -> member(x, union(b, a))) ->
-            (forall x: Universe; member(x, union(b, a)) -> member(x, union(a, b))) ->
-            union(a, b) = union(b, a)
+              (forall x: Universe; member(x, union(b, a)) -> member(x, union(a, b))) ->
+              union(a, b) = union(b, a)
             [by forall_elim(union(a, b), union(b, a)) set-extensionality]
           @backward-inclusion-gives-equality |
             (forall x: Universe; member(x, union(b, a)) -> member(x, union(a, b))) ->
-            union(a, b) = union(b, a)
+              union(a, b) = union(b, a)
             [by modus_ponens extensionality-at-the-two-unions a-union-b-included-in-b-union-a]
           @unions-are-equal |
             union(a, b) = union(b, a)
@@ -1033,11 +1033,11 @@ proof
             fix x: Universe {
               @a-intersect-b-membership-at-x |
                 (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
                 [by forall_elim(x) a-intersect-b-membership]
               @b-intersect-a-membership-at-x |
                 (member(x, intersection(b, a)) -> (member(x, b) and member(x, a)))
-                and ((member(x, b) and member(x, a)) -> member(x, intersection(b, a)))
+                  and ((member(x, b) and member(x, a)) -> member(x, intersection(b, a)))
                 [by forall_elim(x) b-intersect-a-membership]
               @given-x-in-a-intersect-b |
                 assume member(x, intersection(a, b)) {
@@ -1059,11 +1059,11 @@ proof
             fix y: Universe {
               @a-intersect-b-membership-at-y |
                 (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                  and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
                 [by forall_elim(y) a-intersect-b-membership]
               @b-intersect-a-membership-at-y |
                 (member(y, intersection(b, a)) -> (member(y, b) and member(y, a)))
-                and ((member(y, b) and member(y, a)) -> member(y, intersection(b, a)))
+                  and ((member(y, b) and member(y, a)) -> member(y, intersection(b, a)))
                 [by forall_elim(y) b-intersect-a-membership]
               @given-y-in-b-intersect-a |
                 assume member(y, intersection(b, a)) {
@@ -1089,12 +1089,12 @@ proof
             [by axiom extensional]
           @extensionality-at-the-two-intersections |
             (forall x: Universe; member(x, intersection(a, b)) -> member(x, intersection(b, a))) ->
-            (forall x: Universe; member(x, intersection(b, a)) -> member(x, intersection(a, b))) ->
-            intersection(a, b) = intersection(b, a)
+              (forall x: Universe; member(x, intersection(b, a)) -> member(x, intersection(a, b))) ->
+              intersection(a, b) = intersection(b, a)
             [by forall_elim(intersection(a, b), intersection(b, a)) set-extensionality]
           @backward-inclusion-gives-equality |
             (forall x: Universe; member(x, intersection(b, a)) -> member(x, intersection(a, b))) ->
-            intersection(a, b) = intersection(b, a)
+              intersection(a, b) = intersection(b, a)
             [by modus_ponens extensionality-at-the-two-intersections a-intersect-b-included-in-b-intersect-a]
           @intersections-are-equal |
             intersection(a, b) = intersection(b, a)
@@ -1161,23 +1161,23 @@ proof
                 fix x: Universe {
                   @b-intersect-c-membership-at-x |
                     (member(x, intersection(b, c)) -> (member(x, b) and member(x, c)))
-                    and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
+                      and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
                     [by forall_elim(x) b-intersect-c-membership]
                   @a-union-b-intersect-c-membership-at-x |
                     (member(x, union(a, intersection(b, c))) -> (member(x, a) or member(x, intersection(b, c))))
-                    and ((member(x, a) or member(x, intersection(b, c))) -> member(x, union(a, intersection(b, c))))
+                      and ((member(x, a) or member(x, intersection(b, c))) -> member(x, union(a, intersection(b, c))))
                     [by forall_elim(x) a-union-b-intersect-c-membership]
                   @a-union-b-membership-at-x |
                     (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                    and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                      and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
                     [by forall_elim(x) a-union-b-membership]
                   @a-union-c-membership-at-x |
                     (member(x, union(a, c)) -> (member(x, a) or member(x, c)))
-                    and ((member(x, a) or member(x, c)) -> member(x, union(a, c)))
+                      and ((member(x, a) or member(x, c)) -> member(x, union(a, c)))
                     [by forall_elim(x) a-union-c-membership]
                   @a-union-b-intersect-a-union-c-membership-at-x |
                     (member(x, intersection(union(a, b), union(a, c))) -> (member(x, union(a, b)) and member(x, union(a, c))))
-                    and ((member(x, union(a, b)) and member(x, union(a, c))) -> member(x, intersection(union(a, b), union(a, c))))
+                      and ((member(x, union(a, b)) and member(x, union(a, c))) -> member(x, intersection(union(a, b), union(a, c))))
                     [by forall_elim(x) a-union-b-intersect-a-union-c-membership]
                   @given-x-in-a-union-b-intersect-c |
                     assume member(x, union(a, intersection(b, c))) {
@@ -1199,23 +1199,23 @@ proof
                 fix y: Universe {
                   @b-intersect-c-membership-at-y |
                     (member(y, intersection(b, c)) -> (member(y, b) and member(y, c)))
-                    and ((member(y, b) and member(y, c)) -> member(y, intersection(b, c)))
+                      and ((member(y, b) and member(y, c)) -> member(y, intersection(b, c)))
                     [by forall_elim(y) b-intersect-c-membership]
                   @a-union-b-intersect-c-membership-at-y |
                     (member(y, union(a, intersection(b, c))) -> (member(y, a) or member(y, intersection(b, c))))
-                    and ((member(y, a) or member(y, intersection(b, c))) -> member(y, union(a, intersection(b, c))))
+                      and ((member(y, a) or member(y, intersection(b, c))) -> member(y, union(a, intersection(b, c))))
                     [by forall_elim(y) a-union-b-intersect-c-membership]
                   @a-union-b-membership-at-y |
                     (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                    and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                      and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
                     [by forall_elim(y) a-union-b-membership]
                   @a-union-c-membership-at-y |
                     (member(y, union(a, c)) -> (member(y, a) or member(y, c)))
-                    and ((member(y, a) or member(y, c)) -> member(y, union(a, c)))
+                      and ((member(y, a) or member(y, c)) -> member(y, union(a, c)))
                     [by forall_elim(y) a-union-c-membership]
                   @a-union-b-intersect-a-union-c-membership-at-y |
                     (member(y, intersection(union(a, b), union(a, c))) -> (member(y, union(a, b)) and member(y, union(a, c))))
-                    and ((member(y, union(a, b)) and member(y, union(a, c))) -> member(y, intersection(union(a, b), union(a, c))))
+                      and ((member(y, union(a, b)) and member(y, union(a, c))) -> member(y, intersection(union(a, b), union(a, c))))
                     [by forall_elim(y) a-union-b-intersect-a-union-c-membership]
                   @given-y-in-a-union-b-intersect-a-union-c |
                     assume member(y, intersection(union(a, b), union(a, c))) {
@@ -1241,12 +1241,12 @@ proof
                 [by axiom extensional]
               @extensionality-at-the-two-sides |
                 (forall x: Universe; member(x, union(a, intersection(b, c))) -> member(x, intersection(union(a, b), union(a, c)))) ->
-                (forall x: Universe; member(x, intersection(union(a, b), union(a, c))) -> member(x, union(a, intersection(b, c)))) ->
-                union(a, intersection(b, c)) = intersection(union(a, b), union(a, c))
+                  (forall x: Universe; member(x, intersection(union(a, b), union(a, c))) -> member(x, union(a, intersection(b, c)))) ->
+                  union(a, intersection(b, c)) = intersection(union(a, b), union(a, c))
                 [by forall_elim(union(a, intersection(b, c)), intersection(union(a, b), union(a, c))) set-extensionality]
               @backward-inclusion-gives-equality |
                 (forall x: Universe; member(x, intersection(union(a, b), union(a, c))) -> member(x, union(a, intersection(b, c)))) ->
-                union(a, intersection(b, c)) = intersection(union(a, b), union(a, c))
+                  union(a, intersection(b, c)) = intersection(union(a, b), union(a, c))
                 [by modus_ponens extensionality-at-the-two-sides a-union-b-intersect-c-included-in-a-union-b-intersect-a-union-c]
               @union-distributes-over-intersection |
                 union(a, intersection(b, c)) = intersection(union(a, b), union(a, c))
@@ -1314,23 +1314,23 @@ proof
                 fix x: Universe {
                   @b-union-c-membership-at-x |
                     (member(x, union(b, c)) -> (member(x, b) or member(x, c)))
-                    and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
+                      and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
                     [by forall_elim(x) b-union-c-membership]
                   @a-intersect-b-union-c-membership-at-x |
                     (member(x, intersection(a, union(b, c))) -> (member(x, a) and member(x, union(b, c))))
-                    and ((member(x, a) and member(x, union(b, c))) -> member(x, intersection(a, union(b, c))))
+                      and ((member(x, a) and member(x, union(b, c))) -> member(x, intersection(a, union(b, c))))
                     [by forall_elim(x) a-intersect-b-union-c-membership]
                   @a-intersect-b-membership-at-x |
                     (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                    and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                      and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
                     [by forall_elim(x) a-intersect-b-membership]
                   @a-intersect-c-membership-at-x |
                     (member(x, intersection(a, c)) -> (member(x, a) and member(x, c)))
-                    and ((member(x, a) and member(x, c)) -> member(x, intersection(a, c)))
+                      and ((member(x, a) and member(x, c)) -> member(x, intersection(a, c)))
                     [by forall_elim(x) a-intersect-c-membership]
                   @a-intersect-b-union-a-intersect-c-membership-at-x |
                     (member(x, union(intersection(a, b), intersection(a, c))) -> (member(x, intersection(a, b)) or member(x, intersection(a, c))))
-                    and ((member(x, intersection(a, b)) or member(x, intersection(a, c))) -> member(x, union(intersection(a, b), intersection(a, c))))
+                      and ((member(x, intersection(a, b)) or member(x, intersection(a, c))) -> member(x, union(intersection(a, b), intersection(a, c))))
                     [by forall_elim(x) a-intersect-b-union-a-intersect-c-membership]
                   @given-x-in-a-intersect-b-union-c |
                     assume member(x, intersection(a, union(b, c))) {
@@ -1352,23 +1352,23 @@ proof
                 fix y: Universe {
                   @b-union-c-membership-at-y |
                     (member(y, union(b, c)) -> (member(y, b) or member(y, c)))
-                    and ((member(y, b) or member(y, c)) -> member(y, union(b, c)))
+                      and ((member(y, b) or member(y, c)) -> member(y, union(b, c)))
                     [by forall_elim(y) b-union-c-membership]
                   @a-intersect-b-union-c-membership-at-y |
                     (member(y, intersection(a, union(b, c))) -> (member(y, a) and member(y, union(b, c))))
-                    and ((member(y, a) and member(y, union(b, c))) -> member(y, intersection(a, union(b, c))))
+                      and ((member(y, a) and member(y, union(b, c))) -> member(y, intersection(a, union(b, c))))
                     [by forall_elim(y) a-intersect-b-union-c-membership]
                   @a-intersect-b-membership-at-y |
                     (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                    and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                      and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
                     [by forall_elim(y) a-intersect-b-membership]
                   @a-intersect-c-membership-at-y |
                     (member(y, intersection(a, c)) -> (member(y, a) and member(y, c)))
-                    and ((member(y, a) and member(y, c)) -> member(y, intersection(a, c)))
+                      and ((member(y, a) and member(y, c)) -> member(y, intersection(a, c)))
                     [by forall_elim(y) a-intersect-c-membership]
                   @a-intersect-b-union-a-intersect-c-membership-at-y |
                     (member(y, union(intersection(a, b), intersection(a, c))) -> (member(y, intersection(a, b)) or member(y, intersection(a, c))))
-                    and ((member(y, intersection(a, b)) or member(y, intersection(a, c))) -> member(y, union(intersection(a, b), intersection(a, c))))
+                      and ((member(y, intersection(a, b)) or member(y, intersection(a, c))) -> member(y, union(intersection(a, b), intersection(a, c))))
                     [by forall_elim(y) a-intersect-b-union-a-intersect-c-membership]
                   @given-y-in-a-intersect-b-union-a-intersect-c |
                     assume member(y, union(intersection(a, b), intersection(a, c))) {
@@ -1394,12 +1394,12 @@ proof
                 [by axiom extensional]
               @extensionality-at-the-two-sides |
                 (forall x: Universe; member(x, intersection(a, union(b, c))) -> member(x, union(intersection(a, b), intersection(a, c)))) ->
-                (forall x: Universe; member(x, union(intersection(a, b), intersection(a, c))) -> member(x, intersection(a, union(b, c)))) ->
-                intersection(a, union(b, c)) = union(intersection(a, b), intersection(a, c))
+                  (forall x: Universe; member(x, union(intersection(a, b), intersection(a, c))) -> member(x, intersection(a, union(b, c)))) ->
+                  intersection(a, union(b, c)) = union(intersection(a, b), intersection(a, c))
                 [by forall_elim(intersection(a, union(b, c)), union(intersection(a, b), intersection(a, c))) set-extensionality]
               @backward-inclusion-gives-equality |
                 (forall x: Universe; member(x, union(intersection(a, b), intersection(a, c))) -> member(x, intersection(a, union(b, c)))) ->
-                intersection(a, union(b, c)) = union(intersection(a, b), intersection(a, c))
+                  intersection(a, union(b, c)) = union(intersection(a, b), intersection(a, c))
                 [by modus_ponens extensionality-at-the-two-sides a-intersect-b-union-c-included-in-a-intersect-b-union-a-intersect-c]
               @intersection-distributes-over-union |
                 intersection(a, union(b, c)) = union(intersection(a, b), intersection(a, c))
@@ -1484,23 +1484,23 @@ proof
             fix x: Universe {
               @a-union-b-membership-at-x |
                 (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
                 [by forall_elim(x) a-union-b-membership]
               @complement-of-a-union-b-membership-at-x |
                 (member(x, complement(union(a, b))) -> (not member(x, union(a, b))))
-                and ((not member(x, union(a, b))) -> member(x, complement(union(a, b))))
+                  and ((not member(x, union(a, b))) -> member(x, complement(union(a, b))))
                 [by forall_elim(x) complement-of-a-union-b-membership]
               @complement-of-a-membership-at-x |
                 (member(x, complement(a)) -> (not member(x, a)))
-                and ((not member(x, a)) -> member(x, complement(a)))
+                  and ((not member(x, a)) -> member(x, complement(a)))
                 [by forall_elim(x) complement-of-a-membership]
               @complement-of-b-membership-at-x |
                 (member(x, complement(b)) -> (not member(x, b)))
-                and ((not member(x, b)) -> member(x, complement(b)))
+                  and ((not member(x, b)) -> member(x, complement(b)))
                 [by forall_elim(x) complement-of-b-membership]
               @complement-of-a-intersect-complement-of-b-membership-at-x |
                 (member(x, intersection(complement(a), complement(b))) -> (member(x, complement(a)) and member(x, complement(b))))
-                and ((member(x, complement(a)) and member(x, complement(b))) -> member(x, intersection(complement(a), complement(b))))
+                  and ((member(x, complement(a)) and member(x, complement(b))) -> member(x, intersection(complement(a), complement(b))))
                 [by forall_elim(x) complement-of-a-intersect-complement-of-b-membership]
               @given-x-in-complement-of-a-union-b |
                 assume member(x, complement(union(a, b))) {
@@ -1522,23 +1522,23 @@ proof
             fix y: Universe {
               @a-union-b-membership-at-y |
                 (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                  and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
                 [by forall_elim(y) a-union-b-membership]
               @complement-of-a-union-b-membership-at-y |
                 (member(y, complement(union(a, b))) -> (not member(y, union(a, b))))
-                and ((not member(y, union(a, b))) -> member(y, complement(union(a, b))))
+                  and ((not member(y, union(a, b))) -> member(y, complement(union(a, b))))
                 [by forall_elim(y) complement-of-a-union-b-membership]
               @complement-of-a-membership-at-y |
                 (member(y, complement(a)) -> (not member(y, a)))
-                and ((not member(y, a)) -> member(y, complement(a)))
+                  and ((not member(y, a)) -> member(y, complement(a)))
                 [by forall_elim(y) complement-of-a-membership]
               @complement-of-b-membership-at-y |
                 (member(y, complement(b)) -> (not member(y, b)))
-                and ((not member(y, b)) -> member(y, complement(b)))
+                  and ((not member(y, b)) -> member(y, complement(b)))
                 [by forall_elim(y) complement-of-b-membership]
               @complement-of-a-intersect-complement-of-b-membership-at-y |
                 (member(y, intersection(complement(a), complement(b))) -> (member(y, complement(a)) and member(y, complement(b))))
-                and ((member(y, complement(a)) and member(y, complement(b))) -> member(y, intersection(complement(a), complement(b))))
+                  and ((member(y, complement(a)) and member(y, complement(b))) -> member(y, intersection(complement(a), complement(b))))
                 [by forall_elim(y) complement-of-a-intersect-complement-of-b-membership]
               @given-y-in-complement-of-a-intersect-complement-of-b |
                 assume member(y, intersection(complement(a), complement(b))) {
@@ -1564,12 +1564,12 @@ proof
             [by axiom extensional]
           @extensionality-at-the-two-sides |
             (forall x: Universe; member(x, complement(union(a, b))) -> member(x, intersection(complement(a), complement(b)))) ->
-            (forall x: Universe; member(x, intersection(complement(a), complement(b))) -> member(x, complement(union(a, b)))) ->
-            complement(union(a, b)) = intersection(complement(a), complement(b))
+              (forall x: Universe; member(x, intersection(complement(a), complement(b))) -> member(x, complement(union(a, b)))) ->
+              complement(union(a, b)) = intersection(complement(a), complement(b))
             [by forall_elim(complement(union(a, b)), intersection(complement(a), complement(b))) set-extensionality]
           @backward-inclusion-gives-equality |
             (forall x: Universe; member(x, intersection(complement(a), complement(b))) -> member(x, complement(union(a, b)))) ->
-            complement(union(a, b)) = intersection(complement(a), complement(b))
+              complement(union(a, b)) = intersection(complement(a), complement(b))
             [by modus_ponens extensionality-at-the-two-sides complement-of-a-union-b-included-in-complement-of-a-intersect-complement-of-b]
           @de-morgan-for-union |
             complement(union(a, b)) = intersection(complement(a), complement(b))
@@ -1636,23 +1636,23 @@ proof
             fix x: Universe {
               @a-intersect-b-membership-at-x |
                 (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
                 [by forall_elim(x) a-intersect-b-membership]
               @complement-of-a-intersect-b-membership-at-x |
                 (member(x, complement(intersection(a, b))) -> (not member(x, intersection(a, b))))
-                and ((not member(x, intersection(a, b))) -> member(x, complement(intersection(a, b))))
+                  and ((not member(x, intersection(a, b))) -> member(x, complement(intersection(a, b))))
                 [by forall_elim(x) complement-of-a-intersect-b-membership]
               @complement-of-a-membership-at-x |
                 (member(x, complement(a)) -> (not member(x, a)))
-                and ((not member(x, a)) -> member(x, complement(a)))
+                  and ((not member(x, a)) -> member(x, complement(a)))
                 [by forall_elim(x) complement-of-a-membership]
               @complement-of-b-membership-at-x |
                 (member(x, complement(b)) -> (not member(x, b)))
-                and ((not member(x, b)) -> member(x, complement(b)))
+                  and ((not member(x, b)) -> member(x, complement(b)))
                 [by forall_elim(x) complement-of-b-membership]
               @complement-of-a-union-complement-of-b-membership-at-x |
                 (member(x, union(complement(a), complement(b))) -> (member(x, complement(a)) or member(x, complement(b))))
-                and ((member(x, complement(a)) or member(x, complement(b))) -> member(x, union(complement(a), complement(b))))
+                  and ((member(x, complement(a)) or member(x, complement(b))) -> member(x, union(complement(a), complement(b))))
                 [by forall_elim(x) complement-of-a-union-complement-of-b-membership]
               @given-x-in-complement-of-a-intersect-b |
                 assume member(x, complement(intersection(a, b))) {
@@ -1674,23 +1674,23 @@ proof
             fix y: Universe {
               @a-intersect-b-membership-at-y |
                 (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                  and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
                 [by forall_elim(y) a-intersect-b-membership]
               @complement-of-a-intersect-b-membership-at-y |
                 (member(y, complement(intersection(a, b))) -> (not member(y, intersection(a, b))))
-                and ((not member(y, intersection(a, b))) -> member(y, complement(intersection(a, b))))
+                  and ((not member(y, intersection(a, b))) -> member(y, complement(intersection(a, b))))
                 [by forall_elim(y) complement-of-a-intersect-b-membership]
               @complement-of-a-membership-at-y |
                 (member(y, complement(a)) -> (not member(y, a)))
-                and ((not member(y, a)) -> member(y, complement(a)))
+                  and ((not member(y, a)) -> member(y, complement(a)))
                 [by forall_elim(y) complement-of-a-membership]
               @complement-of-b-membership-at-y |
                 (member(y, complement(b)) -> (not member(y, b)))
-                and ((not member(y, b)) -> member(y, complement(b)))
+                  and ((not member(y, b)) -> member(y, complement(b)))
                 [by forall_elim(y) complement-of-b-membership]
               @complement-of-a-union-complement-of-b-membership-at-y |
                 (member(y, union(complement(a), complement(b))) -> (member(y, complement(a)) or member(y, complement(b))))
-                and ((member(y, complement(a)) or member(y, complement(b))) -> member(y, union(complement(a), complement(b))))
+                  and ((member(y, complement(a)) or member(y, complement(b))) -> member(y, union(complement(a), complement(b))))
                 [by forall_elim(y) complement-of-a-union-complement-of-b-membership]
               @given-y-in-complement-of-a-union-complement-of-b |
                 assume member(y, union(complement(a), complement(b))) {
@@ -1716,12 +1716,12 @@ proof
             [by axiom extensional]
           @extensionality-at-the-two-sides |
             (forall x: Universe; member(x, complement(intersection(a, b))) -> member(x, union(complement(a), complement(b)))) ->
-            (forall x: Universe; member(x, union(complement(a), complement(b))) -> member(x, complement(intersection(a, b)))) ->
-            complement(intersection(a, b)) = union(complement(a), complement(b))
+              (forall x: Universe; member(x, union(complement(a), complement(b))) -> member(x, complement(intersection(a, b)))) ->
+              complement(intersection(a, b)) = union(complement(a), complement(b))
             [by forall_elim(complement(intersection(a, b)), union(complement(a), complement(b))) set-extensionality]
           @backward-inclusion-gives-equality |
             (forall x: Universe; member(x, union(complement(a), complement(b))) -> member(x, complement(intersection(a, b)))) ->
-            complement(intersection(a, b)) = union(complement(a), complement(b))
+              complement(intersection(a, b)) = union(complement(a), complement(b))
             [by modus_ponens extensionality-at-the-two-sides complement-of-a-intersect-b-included-in-complement-of-a-union-complement-of-b]
           @de-morgan-for-intersection |
             complement(intersection(a, b)) = union(complement(a), complement(b))
@@ -1790,15 +1790,15 @@ proof
             fix x: Universe {
               @a-minus-b-membership-at-x |
                 (member(x, difference(a, b)) -> (member(x, a) and (not member(x, b))))
-                and ((member(x, a) and (not member(x, b))) -> member(x, difference(a, b)))
+                  and ((member(x, a) and (not member(x, b))) -> member(x, difference(a, b)))
                 [by forall_elim(x) a-minus-b-membership]
               @b-minus-a-membership-at-x |
                 (member(x, difference(b, a)) -> (member(x, b) and (not member(x, a))))
-                and ((member(x, b) and (not member(x, a))) -> member(x, difference(b, a)))
+                  and ((member(x, b) and (not member(x, a))) -> member(x, difference(b, a)))
                 [by forall_elim(x) b-minus-a-membership]
               @a-minus-b-intersect-b-minus-a-membership-at-x |
                 (member(x, intersection(difference(a, b), difference(b, a))) -> (member(x, difference(a, b)) and member(x, difference(b, a))))
-                and ((member(x, difference(a, b)) and member(x, difference(b, a))) -> member(x, intersection(difference(a, b), difference(b, a))))
+                  and ((member(x, difference(a, b)) and member(x, difference(b, a))) -> member(x, intersection(difference(a, b), difference(b, a))))
                 [by forall_elim(x) a-minus-b-intersect-b-minus-a-membership]
               @empty-membership-at-x |
                 not member(x, emptyset)
@@ -1823,15 +1823,15 @@ proof
             fix y: Universe {
               @a-minus-b-membership-at-y |
                 (member(y, difference(a, b)) -> (member(y, a) and (not member(y, b))))
-                and ((member(y, a) and (not member(y, b))) -> member(y, difference(a, b)))
+                  and ((member(y, a) and (not member(y, b))) -> member(y, difference(a, b)))
                 [by forall_elim(y) a-minus-b-membership]
               @b-minus-a-membership-at-y |
                 (member(y, difference(b, a)) -> (member(y, b) and (not member(y, a))))
-                and ((member(y, b) and (not member(y, a))) -> member(y, difference(b, a)))
+                  and ((member(y, b) and (not member(y, a))) -> member(y, difference(b, a)))
                 [by forall_elim(y) b-minus-a-membership]
               @a-minus-b-intersect-b-minus-a-membership-at-y |
                 (member(y, intersection(difference(a, b), difference(b, a))) -> (member(y, difference(a, b)) and member(y, difference(b, a))))
-                and ((member(y, difference(a, b)) and member(y, difference(b, a))) -> member(y, intersection(difference(a, b), difference(b, a))))
+                  and ((member(y, difference(a, b)) and member(y, difference(b, a))) -> member(y, intersection(difference(a, b), difference(b, a))))
                 [by forall_elim(y) a-minus-b-intersect-b-minus-a-membership]
               @empty-membership-at-y |
                 not member(y, emptyset)
@@ -1860,12 +1860,12 @@ proof
             [by axiom extensional]
           @extensionality-at-the-two-sides |
             (forall x: Universe; member(x, intersection(difference(a, b), difference(b, a))) -> member(x, emptyset)) ->
-            (forall x: Universe; member(x, emptyset) -> member(x, intersection(difference(a, b), difference(b, a)))) ->
-            intersection(difference(a, b), difference(b, a)) = emptyset
+              (forall x: Universe; member(x, emptyset) -> member(x, intersection(difference(a, b), difference(b, a)))) ->
+              intersection(difference(a, b), difference(b, a)) = emptyset
             [by forall_elim(intersection(difference(a, b), difference(b, a)), emptyset) set-extensionality]
           @backward-inclusion-gives-equality |
             (forall x: Universe; member(x, emptyset) -> member(x, intersection(difference(a, b), difference(b, a)))) ->
-            intersection(difference(a, b), difference(b, a)) = emptyset
+              intersection(difference(a, b), difference(b, a)) = emptyset
             [by modus_ponens extensionality-at-the-two-sides a-minus-b-intersect-b-minus-a-included-in-empty]
           @differences-are-disjoint |
             intersection(difference(a, b), difference(b, a)) = emptyset

@@ -68,12 +68,12 @@ proof
             add(sumTo(k), sumTo(k)) = mul(k, succ(k))
             [by hypothesis given-inductive-hypothesis]
 
-      // unfold both copies of sumTo(succ k) = sumTo(k) + succ(k)
+          // unfold both copies of sumTo(succ k) = sumTo(k) + succ(k)
           @unfolded |
             add(sumTo(succ(k)), sumTo(succ(k))) = add(add(sumTo(k), succ(k)), add(sumTo(k), succ(k)))
             [by simplify sumToSucc]
 
-      // regroup (s+c)+(s+c) into (s+s)+(c+c) — one step, no exchange lemma
+          // regroup (s+c)+(s+c) into (s+s)+(c+c) — one step, no exchange lemma
           @swapped |
             add(add(sumTo(k), succ(k)), add(sumTo(k), succ(k))) = add(add(sumTo(k), sumTo(k)), add(succ(k), succ(k)))
             [by assoc_commut]
@@ -81,13 +81,13 @@ proof
             add(sumTo(succ(k)), sumTo(succ(k))) = add(add(sumTo(k), sumTo(k)), add(succ(k), succ(k)))
             [by rewrite swapped unfolded]
 
-      // fold the inductive hypothesis into the first summand
+          // fold the inductive hypothesis into the first summand
           @with-ih |
             add(sumTo(succ(k)), sumTo(succ(k))) = add(mul(k, succ(k)), add(succ(k), succ(k)))
             [by rewrite inductive-hypothesis regrouped]
 
-      // k*(k+1) + 2*(k+1) = (k+1)*(k+2): expand every product and right-nest
-      // the additive residue; both sides normalize to succ(succ(k*k + 3k))
+          // k*(k+1) + 2*(k+1) = (k+1)*(k+2): expand every product and right-nest
+          // the additive residue; both sides normalize to succ(succ(k*k + 3k))
           @target |
             add(mul(k, succ(k)), add(succ(k), succ(k))) = mul(succ(k), succ(succ(k)))
             [by simplify mulSuccLeft mulSuccRight addSuccLeft addSuccRight addZeroLeft addZeroRight mulZeroLeft mulZeroRight addIsAssociative]

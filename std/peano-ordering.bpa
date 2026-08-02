@@ -1173,7 +1173,7 @@ theorem lessThanSelf: forall n: Nat; less_than(n, succ(n))
 proof
   @generalize-n |
     fix n: Nat {
-    // add(n, succ(ZERO)) = succ(n), so lessThanIntro gives n < succ(n)
+      // add(n, succ(ZERO)) = succ(n), so lessThanIntro gives n < succ(n)
       @unit-gap-reaches-succ-n |
         add(n, succ(ZERO)) = succ(n)
         [by simplify addSuccRight addZeroRight]
@@ -1226,7 +1226,7 @@ proof
                   @gap-is-zero-or-successor |
                     d0 = ZERO or (exists mm: Nat; d0 = succ(mm))
                     [by forall_elim(d0) zero-or-successor]
-          // d0 = ZERO: add(m, succ(ZERO)) = succ(k), so succ(m) = succ(k), m = k
+                  // d0 = ZERO: add(m, succ(ZERO)) = succ(k), so succ(m) = succ(k), m = k
                   @when-gap-is-zero |
                     assume d0 = ZERO {
                       @gap-is-zero |
@@ -1263,7 +1263,7 @@ proof
                         less_than(m, k) or m = k
                         [by or_intro_right m-equals-k]
                     }
-          // d0 = succ(e0): add(m, succ(succ(e0))) = succ(k), so add(m,succ(e0)) = k, m < k
+                  // d0 = succ(e0): add(m, succ(succ(e0))) = succ(k), so add(m,succ(e0)) = k, m < k
                   @when-gap-is-successor |
                     assume exists mm: Nat; d0 = succ(mm) {
                       @gap-is-some-successor |
@@ -1346,7 +1346,7 @@ theorem strongInduction(prop: Nat -> Prop):
 proof
   @given-strong-step |
     assume forall n: Nat; (forall m: Nat; less_than(m, n) -> prop(m)) -> prop(n) {
-    // base: Q(ZERO) = forall m; m < ZERO -> prop(m), vacuously true
+      // base: Q(ZERO) = forall m; m < ZERO -> prop(m), vacuously true
       @base-case-proof |
         fix m0: Nat {
           @given-m-below-zero |
@@ -1372,7 +1372,7 @@ proof
         forall m: Nat; less_than(m, ZERO) -> prop(m)
         [by forall_intro base-case-proof]
 
-    // step: Q(k) -> Q(succ k)
+      // step: Q(k) -> Q(succ k)
       @induction-step |
         fix k: Nat {
           @given-inductive-hypothesis |
@@ -1380,7 +1380,7 @@ proof
               @inductive-hypothesis |
                 forall m: Nat; less_than(m, k) -> prop(m)
                 [by hypothesis given-inductive-hypothesis]
-        // prop(k), from the strong step applied to Q(k)
+              // prop(k), from the strong step applied to Q(k)
               @strong-step |
                 forall n: Nat; (forall m: Nat; less_than(m, n) -> prop(m)) -> prop(n)
                 [by hypothesis given-strong-step]
@@ -1390,7 +1390,7 @@ proof
               @prop-k |
                 prop(k)
                 [by modus_ponens prop-below-k-implies-prop-k inductive-hypothesis]
-        // Q(succ k): forall m; m < succ k -> prop(m)
+              // Q(succ k): forall m; m < succ k -> prop(m)
               @generalize-m |
                 fix m1: Nat {
                   @given-m-below-succ-k |
@@ -1451,12 +1451,12 @@ proof
         forall k: Nat; (forall m: Nat; less_than(m, k) -> prop(m)) -> forall m: Nat; less_than(m, succ(k)) -> prop(m)
         [by forall_intro induction-step]
 
-    // forall n; Q(n), by ordinary induction on the auxiliary predicate
+      // forall n; Q(n), by ordinary induction on the auxiliary predicate
       @prop-holds-below-every-n |
         forall n: Nat; forall m: Nat; less_than(m, n) -> prop(m)
         [by instantiate induction((fun j: Nat => forall m: Nat; less_than(m, j) -> prop(m))) base-case induction-step-for-all-k]
 
-    // prop(n) from Q(succ n) applied at m = n (using n < succ n)
+      // prop(n) from Q(succ n) applied at m = n (using n < succ n)
       @generalize-n |
         fix n1: Nat {
           @prop-holds-below-succ-n |
@@ -1511,7 +1511,7 @@ proof
                   @gap-witnesses-b |
                     add(a, d0) = b
                     [by hypothesis with-gap-d]
-          // add(a, succ d0) = succ(add(a, d0)) = succ b
+                  // add(a, succ d0) = succ(add(a, d0)) = succ b
                   @grown-gap-is-successor |
                     add(a, succ(d0)) = succ(add(a, d0))
                     [by simplify addSuccRight]
@@ -1659,7 +1659,7 @@ proof
               @a-below-b |
                 less_than(a, b)
                 [by hypothesis given-a-below-b]
-        // a < b gives a strict gap add(a, succ d) = b, which is also an at-most gap
+              // a < b gives a strict gap add(a, succ d) = b, which is also an at-most gap
               @less-than-elim |
                 forall y, x: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
                 [by axiom lessThanElim]
@@ -1749,14 +1749,14 @@ proof
                               @nested-gaps-regroup |
                                 add(add(a, d1), d2) = add(a, add(d1, d2))
                                 [by simplify addIsAssociative]
-                // rewrite add(a,d1) -> b: from add(b,d2)=c get add(add(a,d1),d2)=c
+                              // rewrite add(a,d1) -> b: from add(b,d2)=c get add(add(a,d1),d2)=c
                               @b-is-a-plus-gap-d1 |
                                 b = add(a, d1)
                                 [by symmetry gap-d1-witnesses-b]
                               @nested-gaps-reach-c |
                                 add(add(a, d1), d2) = c
                                 [by rewrite b-is-a-plus-gap-d1 gap-d2-witnesses-c]
-                // regroup to a single gap add(d1, d2) reaching c
+                              // regroup to a single gap add(d1, d2) reaching c
                               @combined-gap-reaches-c |
                                 add(a, add(d1, d2)) = c
                                 [by rewrite nested-gaps-regroup nested-gaps-reach-c]
@@ -1811,7 +1811,7 @@ proof
               @a-at-most-b |
                 less_or_equal(a, b)
                 [by hypothesis given-a-at-most-b]
-        // le -> a < succ b
+              // le -> a < succ b
               @at-most-implies-below-succ |
                 forall bb, aa: Nat; less_or_equal(aa, bb) -> less_than(aa, succ(bb))
                 [by theorem lessOrEqualToLessThanSucc]
@@ -1821,7 +1821,7 @@ proof
               @a-below-succ-b |
                 less_than(a, succ(b))
                 [by modus_ponens a-below-succ-b-if-at-most a-at-most-b]
-        // a < succ b -> a < b or a = b [lessThanSuccSplit]
+              // a < succ b -> a < b or a = b [lessThanSuccSplit]
               @below-succ-splits |
                 forall kk, mm: Nat; less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
                 [by theorem lessThanSuccSplit]
@@ -1863,7 +1863,7 @@ proof
                   @b-at-most-a |
                     less_or_equal(b, a)
                     [by hypothesis given-b-at-most-a]
-          // split le(a,b): a<b or a=b
+                  // split le(a,b): a<b or a=b
                   @at-most-splits |
                     forall bb, aa: Nat; less_or_equal(aa, bb) -> (less_than(aa, bb) or aa = bb)
                     [by theorem lessOrEqualSplit]
@@ -1878,7 +1878,7 @@ proof
                       @a-below-b |
                         less_than(a, b)
                         [by hypothesis when-a-below-b]
-            // le(b,a) and a<b: split le(b,a) -> b<a or b=a
+                      // le(b,a) and a<b: split le(b,a) -> b<a or b=a
                       @b-below-a-or-equal-if-at-most |
                         less_or_equal(b, a) -> (less_than(b, a) or b = a)
                         [by forall_elim(a, b) at-most-splits]
@@ -1890,7 +1890,7 @@ proof
                           @b-below-a |
                             less_than(b, a)
                             [by hypothesis when-b-below-a]
-              // a<b and b<a -> a<a via transitive, contradiction with irreflexive
+                          // a<b and b<a -> a<a via transitive, contradiction with irreflexive
                           @less-than-transitive |
                             forall cc, bb, aa: Nat; less_than(aa, bb) -> less_than(bb, cc) -> less_than(aa, cc)
                             [by theorem lessThanTransitive]

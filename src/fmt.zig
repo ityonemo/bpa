@@ -53,6 +53,10 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
     var in_bracket = false; // inside a [by ...] justification
     var line_empty = true; // nothing emitted on the current line yet
     var owner_indent: u32 = 0; // indent of the line being continued
+    // the token after a step-label `|` opens the statement on its own line; it
+    // becomes the OWNER of any wrapped continuation, so we re-anchor
+    // `owner_indent` to its indent (not the label's) when it prints.
+    var after_pipe = false;
     var prev_tag: Tag = .eof;
     var prev_end: u32 = 0;
     // Every block header (`fix`/`assume`/`unpack`/`case`) sits on a
@@ -75,9 +79,11 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
                 },
                 .keyword_proof, .keyword_qed => break :decide .{ true, 0 },
                 .comment => {
-                    // standalone comments get their own line at context indent;
-                    // trailing comments stay on the current line
-                    if (gap >= 1 or line_empty) break :decide .{ true, depth * 2 };
+                    // standalone comments get their own line at context indent,
+                    // aligned with the steps they annotate (so they carry the
+                    // block's `extra_depth`, like labels/`[`/`case`/`}` do);
+                    // trailing comments stay on the current line.
+                    if (gap >= 1 or line_empty) break :decide .{ true, (depth + extra_depth) * 2 };
                     break :decide .{ false, 0 };
                 },
                 .identifier, .kebab_identifier, .at_label => {
@@ -120,8 +126,14 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
                 try w.splatByteAll(' ', indent);
                 owner_indent = indent;
             } else {
-                try w.splatByteAll(' ', owner_indent + 2);
+                const line_indent = owner_indent + 2;
+                try w.splatByteAll(' ', line_indent);
+                // the statement opener directly after a `|` becomes the owner of
+                // its own continuations, so re-anchor here (a plain wrapped line
+                // keeps the existing owner).
+                if (after_pipe) owner_indent = line_indent;
             }
+            after_pipe = false;
         } else if (needSpace(prev_tag, tok.tag)) {
             try w.writeAll(" ");
         }
@@ -152,10 +164,12 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
             .pipe => {
                 // a step label sits alone on its line; the statement (or block
                 // header) it introduces starts on the next line, indented +2 as
-                // a continuation. `|` is only ever the step-label delimiter.
+                // a continuation. `|` is only ever the step-label delimiter. That
+                // next line owns any further continuations, so flag it.
                 if (in_proof) {
                     try w.writeAll("\n");
                     line_empty = true;
+                    after_pipe = true;
                 }
             },
             .l_brace => {
@@ -337,6 +351,74 @@ test "blank lines collapse to one and survive where placed" {
     try expectFmt(
         "sort Nat\n\n\n\nconst ZERO: Nat\n",
         "sort Nat\n\nconst ZERO: Nat\n",
+    );
+}
+
+test "standalone comment inside a nested block aligns with the steps (carries extra_depth)" {
+    // a comment inside a `fix` block must indent to the block's step level, not
+    // the shallower `depth*2` that ignores the brace's extra level.
+    try expectFmt(
+        \\pred p(a: Nat)
+        \\theorem t: forall a: Nat; p(a)
+        \\proof
+        \\  g| fix a: Nat {
+        \\  // why this step
+        \\  s| p(a) [by axiom e]
+        \\  }
+        \\  conclusion| forall a: Nat; p(a) [by forall_intro g]
+        \\qed
+        \\
+    ,
+        \\pred p(a: Nat)
+        \\theorem t: forall a: Nat; p(a)
+        \\proof
+        \\  @g |
+        \\    fix a: Nat {
+        \\      // why this step
+        \\      @s |
+        \\        p(a)
+        \\        [by axiom e]
+        \\    }
+        \\  @conclusion |
+        \\    forall a: Nat; p(a)
+        \\    [by forall_intro g]
+        \\qed
+        \\
+    );
+}
+
+test "wrapped formula continuation inside a nested block re-indents to owner + 2" {
+    // the continuation of a multi-line formula indents two past the FORMULA
+    // line (its owner), not two past the label — inside nested proof blocks the
+    // owner is the formula, which sits at label + 2.
+    try expectFmt(
+        \\pred p(a: Nat, b: Nat)
+        \\theorem t: forall a: Nat; p(a, a)
+        \\proof
+        \\  g| fix a: Nat {
+        \\  s| forall b: Nat;
+        \\  p(a, b)
+        \\  [by axiom e]
+        \\  }
+        \\  conclusion| forall a: Nat; p(a, a) [by forall_intro g]
+        \\qed
+        \\
+    ,
+        \\pred p(a: Nat, b: Nat)
+        \\theorem t: forall a: Nat; p(a, a)
+        \\proof
+        \\  @g |
+        \\    fix a: Nat {
+        \\      @s |
+        \\        forall b: Nat;
+        \\          p(a, b)
+        \\        [by axiom e]
+        \\    }
+        \\  @conclusion |
+        \\    forall a: Nat; p(a, a)
+        \\    [by forall_intro g]
+        \\qed
+        \\
     );
 }
 

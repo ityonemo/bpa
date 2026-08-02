@@ -12,6 +12,7 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const fmt = @import("fmt.zig");
 
 /// Mask `source` (a Markdown document) to bpa code: keep the lines inside
 /// ```` ```bpa ```` fences, blank everything else, preserving line count and
@@ -46,6 +47,64 @@ pub fn extract(arena: Allocator, source: []const u8) Allocator.Error![]const u8 
         if (has_nl) try out.append(arena, '\n');
         i = line_end + @intFromBool(has_nl);
     }
+    return out.items;
+}
+
+/// Format a literate `.md` document: reformat the bpa inside each ```` ```bpa ````
+/// fenced block with `fmt.format`, leaving ALL prose, blank lines, and fence
+/// lines byte-for-byte verbatim. The inverse of the situation `extract` is built
+/// for — here the prose is preserved and the code is rewritten, whereas `extract`
+/// masks the prose and preserves the code. Byte offsets shift (that's the point:
+/// the code is reflowed), so this is for `fmt`, never for error mapping.
+///
+/// Each block is formatted independently (a block is a self-contained chunk of
+/// declarations/one proof; `fmt.format` handles a partial file). A block whose
+/// content does not lex is left verbatim rather than dropped, so a malformed
+/// block never silently loses content.
+pub fn formatLiterate(arena: Allocator, source: []const u8) Allocator.Error![]const u8 {
+    var out: std.ArrayList(u8) = .empty;
+    try out.ensureTotalCapacity(arena, source.len);
+
+    var block: std.ArrayList(u8) = .empty; // accumulates the current block's content
+    var in_block = false;
+
+    var i: usize = 0;
+    while (i < source.len) {
+        const line_start = i;
+        var line_end = i;
+        while (line_end < source.len and source[line_end] != '\n') line_end += 1;
+        const has_nl = line_end < source.len;
+        const line = source[line_start..line_end];
+
+        if (!in_block and isFenceOpen(line)) {
+            // emit the opening fence verbatim, start collecting the block
+            in_block = true;
+            block.clearRetainingCapacity();
+            try out.appendSlice(arena, line);
+            if (has_nl) try out.append(arena, '\n');
+        } else if (in_block and isFenceClose(line)) {
+            // block done: format its collected content, emit, then the fence
+            const formatted = fmt.format(arena, block.items) catch block.items;
+            try out.appendSlice(arena, formatted);
+            in_block = false;
+            try out.appendSlice(arena, line);
+            if (has_nl) try out.append(arena, '\n');
+        } else if (in_block) {
+            // inside a block: buffer the content line (with its newline) for fmt
+            try block.appendSlice(arena, line);
+            if (has_nl) try block.append(arena, '\n');
+        } else {
+            // prose / blank / non-bpa fence: verbatim
+            try out.appendSlice(arena, line);
+            if (has_nl) try out.append(arena, '\n');
+        }
+        i = line_end + @intFromBool(has_nl);
+    }
+
+    // an unterminated block (no closing fence): flush its buffered content
+    // verbatim so nothing is lost.
+    if (in_block) try out.appendSlice(arena, block.items);
+
     return out.items;
 }
 
@@ -149,4 +208,86 @@ test "ignores non-bpa fences" {
         \\
         \\
     , got);
+}
+
+test "formatLiterate reflows bpa blocks and leaves prose verbatim" {
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+
+    // prose (including a deliberately mis-indented heading and trailing spaces),
+    // then a bpa block whose steps are written on one line and under-indented.
+    const md =
+        \\#   Title
+        \\
+        \\Some   prose   with   inner   spaces.
+        \\
+        \\```bpa
+        \\theorem t: a
+        \\proof
+        \\@conclusion | a [by axiom h]
+        \\qed
+        \\```
+        \\
+        \\more prose
+        \\
+    ;
+    const got = try formatLiterate(a, md);
+    // prose lines survive byte-for-byte; only the bpa block is reflowed to the
+    // canonical three-line-per-step form.
+    const expect =
+        \\#   Title
+        \\
+        \\Some   prose   with   inner   spaces.
+        \\
+        \\```bpa
+        \\theorem t: a
+        \\proof
+        \\  @conclusion |
+        \\    a
+        \\    [by axiom h]
+        \\qed
+        \\```
+        \\
+        \\more prose
+        \\
+    ;
+    try testing.expectEqualStrings(expect, got);
+}
+
+test "formatLiterate ignores non-bpa fences" {
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+    // a plain fence and a zig fence must pass through untouched, even though
+    // their contents would be mangled if treated as bpa source.
+    const md =
+        \\```
+        \\@not a step | but looks like one
+        \\```
+        \\
+        \\```zig
+        \\const x=1;
+        \\```
+        \\
+    ;
+    const got = try formatLiterate(a, md);
+    try testing.expectEqualStrings(md, got);
+}
+
+test "formatLiterate flushes an unterminated bpa block verbatim" {
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const a = arena_state.allocator();
+    // no closing fence: rather than reflow a half-parsed block, emit it as-is so
+    // the (broken) document round-trips instead of losing bytes.
+    const md =
+        \\intro
+        \\
+        \\```bpa
+        \\sort Nat
+        \\const Z: Nat
+    ;
+    const got = try formatLiterate(a, md);
+    try testing.expectEqualStrings(md, got);
 }

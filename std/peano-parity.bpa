@@ -258,7 +258,7 @@ theorem oddSquare: forall j: Nat;
 proof
   @generalize-j |
     fix j: Nat {
-    // succ(mul(TWO,j)) = add(mul(TWO,j), ONE)
+      // succ(mul(TWO,j)) = add(mul(TWO,j), ONE)
       @one-def |
         ONE = succ(ZERO)
         [by axiom oneIsSuccZero]
@@ -267,33 +267,33 @@ proof
         [by simplify addSuccRight addZeroRight oneIsSuccZero]
       @lhs-poly |
         mul(add(mul(TWO, j), ONE), add(mul(TWO, j), ONE))
-        = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
+          = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
         [by polynomial(peano)]
-    // rewrite both add(_,ONE) forms back to succ
+      // rewrite both add(_,ONE) forms back to succ
       @rhs-as-succ |
         add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
-        = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
+          = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
         [by simplify addSuccRight addZeroRight oneIsSuccZero]
       @lhs-refl |
         mul(succ(mul(TWO, j)), succ(mul(TWO, j))) = mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
         [by reflexivity]
       @lhs-succ-form |
         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-        = mul(add(mul(TWO, j), ONE), add(mul(TWO, j), ONE))
+          = mul(add(mul(TWO, j), ONE), add(mul(TWO, j), ONE))
         [by rewrite succ-as-add lhs-refl]
       @chain1 |
         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-        = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
+          = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
         [by rewrite lhs-poly lhs-succ-form]
       @conclusion-odd-squared-is-odd |
         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-        = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
+          = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
         [by rewrite rhs-as-succ chain1]
     }
   @conclusion |
     forall j: Nat;
-    mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-    = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
+      mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
+      = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
     [by forall_intro generalize-j]
 qed
 
@@ -315,7 +315,7 @@ proof
       @x-exists |
         exists k: Nat; ONE = mul(TWO, k)
         [by modus_ponens elim-at div]
-    // ONE != ZERO, derived at suppose level for the final not_intro
+      // ONE != ZERO, derived at suppose level for the final not_intro
       @suppose-one-zero |
         assume ONE = ZERO {
           @one-succ |
@@ -356,7 +356,7 @@ proof
             case on x-cases {
               @x-zero |
                 assume x = ZERO {
-          // ONE = 2*0 = 0
+                  // ONE = 2*0 = 0
                   @x-is-zero |
                     x = ZERO
                     [by hypothesis x-zero]
@@ -380,8 +380,8 @@ proof
                       @x-is-succ |
                         x = succ(xp)
                         [by hypothesis with-xp]
-            // 2*succ(xp) = succ(succ(2*xp)); ONE = succ(ZERO) so
-            // succ(ZERO) = succ(succ(2xp)) ⇒ ZERO = succ(2xp), absurd
+                      // 2*succ(xp) = succ(succ(2*xp)); ONE = succ(ZERO) so
+                      // succ(ZERO) = succ(succ(2xp)) ⇒ ZERO = succ(2xp), absurd
                       @two-succ |
                         forall b, a: Nat; mul(a, succ(b)) = add(mul(a, b), a)
                         [by theorem mulSuccRight]
@@ -424,7 +424,7 @@ proof
                       @zero-eq-succ |
                         succ(mul(TWO, xp)) = ZERO
                         [by symmetry zero-is-succ]
-            // arbitrary conclusion from the contradiction
+                      // arbitrary conclusion from the contradiction
                       @arm-one-is-zero |
                         ONE = ZERO
                         [by absurd zero-eq-succ this-succ-not-zero]
@@ -477,7 +477,7 @@ proof
                   @succ-p-even |
                     divides(TWO, succ(p))
                     [by hypothesis p-odd]
-          // p = succ(2j)
+                  // p = succ(2j)
                   @odd-form-thm |
                     forall q: Nat; divides(TWO, succ(q)) -> exists j: Nat; q = succ(mul(TWO, j))
                     [by theorem oddForm]
@@ -492,17 +492,17 @@ proof
                       @p-is-odd |
                         p = succ(mul(TWO, j))
                         [by hypothesis with-j]
-            // p² = succ(2·M),  M = 2j²+2j
+                      // p² = succ(2·M),  M = 2j²+2j
                       @odd-sq-thm |
                         forall jj: Nat;
-                        mul(succ(mul(TWO, jj)), succ(mul(TWO, jj)))
-                        = succ(mul(TWO, add(mul(TWO, mul(jj, jj)), mul(TWO, jj))))
+                          mul(succ(mul(TWO, jj)), succ(mul(TWO, jj)))
+                          = succ(mul(TWO, add(mul(TWO, mul(jj, jj)), mul(TWO, jj))))
                         [by theorem oddSquare]
                       @odd-sq-at |
                         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-                        = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
+                          = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
                         [by forall_elim(j) odd-sq-thm]
-            // rewrite p into the square (both occurrences)
+                      // rewrite p into the square (both occurrences)
                       @sq-refl |
                         mul(p, p) = mul(p, p)
                         [by reflexivity]
@@ -515,7 +515,7 @@ proof
                       @sq-is-odd |
                         mul(p, p) = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
                         [by rewrite odd-sq-at sq-step2]
-            // now 2 | succ(2M) with M = ...; subtract 2M ⇒ 2 | 1
+                      // now 2 | succ(2M) with M = ...; subtract 2M ⇒ 2 | 1
                       @intro |
                         forall d, n, k: Nat; n = mul(d, k) -> divides(d, n)
                         [by axiom dividesIntro]
@@ -524,15 +524,15 @@ proof
                         [by reflexivity]
                       @intro-at |
                         mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))) = mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))
-                        -> divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
+                          -> divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
                         [by forall_elim(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), add(mul(TWO, mul(j, j)), mul(TWO, j))) intro]
                       @two-m-even |
                         divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
                         [by modus_ponens intro-at two-m-refl]
-            // hypothesis 2 | p² becomes 2 | succ(2M) = 2 | add(2M, ONE)
+                      // hypothesis 2 | p² becomes 2 | succ(2M) = 2 | add(2M, ONE)
                       @succ-as-add |
                         succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
+                          = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
                         [by simplify addSuccRight addZeroRight oneIsSuccZero]
                       @sq-is-add |
                         mul(p, p) = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
@@ -540,23 +540,23 @@ proof
                       @two-div-sum |
                         divides(TWO, add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE))
                         [by rewrite sq-is-add square-even]
-            // 2 | (2M + 1) and 2 | 2M ⇒ 2 | sub(2M+1, 2M) = 1
+                      // 2 | (2M + 1) and 2 | 2M ⇒ 2 | sub(2M+1, 2M) = 1
                       @sub-closed |
                         forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, sub(a, b))
                         [by theorem dividesSub]
                       @sub-at |
                         divides(TWO, add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE))
-                        -> divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        -> divides(TWO, sub(add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))))
+                          -> divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
+                          -> divides(TWO, sub(add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))))
                         [by forall_elim(TWO, add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))) sub-closed]
                       @sub-step |
                         divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        -> divides(TWO, sub(add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))))
+                          -> divides(TWO, sub(add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))))
                         [by modus_ponens sub-at two-div-sum]
                       @two-div-sub |
                         divides(TWO, sub(add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))))
                         [by modus_ponens sub-step two-m-even]
-            // sub(add(2M, ONE), 2M) = ONE  (subAddCancel needs add(ONE, 2M); commute first)
+                      // sub(add(2M, ONE), 2M) = ONE  (subAddCancel needs add(ONE, 2M); commute first)
                       @cancel |
                         forall b, a: Nat; sub(add(a, b), b) = a
                         [by theorem subAddCancel]

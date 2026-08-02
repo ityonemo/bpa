@@ -27,16 +27,21 @@ fn fmtCommand(arena: std.mem.Allocator, rest: []const [:0]const u8) !u8 {
         } else if (path == null) {
             path = arg;
         } else {
-            return fail("usage: bpa fmt [--check] <file.bpa>\n", .{});
+            return fail("usage: bpa fmt [--check] <file.bpa|.md>\n", .{});
         }
     }
-    const p = path orelse return fail("usage: bpa fmt [--check] <file.bpa>\n", .{});
+    const p = path orelse return fail("usage: bpa fmt [--check] <file.bpa|.md>\n", .{});
 
     const source = Io.Dir.cwd().readFileAlloc(io, p, arena, .limited(64 << 20)) catch |e| switch (e) {
         error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{p}),
         else => return fail("error: cannot open '{s}': {t}\n", .{ p, e }),
     };
-    const formatted = try bpa.fmt.format(arena, source);
+    // A `.md` is a literate document: reformat only the ```bpa blocks, leaving
+    // prose verbatim. A `.bpa` is formatted whole.
+    const formatted = if (std.mem.endsWith(u8, p, ".md"))
+        try bpa.literate.formatLiterate(arena, source)
+    else
+        try bpa.fmt.format(arena, source);
     if (std.mem.eql(u8, source, formatted)) return 0;
     if (check_only) {
         return fail("{s}: not formatted\n", .{p});
@@ -252,7 +257,7 @@ pub fn main(init: std.process.Init) !u8 {
             \\bpa — a proof checker
             \\
             \\usage: bpa check [--fast | --faster | --reckless] <file.bpa>
-            \\       bpa fmt [--check] <file.bpa>
+            \\       bpa fmt [--check] <file.bpa|.md>
             \\       bpa query outline <file.bpa> [theorem]
             \\       bpa query theorem <file.bpa> <theorem> [--sig]
             \\       bpa query whereis <file.bpa> <identifier>
@@ -278,7 +283,8 @@ pub fn main(init: std.process.Init) !u8 {
             \\Re-run plain `bpa check` to fully verify before finalizing.
             \\
             \\fmt normalizes whitespace and indentation in place; --check
-            \\reports instead of rewriting.
+            \\reports instead of rewriting. On a literate `.md` it reformats
+            \\only the ```bpa blocks, leaving prose verbatim.
             \\
             \\query outline prints a proof's structural skeleton: one line per
             \\step (bare label), with a header on steps that open a nesting
@@ -305,7 +311,7 @@ pub fn main(init: std.process.Init) !u8 {
     if (args.len >= 2 and std.mem.eql(u8, args[1], "query")) {
         return queryCommand(arena, std_root, args[2..]);
     }
-    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query oracles <file.bpa> [theorem]\n";
+    const usage = "usage: bpa check [--fast | --faster | --reckless] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query oracles <file.bpa> [theorem]\n";
     if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
         return fail(usage, .{});
     }

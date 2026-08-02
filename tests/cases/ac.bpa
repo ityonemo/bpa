@@ -65,6 +65,6 @@ proof
     }
   @conclusion |
     forall b, a: Nat;
-    add(mul(a, a), add(mul(b, b), a)) = add(a, add(mul(a, a), mul(b, b)))
+      add(mul(a, a), add(mul(b, b), a)) = add(a, add(mul(a, a), mul(b, b)))
     [by forall_intro gen-b]
 qed
