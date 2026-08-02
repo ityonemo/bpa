@@ -65,6 +65,12 @@ pub fn addTests(
     // notation; the checked proofs live here.
     ctx.ok(&.{ "check", "std/group.bpa" }, "OK: 20 declarations, 10 theorems proven\n");
 
+    // group powers (std/group-power.bpa): g^n over a Nat exponent, layered over
+    // std/group.bpa + std/peano.bpa (keeping the core group theory import-free).
+    // Defines pow(g,n) recursively and proves the exponent-addition law
+    // powAdd: pow(g, m+n) = op(pow(g,m), pow(g,n)) by induction on n.
+    ctx.ok(&.{ "check", "std/group-power.bpa" }, "OK: 87 declarations, 28 theorems proven\n");
+
     // the ring theory (std/ring.bpa): an additive abelian group + associative,
     // distributing multiplication. Its additive half MODELS std/group.bpa (a
     // TWO-LEVEL structure — a model inside a modelable theory). Judson's first
