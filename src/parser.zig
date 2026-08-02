@@ -358,6 +358,20 @@ pub const Parser = struct {
                     _ = try self.expect(.r_paren);
                     args = try list.toOwnedSlice(self.arena);
                 }
+                // `fallback(<thm>)`: a contextual modifier (NOT a keyword — the
+                // identifier `fallback` is otherwise ordinary), recognized only
+                // here by text + `(`. Names a manual theorem to cite when the
+                // arithmetic certifier chain declines, before the refs loop
+                // would otherwise swallow the `fallback` identifier.
+                var fallback: ?Token = null;
+                if (std.mem.eql(u8, self.text(rule), "arithmetic") and
+                    self.tok.tag == .identifier and std.mem.eql(u8, self.text(self.tok), "fallback"))
+                {
+                    _ = self.advance(); // `fallback`
+                    _ = try self.expect(.l_paren);
+                    fallback = try self.expect(.identifier);
+                    _ = try self.expect(.r_paren);
+                }
                 // refs cite proof labels, which may be kebab-case
                 var refs: std.ArrayList(Token) = .empty;
                 while (self.tok.tag == .identifier or self.tok.tag == .kebab_identifier) {
@@ -370,6 +384,7 @@ pub const Parser = struct {
                     .schema = schema,
                     .args = args,
                     .refs = try refs.toOwnedSlice(self.arena),
+                    .fallback = fallback,
                 } } };
             },
         }
@@ -724,6 +739,42 @@ test "theorem with nested proof blocks and instantiate" {
     try testing.expectEqual(1, inst.args.len);
     try testing.expect(inst.args[0].* == .lambda);
     try testing.expectEqual(2, inst.refs.len);
+}
+
+test "arithmetic fallback(<thm>) parses; fallback stays an ordinary identifier elsewhere" {
+    const source =
+        \\theorem t: forall a: Nat; p(a)
+        \\proof
+        \\  @c | forall a: Nat; p(a) [by arithmetic fallback(manualProof)]
+        \\qed
+        \\theorem u: q
+        \\proof
+        \\  @fallback | q [by hypothesis fallback]
+        \\qed
+    ;
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
+    var sink: Diagnostics.Sink = .init(arena);
+    var p: Parser = .init(arena, source, &sink);
+    const file = try p.parseFile();
+    try testing.expectEqual(0, sink.list.items.len);
+
+    // the arithmetic claim carries fallback = `manualProof`, no refs
+    const arith = file.decls[0].theorem.steps[0].body.claim;
+    try testing.expectEqualStrings("arithmetic", source[arith.rule.start..arith.rule.end]);
+    try testing.expect(arith.fallback != null);
+    try testing.expectEqualStrings("manualProof", source[arith.fallback.?.start..arith.fallback.?.end]);
+    try testing.expectEqual(0, arith.refs.len);
+
+    // outside an arithmetic claim, `fallback` is a normal name: here a step
+    // label cited as a hypothesis ref, with no fallback field set.
+    const hyp = file.decls[1].theorem.steps[0].body.claim;
+    try testing.expectEqualStrings("hypothesis", source[hyp.rule.start..hyp.rule.end]);
+    try testing.expect(hyp.fallback == null);
+    try testing.expectEqual(1, hyp.refs.len);
+    try testing.expectEqualStrings("fallback", source[hyp.refs[0].start..hyp.refs[0].end]);
 }
 
 test "@label step definitions; the label name interns without the sigil; refs stay bare" {

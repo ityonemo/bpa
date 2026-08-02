@@ -182,11 +182,11 @@ pub fn addTests(
 
     // The cooper link's DECLARED BOUNDARY: a multi-fixed-variable ∀∀∃
     // (`forall a, b; exists c; …`) is decided valid by Presburger but declines
-    // — cooperInduction synthesizes an induction on a SINGLE variable. In
-    // default mode this is a hard error listing every link's decline (the
-    // documented "solvable by arithmetic, not yet certifiable" gap)...
-    ctx.fail(&.{ "check", "tests/cases/cooper_gap.bpa" },
-        \\tests/cases/cooper_gap.bpa:28:9: error: 'arithmetic' is valid but no certifier could prove it here:
+    // — cooperInduction synthesizes an induction on a SINGLE variable. Without
+    // a fallback, default mode is a hard error listing every link's decline
+    // (the "solvable by arithmetic, not yet certifiable" gap)...
+    ctx.fail(&.{ "check", "tests/cases/cooper_gap_raw.bpa" },
+        \\tests/cases/cooper_gap_raw.bpa:25:9: error: 'arithmetic' is valid but no certifier could prove it here:
         \\  - equation/order/exists: form not in certification scope
         \\  - mixed-skeleton: form not in certification scope
         \\  - farkas: theory lacks symbol 'less_than'
@@ -195,11 +195,16 @@ pub fn addTests(
         \\
     );
     // ...and --fast accepts the oracle verdict, tainting the theorem.
-    ctx.ok(&.{ "check", "--fast", "tests/cases/cooper_gap.bpa" },
+    ctx.ok(&.{ "check", "--fast", "tests/cases/cooper_gap_raw.bpa" },
         \\OK: 15 declarations, 1 theorems proven (0 pure, 1 via oracles: arithmetic)
         \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates); re-run `bpa check` before finalizing.
         \\
     );
+    // ...and `[by arithmetic fallback(<thm>)]` closes the gap PURELY in default
+    // mode: the chain declines, so the cited manual theorem (which reduces the
+    // ∀∀∃ to the cooper-certified single-variable evenOrOddArith) stands as the
+    // certificate — no --fast, no oracle taint.
+    ctx.ok(&.{ "check", "tests/cases/cooper_gap.bpa" }, "OK: 17 declarations, 3 theorems proven\n");
 
     // Milestone D2: mixed skeletons replay as pure certificates
     ctx.ok(&.{ "check", "tests/cases/smt_cert.bpa" }, "OK: 143 declarations, 40 theorems proven\n");

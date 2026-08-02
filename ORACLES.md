@@ -75,6 +75,18 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   namespace. A **named** theory must provide every symbol the goal uses (a gap
   is a hard error naming it); a missing certificate *lemma* makes the relevant
   certifier decline (soft), surfaced at the terminal.
+- **Fallback**: `[by arithmetic ... fallback(<thm>)]` names a manually-proven
+  theorem to cite when the certifier chain declines a valid goal — instead of
+  the hard error (default) or the oracle verdict (`--fast`). The kernel checks
+  `<thm>`'s statement α-matches the goal, so the step stays **pure** (no taint),
+  and any taint `<thm>` itself carries is inherited. This is for goals the
+  Presburger oracle *decides* but no certifier can *emit* — e.g. multi-fixed-
+  variable `∀∀∃` (`tests/cases/cooper_gap.bpa`: `sumParity` reduces to the
+  cooper-certified single-variable `evenOrOddArith` via a hand proof, and
+  `fallback` cites it). `fallback` is a contextual modifier on `arithmetic`
+  only (not a keyword — `fallback` is an ordinary identifier elsewhere); it is
+  the decision-vs-certification escape hatch for a decision-backed oracle, so
+  the structural presumers (`assoc`/`assoc_commut`) will never carry it.
 - **Fragment**: terms over `ZERO`, `ONE`, `succ`, `add`, and `mul` where one
   side folds to a literal — all resolved by those well-known names in the
   theory scope; atoms `=`, `!=`, and `less_than`; the propositional

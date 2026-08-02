@@ -64,6 +64,10 @@ pub const Step = struct {
         schema: ?Token,
         args: []const *const Expr,
         refs: []const Token,
+        /// `arithmetic ... fallback(<thm>)`: a manually-proven theorem to cite
+        /// as the certificate when the certifier chain declines (instead of the
+        /// hard error). Keeps the step pure. Arithmetic-only for now.
+        fallback: ?Token = null,
     };
     pub const Block = struct { formula: *const Expr, steps: []const Step };
     pub const FixBlock = struct { name: Token, sort: Token, steps: []const Step };

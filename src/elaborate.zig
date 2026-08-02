@@ -3027,6 +3027,30 @@ pub const Elaborator = struct {
     /// Under the default, hard-error listing each link's decline reason (flat —
     /// the audience is an LLM, so every reason is equally machine-readable
     /// text), so a valid goal on a thin theory yields an actionable fix.
+    /// `arithmetic ... fallback(<thm>)`: the certifier chain declined a valid
+    /// goal, so cite the named theorem as the certificate. Pure — no oracle,
+    /// no --fast — as long as <thm> is a proven theorem whose statement matches
+    /// the goal. The kernel re-checks the match (a theorem_ref must equal the
+    /// step claim); we also inherit <thm>'s own oracle taint, so a fallback onto
+    /// a tainted proof stays honestly tainted.
+    fn arithmeticFallback(self: *Elaborator, fb: lexer.Token, goal: TermId) ElabError!kernel.Justification {
+        const stmt_id = self.env.findStatementId(self.file, try self.internTok(fb)) orelse
+            return self.fail(fb.start, "fallback names unknown theorem '{s}'", .{self.text(fb)});
+        const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
+        switch (stmt) {
+            .theorem => |t| {
+                if (!t.proven) return self.fail(fb.start, "fallback theorem '{s}' is not proven", .{self.text(fb)});
+                if (!self.pool.alphaEq(t.formula, goal)) {
+                    return self.fail(fb.start, "fallback theorem '{s}' does not prove this goal", .{self.text(fb)});
+                }
+                try self.inheritOracles(t.oracles);
+                return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = fb.start } };
+            },
+            .axiom => return self.fail(fb.start, "fallback cites an axiom '{s}'; use a theorem", .{self.text(fb)}),
+            .schema => return self.fail(fb.start, "fallback cites a schema '{s}'; use a theorem", .{self.text(fb)}),
+        }
+    }
+
     fn arithmeticTerminal(self: *Elaborator, loc: u32, reasons: []const Reason) ElabError!kernel.Justification {
         const oracle_name = self.interner.intern("arithmetic") catch return error.OutOfMemory;
         if (!self.verify.certify_arithmetic) {
@@ -4632,8 +4656,10 @@ pub const Elaborator = struct {
                         .declined => |r| reasons[i] = r,
                     }
                 }
-                // every link declined: valid but not certifiable here. Hard
-                // error (default) listing the reasons, or oracle (--fast).
+                // every link declined: valid but not certifiable here. A
+                // `fallback(<thm>)` cites a manual proof (pure) instead; else
+                // hard error (default) listing the reasons, or oracle (--fast).
+                if (c.fallback) |fb| return self.arithmeticFallback(fb, goal);
                 return self.arithmeticTerminal(loc, &reasons);
             },
             .countermodel => |cm| {
