@@ -1920,3 +1920,250 @@ proof
     forall n: Int; add(neg(n), n) = ZERO
     [by forall_intro generalize-n]
 qed
+
+// mul(add(a, b), c) = add(mul(a, c), mul(b, c)) — right-distributivity of mul
+// over add, by bidirectional induction on c (with a and b fixed). Mirrors
+// mulAddDistribLeft, but the recursion peels on the left factor add(a, b): the
+// extra summand is add(a, b) on succ (neg(add(a, b)) on prev), which must be
+// reshuffled against the paired sums add(mul(a, c), mul(b, c)) using add-
+// associative and add-commutative (a four-term AC rearrangement done by hand).
+theorem mulAddDistribRight: forall a, b, c: Int; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @add-zero |
+            forall x: Int; add(x, ZERO) = x
+            [by axiom addZeroRight]
+          @mul-zero-right |
+            forall x: Int; mul(x, ZERO) = ZERO
+            [by axiom mulZeroRight]
+          @mul-succ-right |
+            forall x, y: Int; mul(x, succ(y)) = add(mul(x, y), x)
+            [by axiom mulSuccRight]
+          @mul-prev-right |
+            forall x, y: Int; mul(x, prev(y)) = add(mul(x, y), neg(x))
+            [by axiom mulPrevRight]
+          @add-associative |
+            forall x, y, z: Int; add(add(x, y), z) = add(x, add(y, z))
+            [by theorem addIsAssociative]
+          @add-commutative |
+            forall x, y: Int; add(x, y) = add(y, x)
+            [by theorem addIsCommutative]
+          @neg-add |
+            forall u, v: Int; neg(add(u, v)) = add(neg(u), neg(v))
+            [by theorem negAdd]
+          // base case: c = ZERO — both sides collapse to ZERO.
+          @lhs-mul-zero |
+            mul(add(a, b), ZERO) = ZERO
+            [by forall_elim(add(a, b)) mul-zero-right]
+          @mul-a-zero |
+            mul(a, ZERO) = ZERO
+            [by forall_elim(a) mul-zero-right]
+          @mul-b-zero |
+            mul(b, ZERO) = ZERO
+            [by forall_elim(b) mul-zero-right]
+          @rhs-zero-refl |
+            add(mul(a, ZERO), mul(b, ZERO)) = add(mul(a, ZERO), mul(b, ZERO))
+            [by reflexivity]
+          @rhs-with-a-zero |
+            add(mul(a, ZERO), mul(b, ZERO)) = add(ZERO, mul(b, ZERO))
+            [by rewrite mul-a-zero rhs-zero-refl]
+          @rhs-with-both-zero |
+            add(mul(a, ZERO), mul(b, ZERO)) = add(ZERO, ZERO)
+            [by rewrite mul-b-zero rhs-with-a-zero]
+          @collapse-zero-zero |
+            add(ZERO, ZERO) = ZERO
+            [by forall_elim(ZERO) add-zero]
+          @rhs-at-zero |
+            add(mul(a, ZERO), mul(b, ZERO)) = ZERO
+            [by rewrite collapse-zero-zero rhs-with-both-zero]
+          @rhs-at-zero-flipped |
+            ZERO = add(mul(a, ZERO), mul(b, ZERO))
+            [by symmetry rhs-at-zero]
+          @base-case |
+            mul(add(a, b), ZERO) = add(mul(a, ZERO), mul(b, ZERO))
+            [by rewrite rhs-at-zero-flipped lhs-mul-zero]
+          // inductive step (successor): extra summand add(a, b) reshuffles into
+          // add(mul(a, c), a) and add(mul(b, c), b) via an AC rearrangement.
+          @induction-step-succ-proof |
+            fix c: Int {
+              @given-inductive-hypothesis |
+                assume mul(add(a, b), c) = add(mul(a, c), mul(b, c)) {
+                  @inductive-hypothesis |
+                    mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+                    [by hypothesis given-inductive-hypothesis]
+                  @lhs-mul-unfold |
+                    mul(add(a, b), succ(c)) = add(mul(add(a, b), c), add(a, b))
+                    [by forall_elim(add(a, b), c) mul-succ-right]
+                  @lhs-with-ih |
+                    mul(add(a, b), succ(c)) = add(add(mul(a, c), mul(b, c)), add(a, b))
+                    [by rewrite inductive-hypothesis lhs-mul-unfold]
+                  // reshuffle add(add(P, Q), add(a, b)) -> add(add(P, a), add(Q, b))
+                  // with P = mul(a, c), Q = mul(b, c).
+                  @reshuffle-1 |
+                    add(add(mul(a, c), mul(b, c)), add(a, b)) = add(mul(a, c), add(mul(b, c), add(a, b)))
+                    [by forall_elim(mul(a, c), mul(b, c), add(a, b)) add-associative]
+                  @inner-assoc-back |
+                    add(add(mul(b, c), a), b) = add(mul(b, c), add(a, b))
+                    [by forall_elim(mul(b, c), a, b) add-associative]
+                  @inner-assoc-fwd |
+                    add(mul(b, c), add(a, b)) = add(add(mul(b, c), a), b)
+                    [by symmetry inner-assoc-back]
+                  @inner-comm |
+                    add(mul(b, c), a) = add(a, mul(b, c))
+                    [by forall_elim(mul(b, c), a) add-commutative]
+                  @inner-step1 |
+                    add(mul(b, c), add(a, b)) = add(add(a, mul(b, c)), b)
+                    [by rewrite inner-comm inner-assoc-fwd]
+                  @inner-reassoc |
+                    add(add(a, mul(b, c)), b) = add(a, add(mul(b, c), b))
+                    [by forall_elim(a, mul(b, c), b) add-associative]
+                  @inner-normal |
+                    add(mul(b, c), add(a, b)) = add(a, add(mul(b, c), b))
+                    [by rewrite inner-reassoc inner-step1]
+                  @reshuffle-2 |
+                    add(add(mul(a, c), mul(b, c)), add(a, b)) = add(mul(a, c), add(a, add(mul(b, c), b)))
+                    [by rewrite inner-normal reshuffle-1]
+                  @outer-reassoc |
+                    add(add(mul(a, c), a), add(mul(b, c), b)) = add(mul(a, c), add(a, add(mul(b, c), b)))
+                    [by forall_elim(mul(a, c), a, add(mul(b, c), b)) add-associative]
+                  @outer-reassoc-flipped |
+                    add(mul(a, c), add(a, add(mul(b, c), b))) = add(add(mul(a, c), a), add(mul(b, c), b))
+                    [by symmetry outer-reassoc]
+                  @reshuffle-done |
+                    add(add(mul(a, c), mul(b, c)), add(a, b)) = add(add(mul(a, c), a), add(mul(b, c), b))
+                    [by rewrite outer-reassoc-flipped reshuffle-2]
+                  @lhs-normal |
+                    mul(add(a, b), succ(c)) = add(add(mul(a, c), a), add(mul(b, c), b))
+                    [by rewrite reshuffle-done lhs-with-ih]
+                  @mul-a-succ |
+                    mul(a, succ(c)) = add(mul(a, c), a)
+                    [by forall_elim(a, c) mul-succ-right]
+                  @mul-b-succ |
+                    mul(b, succ(c)) = add(mul(b, c), b)
+                    [by forall_elim(b, c) mul-succ-right]
+                  @rhs-refl |
+                    add(mul(a, succ(c)), mul(b, succ(c))) = add(mul(a, succ(c)), mul(b, succ(c)))
+                    [by reflexivity]
+                  @rhs-with-a |
+                    add(mul(a, succ(c)), mul(b, succ(c))) = add(add(mul(a, c), a), mul(b, succ(c)))
+                    [by rewrite mul-a-succ rhs-refl]
+                  @rhs-normal |
+                    add(mul(a, succ(c)), mul(b, succ(c))) = add(add(mul(a, c), a), add(mul(b, c), b))
+                    [by rewrite mul-b-succ rhs-with-a]
+                  @rhs-normal-flipped |
+                    add(add(mul(a, c), a), add(mul(b, c), b)) = add(mul(a, succ(c)), mul(b, succ(c)))
+                    [by symmetry rhs-normal]
+                  @succ-case |
+                    mul(add(a, b), succ(c)) = add(mul(a, succ(c)), mul(b, succ(c)))
+                    [by rewrite rhs-normal-flipped lhs-normal]
+                }
+              @induction-step-at-k |
+                mul(add(a, b), c) = add(mul(a, c), mul(b, c)) -> mul(add(a, b), succ(c)) = add(mul(a, succ(c)), mul(b, succ(c)))
+                [by implies_intro given-inductive-hypothesis]
+            }
+          @induction-step-succ |
+            forall c: Int; mul(add(a, b), c) = add(mul(a, c), mul(b, c)) -> mul(add(a, b), succ(c)) = add(mul(a, succ(c)), mul(b, succ(c)))
+            [by forall_intro induction-step-succ-proof]
+          // inductive step (predecessor): extra summand neg(add(a, b)) distributes
+          // via neg-add into neg(a) and neg(b), then reshuffles as in the succ case.
+          @induction-step-prev-proof |
+            fix c: Int {
+              @given-inductive-hypothesis |
+                assume mul(add(a, b), c) = add(mul(a, c), mul(b, c)) {
+                  @inductive-hypothesis |
+                    mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+                    [by hypothesis given-inductive-hypothesis]
+                  @lhs-mul-unfold |
+                    mul(add(a, b), prev(c)) = add(mul(add(a, b), c), neg(add(a, b)))
+                    [by forall_elim(add(a, b), c) mul-prev-right]
+                  @lhs-with-ih |
+                    mul(add(a, b), prev(c)) = add(add(mul(a, c), mul(b, c)), neg(add(a, b)))
+                    [by rewrite inductive-hypothesis lhs-mul-unfold]
+                  @neg-add-ab |
+                    neg(add(a, b)) = add(neg(a), neg(b))
+                    [by forall_elim(a, b) neg-add]
+                  @lhs-neg-distributed |
+                    mul(add(a, b), prev(c)) = add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b)))
+                    [by rewrite neg-add-ab lhs-with-ih]
+                  // reshuffle add(add(P, Q), add(neg(a), neg(b))) ->
+                  // add(add(P, neg(a)), add(Q, neg(b))) with P = mul(a, c), Q = mul(b, c).
+                  @reshuffle-1 |
+                    add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b))) = add(mul(a, c), add(mul(b, c), add(neg(a), neg(b))))
+                    [by forall_elim(mul(a, c), mul(b, c), add(neg(a), neg(b))) add-associative]
+                  @inner-assoc-back |
+                    add(add(mul(b, c), neg(a)), neg(b)) = add(mul(b, c), add(neg(a), neg(b)))
+                    [by forall_elim(mul(b, c), neg(a), neg(b)) add-associative]
+                  @inner-assoc-fwd |
+                    add(mul(b, c), add(neg(a), neg(b))) = add(add(mul(b, c), neg(a)), neg(b))
+                    [by symmetry inner-assoc-back]
+                  @inner-comm |
+                    add(mul(b, c), neg(a)) = add(neg(a), mul(b, c))
+                    [by forall_elim(mul(b, c), neg(a)) add-commutative]
+                  @inner-step1 |
+                    add(mul(b, c), add(neg(a), neg(b))) = add(add(neg(a), mul(b, c)), neg(b))
+                    [by rewrite inner-comm inner-assoc-fwd]
+                  @inner-reassoc |
+                    add(add(neg(a), mul(b, c)), neg(b)) = add(neg(a), add(mul(b, c), neg(b)))
+                    [by forall_elim(neg(a), mul(b, c), neg(b)) add-associative]
+                  @inner-normal |
+                    add(mul(b, c), add(neg(a), neg(b))) = add(neg(a), add(mul(b, c), neg(b)))
+                    [by rewrite inner-reassoc inner-step1]
+                  @reshuffle-2 |
+                    add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b))) = add(mul(a, c), add(neg(a), add(mul(b, c), neg(b))))
+                    [by rewrite inner-normal reshuffle-1]
+                  @outer-reassoc |
+                    add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b))) = add(mul(a, c), add(neg(a), add(mul(b, c), neg(b))))
+                    [by forall_elim(mul(a, c), neg(a), add(mul(b, c), neg(b))) add-associative]
+                  @outer-reassoc-flipped |
+                    add(mul(a, c), add(neg(a), add(mul(b, c), neg(b)))) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
+                    [by symmetry outer-reassoc]
+                  @reshuffle-done |
+                    add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b))) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
+                    [by rewrite outer-reassoc-flipped reshuffle-2]
+                  @lhs-normal |
+                    mul(add(a, b), prev(c)) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
+                    [by rewrite reshuffle-done lhs-neg-distributed]
+                  @mul-a-prev |
+                    mul(a, prev(c)) = add(mul(a, c), neg(a))
+                    [by forall_elim(a, c) mul-prev-right]
+                  @mul-b-prev |
+                    mul(b, prev(c)) = add(mul(b, c), neg(b))
+                    [by forall_elim(b, c) mul-prev-right]
+                  @rhs-refl |
+                    add(mul(a, prev(c)), mul(b, prev(c))) = add(mul(a, prev(c)), mul(b, prev(c)))
+                    [by reflexivity]
+                  @rhs-with-a |
+                    add(mul(a, prev(c)), mul(b, prev(c))) = add(add(mul(a, c), neg(a)), mul(b, prev(c)))
+                    [by rewrite mul-a-prev rhs-refl]
+                  @rhs-normal |
+                    add(mul(a, prev(c)), mul(b, prev(c))) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
+                    [by rewrite mul-b-prev rhs-with-a]
+                  @rhs-normal-flipped |
+                    add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b))) = add(mul(a, prev(c)), mul(b, prev(c)))
+                    [by symmetry rhs-normal]
+                  @prev-case |
+                    mul(add(a, b), prev(c)) = add(mul(a, prev(c)), mul(b, prev(c)))
+                    [by rewrite rhs-normal-flipped lhs-normal]
+                }
+              @induction-step-at-k |
+                mul(add(a, b), c) = add(mul(a, c), mul(b, c)) -> mul(add(a, b), prev(c)) = add(mul(a, prev(c)), mul(b, prev(c)))
+                [by implies_intro given-inductive-hypothesis]
+            }
+          @induction-step-prev |
+            forall c: Int; mul(add(a, b), c) = add(mul(a, c), mul(b, c)) -> mul(add(a, b), prev(c)) = add(mul(a, prev(c)), mul(b, prev(c)))
+            [by forall_intro induction-step-prev-proof]
+          @conclusion-for-b |
+            forall c: Int; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+            [by instantiate induction((fun m: Int => mul(add(a, b), m) = add(mul(a, m), mul(b, m)))) base-case induction-step-succ induction-step-prev]
+        }
+      @conclusion-for-a |
+        forall b, c: Int; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, c: Int; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+    [by forall_intro generalize-a]
+qed

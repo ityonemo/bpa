@@ -3337,6 +3337,11 @@ pub const Elaborator = struct {
         mat_fact.proven = true;
         mat_fact.accelerated = fact.accelerated;
         mat_fact.holes = fact.holes;
+        // RETAIN the materialized lowered proof, so an OUTER model can re-materialize
+        // through this synthetic theorem — the multi-level model chain
+        // (e.g. ℤ models ring models group). Without this, `proof` is null and a
+        // second-level transfer fails "proof not retained".
+        mat_fact.proof = .{ .steps = new_steps, .blocks = new_blocks };
         return mat_id;
     }
 

@@ -54,7 +54,7 @@ pub fn addTests(
     // proven; the full ∀n≥0 3|(4ⁿ−1) is a `hole` (inductive step in progress),
     // so the file needs --draft.
     ctx.ok(&.{ "check", "--draft", "aata/2-integers.md" },
-        \\OK: 170 declarations, 24 theorems proven
+        \\OK: 171 declarations, 25 theorems proven
         \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): fourthPowerMinusOne; re-run `bpa check` (no --draft) once filled.
         \\
     );

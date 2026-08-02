@@ -1,0 +1,118 @@
+// std/integer-ring-model.bpa — ℤ as a thin model of the abstract ring theory.
+//
+// The integers are a ring: `model IntegerRing = Int` discharges std/ring.bpa's
+// nine axioms from ℤ's own facts, and the ring corpus (the negation results of
+// Judson's first proposition) TRANSFERS to ℤ instead of being re-derived. This
+// exercises the THREE-LEVEL model chain ℤ → ring → group: ring's proofs
+// themselves transfer group theorems (invInvolution, inverseUnique) through ring's
+// AdditiveGroup model, and those materialize again into ℤ here.
+
+import integer <<< "std/integer.bpa"
+import ring_algebra <<< "std/integer-ring.bpa"
+import ring <<< "std/ring.bpa"
+
+sort Int = integer.Int
+const ZERO = integer.ZERO
+const ONE = integer.ONE
+func add = integer.add
+func mul = integer.mul
+func neg = integer.neg
+
+// the discharge facts (ℤ's own axioms + integer-ring theorems).
+axiom addZeroRight = integer.addZeroRight
+theorem addZeroLeft = ring_algebra.addZeroLeft
+theorem addIsAssociative = ring_algebra.addIsAssociative
+theorem addIsCommutative = ring_algebra.addIsCommutative
+theorem addNegRight = ring_algebra.addNegRight
+theorem addNegLeft = ring_algebra.addNegLeft
+theorem mulIsAssociative = ring_algebra.mulIsAssociative
+theorem mulAddDistribLeft = ring_algebra.mulAddDistribLeft
+theorem mulAddDistribRight = ring_algebra.mulAddDistribRight
+
+// ring's associativity axioms bind `forall c, b, a` (inherited from group's
+// opAssoc), but ℤ's associativity theorems bind `forall a, b, c` — and α-matching
+// is binder-order-sensitive, so a discharge fact must match ring's order exactly.
+// These thin adapters restate ℤ's associativity in ring's binder order.
+theorem addAssocForRing: forall c, b, a: Int; add(add(a, b), c) = add(a, add(b, c))
+proof
+  @fix-c |
+    fix c: Int {
+      @fix-b |
+        fix b: Int {
+          @fix-a |
+            fix a: Int {
+              @assoc |
+                forall x, y, z: Int; add(add(x, y), z) = add(x, add(y, z))
+                [by theorem addIsAssociative]
+              @at-abc |
+                add(add(a, b), c) = add(a, add(b, c))
+                [by forall_elim(a, b, c) assoc]
+            }
+          @discharge-a |
+            forall a: Int; add(add(a, b), c) = add(a, add(b, c))
+            [by forall_intro fix-a]
+        }
+      @discharge-b |
+        forall b, a: Int; add(add(a, b), c) = add(a, add(b, c))
+        [by forall_intro fix-b]
+    }
+  @conclusion |
+    forall c, b, a: Int; add(add(a, b), c) = add(a, add(b, c))
+    [by forall_intro fix-c]
+qed
+
+theorem mulAssocForRing: forall c, b, a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
+proof
+  @fix-c |
+    fix c: Int {
+      @fix-b |
+        fix b: Int {
+          @fix-a |
+            fix a: Int {
+              @assoc |
+                forall x, y, z: Int; mul(mul(x, y), z) = mul(x, mul(y, z))
+                [by theorem mulIsAssociative]
+              @at-abc |
+                mul(mul(a, b), c) = mul(a, mul(b, c))
+                [by forall_elim(a, b, c) assoc]
+            }
+          @discharge-a |
+            forall a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
+            [by forall_intro fix-a]
+        }
+      @discharge-b |
+        forall b, a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
+        [by forall_intro fix-b]
+    }
+  @conclusion |
+    forall c, b, a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
+    [by forall_intro fix-c]
+qed
+
+// ℤ is a ring: discharge ring's nine axioms.
+model IntegerRing = Int {
+  ring.Ring: Int
+  ring.ZERO: ZERO
+  ring.ONE: ONE
+  ring.add: add
+  ring.mul: mul
+  ring.neg: neg
+  ring.addAssoc: addAssocForRing
+  ring.addZeroLeft: addZeroLeft
+  ring.addZeroRight: addZeroRight
+  ring.addNegLeft: addNegLeft
+  ring.addNegRight: addNegRight
+  ring.addCommutative: addIsCommutative
+  ring.mulAssoc: mulAssocForRing
+  ring.mulDistributesLeftOverAdd: mulAddDistribLeft
+  ring.mulDistributesRightOverAdd: mulAddDistribRight
+  }
+
+// transferred: (-a)·(-b) = a·b for integers — new to ℤ, and the deepest transfer
+// (its ring proof transitively uses the additive-group invInvolution).
+theorem negMulNeg: forall a, b: Int; mul(neg(a), neg(b)) = mul(a, b)
+proof
+  @conclusion |
+    forall a, b: Int; mul(neg(a), neg(b)) = mul(a, b)
+    [by model(IntegerRing) ring.negMulNeg]
+qed

@@ -41,12 +41,12 @@ pub fn addTests(
     // the integers ℤ ring algebra (std/integer-ring.bpa): left/right recursion,
     // commutativity, associativity, the additive-inverse law n+(-n)=0, and the
     // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
-    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 58 declarations, 15 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 59 declarations, 16 theorems proven\n");
 
     // ℤ subtraction (total: a-b = a+(-b)) + the strict order, over the ring
     // algebra: subSelf (a-a=0) and subAddCancel ((a-b)+b=a), proven with no
     // induction from the inverse law; order via less_than intro/elim.
-    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 82 declarations, 17 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 83 declarations, 18 theorems proven\n");
 
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
     // and the divides predicate; dividesRefl/dividesMul/dividesAdd proved once,
@@ -56,7 +56,7 @@ pub fn addTests(
     // ℤ divisibility + powers (std/integer-divides.bpa): `divides` intro/elim +
     // pow recursion; the three basic facts (refl/mul/add) TRANSFER from the
     // abstract divisibility theory via `model IntegerDivisibility`.
-    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 102 declarations, 21 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 103 declarations, 22 theorems proven\n");
 
     // the group theory (std/group.bpa): the 5 group axioms + an opt-in
     // `opCommutative`, and the 10 basic-property theorems (identityUnique,
@@ -74,6 +74,14 @@ pub fn addTests(
     // imported group corpus (10) + ring's 5 elementary theorems; the synthetic
     // materialized theorems are suppressed.)
     ctx.ok(&.{ "check", "std/ring.bpa" }, "OK: 42 declarations, 15 theorems proven\n");
+
+    // ℤ as a thin model of the ring theory (std/integer-ring-model.bpa): the
+    // THREE-LEVEL chain ℤ → ring → group. `model IntegerRing = Int` discharges
+    // ring's 9 axioms from ℤ's facts (with binder-order adapters for the c,b,a
+    // associativity axioms), and negMulNeg ((-a)(-b)=ab, new to ℤ) transfers —
+    // its ring proof having itself transferred group.invInvolution through ring's
+    // AdditiveGroup model, re-materialized here.
+    ctx.ok(&.{ "check", "std/integer-ring-model.bpa" }, "OK: 123 declarations, 34 theorems proven\n");
 
     // the set theory (std/set.bpa): the membership axioms + extensionality, and
     // the 19 set-algebra identities (idempotence, identity, associativity,
