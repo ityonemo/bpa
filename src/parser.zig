@@ -28,7 +28,9 @@ const ParseError = error{ Recover, OutOfMemory };
 fn isTheoryRule(name: []const u8) bool {
     return std.mem.eql(u8, name, "arithmetic") or
         std.mem.eql(u8, name, "polynomial") or
-        std.mem.eql(u8, name, "polynomial_quantified");
+        std.mem.eql(u8, name, "polynomial_quantified") or
+        std.mem.eql(u8, name, "ext") or
+        std.mem.eql(u8, name, "ext_quantified");
 }
 
 pub const Parser = struct {

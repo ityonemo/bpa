@@ -45,6 +45,17 @@ pub fn addTests(
     // sides with different expansions → located error, exit 1 (not accelerated)
     ctx.fail(&.{ "check", "tests/cases/polynomial_bad.bpa" }, "tests/cases/polynomial_bad.bpa:18:9: error: polynomial: sides expand differently: 'add(mul(poly, poly), add(mul(poly, poly), add(mul(poly, poly), mul(poly, poly))))' vs 'add(mul(poly, poly), mul(poly, poly))'\n");
 
+    // `ext(theory)`: the extensionality tactic, one tactic over two models —
+    // reduce an equation to its pointwise obligation via the theory's
+    // extensionality lemma, unfold the operators, close the residue. SET model
+    // (propositional residue → tautology); emits kernel steps.
+    ctx.ok(&.{ "check", "tests/cases/ext_set.bpa" }, "OK: 26 declarations, 2 theorems proven\n");
+    // FUNCTION model (equational residue → rewrite join) — same `ext` tactic.
+    ctx.ok(&.{ "check", "tests/cases/ext_function.bpa" }, "OK: 23 declarations, 1 theorems proven\n");
+    // a FALSE set identity: the pointwise residue has a countermodel, so ext
+    // declines with a located error (exit 1) — never accepts a false equation.
+    ctx.fail(&.{ "check", "tests/cases/ext_bad.bpa" }, "tests/cases/ext_bad.bpa:18:9: error: ext: could not close the pointwise obligation propositionally (is the identity true?)\n");
+
     // the polynomial ACCELERATED TACTIC: a thin theory (no ring lemmas) DECLINES under
     // the default (needs a lemma), but --fast decides it structurally and
     // is accelerated (accelerated: polynomial).

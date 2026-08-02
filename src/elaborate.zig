@@ -844,6 +844,8 @@ pub const Elaborator = struct {
         polynomial_quantified,
         tautology,
         arithmetic,
+        ext,
+        ext_quantified,
     };
 
     const rule_names = std.StaticStringMap(RuleKind).initComptime(.{
@@ -879,6 +881,8 @@ pub const Elaborator = struct {
         .{ "polynomial_quantified", .polynomial_quantified },
         .{ "tautology", .tautology },
         .{ "arithmetic", .arithmetic },
+        .{ "ext", .ext },
+        .{ "ext_quantified", .ext_quantified },
     });
 
     fn lowerJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
@@ -1073,6 +1077,12 @@ pub const Elaborator = struct {
             },
             .arithmetic => {
                 return self.arithmeticJustification(low, block_id, goal, c);
+            },
+            .ext => {
+                return self.extJustification(low, block_id, goal, c, false);
+            },
+            .ext_quantified => {
+                return self.extJustification(low, block_id, goal, c, true);
             },
             .instantiate => {
                 const name_tok = c.schema.?; // parser guarantees presence
@@ -3146,6 +3156,284 @@ pub const Elaborator = struct {
         return premises;
     }
 
+    // --- `ext` — the extensionality accelerated tactic ----------------------
+    // Proves an equation LHS = RHS between extensional objects by reducing it,
+    // through the theory's extensionality lemma, to a pointwise obligation, then
+    // discharging that obligation by unfolding the operators (the theory's
+    // characterization lemmas) and closing the residue (propositional →
+    // `tautology`; equational → the equation certifier). A structure tactic,
+    // model-parameterized: `ext(set)` / `ext(function)`. See EXT-PLAN.md.
+
+    /// A resolved extensionality model: the element sort, the extensionality
+    /// lemma, and — read off the lemma's obligation — the characterization
+    /// symbol (a `member`-style predicate, or an `apply`-style function).
+    const ExtModel = struct {
+        universe: term.SortId,
+        lemma: TermId,
+        lemma_source: simplify_mod.Source,
+        /// each obligation is `forall x: Universe; <body>`; count = 1 (function)
+        /// or 2 (set, the two inclusions). Read from the lemma.
+        obligation_count: usize,
+    };
+
+    fn extJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim, quantified: bool) ElabError!kernel.Justification {
+        const loc = c.rule.start;
+        const saved_theory = self.theory_file;
+        defer self.theory_file = saved_theory;
+        try self.enterTheory(c);
+
+        // peel a forall prefix for the _quantified form.
+        if (quantified) {
+            const gn = self.pool.get(goal);
+            if (gn != .quant or gn.quant.q != .forall) {
+                return self.fail(loc, "ext_quantified expects a 'forall …; s = t' goal, got '{s}'", .{try self.renderTerm(goal)});
+            }
+            const u = try self.peelUniversal(goal, "ext");
+            var blocks: std.ArrayList(kernel.BlockId) = .empty;
+            var parent = block_id;
+            for (u.fix_vars) |fv| {
+                const b = try self.newBlock(low, try self.freshNamed("ext"), parent, .{ .fix = fv });
+                try blocks.append(self.arena, b);
+                parent = b;
+            }
+            const carry = try self.extEquation(low, parent, u.body, loc);
+            if (blocks.items.len == 0) return carry;
+            _ = try self.emitStep(low, blocks.items[blocks.items.len - 1], loc, u.body, carry);
+            var i = blocks.items.len;
+            while (i > 1) {
+                i -= 1;
+                self.closeBlock(low, blocks.items[i]);
+                _ = try self.emitStep(low, blocks.items[i - 1], loc, u.opened[i], .{ .forall_intro = .{ .id = blocks.items[i], .loc = loc } });
+            }
+            self.closeBlock(low, blocks.items[0]);
+            return .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } };
+        }
+
+        if (self.pool.get(goal) != .eq) {
+            return self.fail(loc, "ext proves equations; the goal is '{s}'", .{try self.renderTerm(goal)});
+        }
+        return self.extEquation(low, block_id, goal, loc);
+    }
+
+    /// Prove a bare `LHS = RHS` by extensionality. Instantiate the ext lemma at
+    /// (LHS, RHS), prove each pointwise obligation (fix x → unfold operators →
+    /// close residue → forall_intro), then modus_ponens the chain to the
+    /// equation. On any resolution failure, falls back to a located error.
+    fn extEquation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, loc: u32) ElabError!kernel.Justification {
+        const eq = self.pool.get(goal).eq;
+        const model = (try self.extModel(loc)) orelse
+            return self.fail(loc, "ext: no extensionality lemma (or Universe sort) in scope", .{});
+
+        // instantiate the ext lemma at (lhs, rhs): forall A, B; … peel two
+        // binders with the goal's sides.
+        var chain_ref = try self.emitStep(low, block_id, loc, model.lemma, sourceJust(model.lemma_source, loc));
+        var chain_formula = model.lemma;
+        for ([_]TermId{ eq.lhs, eq.rhs }) |arg| {
+            const q = self.pool.get(chain_formula).quant;
+            chain_formula = try self.pool.open(q.body, arg);
+            chain_ref = try self.emitStep(low, block_id, loc, chain_formula, .{ .forall_elim = .{ .step = chain_ref, .with = arg, .with_loc = loc } });
+        }
+        // chain_formula is now `Ob1 -> (Ob2 ->) lhs = rhs`. Prove each Obi and
+        // modus_ponens; the LAST modus_ponens (proving `lhs = rhs` = the goal)
+        // is this tactic's returned justification, not an emitted step.
+        for (0..model.obligation_count) |i| {
+            const imp = self.pool.get(chain_formula).bin;
+            const ob = imp.lhs; // forall x: Universe; body
+            const ob_ref = try self.extObligation(low, block_id, ob, model, loc);
+            const mp: kernel.Justification = .{ .modus_ponens = .{ .implication = chain_ref, .antecedent = ob_ref } };
+            chain_formula = imp.rhs;
+            if (i + 1 == model.obligation_count) return mp; // proves the goal
+            chain_ref = try self.emitStep(low, block_id, loc, chain_formula, mp);
+        }
+        // obligation_count == 0: the lemma had no premises (degenerate) — the
+        // instantiated chain IS the equation; re-cite it. Unreachable for the
+        // set/function models, but keep it total.
+        return .{ .forall_elim = .{ .step = chain_ref, .with = eq.rhs, .with_loc = loc } };
+    }
+
+    /// Build the axiom/theorem citation justification for a lemma `Source`
+    /// resolved via wellKnownFact (which only yields axiom/theorem sources).
+    fn sourceJust(source: simplify_mod.Source, loc: u32) kernel.Justification {
+        return switch (source) {
+            .axiom => |a| .{ .axiom_ref = .{ .stmt = a.id, .loc = loc } },
+            .theorem => |t| .{ .theorem_ref = .{ .stmt = t.id, .loc = loc } },
+            .step => unreachable, // wellKnownFact never returns a step source
+        };
+    }
+
+    /// Prove one obligation `forall x: Universe; body`. `fix x`, unfold every
+    /// operator characterization lemma relevant to `body`, close the residue,
+    /// forall_intro. Returns the step proving the obligation.
+    fn extObligation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, ob: TermId, model: ExtModel, loc: u32) ElabError!kernel.SRef {
+        const q = self.pool.get(ob).quant; // forall x: Universe; body
+        const x: term.Node.Fvar = .{ .name = try self.freshNamed("x"), .sort = model.universe };
+        const x_id = try self.pool.add(.{ .fvar = x });
+        const body = try self.pool.open(q.body, x_id);
+        const fix_b = try self.newBlock(low, try self.freshNamed("ext-element"), block_id, .{ .fix = x });
+
+        // close the residue, dispatching on its shape:
+        //   equation  `apply(f,x) = apply(g,x)`  — FUNCTION model: rewrite by the
+        //     operator `<op>Apply` lemmas and join (the equation certifier).
+        //   otherwise `member(x,·) -> member(x,·)` — SET model: unfold membership
+        //     via `<op>Member` lemmas and close propositionally with tautology.
+        const residue = if (self.pool.get(body) == .eq)
+            try self.extFunctionResidue(low, fix_b, body, loc)
+        else blk: {
+            var premises: std.ArrayList(TautCert.Premise) = .empty;
+            try self.extUnfold(low, fix_b, body, x_id, &premises, loc);
+            const steps_mark = low.steps.items.len;
+            const blocks_mark = low.blocks.items.len;
+            break :blk (try self.emitTautologyFrom(low, fix_b, body, premises.items, loc, steps_mark, blocks_mark)) orelse
+                return self.fail(loc, "ext: could not close the pointwise obligation propositionally (is the identity true?)", .{});
+        };
+        _ = try self.emitStep(low, fix_b, loc, body, residue);
+        self.closeBlock(low, fix_b);
+        return try self.emitStep(low, block_id, loc, ob, .{ .forall_intro = .{ .id = fix_b, .loc = loc } });
+    }
+
+    /// Close a function-model pointwise obligation `apply(f,x) = apply(g,x)`:
+    /// gather the operator `<op>Apply` rewrite lemmas for every `apply(op(...),x)`
+    /// on either side, normalize both sides, and emit the rewrite join.
+    fn extFunctionResidue(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, eq_goal: TermId, loc: u32) ElabError!kernel.Justification {
+        const eq = self.pool.get(eq_goal).eq;
+        if (self.pool.alphaEq(eq.lhs, eq.rhs)) return .reflexivity;
+        // collect the distinct <op>Apply rules for operators appearing under an
+        // `apply(op(...), _)` on either side.
+        var rules: std.ArrayList(simplify_mod.Rule) = .empty;
+        var seen: std.ArrayList([]const u8) = .empty;
+        try self.extApplyRules(eq.lhs, &rules, &seen, loc);
+        try self.extApplyRules(eq.rhs, &rules, &seen, loc);
+        if (rules.items.len == 0) {
+            return self.fail(loc, "ext: no apply lemmas in scope to unfold '{s}'", .{try self.renderTerm(eq_goal)});
+        }
+        const rs = simplify_mod.normalize(self.arena, self.pool, self.env, rules.items, eq.lhs, 1000) catch |e| switch (e) {
+            error.Limit => return self.fail(loc, "ext: rewrite limit reached", .{}),
+            error.OutOfMemory => return error.OutOfMemory,
+        };
+        const rt = simplify_mod.normalize(self.arena, self.pool, self.env, rules.items, eq.rhs, 1000) catch |e| switch (e) {
+            error.Limit => return self.fail(loc, "ext: rewrite limit reached", .{}),
+            error.OutOfMemory => return error.OutOfMemory,
+        };
+        if (!self.pool.alphaEq(rs.nf, rt.nf)) {
+            return self.fail(loc, "ext: pointwise values differ: '{s}' vs '{s}' (is the identity true?)", .{
+                try self.renderTerm(rs.nf), try self.renderTerm(rt.nf),
+            });
+        }
+        return self.emitJoin(low, block_id, loc, rules.items, eq.lhs, eq.rhs, rs, rt);
+    }
+
+    /// Collect the `<op>Apply` rewrite rule for every operator under an
+    /// `apply(op(...), _)` subterm of `t`, dedup by lemma name.
+    fn extApplyRules(self: *Elaborator, t: TermId, rules: *std.ArrayList(simplify_mod.Rule), seen: *std.ArrayList([]const u8), loc: u32) ElabError!void {
+        const node = self.pool.get(t);
+        if (node != .app) return;
+        // COPY child ids first: pool.args aliases pool.extra, which wellKnownRule
+        // may grow (it interns/adds terms) — the slice would dangle.
+        const children = try self.arena.dupe(TermId, self.pool.args(node.app));
+        const apply_sym = try self.wellKnownSym("apply");
+        if (apply_sym != null and node.app.sym == apply_sym.? and children.len == 2) {
+            const head = self.pool.get(children[0]);
+            if (head == .app) {
+                const op_name = self.env.sym(head.app.sym).name;
+                const lemma_name = try std.fmt.allocPrint(self.arena, "{s}Apply", .{self.interner.str(op_name)});
+                var already = false;
+                for (seen.items) |s| {
+                    if (std.mem.eql(u8, s, lemma_name)) already = true;
+                }
+                if (!already) {
+                    if (try self.wellKnownRule(lemma_name, loc)) |r| {
+                        try rules.append(self.arena, r);
+                        try seen.append(self.arena, lemma_name);
+                    }
+                }
+            }
+        }
+        for (children) |a| try self.extApplyRules(a, rules, seen, loc);
+    }
+
+    /// For each `member(x, op(a,b,…))` subterm in `formula`, instantiate the
+    /// operator's characterization lemma `<op>Member` at (a, b, …, x) and emit
+    /// it as a premise. Recurses structurally.
+    fn extUnfold(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, formula: TermId, x_id: TermId, out: *std.ArrayList(TautCert.Premise), loc: u32) ElabError!void {
+        const node = self.pool.get(formula);
+        switch (node) {
+            .pred => |p| {
+                // member(x, s): if s = op(args…), unfold via <op>Member.
+                const args = self.pool.args(p);
+                if (args.len == 2) {
+                    const s = args[1];
+                    const sn = self.pool.get(s);
+                    if (sn == .app) {
+                        try self.extUnfoldOp(low, block_id, sn.app, x_id, out, loc);
+                    }
+                }
+            },
+            .bin => |b| {
+                try self.extUnfold(low, block_id, b.lhs, x_id, out, loc);
+                try self.extUnfold(low, block_id, b.rhs, x_id, out, loc);
+            },
+            .not => |inner| try self.extUnfold(low, block_id, inner, x_id, out, loc),
+            else => {},
+        }
+    }
+
+    /// Unfold one operator application `op(a, b, …)` appearing as a set: emit
+    /// `<op>Member` instantiated at (a, b, …, x). Dedups by formula.
+    fn extUnfoldOp(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, app: term.Node.App, x_id: TermId, out: *std.ArrayList(TautCert.Premise), loc: u32) ElabError!void {
+        const op_name = self.env.sym(app.sym).name;
+        const lemma_name = try std.fmt.allocPrint(self.arena, "{s}Member", .{self.interner.str(op_name)});
+        const fact = (try self.wellKnownFact(lemma_name, loc)) orelse return; // no lemma: leave atom opaque
+        // instantiate: the lemma is `forall <setargs>; forall x; <iff>`.
+        // bind the operator's args, then x.
+        var ref = try self.emitStep(low, block_id, loc, fact.formula, sourceJust(fact.source, loc));
+        var cur = fact.formula;
+        // COPY the arg ids: pool.args aliases pool.extra, which the emitStep/
+        // pool.open calls below grow — the slice would dangle (0xAAAAAAAA).
+        const op_args = try self.arena.dupe(TermId, self.pool.args(app));
+        for (op_args) |a| {
+            const qn = self.pool.get(cur);
+            if (qn != .quant) return;
+            cur = try self.pool.open(qn.quant.body, a);
+            ref = try self.emitStep(low, block_id, loc, cur, .{ .forall_elim = .{ .step = ref, .with = a, .with_loc = loc } });
+        }
+        // now bind x
+        const qn = self.pool.get(cur);
+        if (qn != .quant) return;
+        cur = try self.pool.open(qn.quant.body, x_id);
+        ref = try self.emitStep(low, block_id, loc, cur, .{ .forall_elim = .{ .step = ref, .with = x_id, .with_loc = loc } });
+        // dedup
+        for (out.items) |p| if (self.pool.alphaEq(p.formula, cur)) return;
+        try out.append(self.arena, .{ .formula = cur, .ref = ref });
+        // recurse into the operator's set arguments (nested operators unfold too)
+        for (op_args) |a| {
+            const an = self.pool.get(a);
+            if (an == .app) try self.extUnfoldOp(low, block_id, an.app, x_id, out, loc);
+        }
+    }
+
+    /// Resolve the extensionality model in the current theory scope. Tries
+    /// `extensionality` then `funcExtensionality`; reads Universe + obligation
+    /// count from the lemma's shape.
+    fn extModel(self: *Elaborator, loc: u32) ElabError!?ExtModel {
+        const universe_name = self.interner.intern("Universe") catch return error.OutOfMemory;
+        const universe = self.env.findSort(self.theoryScope(), universe_name) orelse return null;
+        const fact = (try self.wellKnownFact("extensionality", loc)) orelse
+            (try self.wellKnownFact("funcExtensionality", loc)) orelse return null;
+        // count the leading obligations: peel `forall A, B;` then count the
+        // `(forall x; …) ->` premises before the `A = B` conclusion.
+        var body = fact.formula;
+        var peeled: usize = 0;
+        while (self.pool.get(body) == .quant and self.pool.get(body).quant.q == .forall and peeled < 2) : (peeled += 1) {
+            const fv = try self.pool.add(.{ .fvar = .{ .name = try self.freshNamed("s"), .sort = self.pool.get(body).quant.sort } });
+            body = try self.pool.open(self.pool.get(body).quant.body, fv);
+        }
+        var obligations: usize = 0;
+        while (self.pool.get(body) == .bin and self.pool.get(body).bin.op == .implies) : (obligations += 1) {
+            body = self.pool.get(body).bin.rhs;
+        }
+        return .{ .universe = universe, .lemma = fact.formula, .lemma_source = fact.source, .obligation_count = obligations };
+    }
+
     fn tautologyJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
         const loc = c.rule.start;
         const premises = try self.resolvePremises(low, block_id, c, "tautology");
@@ -3226,6 +3514,15 @@ pub const Elaborator = struct {
             }
         }
 
+        return self.emitTautologyFrom(low, block_id, goal, premise_steps, loc, steps_mark, blocks_mark);
+    }
+
+    /// Prove `goal` propositionally from already-emitted premise steps (each a
+    /// `{formula, ref}`), replaying the truth search as kernel steps. Returns
+    /// null (rolling back to the marks) when the step budget runs out. Shared by
+    /// the surface `tautology` cert and any tactic that synthesizes premises
+    /// then wants a propositional close (e.g. `ext`'s set residue).
+    fn emitTautologyFrom(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, premise_steps: []const TautCert.Premise, loc: u32, steps_mark: usize, blocks_mark: usize) ElabError!?kernel.Justification {
         var atoms: std.ArrayList(TermId) = .empty;
         for (premise_steps) |p| try smt_mod.collectAtoms(self.arena, self.pool, &atoms, p.formula);
         try smt_mod.collectAtoms(self.arena, self.pool, &atoms, goal);

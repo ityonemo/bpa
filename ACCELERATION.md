@@ -188,6 +188,47 @@ pins it to a vetted theory.
   surfaced — and fixed — a stale-slice OOB crash in the accelerated normalizer
   on large expansions: `tests/cases/polynomial_oob.bpa`.)
 
+### `ext` — extensionality-reduction
+
+- **Module**: `src/elaborate.zig` (`extJustification` / `extEquation` /
+  `extObligation`).
+- **Surface rule**: `[by ext(<theory>)]` for a bare `LHS = RHS`, or
+  `[by ext_quantified(<theory>)]` for `forall …; LHS = RHS`. Theory-parameterized
+  exactly like `arithmetic`/`polynomial`.
+- **A STRUCTURE tactic, MODEL-parameterized** (like `polynomial` is over any
+  ring): the structure is *extensionality*, the model is the named theory. NOT
+  domain-specific — the SAME tactic proves set equations (`ext(set)`) and
+  function equations (`ext(function)`), and any future extensional theory.
+  Prior art: Lean's `ext`.
+- **What it does (emits kernel steps by default)**: resolves the theory's
+  extensionality lemma (`extensionality` / `funcExtensionality`) and the element
+  sort `Universe`; instantiates the lemma at (LHS, RHS) to reduce `LHS = RHS` to
+  its pointwise obligation(s); for each obligation `fix x: Universe`, unfolds the
+  operators appearing in the goal via their characterization lemmas
+  (`<op>Member` for sets, `<op>Apply` for functions, resolved by well-known
+  name), and closes the residue — dispatching on its shape:
+  - **set / predicate model**: the residue is propositional over `member(x, ·)`
+    atoms → closed by `tautology`'s certificate (replayed as kernel steps).
+  - **function / equational model**: the residue is an equation
+    `apply(f,x) = apply(g,x)` → closed by the rewrite join (the `simplify`
+    machinery over the `<op>Apply` lemmas).
+  Then `forall_intro` each obligation and `modus_ponens` the chain to the
+  equation. Every step is a kernel tactic, so `ext` emits (kernel-checked).
+- **Declines** (accelerated-tactic contract): goal not an equation
+  (`out_of_scope`); no extensionality lemma / `Universe` sort in scope; an
+  operator without a characterization lemma; a residue with a countermodel (the
+  identity is likely FALSE) → the closer's own located diagnostic.
+- **Why an accelerated tactic**: it presumes the theory's extensionality
+  principle + operator characterizations (resolved by well-known name), the same
+  shape of presumption as `arithmetic`/`polynomial`. In practice it essentially
+  always emits (like `simplify`/`polynomial`), since its closers (`tautology`,
+  rewrite) themselves emit; `--fast` is rarely needed.
+- **Fixtures**: `tests/cases/ext_set.bpa` (set identities), `ext_function.bpa`
+  (composition associativity), `ext_bad.bpa` (a false identity declines).
+- **Payoff**: collapses the ~50-85-line hand element-chase proofs in
+  `aata/1.2.1-sets.md` / `aata/1.2.2-functions.md` to one line each, matching
+  the textbook's `x ∈ LHS ⟺ x ∈ RHS` argument.
+
 ### `assoc_commut` — associative-commutative reordering
 
 - **Module**: `src/elaborate.zig` (`acEquation`)
