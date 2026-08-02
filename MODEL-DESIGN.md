@@ -381,17 +381,31 @@ at every quantifier over the mapped carrier — applied UNIFORMLY in both direct
 
 ## Applications (std reuse candidates)
 
-- **`Int models group` (additive) — DEFERRED to the ring-theory chapter** (user,
-  2026-08-02). `std/integer-ring.bpa` literally re-derives group theorems by hand
-  (`negAdd` = group's `invProduct`; `negNeg` = `invInvolution`), and the 5 group
-  obligations are all present as Int facts (`addIsAssociative`, `addZeroLeft`,
-  `addZeroRight`, `addNegRight`) — missing only `opInverseLeft`
-  (`add(neg(n),n)=ZERO`, a 2-line commutativity corollary). The group theorem
-  corpus (cancelLeft, inverseUnique, invProduct, invInvolution, …) cites ONLY the
-  5 axioms + each other (clean closed dep tree → materializes perfectly). BUT the
-  corpus lives in `aata/3.2-groups.md`, not an importable `std/group-theorems.bpa`
-  — so a prerequisite is moving it to std. Do all this WITH the ring-theory
-  chapter, not before (keeps the current ℤ work stable; the math motivates it there).
+- **Abstract divisibility — DONE.** `std/divisibility.bpa`; `std/integer-divides.bpa`
+  models it. First real in-library `model` on duplicated std code.
+- **Group / set corpora moved to importable std — DONE.** `std/group.bpa` (10
+  theorems + opt-in `opCommutative`), `std/set.bpa` (19 identities). Each aata
+  transcription aliases back. This is what makes them modelable (locally, on
+  demand, by any consumer).
+- **`std/ring.bpa` models group additively — DONE.** The first TWO-LEVEL model
+  (a `model` inside a modelable theory). Judson's first ring proposition
+  (a·0=0·a=0; a(-b)=(-a)b=-(ab); (-a)(-b)=ab) proved by transferring the
+  additive-group cancelRight/inverseUnique/invInvolution through the AdditiveGroup
+  model.
+
+- **ℤ thin model over ring — NEXT (the payoff / three-level chain).** Make
+  `std/integer-ring.bpa` (or a new consumer) `model IntegerRing = Int` over
+  `std/ring.bpa`, so ℤ inherits the ring corpus instead of hand-deriving it, and
+  the ℤ→ring→group THREE-level materialization is exercised. Discharge audit: ℤ
+  already has 7 of the 9 ring axioms as facts (addIsAssociative, addZeroLeft,
+  addZeroRight axiom, addNegRight, addIsCommutative, mulIsAssociative,
+  mulAddDistribLeft). **Missing 2-3 discharge lemmas ℤ must first prove:**
+  `addNegLeft` (add(neg(n),n)=ZERO, from addNegRight + addIsCommutative);
+  `mulDistributesRightOverAdd` (from a NEW `mulIsCommutative` + mulAddDistribLeft,
+  or by direct induction). Then the model transfers negMulNeg/mulNegLeft/etc.
+  Note: prefer ADDITIVE retrofit (add the model + transfers) over DELETING
+  integer-ring's hand-proofs — downstream files cite negNeg/negAdd by name; a
+  rename/removal ripples. The group-corpus-in-std prerequisite is already met.
 
 ## Still open (not yet decided)
 
