@@ -38,6 +38,11 @@ pub fn addTests(
     // parity: even/odd + the crux 2|p² → 2|p, proven (no accelerated tactic)
     ctx.ok(&.{ "check", "std/peano-parity.bpa" }, "OK: 244 declarations, 59 theorems proven\n");
 
+    // the integers ℤ ring algebra (std/integer-ring.bpa): left/right recursion,
+    // commutativity, associativity, the additive-inverse law n+(-n)=0, and the
+    // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
+    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 52 declarations, 9 theorems proven\n");
+
     // the group theory (std/group.bpa): axioms only, no theorems — so a
     // direct check materializes nothing and exits nonzero with a warning
     // (the theory is a valid dependency, but checking it alone proves 0).
