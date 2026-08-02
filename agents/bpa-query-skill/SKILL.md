@@ -88,7 +88,7 @@ step labels excluded). No theorem arg → every proof in the file. This answers
 alias-aware, where a multi-line `[by …]` and alias indirection defeat grep.
 
 ```
-$ bpa query uses aata/groups.md invProduct
+$ bpa query uses aata/3.2-groups.md invProduct
 theorem invProduct
   rules: assoc axiom×2 forall_elim×4 rewrite×3 theorem modus_ponens symmetry forall_intro×2
   cites: inverseRight identityLeft inverseUnique
