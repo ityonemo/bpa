@@ -46,7 +46,7 @@ pub fn addTests(
     // ℤ subtraction (total: a-b = a+(-b)) + the strict order, over the ring
     // algebra: subSelf (a-a=0) and subAddCancel ((a-b)+b=a), proven with no
     // induction from the inverse law; order via less_than intro/elim.
-    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 81 declarations, 16 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 82 declarations, 17 theorems proven\n");
 
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
     // and the divides predicate; dividesRefl/dividesMul/dividesAdd proved once,
@@ -56,7 +56,7 @@ pub fn addTests(
     // ℤ divisibility + powers (std/integer-divides.bpa): `divides` intro/elim +
     // pow recursion; the three basic facts (refl/mul/add) TRANSFER from the
     // abstract divisibility theory via `model IntegerDivisibility`.
-    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 101 declarations, 20 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 102 declarations, 21 theorems proven\n");
 
     // the group theory (std/group.bpa): the 5 group axioms + an opt-in
     // `opCommutative`, and the 10 basic-property theorems (identityUnique,
