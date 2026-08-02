@@ -65,6 +65,14 @@ pub fn addTests(
     // notation; the checked proofs live here.
     ctx.ok(&.{ "check", "std/group.bpa" }, "OK: 20 declarations, 10 theorems proven\n");
 
+    // the ring theory (std/ring.bpa): an additive abelian group + associative,
+    // distributing multiplication. Its additive half MODELS std/group.bpa (a
+    // TWO-LEVEL structure — a model inside a modelable theory), so the elementary
+    // property mul(a,ZERO)=ZERO is proved by transferring the additive-group
+    // `cancelRight` through the AdditiveGroup model. (11 = the imported group
+    // corpus + ring's own; the synthetic materialized theorem is suppressed.)
+    ctx.ok(&.{ "check", "std/ring.bpa" }, "OK: 38 declarations, 11 theorems proven\n");
+
     // the set theory (std/set.bpa): the membership axioms + extensionality, and
     // the 19 set-algebra identities (idempotence, identity, associativity,
     // commutativity, distributivity, De Morgan, difference laws) proved from them
