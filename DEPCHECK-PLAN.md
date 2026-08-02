@@ -91,7 +91,7 @@ Open implementation questions to resolve while building:
 - Schema instances: a schema reached in the closure re-checks its proof per
   instance as today. Edge recording must capture schema→cited-lemmas.
 - Acceleration must still propagate correctly to the ROOTS' facts (the
-  summary counts elaborated/accelerated over what was actually verified).
+  summary counts accelerated steps over what was actually verified).
 
 ## Summary / counts
 

@@ -132,7 +132,7 @@ pub fn addTests(
     // eta-sugar: a schema Nat->Prop param accepts a bare predicate name
     ctx.ok(&.{ "check", "tests/cases/schema_eta.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
 
-    // the `case` construct: a 3-way disjunction split checks elaborated
+    // the `case` construct: a 3-way disjunction split checks with every step kernel-checked
     ctx.ok(&.{ "check", "tests/cases/case_split.bpa" }, "OK: 11 declarations, 1 theorems proven\n");
 
     // a `case` arm assuming the wrong disjunct is a located error

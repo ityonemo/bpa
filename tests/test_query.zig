@@ -63,8 +63,8 @@ pub fn addTests(
     );
 
     // `query accelerated <file>`: a proof with no accelerated tactic reports
-    // fully elaborated.
-    ctx.ok(&.{ "query", "accelerated", "tests/cases/outline.bpa" }, "no accelerated tactics — this file's proofs are fully elaborated\n");
+    // that every step is kernel-checked.
+    ctx.ok(&.{ "query", "accelerated", "tests/cases/outline.bpa" }, "no accelerated tactics — every step is kernel-checked\n");
 
     // `query accelerated <file>`: accelerated tactics flagged at file:line:col
     // with the rule name — here both `assoc_quantified` and `assoc` (the

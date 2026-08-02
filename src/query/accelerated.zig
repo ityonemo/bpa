@@ -7,14 +7,14 @@
 //! under `--fast`). Those rules are `arithmetic`, `tautology`, `polynomial`,
 //! `assoc_commut`, and `assoc` (the ACCELERATION.md registry) plus the
 //! quantified variants `assoc_commut_quantified` / `assoc_quantified`, which run
-//! the same accelerated core. (`simplify` and `simplify_quantified` are
-//! elaborated by construction — the certificate IS the rewrite chain — so they
+//! the same accelerated core. (`simplify` and `simplify_quantified` emit kernel
+//! steps by construction — the certificate IS the rewrite chain — so they
 //! never accelerate.)
 //!
-//! This is the "is my file fully elaborated?" audit: it lists, per proof, the
+//! This is the "does my file use any accelerated tactic?" audit: it lists, per proof, the
 //! `file:line` of every step that *could* be accelerated. It is a syntactic
-//! upper bound — a step may still certify and stay elaborated — so a clean
-//! report (no accelerated tactics) guarantees full elaboration, while a flagged
+//! upper bound — a step may still certify and stay kernel-checked — so a clean
+//! report (no accelerated tactics) guarantees every step is kernel-checked, while a flagged
 //! step is "check this one under a real `bpa check`". Pure over the AST, like
 //! `outline`/`uses`: no elaboration.
 //!
@@ -107,7 +107,7 @@ fn renderAll(arena: Allocator, w: *std.Io.Writer, path: []const u8, source: []co
         any = true;
         try renderProof(w, path, source, proof, hits.items);
     }
-    if (!any) try w.writeAll("no accelerated tactics — this file's proofs are fully elaborated\n");
+    if (!any) try w.writeAll("no accelerated tactics — every step is kernel-checked\n");
     return true;
 }
 
@@ -118,7 +118,7 @@ fn renderOne(arena: Allocator, w: *std.Io.Writer, path: []const u8, source: []co
         var hits: std.ArrayList(Hit) = .empty;
         try collect(arena, source, proof.steps, &hits);
         if (hits.items.len == 0) {
-            try w.print("theorem {s}: no accelerated tactics — fully elaborated\n", .{name});
+            try w.print("theorem {s}: no accelerated tactics — every step is kernel-checked\n", .{name});
         } else {
             try renderProof(w, path, source, proof, hits.items);
         }

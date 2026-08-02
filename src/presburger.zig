@@ -74,7 +74,7 @@ pub const SatResult = union(enum) {
 // The decision procedure above discards the elimination disjunction it builds.
 // `trace` re-runs the SAME Cooper elimination on a single `exists y; body`
 // goal but RECORDS what it did into `Replay`: the certifier in elaborate.zig
-// reads this to emit elaborated kernel steps (the ⟸ witness assembly and the ⟹
+// reads this to emit kernel steps (the ⟸ witness assembly and the ⟹
 // induction). Plain data — no TermId, no kernel — so the trusted-engine
 // surface stays put and the certifier owns all term/kernel work.
 
@@ -129,7 +129,7 @@ pub fn decide(arena: Allocator, pool: *Pool, symbols: Symbols, premises: []const
 }
 
 /// Record the Cooper elimination of a single `exists y: Nat; body` goal so the
-/// certifier can replay it as elaborated kernel steps. Returns `.not_applicable`
+/// certifier can replay it as kernel steps. Returns `.not_applicable`
 /// (never an error verdict) when the goal is not that shape or leaves the
 /// linear fragment — the certifier link simply declines and the chain moves on.
 pub fn trace(arena: Allocator, pool: *Pool, symbols: Symbols, premises: []const TermId, goal: TermId) Allocator.Error!TraceResult {

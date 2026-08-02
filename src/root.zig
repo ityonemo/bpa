@@ -83,8 +83,8 @@ pub const ProjectResult = struct {
     declarations: usize,
     theorems_proven: usize,
     theorems_trusted: usize,
-    /// proven theorems split by trust: elaborated + accelerated = proven
-    theorems_elaborated: usize,
+    /// count of proven theorems that leaned on an accelerated tactic (the rest
+    /// are just proven — no bucket). Disclosed in the summary.
     theorems_accelerated: usize,
     /// distinct accelerated-tactic names across accelerated theorems, first-use order
     accelerated_names: []const []const u8,
@@ -214,18 +214,21 @@ pub fn checkProject(
 
     var proven: usize = 0;
     var trusted: usize = 0;
-    var elaborated_count: usize = 0;
     var accelerated: usize = 0;
     var accelerated_names: std.ArrayList([]const u8) = .empty;
     for (environment.statements.items) |stmt| {
         if (stmt != .theorem) continue;
+        // a trusted import IS proven (it was proven in its own file; --faster/
+        // --reckless just skipped re-checking it here) — so it counts toward
+        // `proven`, with `trusted` as the disclosed subset.
         if (stmt.theorem.trusted) {
+            proven += 1;
             trusted += 1;
         } else if (stmt.theorem.proven) {
             proven += 1;
-            if (stmt.theorem.accelerated.len == 0) {
-                elaborated_count += 1;
-            } else {
+            // a theorem that leaned on any accelerated tactic is disclosed; one
+            // proved with no accelerated tactic is just proven (no bucket).
+            if (stmt.theorem.accelerated.len != 0) {
                 accelerated += 1;
                 outer: for (stmt.theorem.accelerated) |o| {
                     const s = interner.str(o);
@@ -243,7 +246,6 @@ pub fn checkProject(
         .declarations = loader.declarations,
         .theorems_proven = proven,
         .theorems_trusted = trusted,
-        .theorems_elaborated = elaborated_count,
         .theorems_accelerated = accelerated,
         .accelerated_names = accelerated_names.items,
     };

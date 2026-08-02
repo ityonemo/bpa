@@ -158,7 +158,7 @@ steps, no filler:
     [by tautology remainder-is-determined-nine-six six-is-nonzero three-is-below-six sum-is-nine]
   ```
 
-  (`tautology` replays as an elaborated certificate here — a Horn-shaped discharge
+  (`tautology` replays as a kernel-checked certificate here — a Horn-shaped discharge
   never approaches its atom cap or step budget. If a discharge ever exceeds
   the 16-atom cap, fall back to named `modus_ponens` steps.)
 

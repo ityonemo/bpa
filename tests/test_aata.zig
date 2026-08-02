@@ -14,15 +14,15 @@ pub fn addTests(
     const ctx = Ctx.init(b, exe, test_step);
 
     // AATA group theory: the literate translation of Groups basic-
-    // properties (5 propositions) + 5 in-scope exercises, verified ELABORATED.
+    // properties (5 propositions) + 5 in-scope exercises, verified (proven; no accelerated tactic).
     ctx.ok(&.{ "check", "aata/3.2-groups.md" }, "OK: 29 declarations, 10 theorems proven\n");
 
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
-    // (the set-algebra proposition + De Morgan's laws), verified ELABORATED.
+    // (the set-algebra proposition + De Morgan's laws), verified (proven; no accelerated tactic).
     ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 43 declarations, 14 theorems proven\n");
 
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
     // (composition associativity/preservation + invertible⇒bijective
-    // forward), verified ELABORATED. The backward direction is a marked wall.
+    // forward), verified (proven; no accelerated tactic). The backward direction is a marked wall.
     ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 36 declarations, 7 theorems proven\n");
 }

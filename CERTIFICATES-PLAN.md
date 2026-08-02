@@ -1,4 +1,4 @@
-# Certificates plan — elaborated-by-default, fast-mode-for-development
+# Certificates plan — kernel-checked-by-default, fast-mode-for-development
 
 ## STATUS (2026-07-30): the mode inversion has LANDED, further than this doc anticipated
 
@@ -39,22 +39,22 @@ declines it — equation/order/exists and mixed-skeleton report `out_of_scope`,
 and Farkas only handles *infeasibility* / `false` conclusions and order
 *composition* (`a<b -> b<c -> a<c`), not "equation + `0<b` ⊢ `x<a`". So it
 falls to the accelerated tactic under `--fast`. This is why the audit collapsed **no** std
-proofs: rewriting such a hand proof as `by arithmetic` would trade an elaborated proof
+proofs: rewriting such a hand proof as `by arithmetic` would trade a kernel-checked proof
 for an accelerated one. This gap is **distinct from the Cooper-QE tail** —
 it is quantifier-free and linear, so a new peer chain link (a "positive linear
 order" certifier: rearrange the equation into `lessThanIntro` gap form —
 `add(x, succ(d)) = a` from `add(x, b) = a` and the gap witness of `0 < b` —
 then cite `lessThanIntro`) would close it with a fixed-shape emit, no search.
 Lower priority than Cooper (rare in the corpus; the hand proofs are already
-elaborated), but the cheaper of the two to build.
+kernel-checked), but the cheaper of the two to build.
 
 ## The long-term goal (user-decided)
 
-Invert the trust default so **elaboration is the norm and speed is opt-in**:
+Invert the trust default so **kernel-checking is the norm and speed is opt-in**:
 
 - **Default `by arithmetic`** produces a *full certificate* — ordinary
   kernel-checked steps. The accelerated tactic is a genuine last resort, not a
-  fallback you silently drift into. A proof that ships is elaborated unless it
+  fallback you silently drift into. A proof that ships is fully proven unless it
   truly cannot be.
 - **Fast mode** (opt-in, dev-time) skips certificate generation and takes the
   accelerated verdict directly, for quick iteration while you are still finding
@@ -90,7 +90,7 @@ Two facts fix the whole shape of the work:
   `0 < 0`). That combination *is* a kernel proof — a fixed recipe computed
   directly from the infeasibility, no search. This is the single highest-value
   piece: it flips the *entire* QF-linear fragment (most real `by arithmetic`
-  uses) from accelerated to elaborated in one stroke.
+  uses) from accelerated to kernel-checked in one stroke.
 - **Full quantifier-alternation replay (Cooper QE) is possible but large.**
   Cooper's algorithm is constructive — every elimination step is a logical
   equivalence with a proof — but the `∀`/`∃`-elimination proof expands to a
@@ -141,7 +141,7 @@ in sequence:
   a **guarantee** for the covered fragment, not a hope. **Cut over to this
   when Farkas + the common cases make hard-failing tolerable.**
 
-Target end-state: default mode is elaborated for everything except the
+Target end-state: default mode fully proves everything except the
 quantifier-alternation tail, that tail is accelerated-and-disclosed, and `--pure`
 rejects even the tail. `--fast` bypasses all of it for development.
 
@@ -155,9 +155,9 @@ coverage comes first.
    the missing piece is *recording the refutation multipliers* during the
    decision and emitting the combination proof (`multiplicationPreservesOrder`
    + `additionPreservesOrder` + `absurd` over the cited hypotheses — a
-   fixed-shape emit, no search). Turns most `by arithmetic` uses elaborated. RED
+   fixed-shape emit, no search). Turns most `by arithmetic` uses kernel-checked. RED
    fixture: an inequality-infeasibility goal that currently falls to the
-   accelerated tactic, proven elaborated under `--pure` after.
+   accelerated tactic, proven with every step kernel-checked under `--pure` after.
 2. **Mode spectrum** — `Elaborator.pure: bool` → a `Mode` enum
    (`pure` / `default` / `fast`); `--fast` flag in src/main.zig + src/root.zig
    (mirror the `--pure` plumbing); loud fast-mode summary line; `--pure` +
@@ -187,7 +187,7 @@ fractal-TDD directive, with unit tests in the touched module.
 ## Relationship to the other plans
 
 - `NONLINEAR-PLAN.md` — the `polynomial` identity tactic and `div`/`mod` are
-  *elaborated from the start* (equational), so they never become accelerated at
+  *kernel-checked from the start* (equational), so they never become accelerated at
   all; they shrink what `arithmetic` is even asked to do.
 - This plan is about the *linear* accelerated tactic: making its verdicts
   certify by default, with Farkas as the lever and Cooper QE as the honest

@@ -53,7 +53,7 @@ else. "Prove all files" survives only as the explicit `--total` root set.
 
 Under demand-driven proving **you can commit an incorrect theorem and never
 find out, if nothing uses it.** An unracked theorem is not proven, not
-elaborated — not even grammar-checked if its whole file goes untouched — yet
+kernel-checked — not even grammar-checked if its whole file goes untouched — yet
 it sits in the source looking exactly like a verified result. This is the
 DEPCHECK-PLAN.md narrowing consequence taken to its sharpest form, and it is
 **accepted as a reasonable long-run tradeoff (user ruling)**. The mitigations

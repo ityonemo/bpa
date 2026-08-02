@@ -4,8 +4,8 @@ An **accelerated tactic** is a decision procedure whose verdict the checker can
 accept without a kernel derivation. Accelerated tactics are the deliberate
 exception to bpa's otherwise-closed trust story: the kernel checks every
 ordinary step, but an `.accelerated` step stands on the named procedure being
-correct. Each invocation is either **elaborated** (it emitted a full chain of
-kernel steps) or **accelerated** (it trusted the procedure without a chain).
+correct. Each invocation either **emits kernel steps** (a full chain of
+kernel steps, staying kernel-checked) or **accelerates** (it trusted the procedure without a chain).
 
 The trust is disclosed, never silent:
 
@@ -15,9 +15,9 @@ The trust is disclosed, never silent:
   `tautology` premise, or through a schema instantiation whose proof cites one)
   inherits the accelerated-tactic names **transitively**;
 - the summary line reports the split, e.g.
-  `OK: 9 declarations, 5 theorems proven (1 elaborated, 4 accelerated: tautology)`;
+  `OK: 9 declarations, 5 theorems proven (4 accelerated: tautology)`;
 - by default `bpa check` **rejects every accelerated step with a located
-  error** — the goal must elaborate. The accelerated verdict is accepted only
+  error** — the goal must be kernel-checked. The accelerated verdict is accepted only
   under `--fast` (which then discloses it under a loud accelerated banner).
 
 Under `--faster`/`--reckless`, imported theorems are *trusted* (their proofs
@@ -25,7 +25,7 @@ are not re-checked), which supersedes any acceleration disclosure; the summary
 reports those separately.
 
 Tactics are **certificate-first**: an invocation that can emit ordinary
-kernel steps does so and stays elaborated. Certificates are produced by an
+kernel steps does so and stays kernel-checked. Certificates are produced by an
 ordered **certifier chain** (equation/order/exists → mixed-skeleton → Farkas →
 future Cooper-replay/manual), walked first-success-wins; each link either
 emits kernel steps or **declines with a reason**. When every link declines,
@@ -60,7 +60,7 @@ pins it to a vetted theory.
 - **Certificate status**: certificate-first (B2). Every valid goal within
   the step budget replays as ordinary kernel steps — an inline excluded
   middle plus or_elim per split atom, structural derivation at the leaves —
-  so typical uses are elaborated and check green by default. The accelerated
+  so typical uses stay kernel-checked and check green by default. The accelerated
   verdict is admitted only under `--fast` as the over-budget fallback, marking
   that use accelerated only.
 
@@ -82,7 +82,7 @@ pins it to a vetted theory.
   theorem to cite when the certifier chain declines a valid goal — instead of
   the hard error (default) or the accelerated verdict (`--fast`). The kernel
   checks `<thm>`'s statement α-matches the goal, so the step stays
-  **elaborated** (not accelerated), and any accelerated-tactic names `<thm>`
+  **kernel-checked** (not accelerated), and any accelerated-tactic names `<thm>`
   itself carries are inherited. This is for goals the Presburger procedure
   *decides* but no certifier can *emit* — e.g. multi-fixed-variable `∀∀∃`
   (`tests/cases/cooper_gap.bpa`: `sumParity` reduces to the cooper-certified
@@ -110,7 +110,7 @@ pins it to a vetted theory.
   negation reports countermodel values for the fixed variables when a small
   witness exists.
 - **Certificate status**: certificate-first (C2a–C2c, premise handling,
-  D2). Goals replay as elaborated kernel steps when the well-known peano lemmas
+  D2). Goals replay as kernel steps when the well-known peano lemmas
   resolve in the use site's scope: ground and universally-quantified
   linear *equations* normalize to succ-towers over sorted sums (recursion
   axioms plus `addZeroRight`/`addSuccRight`/`mulZeroRight`/`mulSuccRight`/
@@ -136,7 +136,7 @@ pins it to a vetted theory.
   `additionPreservesOrder` + `addIsCommutative` + transitivity). *Cooper-replay*
   (the `cooper` link, `src/presburger.zig` trace + `src/elaborate.zig`
   `cooperInduction`) closes the **quantifier-alternation tail**: a
-  `forall x…; exists y; body` goal replays its Cooper elimination as elaborated
+  `forall x…; exists y; body` goal replays its Cooper elimination as
   kernel steps — for a period-1 trace, a boundary witness under an `or_intro`;
   for a period-D trace (e.g. the parity `evenOrOdd`, `forall x; exists y; x=2y ∨
   x=2y+1`), a SYNTHESIZED induction on the fixed variable (predicate `P(k)` =
@@ -150,7 +150,7 @@ pins it to a vetted theory.
 ### `polynomial` — nonlinear ring identities
 
 - **Module**: `src/elaborate.zig` (`polynomialEquation` / `polyCanon` for the
-  elaborated path; `polyNormForm` for the accelerated path)
+  kernel-checked path; `polyNormForm` for the accelerated path)
 - **Surface rule**: `[by polynomial(<theory>)]` / `[by
   polynomial_quantified(<theory>)]`. Theory-parameterized exactly like
   `arithmetic` (bare = local scope; `(theory)` = that imported module).
@@ -159,26 +159,26 @@ pins it to a vetted theory.
   *resolving the theory's ring lemmas* (`mulAddDistrib*`, `mulIsAssociative`,
   `mulLeftSwap`, one/zero folds) and emitting a rewrite chain that CITES them —
   every step kernel-rechecked. Sound relative to the theory's proofs;
-  elaborated; not accelerated. A theory too thin (lemmas absent) is a located
+  kernel-checked; not accelerated. A theory too thin (lemmas absent) is a located
   decline, not an acceleration.
 - **Accelerated verdict (only under `--fast`)**: skip the lemmas entirely and
   compare the *bare syntactic semiring normal forms* (`polyNormForm` —
   flatten/sort add/mul trees assuming commutativity, associativity,
   distributivity, 0/1 identities). `.valid` = the two normal forms are
   `alphaEq`. A false identity is still REJECTED (the procedure decides). What
-  is accelerated (not elaborated) is the **presumption that `add`/`mul` form a
+  is accelerated (not kernel-checked) is the **presumption that `add`/`mul` form a
   commutative semiring** — the theory's own laws are never checked, so a
   pathological/wrong `add`/`mul` could make the presumed identity false.
   Accelerated-tactic name: `polynomial`.
 - **Why an accelerated tactic at all**: it decides on theories too thin to
-  elaborate, and it trusts the ring structure of symbols it does not control —
+  kernel-check, and it trusts the ring structure of symbols it does not control —
   the honest, accelerated counterpart to the default's kernel-discharged trust.
 - **No `fallback` (settled — don't relitigate).** Unlike `arithmetic` (whose
   Cooper decision genuinely exceeds what the certifier can emit — the ∀∀∃ /
   nested-alternation tail — so `fallback` bridges a real gap), `polynomial`'s
-  elaborated path and accelerated path decide the *same* fragment: semiring
+  kernel-checked path and accelerated path decide the *same* fragment: semiring
   identities over `add`/`mul`. **When the ring lemmas are present, the
-  elaborated path always succeeds** on a true identity (terminating
+  kernel-checked path always succeeds** on a true identity (terminating
   normalization, every rewrite cites a present lemma) — stress-tested to a
   wide-sum 4th power (256 monomials), 100-factor reversed products,
   `succ`-atoms, and 0/1 folds. The only case the accelerated path "wins" is a
@@ -196,20 +196,20 @@ pins it to a vetted theory.
   assoc_commut(assoc, comm, swap)]` supplying the AC lemmas for a **custom
   operator** (operator recovered from the commutativity lemma's shape). Trailing
   refs are distributivity/pre-normalization lemmas. Exactly 0 or 3 args.
-- **Elaborated path is the DEFAULT and is NOT accelerated.** Re-associate +
+- **Kernel-checked path is the DEFAULT and is NOT accelerated.** Re-associate +
   bubble-sort by the operator's assoc/comm/swap lemmas, emitting kernel-checked
-  swaps that cite them. The **explicit-triple form is ALWAYS elaborated** (the
+  swaps that cite them. The **explicit-triple form ALWAYS emits kernel steps** (the
   triple is checkable) — it has no accelerated path.
 - **Accelerated verdict (only under `--fast`, bare form only)**: compare sorted
   multisets of summands structurally, resolving NO assoc/comm/swap lemma.
   `.valid` = same sorted multiset. A different multiset is still rejected. What
-  is accelerated (not elaborated) is the **presumption that the operator is
+  is accelerated (not kernel-checked) is the **presumption that the operator is
   associative-commutative** — never checked, so an operator that is not
   (subtraction, function composition, matrix mul, …) could make the presumed
   reordering false. Accelerated-tactic name: `assoc_commut`.
 - **Relation to `polynomial`**: `assoc_commut` is the single-operator special
   case; `polynomial` additionally distributes `mul` over `add`. Same trust
-  story — both presume the vocabulary's algebra where the elaborated path
+  story — both presume the vocabulary's algebra where the kernel-checked path
   proves it.
 
 ### `assoc` — associativity-only reordering
@@ -220,14 +220,14 @@ pins it to a vetted theory.
   `add`/`mul` assumption); the operator is recovered from the lemma's shape
   `f(f(a,b),c) = f(a,f(b,c))`. The non-commutative sibling of `assoc_commut`
   (for group theory etc.), where reordering is forbidden — only re-nesting.
-- **Elaborated path is the DEFAULT and is NOT accelerated.** Right-nest each
+- **Kernel-checked path is the DEFAULT and is NOT accelerated.** Right-nest each
   side by the cited associativity rule (confluent + terminating → canonical
   form), `alphaEq`-compare, and emit a kernel-checked rewrite chain that cites
   the lemma. Sides that differ by more than associativity are a located error.
 - **Accelerated verdict (only under `--fast`)**: structurally right-nest both
   sides over the operator and compare, WITHOUT emitting/kernel-checking the
   rewrite chain. A shape that isn't associativity-equal is still rejected. What
-  is accelerated (not elaborated) is the **presumption that the operator is
+  is accelerated (not kernel-checked) is the **presumption that the operator is
   associative** — the rewrite is not discharged against the kernel.
   Accelerated-tactic name: `assoc`. (Unlike `assoc_commut`, the lemma is always
   resolved even in the accelerated path, since it's required to identify the

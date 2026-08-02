@@ -1362,7 +1362,7 @@ pub const Elaborator = struct {
     // --- the `simplify` tactic: certificate emitter -------------------------
     // Synthesizes ordinary kernel steps (reflexivity / axiom or theorem
     // citation / forall_elim specialization / rewrite) into the current block
-    // and returns the user's claim justification. Fully elaborated: no
+    // and returns the user's claim justification. Every step kernel-checked: no
     // accelerated step, the kernel checks everything.
 
     // --- universal-prefix peeling (shared by arithmetic / simplify_quantified)
@@ -1570,7 +1570,7 @@ pub const Elaborator = struct {
         return self.emitJoin(low, emit_block, loc, rules.items, s, t, rs, rt);
     }
 
-    // --- the `ac` tactic: associative-commutative reordering (elaborated) ---
+    // --- the `ac` tactic: associative-commutative reordering (emits kernel steps) ---
     // Proves s = t when both are sums (over `add`) with the same multiset of
     // opaque atoms, differing only by associativity/commutativity. Each side
     // is re-associated to a right-nested comb (via addIsAssociative as a
@@ -1710,7 +1710,7 @@ pub const Elaborator = struct {
             // lemmas resolved, so it works on a theory too thin to elaborate,
             // but TRUSTS the operator is associative-commutative (the theory's
             // laws are never checked). That presumption about an uncontrolled
-            // symbol is why it is accelerated, not elaborated.
+            // symbol is why it is accelerated, not kernel-checked.
             if (!self.verify.certify_arithmetic) {
                 var s_leaves: std.ArrayList(TermId) = .empty;
                 var t_leaves: std.ArrayList(TermId) = .empty;
@@ -1840,7 +1840,7 @@ pub const Elaborator = struct {
         // --fast: the accelerated assoc path. Structurally right-nest both
         // sides over the operator and compare — WITHOUT emitting the kernel
         // rewrite chain, presuming associativity rather than discharging it.
-        // Accelerated, not elaborated.
+        // Accelerated, not kernel-checked.
         if (!self.verify.certify_arithmetic) {
             var s_leaves: std.ArrayList(TermId) = .empty;
             var t_leaves: std.ArrayList(TermId) = .empty;
@@ -1876,7 +1876,7 @@ pub const Elaborator = struct {
         return self.emitJoin(low, block_id, loc, &rules, s0, t0, rs, rt);
     }
 
-    // -- the `polynomial` tactic (nonlinear identities, elaborated) ---------
+    // -- the `polynomial` tactic (nonlinear identities, emits kernel steps) ---------
     //
     // Proves `s = t` when both are polynomials over add/mul with the same
     // expansion. The nonlinear analogue of `ac`: canonicalize each side to a
@@ -2101,7 +2101,7 @@ pub const Elaborator = struct {
         // so it works on a theory too thin to elaborate, but it TRUSTS that
         // add/mul are a commutative semiring (the theory's own laws are never
         // checked). That presumption about uncontrolled symbols is exactly why
-        // it is accelerated, not elaborated. The default path below discharges
+        // it is accelerated, not kernel-checked. The default path below discharges
         // the same presumption against the kernel.
         if (!self.verify.certify_arithmetic) {
             const add_sym = (try self.wellKnownSym("add")) orelse
@@ -2123,7 +2123,7 @@ pub const Elaborator = struct {
             return .{ .accelerated = name };
         }
 
-        // default: the elaborated certificate — resolve the ring lemmas,
+        // default: the kernel-checked certificate — resolve the ring lemmas,
         // canonicalize both sides recording a replayable trace, and emit the
         // kernel join.
         const pr = (try self.polyRules(loc)) orelse
@@ -2421,7 +2421,7 @@ pub const Elaborator = struct {
     }
 
     // --- C2: arithmetic certificates ----------------------------------------
-    // Certificate stages for the `arithmetic` rule, all elaborated and
+    // Certificate stages for the `arithmetic` rule, all
     // kernel-checked. C2a: ground equations replay as simplify chains over
     // the well-known peano recursion axioms. C2b: universally-quantified
     // linear equations normalize to succ-towers over sorted sums (the
@@ -2654,7 +2654,7 @@ pub const Elaborator = struct {
         return whole;
     }
 
-    /// Plan an elaborated proof of s = t: normalize both sides with the
+    /// Plan a kernel-checked proof of s = t: normalize both sides with the
     /// terminating rules, then sort the residual sums. Null when the sides
     /// do not join.
     fn planEquation(
@@ -2696,7 +2696,7 @@ pub const Elaborator = struct {
         };
     }
 
-    /// Plan an elaborated proof of less_than(s, t): synthesize the difference
+    /// Plan a kernel-checked proof of less_than(s, t): synthesize the difference
     /// witness d from the normalized towers, certify add(s, succ(d)) = t,
     /// and instantiate lessThanIntro.
     fn planLess(
@@ -3034,7 +3034,7 @@ pub const Elaborator = struct {
     /// where it marks the theorem accelerated.
     fn recordAccelerated(self: *Elaborator, name: StrId, loc: u32) ElabError!void {
         if (self.verify.certify_arithmetic) {
-            return self.fail(loc, "'{s}' could not be elaborated here; use --fast to accept the accelerated verdict", .{self.interner.str(name)});
+            return self.fail(loc, "'{s}' could not be emitted as kernel steps here; use --fast to accept the accelerated verdict", .{self.interner.str(name)});
         }
         for (self.accelerated_used.items) |o| {
             if (o == name) return;
@@ -3153,7 +3153,7 @@ pub const Elaborator = struct {
         switch (verdict) {
             .valid => {
                 // certificate first: replay the truth search as ordinary
-                // kernel steps — elaborated, no accelerated step
+                // kernel steps — kernel-checked, no accelerated step
                 if (try self.tautologyCertificate(low, block_id, goal, c)) |just| {
                     return just;
                 }
@@ -3186,7 +3186,7 @@ pub const Elaborator = struct {
     // double_negation shape) and an or_elim over the two assumption branches;
     // leaves either derive the goal structurally from the literal
     // assumptions (trueJust/falseJust) or explode a refuted premise with
-    // absurd. The kernel checks every step, so this path stays elaborated. A
+    // absurd. The kernel checks every step, so this path stays kernel-checked. A
     // step budget bounds the exponential replay; past it the synthesized
     // steps roll back and the caller falls back to the accelerated path.
 
@@ -4677,7 +4677,7 @@ pub const Elaborator = struct {
                     }
                 }
                 // every link declined: valid but not certifiable here. A
-                // `fallback(<thm>)` cites a manual proof (elaborated) instead; else
+                // `fallback(<thm>)` cites a manual proof (proven) instead; else
                 // hard error (default) listing the reasons, or accelerated (--fast).
                 if (c.fallback) |fb| return self.arithmeticFallback(fb, goal);
                 return self.arithmeticTerminal(loc, &reasons);

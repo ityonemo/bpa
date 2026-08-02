@@ -19,7 +19,7 @@ pub fn addTests(
     // the standard library is accelerated-free, forever
     ctx.ok(&.{ "check", "std/peano.bpa" }, "OK: 48 declarations, 17 theorems proven\n");
 
-    // the order theory + strong induction, split into its own layer; elaborated,
+    // the order theory + strong induction, split into its own layer; proven,
     // and --recursive re-verifies the imported peano proofs too
     ctx.ok(&.{ "check", "std/peano-ordering.bpa" }, "OK: 117 declarations, 38 theorems proven\n");
 
@@ -32,10 +32,10 @@ pub fn addTests(
     ctx.ok(&.{ "check", "std/peano-division.bpa" }, "OK: 204 declarations, 54 theorems proven\n");
 
     // THE PAYOFF: Euclid's algorithm, proved correct (common divisor +
-    // greatest), elaborated, by strong induction on the decreasing modulus
+    // greatest), by strong induction on the decreasing modulus
     ctx.ok(&.{ "check", "std/peano-gcd.bpa" }, "OK: 227 declarations, 56 theorems proven\n");
 
-    // parity: even/odd + the crux 2|p² → 2|p, proved ELABORATED (no accelerated tactic)
+    // parity: even/odd + the crux 2|p² → 2|p, proven (no accelerated tactic)
     ctx.ok(&.{ "check", "std/peano-parity.bpa" }, "OK: 244 declarations, 59 theorems proven\n");
 
     // the group theory (std/group.bpa): axioms only, no theorems — so a

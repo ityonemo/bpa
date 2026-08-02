@@ -15,7 +15,7 @@ pub fn addTests(
     // Milestone A: simplify — certificate-producing rewrite tactic
     ctx.ok(&.{ "check", "tests/cases/simplify.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
 
-    // simplify is elaborated (never an accelerated tactic): the default check accepts it
+    // simplify always emits kernel steps (never accelerates): the default check accepts it
     ctx.ok(&.{ "check", "tests/cases/simplify.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
 
     // unjoinable normal forms: the diagnostic shows both, copy-pasteable
@@ -24,11 +24,11 @@ pub fn addTests(
     // cycling rules hit the hard rewrite cap instead of hanging
     ctx.fail(&.{ "check", "tests/cases/simplify_loop.bpa" }, "tests/cases/simplify_loop.bpa:13:9: error: simplify: rewrite limit reached (looping rule set?)\n");
 
-    // ac: associative-commutative sum reordering over opaque atoms, elaborated
+    // ac: associative-commutative sum reordering over opaque atoms, emits kernel steps
     ctx.ok(&.{ "check", "tests/cases/ac.bpa" }, "OK: 59 declarations, 19 theorems proven\n");
 
     // ac over multiplication: same bubble-sort machinery, mul lemma triple
-    // (mulIsAssociative/mulIsCommutative/mulLeftSwap), elaborated
+    // (mulIsAssociative/mulIsCommutative/mulLeftSwap), emits kernel steps
     ctx.ok(&.{ "check", "tests/cases/ac_mul.bpa" }, "OK: 59 declarations, 18 theorems proven\n");
 
     // ac_quantified: peel the forall prefix then run the ac core (add + mul)
@@ -38,8 +38,8 @@ pub fn addTests(
     // pre-normalizes (distributes) each side before the AC bubble-sort
     ctx.ok(&.{ "check", "tests/cases/distribute.bpa" }, "OK: 57 declarations, 18 theorems proven\n");
 
-    // `polynomial(theory)`: nonlinear identities canonicalize elaborated (no
-    // accelerated tactic) via distribute → sort monomials → sort sum → fold.
+    // `polynomial(theory)`: nonlinear identities canonicalize, emitting kernel
+    // steps (no accelerated tactic) via distribute → sort monomials → sort sum → fold.
     ctx.ok(&.{ "check", "tests/cases/polynomial.bpa" }, "OK: 54 declarations, 19 theorems proven\n");
 
     // sides with different expansions → located error, exit 1 (not accelerated)
@@ -51,8 +51,8 @@ pub fn addTests(
     ctx.fail(&.{ "check", "tests/cases/polynomial_oracle.bpa" }, "tests/cases/polynomial_oracle.bpa:22:9: error: polynomial: needs mulAddDistribLeft in scope\n");
 
     ctx.ok(&.{ "check", "--fast", "tests/cases/polynomial_oracle.bpa" },
-        \\OK: 6 declarations, 1 theorems proven (0 elaborated, 1 accelerated: polynomial)
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\OK: 6 declarations, 1 theorems proven (1 accelerated: polynomial)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
 
@@ -61,16 +61,16 @@ pub fn addTests(
     // which pool.args aliases — the old code read a dangling arg slice and
     // panicked. Must check clean under --fast (never crash).
     ctx.ok(&.{ "check", "--fast", "tests/cases/polynomial_oob.bpa" },
-        \\OK: 6 declarations, 1 theorems proven (0 elaborated, 1 accelerated: polynomial)
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\OK: 6 declarations, 1 theorems proven (1 accelerated: polynomial)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
 
-    // ac on different multisets reports the mismatch (elaborated, not accelerated)
+    // ac on different multisets reports the mismatch (emits kernel steps, not accelerated)
     ctx.fail(&.{ "check", "tests/cases/ac_bad.bpa" }, "tests/cases/ac_bad.bpa:18:17: error: assoc_commut: sides have different summands: 'add(b, add(a, a))' vs 'add(b, a)'\n");
 
     // assoc_commut(assoc, comm, swap): the explicit-triple form on a CUSTOM
-    // operator (elaborated — the triple is kernel-checked).
+    // operator (emits kernel steps — the triple is kernel-checked).
     ctx.ok(&.{ "check", "tests/cases/assoc_commut_custom.bpa" }, "OK: 7 declarations, 2 theorems proven\n");
 
     // no partials: 1 or 2 args is an error (either bare or exactly three).
@@ -81,13 +81,13 @@ pub fn addTests(
     ctx.fail(&.{ "check", "tests/cases/assoc_commut_oracle.bpa" }, "tests/cases/assoc_commut_oracle.bpa:16:9: error: assoc_commut: needs addIsAssociative in scope\n");
 
     ctx.ok(&.{ "check", "--fast", "tests/cases/assoc_commut_oracle.bpa" },
-        \\OK: 4 declarations, 1 theorems proven (0 elaborated, 1 accelerated: assoc_commut)
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\OK: 4 declarations, 1 theorems proven (1 accelerated: assoc_commut)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
 
     // `assoc(assocLemma)`: associativity-only reorder on a CUSTOM operator
-    // (no add/mul assumption). Elaborated.
+    // (no add/mul assumption). Emits kernel steps.
     ctx.ok(&.{ "check", "tests/cases/assoc.bpa" }, "OK: 6 declarations, 3 theorems proven\n");
 
     // sides differ by more than associativity (operands permuted) → error
@@ -100,12 +100,12 @@ pub fn addTests(
     ctx.ok(&.{ "check", "tests/cases/assoc_oracle.bpa" }, "OK: 4 declarations, 1 theorems proven\n");
 
     ctx.ok(&.{ "check", "--fast", "tests/cases/assoc_oracle.bpa" },
-        \\OK: 4 declarations, 1 theorems proven (0 elaborated, 1 accelerated: assoc)
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\OK: 4 declarations, 1 theorems proven (1 accelerated: assoc)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
 
-    // simplify_quantified: peel forall over an equation, elaborated
+    // simplify_quantified: peel forall over an equation, emits kernel steps
     ctx.ok(&.{ "check", "tests/cases/simplify_quantified.bpa" }, "OK: 8 declarations, 2 theorems proven\n");
 
     // simplify_quantified on a bare equation redirects to simplify
@@ -114,14 +114,14 @@ pub fn addTests(
     // plain simplify on a quantified goal redirects to simplify_quantified
     ctx.fail(&.{ "check", "tests/cases/simplify_on_quantified.bpa" }, "tests/cases/simplify_on_quantified.bpa:12:9: error: simplify proves equations; did you mean simplify_quantified?\n");
 
-    // symmetry: y = x from x = y in one step, elaborated
+    // symmetry: y = x from x = y in one step, emits kernel steps
     ctx.ok(&.{ "check", "tests/cases/symmetry.bpa" }, "OK: 6 declarations, 1 theorems proven\n");
 
     // Milestone B2: tautology emits certificates — kernel-checked steps,
-    // elaborated, not accelerated (the accelerated path remains as the over-budget fallback)
+    // emits kernel steps, not accelerated (the accelerated path remains as the over-budget fallback)
     ctx.ok(&.{ "check", "tests/cases/tautology.bpa" }, "OK: 9 declarations, 5 theorems proven\n");
 
-    // certificates check elaborated by default (no accelerated tactic)
+    // certificates check with every step kernel-checked by default (no accelerated tactic)
     ctx.ok(&.{ "check", "tests/cases/tautology.bpa" }, "OK: 9 declarations, 5 theorems proven\n");
 
     // non-consequence: the diagnostic carries the countermodel
@@ -132,8 +132,8 @@ pub fn addTests(
 
     // Milestone C: arithmetic accelerated tactic — Presburger quantifier elimination
     ctx.ok(&.{ "check", "--fast", "tests/cases/arithmetic.bpa" },
-        \\OK: 9 declarations, 4 theorems proven (0 elaborated, 4 accelerated: arithmetic)
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\OK: 9 declarations, 4 theorems proven (4 accelerated: arithmetic)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
 
@@ -146,12 +146,12 @@ pub fn addTests(
 
     // Milestone D: the SMT combination — mixed goals, one accelerated-tactic name
     ctx.ok(&.{ "check", "--fast", "tests/cases/smt.bpa" },
-        \\OK: 9 declarations, 2 theorems proven (0 elaborated, 2 accelerated: arithmetic)
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\OK: 9 declarations, 2 theorems proven (2 accelerated: arithmetic)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
 
-    // Milestone C2b: universal linear goals replay as elaborated certificates
+    // Milestone C2b: universal linear goals replay as kernel-checked certificates
     // (sorted-sum normalization + synthesized order witnesses)
     ctx.ok(&.{ "check", "tests/cases/arithmetic_cert2.bpa" }, "OK: 146 declarations, 44 theorems proven\n");
 
@@ -174,7 +174,7 @@ pub fn addTests(
     // variables via additionPreservesOrder + commutativity + transitivity.
     ctx.ok(&.{ "check", "tests/cases/farkas_sum.bpa" }, "OK: 122 declarations, 39 theorems proven\n");
 
-    // Milestone C2a: ground goals replay as elaborated simplify certificates
+    // Milestone C2a: ground goals replay as kernel-checked simplify certificates
     // over the well-known peano axioms — the default check accepts them
     ctx.ok(&.{ "check", "tests/cases/arithmetic_cert.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
 
@@ -206,17 +206,17 @@ pub fn addTests(
     );
     // ...and --fast accepts the accelerated verdict, marking the theorem accelerated.
     ctx.ok(&.{ "check", "--fast", "tests/cases/cooper_gap_raw.bpa" },
-        \\OK: 15 declarations, 1 theorems proven (0 elaborated, 1 accelerated: arithmetic)
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\OK: 15 declarations, 1 theorems proven (1 accelerated: arithmetic)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
-    // ...and `[by arithmetic fallback(<thm>)]` closes the gap fully elaborated in default
+    // ...and `[by arithmetic fallback(<thm>)]` closes the gap fully proven in default
     // mode: the chain declines, so the cited manual theorem (which reduces the
     // ∀∀∃ to the cooper-certified single-variable evenOrOddArith) stands as the
     // certificate — no --fast, no acceleration.
     ctx.ok(&.{ "check", "tests/cases/cooper_gap.bpa" }, "OK: 17 declarations, 3 theorems proven\n");
 
-    // Milestone D2: mixed skeletons replay as elaborated certificates
+    // Milestone D2: mixed skeletons replay as kernel-checked certificates
     ctx.ok(&.{ "check", "tests/cases/smt_cert.bpa" }, "OK: 143 declarations, 40 theorems proven\n");
 
     // mixed countermodel: arithmetic values plus opaque truth values

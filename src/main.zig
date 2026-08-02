@@ -299,7 +299,7 @@ pub fn main(init: std.process.Init) !u8 {
             \\query accelerated flags, per proof, every step whose rule can fall
             \\back to an accelerated verdict (arithmetic/tautology/polynomial/
             \\assoc_commut/assoc) — the potential acceleration sites; a clean
-            \\report means the file is fully elaborated.
+            \\report means every step is kernel-checked.
             \\
         );
         try out.flush();
@@ -356,8 +356,12 @@ pub fn main(init: std.process.Init) !u8 {
     try out.print("OK: {d} declarations, {d} theorems proven", .{
         result.declarations, result.theorems_proven,
     });
+    // Disclose only the theorems that ACCELERATED (leaned on a trusted
+    // procedure). A theorem proved with no accelerated tactic is just proven —
+    // it belongs to no bucket, so it is not reported. (In default mode nothing
+    // can accelerate, so this parenthetical never appears there.)
     if (result.theorems_accelerated > 0) {
-        try out.print(" ({d} elaborated, {d} accelerated: ", .{ result.theorems_elaborated, result.theorems_accelerated });
+        try out.print(" ({d} accelerated: ", .{result.theorems_accelerated});
         for (result.accelerated_names, 0..) |name, i| {
             if (i > 0) try out.writeAll(", ");
             try out.writeAll(name);
@@ -365,16 +369,18 @@ pub fn main(init: std.process.Init) !u8 {
         try out.writeAll(")");
     }
     if (result.theorems_trusted > 0) {
-        try out.print(", {d} imported theorems trusted", .{result.theorems_trusted});
+        try out.print(" ({d} via trusted imports)", .{result.theorems_trusted});
     }
-    // loud disclosure: a speed flag deferred verification work — name what was
-    // not elaborated and remind the reader this run was accelerated.
+    // loud disclosure: a speed flag skipped verification work. The two axes are
+    // separate — --fast accelerates (accepts a procedure's verdict without a
+    // kernel chain); --faster/--reckless trust imports (skip re-checking imported
+    // proofs/schemas). Name whichever applies and how to fully verify.
     if (speed_flag) {
-        try out.writeAll("\n  \u{2014} ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated:");
-        if (!verify.certify_arithmetic) try out.writeAll(" arithmetic-certificates");
-        if (!verify.recheck_imports) try out.writeAll(" imported-proofs");
-        if (!verify.recheck_schemas) try out.writeAll(" imported-schemas");
-        try out.writeAll("); re-run `bpa check` to elaborate.");
+        try out.writeAll("\n  \u{2014} NOT FULLY VERIFIED:");
+        if (!verify.certify_arithmetic) try out.writeAll(" accelerated (a procedure's verdict was trusted without a kernel derivation);");
+        if (!verify.recheck_imports) try out.writeAll(" imported proofs were trusted, not re-checked;");
+        if (!verify.recheck_schemas) try out.writeAll(" imported schemas were trusted, not re-instantiated;");
+        try out.writeAll(" re-run `bpa check` to fully verify.");
     }
     try out.writeAll("\n");
     // A run that materialized NO theorems (schema-only, axioms-only, or a

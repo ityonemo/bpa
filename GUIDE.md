@@ -12,7 +12,7 @@ them in order; every failure is reported as `file:line:col: error:
 <message>` on stderr, and success prints one summary line:
 
 ```
-OK: 18 declarations, 6 theorems proven (5 elaborated, 1 accelerated: arithmetic)
+OK: 18 declarations, 6 theorems proven (1 accelerated: arithmetic)
 ```
 
 By default `bpa check` **verifies everything**: `by arithmetic`/`by
@@ -384,21 +384,21 @@ trust policy, **certificate first, accelerated fallback**:
 
 1. The tactic first tries to emit a *certificate*: ordinary kernel steps
    (rewrites, case splits, witness introductions) synthesized into the
-   proof and checked like hand-written ones. A certificated use is **elaborated**
+   proof and checked like hand-written ones. A certificated use **emits kernel steps**
    — exactly as trustworthy as a manual proof.
 2. Only when the goal is decidable but outside the certificate fragment
    does the tactic reach for its *accelerated* path: the decision procedure's verdict.
    By default this is a **hard error** — the goal must certify. Only under
    `--fast` is the accelerated verdict accepted (without a derivation); its name
    then **marks** the theorem accelerated, transitively through citations, and the
-   summary discloses it: `6 theorems proven (5 elaborated, 1 accelerated:
+   summary discloses it: `6 theorems proven (1 accelerated:
    arithmetic)` under a loud not-fully-verified banner.
 
 A failed tactic never marks anything accelerated: wrong goals produce located errors
 with copy-pasteable detail (unjoinable normal forms, propositional
 countermodels, concrete arithmetic counterexamples).
 
-### `simplify` — equational rewriting (always elaborated)
+### `simplify` — equational rewriting (always emits kernel steps)
 
 `[by simplify f1 f2 ...]` proves an equation by rewriting both sides to a
 common normal form using the cited facts (universally quantified equations
@@ -562,7 +562,7 @@ recognized by those well-known names in the current scope, and
 certificates additionally use the standard peano lemmas
 (`addZeroRight`, `addIsCommutative`, `addLeftSwap`, `lessThanIntro`,
 `lessThanElim`, ...) when they resolve — import them from `std/peano.bpa`
-to keep uses elaborated. Certificates cover ground and universally quantified
+to keep uses emitting kernel steps. Certificates cover ground and universally quantified
 linear goals, order goals, constant-witness existentials, hypothesis
 chains, and mixed skeletons; goals whose replay would itself require
 induction fall back to the accelerated path. False statements report concrete

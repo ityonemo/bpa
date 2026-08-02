@@ -73,7 +73,7 @@ zig build
 ```
 
 ```
-OK: 18 declarations, 6 theorems proven (5 elaborated, 1 accelerated: arithmetic)
+OK: 18 declarations, 6 theorems proven (1 accelerated: arithmetic)
 ```
 
 A proof is a sequence of labeled steps, each justified by a rule:
@@ -164,10 +164,10 @@ across files*, or *finding a lemma by concept* when the name is fuzzy.
   cites (its own step labels excluded). Answers "which proofs use `assoc`?" and
   "what does theorem X depend on?" — semantic and alias-aware, where a
   multi-line `[by …]` defeats `grep`.
-- `query accelerated <file> [theorem]` — the **elaboration audit**: per proof, every step
+- `query accelerated <file> [theorem]` — the **acceleration audit**: per proof, every step
   whose rule can fall back to an accelerated tactic (`arithmetic`, `tautology`, `polynomial`,
   `assoc_commut`, `assoc`, and their quantified variants), flagged at its
-  `file:line:col`. A clean report means the file's proofs are fully elaborated.
+  `file:line:col`. A clean report means every step in the file is kernel-checked.
 
 Query may support semantic searching in the future.
 
@@ -226,7 +226,7 @@ In general, bpa inverts the usual relationship with accelerated tactics:
   goal it cannot certify is a located error, never a silently trusted step.
   The linear fragment is certificated, including a **Farkas certificate** for
   linear infeasibility (a fixed no-search recipe), so the bulk of arithmetic
-  goals check elaborated with no accelerated step at all.
+  goals check with every step kernel-checked and no accelerated step at all.
 - **A loud, opt-in fast mode for development.** The `--fast` flag *skips*
   certificate generation and takes the accelerated verdict, for quick iteration
   while a proof is still being worked out.
@@ -293,7 +293,7 @@ disclosed and `--fast`-gated, so the trusted surface is always disclosed.
 | `examples/euclid.bpa` | Euclid's gcd, consuming the verified `std/peano-gcd` library |
 | `examples/euclid-compute.bpa` | gcd *run* on concrete numbers: `gcd(9, 6) = 3`, unfolded step by step |
 | `examples/incorrect.bpa` | three classic wrong proofs and their diagnostics |
-| `examples/sqrt2.bpa` | **√2 is irrational** (stated over ℕ), proved elaborated |
+| `examples/sqrt2.bpa` | **√2 is irrational** (stated over ℕ), proven |
 | `examples/literate.md` | a **literate** proof: prose + checkable ` ```bpa ` blocks |
 | `std/` | the standard library: arithmetic (`peano`), order + strong induction (`peano-ordering`), subtraction, division/divisibility, the verified `peano-gcd`, even/odd + the parity crux (`peano-parity`), abstract group theory (`group`), set algebra over a universe (`set`), and the theory of mappings (`function`) |
 | `aata/` | **literate transliterations of an abstract-algebra textbook** (Judson's AATA, GFDL) verified in bpa — the book's prose reproduced in order, each stated result followed by a checked proof; see `aata/README` |

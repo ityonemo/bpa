@@ -50,7 +50,7 @@ pub const Statement = union(enum) {
         /// (no --recursive). Reported separately in the summary.
         trusted: bool = false,
         /// accelerated-tactic names this proof leaned on, transitively through
-        /// citations (empty = elaborated). Disclosed in the summary; rejected
+        /// citations (empty = every step kernel-checked). Disclosed in the summary; rejected
         /// by --pure.
         accelerated: []const StrId = &.{},
     };

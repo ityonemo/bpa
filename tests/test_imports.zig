@@ -31,25 +31,25 @@ pub fn addTests(
     // --faster trusts imported proofs (peano-imports imports peano.bpa,
     // whose one accelerated step would otherwise be re-checked and hard-error).
     ctx.ok(&.{ "check", "--faster", "examples/peano-imports.bpa" },
-        \\OK: 24 declarations, 1 theorems proven, 6 imported theorems trusted
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates imported-proofs); re-run `bpa check` to elaborate.
+        \\OK: 24 declarations, 7 theorems proven (6 via trusted imports)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); imported proofs were trusted, not re-checked; re-run `bpa check` to fully verify.
         \\
     );
 
-    // --fast re-checks the imported proofs; since Cooper-replay certifies the
-    // once-accelerated evenOrOdd, nothing is deferred and all seven are elaborated (the
-    // --fast banner still fires).
+    // --fast re-checks the imported proofs; since Cooper-replay emits the
+    // once-accelerated evenOrOdd as kernel steps, nothing is trusted and all
+    // seven are proven (the --fast banner still fires).
     ctx.ok(&.{ "check", "--fast", "examples/peano-imports.bpa" },
         \\OK: 24 declarations, 7 theorems proven
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
 
     // trust semantics: importing an INCORRECT theorem passes under --faster
     // (imported proofs trusted)...
     ctx.ok(&.{ "check", "--faster", "tests/cases/imports/trusts_broken.bpa" },
-        \\OK: 7 declarations, 1 theorems proven, 1 imported theorems trusted
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates imported-proofs); re-run `bpa check` to elaborate.
+        \\OK: 7 declarations, 2 theorems proven (1 via trusted imports)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); imported proofs were trusted, not re-checked; re-run `bpa check` to fully verify.
         \\
     );
 
@@ -64,8 +64,8 @@ pub fn addTests(
     // --reckless additionally trusts imported schemas (banner names all
     // three deferred layers)
     ctx.ok(&.{ "check", "--reckless", "examples/peano-imports.bpa" },
-        \\OK: 24 declarations, 1 theorems proven, 6 imported theorems trusted
-        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates imported-proofs imported-schemas); re-run `bpa check` to elaborate.
+        \\OK: 24 declarations, 7 theorems proven (6 via trusted imports)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); imported proofs were trusted, not re-checked; imported schemas were trusted, not re-instantiated; re-run `bpa check` to fully verify.
         \\
     );
 
