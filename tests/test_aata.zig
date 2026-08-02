@@ -50,12 +50,9 @@ pub fn addTests(
         \\
     );
 
-    // AATA Chapter 2 "The Integers": the §2.1 induction example base case is
-    // proven; the full ∀n≥0 3|(4ⁿ−1) is a `hole` (inductive step in progress),
-    // so the file needs --draft.
-    ctx.ok(&.{ "check", "--draft", "aata/2-integers.md" },
-        \\OK: 171 declarations, 25 theorems proven
-        \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): fourthPowerMinusOne; re-run `bpa check` (no --draft) once filled.
-        \\
-    );
+    // AATA Chapter 2 "The Integers": §2.1 Mathematical Induction, fully proven —
+    // the base case AND the ∀n≥0 3|(4ⁿ−1) nonneg-induction (its inductive step
+    // splits 4^(k+1)−1 = 4(4ᵏ−1)+3 and uses dividesMul/dividesAdd). No hole; the
+    // file checks WITHOUT --draft.
+    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 184 declarations, 27 theorems proven\n");
 }
