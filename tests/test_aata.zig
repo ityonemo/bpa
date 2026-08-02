@@ -31,4 +31,20 @@ pub fn addTests(
     // equivalence-projections + the "reflexivity is redundant" exercise. The
     // equivalence⇔partition correspondence is deferred (needs sets-of-sets).
     ctx.ok(&.{ "check", "aata/1.2.3-relations.md" }, "OK: 27 declarations, 4 theorems proven\n");
+
+    // AATA equivalence classes/partitions: the tractable heart of §1.2.3 —
+    // classes are nonempty, [x]=[y] iff x~y, and any two are equal-or-disjoint
+    // (3 theorems). The "form a partition" packaging (a set of sets) stays a
+    // `hole`, so the file needs --draft; default mode rejects it, naming the
+    // one remaining hole.
+    ctx.ok(&.{ "check", "--draft", "aata/1.2.3-partitions.md" },
+        \\OK: 76 declarations, 3 theorems proven
+        \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): classesCoverUniverse; re-run `bpa check` (no --draft) once filled.
+        \\
+    );
+    ctx.fail(&.{ "check", "aata/1.2.3-partitions.md" },
+        \\error: 1 hole(s) remain (default mode rejects holes; use --draft while filling them):
+        \\  - classesCoverUniverse  (aata/1.2.3-partitions.md:596)
+        \\
+    );
 }
