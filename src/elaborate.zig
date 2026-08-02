@@ -424,12 +424,15 @@ pub const Elaborator = struct {
                 } else {
                     self.accelerated_used.clearRetainingCapacity();
                     self.holes_used.clearRetainingCapacity();
-                    const proven = try self.checkProofSteps(d.steps, typed.id, d.name.start);
-                    if (proven) {
+                    const lowered = try self.checkProofSteps(d.steps, typed.id, d.name.start);
+                    if (lowered) |proof| {
                         const fact = &self.env.findStatement(self.file, name).?.theorem;
                         fact.proven = true;
                         fact.accelerated = try self.arena.dupe(StrId, self.accelerated_used.items);
                         fact.holes = try self.arena.dupe(StrId, self.holes_used.items);
+                        // retain the lowered kernel proof so a `model` transfer
+                        // can materialize a remapped copy in strict mode.
+                        fact.proof = proof;
                     }
                 }
             },
@@ -520,9 +523,10 @@ pub const Elaborator = struct {
         const LabelTarget = union(enum) { step: kernel.StepId, block: kernel.BlockId };
     };
 
-    /// Lower and kernel-check a proof. Returns true if proven. Lowering
-    /// errors record a diagnostic and yield false (the file continues).
-    fn checkProofSteps(self: *Elaborator, steps: []const ast.Step, goal: TermId, goal_loc: u32) Allocator.Error!bool {
+    /// Lower and kernel-check a proof. Returns the LOWERED proof if proven
+    /// (retained on the Fact for `model` materialization), else null. Lowering
+    /// errors record a diagnostic and yield null (the file continues).
+    fn checkProofSteps(self: *Elaborator, steps: []const ast.Step, goal: TermId, goal_loc: u32) Allocator.Error!?Statement.LoweredProof {
         var low: Lowering = .{};
         const root_label = try self.interner.intern("proof");
         try low.blocks.append(self.arena, .{
@@ -534,7 +538,7 @@ pub const Elaborator = struct {
         });
         self.lowerSteps(&low, steps, @enumFromInt(0)) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
-            error.Recover => return false,
+            error.Recover => return null,
         };
         low.blocks.items[0].last_step = @intCast(low.steps.items.len);
 
@@ -545,11 +549,13 @@ pub const Elaborator = struct {
             .interner = self.interner,
             .sink = self.sink,
         };
-        return k.check(
+        const proven = k.check(
             .{ .steps = low.steps.items, .blocks = low.blocks.items },
             goal,
             goal_loc,
         );
+        if (!(try proven)) return null;
+        return .{ .steps = low.steps.items, .blocks = low.blocks.items };
     }
 
     /// Lower a block's sibling steps. Labels resolve across the whole block
@@ -1475,7 +1481,7 @@ pub const Elaborator = struct {
             // schema's stored proven-ness and skips the re-instantiation.
             if (self.verify.recheck_schemas) {
                 if (schema.proof) |steps| {
-                    if (!try self.checkProofSteps(steps, inst.id, schema.loc)) break :blk null;
+                    if (try self.checkProofSteps(steps, inst.id, schema.loc) == null) break :blk null;
                 }
             }
             break :blk inst.id;

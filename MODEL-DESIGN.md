@@ -193,16 +193,49 @@ Classified with `assoc`/`arithmetic`/Cooper-replay. (Vocabulary per
 
 - `[by model(…) …]` **taints** the citing theorem — `accelerated` gains
   `"model"` — **disclosed in the summary**.
-- **`--fast`**: trust the transfer wholesale — take the remapped formula, skip the
-  obligation-discharge check and the source proof. (MVP path.)
-- **default**: **elaborated** — the transfer is legitimate (not tainted) because
-  (a) every source axiom obligation is checked to be discharged by a real local
-  fact (remap-and-match), and (b) the source theorem was already proven over the
-  abstract sort. Both hold ⇒ transferred theorem is sound.
+- **`--fast`**: trust the transfer wholesale — remap only the source theorem's
+  STATEMENT, α-match the goal, taint `accelerated: model`. Assume-true; check
+  nothing about the proof. (MVP path — built.)
+- **default (strict)**: **materialize the source proof, remapped, and let the
+  kernel check it.** Not tainted — genuinely kernel-checked. See below.
 
-Subtlety vs. other accelerants: `model`'s soundness is **compositional**
-(faithful-interpretation + source-proof-valid), not a decision procedure. That is
-an internal detail of *how* it elaborates, not new vocabulary or a new flag.
+### Strict mode = materialize the remapped proof tree (the real mechanism)
+
+A `model` transfer is *strictly a lexical (AST) remapping* — including the PROOF
+AST, not just the statement. So strict mode does exactly this:
+
+1. `[by model(MyModel) sometheorem]` loads `MyModel`'s remap list and rewrites
+   `sometheorem`'s ENTIRE PROOF through it, emitting a synthetic local theorem
+   `MyModel$sometheorem` (name-mangled to avoid collision).
+2. That remapped proof cites other things — `someothertheorem`, axioms. **Walk the
+   dependencies**: each cited source theorem is recursively materialized the same
+   way (`MyModel$someothertheorem`), and the citation is rewritten to the mangled
+   name. Memoized per (model, source-theorem) so a diamond emits once.
+3. Axiom leaves: a remapped axiom citation lands on the model's mapped local fact
+   (`source.opUnitLeft: combineZedLeft` → the citation becomes `combineZedLeft`, a
+   real local axiom). If an axiom the proof used is UNMAPPED, its remapped form
+   must still α-match some local fact, or the mangled step fails to check.
+4. The **kernel checks the whole materialized tree** like any other proof. That
+   checking IS the obligation discharge — automatic and exact. No taint, no
+   `deps` provenance channel, no meta-argument.
+
+Why this is right: the obligation set is NOT the source theory's declared axioms
+(that universe is unbounded and cross-file — a group-powers proof may lean on an
+`arithmetic` axiom three files away). It is *whatever the proof actually cited*.
+Materializing the remapped proof makes the kernel enforce every such leaf
+precisely: remap `add` to something where `1+1=2` is false, and the mangled step
+citing the remapped arithmetic axiom simply won't check — caught for free, no
+special dependency analysis.
+
+Mangled theorems are emitted as real `Statement`s (so the kernel checks them and
+citations resolve) but SUPPRESSED from the user-facing declaration/theorem count
+(they are machinery, not authored). Memo keyed on the MODEL, so all cites through
+one model share the materialized copies.
+
+Subtlety vs. other accelerants: strict `model` is not a decision procedure and not
+a bare trusted verdict — it is **proof materialization**: the source proof,
+lexically remapped, kernel-checked locally. `--fast` skips the materialization and
+trusts; strict does it and checks.
 
 ### Partial models are LEGAL — at the prover's risk (THE WARNING)
 
@@ -256,6 +289,45 @@ are *necessary* for this theorem?") turned into comment-and-recheck:
 Sound as a probe precisely because strict rejection means the proof genuinely
 cited the missing axiom (no false positives from the checker's side). This is why
 partial models earn their place on principle, not just convenience.
+
+### Long-range: the "wrap kernel steps into a named theorem" primitive (4 uses)
+
+`model` strict materialization needs to WRAP synthesized/remapped kernel steps
+into a named, checked environment theorem, then cite it (the cite path already
+exists — it's `fallback`'s `theorem_ref`). That wrap primitive turns out to be
+shared machinery with FOUR uses, which is why it's worth building well once:
+
+1. **`fallback`** — CONSUME a named theorem as an accelerant's certificate (exists).
+2. **`model` strict** — PRODUCE named theorems by remapping a source proof (this).
+3. **accelerant debug mode** — wrap ANY certifier's steps into a reviewable named
+   theorem (next; in proximal-todo). Today accelerant reasoning is opaque
+   (`--fast` shows a taint; elaborated mode's inline steps vanish); reifying it as
+   named theorems is the transparency lever for bpa's LLM-authored thesis.
+4. **mechanical export (Lean/Isabelle/Rocq)** — an accelerant's *verdict* doesn't
+   translate (an external prover won't accept "the Presburger procedure decided
+   it"), but the materialized full KERNEL-STEP CHAIN does — it maps onto
+   external tactic invocations. So the same wrap/materialize output is what export
+   replays. The `model` step-remapping (retain lowered proof → remap step formulas
+   + justification ids) is export-shaped by construction.
+
+### Long-range: synthetic-theorem emission as a general accelerant debug mode
+
+`model`'s strict materialization mints name-mangled environment-level theorems
+(`MyModel$sometheorem`) — a mechanism NO other accelerant currently has (the
+others splice anonymous inline steps, or in `--fast` show nothing). `model` needs
+it because its output is a fixed, reusable artifact (materialize-once, cite-many),
+unlike a per-goal certificate.
+
+But it points at a general capability worth pursuing later (user, 2026-08-02):
+**a debug/review mode in which ANY accelerant emits its full synthesized
+derivation as named environment theorems for careful review.** Today an
+accelerant's reasoning is opaque — `--fast` shows only a taint, and elaborated
+mode's inline certificate steps vanish into the proof; you cannot point at "the
+chain `arithmetic`/`ext` generated for this goal" and read it as standalone
+objects. Reifying accelerant output as inspectable theorems is the transparency
+lever for exactly the black-box spots — valuable for bpa's LLM-authored,
+trust-legible thesis. `model`'s strict path is the prototype; generalizing it to
+the other accelerants as an opt-in debug mode is the long-range direction.
 
 ## Relativization (the guarded case)
 
