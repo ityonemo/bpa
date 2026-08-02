@@ -142,7 +142,7 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   skeleton atoms, and multi-variable / nested (`∀∃∀`) alternation (the cooper
   link declines these, so they fall to `--fast`).
 
-### `polynomial` — nonlinear ring identities (`--fast` oracle only)
+### `polynomial` — nonlinear ring identities
 
 - **Module**: `src/elaborate.zig` (`polynomialEquation` / `polyCanon` for the
   certify path; `polyNormForm` for the oracle path)
@@ -166,8 +166,21 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
 - **Why an oracle at all**: it decides on theories too thin to certify, and it
   trusts the ring structure of symbols it does not control — the honest, tainted
   counterpart to the default's kernel-discharged trust.
+- **No `fallback` (settled — don't relitigate).** Unlike `arithmetic` (whose
+  Cooper decision genuinely exceeds what the certifier can emit — the ∀∀∃ /
+  nested-alternation tail — so `fallback` bridges a real gap), `polynomial`'s
+  certify path and oracle decide the *same* fragment: semiring identities over
+  `add`/`mul`. **When the ring lemmas are present, the certify path always
+  succeeds** on a true identity (terminating normalization, every rewrite cites
+  a present lemma) — stress-tested to a wide-sum 4th power (256 monomials),
+  100-factor reversed products, `succ`-atoms, and 0/1 folds. The only case the
+  oracle "wins" is a **thin theory** (`needs <lemma> in scope`), whose fix is to
+  *add the lemma*, not to hand-prove around it. So there is no
+  decision-vs-certification gap for `polynomial` to bridge, and it carries no
+  `fallback`. (The audit also surfaced — and fixed — a stale-slice OOB crash in
+  the oracle normalizer on large expansions: `tests/cases/polynomial_oob.bpa`.)
 
-### `assoc_commut` — associative-commutative reordering (`--fast` oracle only)
+### `assoc_commut` — associative-commutative reordering
 
 - **Module**: `src/elaborate.zig` (`acEquation`)
 - **Surface rule**: bare `[by assoc_commut]` / `[by assoc_commut_quantified]`
@@ -189,7 +202,7 @@ argument (`polynomial(peano)`, `arithmetic(peano)`) pins it to a vetted theory.
   case; `polynomial` additionally distributes `mul` over `add`. Same trust
   story — both presume the vocabulary's algebra where the certify path proves it.
 
-### `assoc` — associativity-only reordering (`--fast` oracle only)
+### `assoc` — associativity-only reordering
 
 - **Module**: `src/elaborate.zig` (`assocEquation`)
 - **Surface rule**: `[by assoc(assocLemma)]` / `[by assoc_quantified(assocLemma)]`.
