@@ -26,6 +26,8 @@ theorem addZeroLeft = ring.addZeroLeft
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
 theorem mulOneRight = ring.mulOneRight
+theorem mulAddDistribLeft = ring.mulAddDistribLeft
+theorem mulIsAssociative = ring.mulIsAssociative
 axiom induction = integer.induction
 
 // -- divisibility -----------------------------------------------------------
@@ -68,5 +70,187 @@ proof
     }
   @conclusion |
     forall d: Int; divides(d, d)
+    [by forall_intro generalize-d]
+qed
+
+// d | a  =>  d | a·c: if a = d·k, then a·c = (d·k)·c = d·(k·c), so d divides a·c.
+// Unpack the quotient k from d | a, reassociate the triple product with
+// mulIsAssociative, then repackage via dividesIntro with witness k·c.
+theorem dividesMul: forall d, a, c: Int; divides(d, a) -> divides(d, mul(a, c))
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-a |
+        fix a: Int {
+          @generalize-c |
+            fix c: Int {
+              @given-d-divides-a |
+                assume divides(d, a) {
+                  @d-divides-a |
+                    divides(d, a)
+                    [by hypothesis given-d-divides-a]
+                  @divisor-yields-witness |
+                    forall dd, n: Int; divides(dd, n) -> exists k: Int; n = mul(dd, k)
+                    [by axiom dividesElim]
+                  @a-is-d-multiple-if-d-divides |
+                    divides(d, a) -> exists k: Int; a = mul(d, k)
+                    [by forall_elim(d, a) divisor-yields-witness]
+                  @a-is-d-multiple |
+                    exists k: Int; a = mul(d, k)
+                    [by modus_ponens a-is-d-multiple-if-d-divides d-divides-a]
+                  @with-quotient-k |
+                    unpack k: Int from a-is-d-multiple {
+                      @a-equals-d-times-k |
+                        a = mul(d, k)
+                        [by hypothesis with-quotient-k]
+                      @product-refl |
+                        mul(a, c) = mul(a, c)
+                        [by reflexivity]
+                      @product-with-a-expanded |
+                        mul(a, c) = mul(mul(d, k), c)
+                        [by rewrite a-equals-d-times-k product-refl]
+                      @mul-associative |
+                        forall x, y, z: Int; mul(mul(x, y), z) = mul(x, mul(y, z))
+                        [by theorem mulIsAssociative]
+                      @product-reassociates |
+                        mul(mul(d, k), c) = mul(d, mul(k, c))
+                        [by forall_elim(d, k, c) mul-associative]
+                      @product-is-d-multiple |
+                        mul(a, c) = mul(d, mul(k, c))
+                        [by rewrite product-reassociates product-with-a-expanded]
+                      @multiple-divides |
+                        forall dd, n, j: Int; n = mul(dd, j) -> divides(dd, n)
+                        [by axiom dividesIntro]
+                      @witness-yields-d-divides-product |
+                        mul(a, c) = mul(d, mul(k, c)) -> divides(d, mul(a, c))
+                        [by forall_elim(d, mul(a, c), mul(k, c)) multiple-divides]
+                      @d-divides-product-under-witness |
+                        divides(d, mul(a, c))
+                        [by modus_ponens witness-yields-d-divides-product product-is-d-multiple]
+                    }
+                  @d-divides-product |
+                    divides(d, mul(a, c))
+                    [by exists_elim with-quotient-k]
+                }
+              @d-divides-a-implies-d-divides-product |
+                divides(d, a) -> divides(d, mul(a, c))
+                [by implies_intro given-d-divides-a]
+            }
+          @discharge-c |
+            forall c: Int; divides(d, a) -> divides(d, mul(a, c))
+            [by forall_intro generalize-c]
+        }
+      @discharge-a |
+        forall a, c: Int; divides(d, a) -> divides(d, mul(a, c))
+        [by forall_intro generalize-a]
+    }
+  @conclusion |
+    forall d, a, c: Int; divides(d, a) -> divides(d, mul(a, c))
+    [by forall_intro generalize-d]
+qed
+
+// d | a  and  d | b  =>  d | a+b: if a = d·j and b = d·k, then a+b = d·(j+k) by
+// left-distributivity, so d divides a+b. Unpack both quotients, collect the sum
+// with mulAddDistribLeft, then repackage via dividesIntro with witness j+k.
+theorem dividesAdd: forall d, a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-a |
+        fix a: Int {
+          @generalize-b |
+            fix b: Int {
+              @given-d-divides-a |
+                assume divides(d, a) {
+                  @given-d-divides-b |
+                    assume divides(d, b) {
+                      @d-divides-a |
+                        divides(d, a)
+                        [by hypothesis given-d-divides-a]
+                      @d-divides-b |
+                        divides(d, b)
+                        [by hypothesis given-d-divides-b]
+                      @divisor-yields-witness |
+                        forall dd, n: Int; divides(dd, n) -> exists k: Int; n = mul(dd, k)
+                        [by axiom dividesElim]
+                      @a-is-d-multiple-if-d-divides |
+                        divides(d, a) -> exists k: Int; a = mul(d, k)
+                        [by forall_elim(d, a) divisor-yields-witness]
+                      @a-is-d-multiple |
+                        exists k: Int; a = mul(d, k)
+                        [by modus_ponens a-is-d-multiple-if-d-divides d-divides-a]
+                      @b-is-d-multiple-if-d-divides |
+                        divides(d, b) -> exists k: Int; b = mul(d, k)
+                        [by forall_elim(d, b) divisor-yields-witness]
+                      @b-is-d-multiple |
+                        exists k: Int; b = mul(d, k)
+                        [by modus_ponens b-is-d-multiple-if-d-divides d-divides-b]
+                      @with-quotient-j |
+                        unpack j: Int from a-is-d-multiple {
+                          @a-equals-d-times-j |
+                            a = mul(d, j)
+                            [by hypothesis with-quotient-j]
+                          @with-quotient-k |
+                            unpack k: Int from b-is-d-multiple {
+                              @b-equals-d-times-k |
+                                b = mul(d, k)
+                                [by hypothesis with-quotient-k]
+                              @distribute-over-sum |
+                                forall x, y, z: Int; mul(x, add(y, z)) = add(mul(x, y), mul(x, z))
+                                [by theorem mulAddDistribLeft]
+                              @sum-of-multiples-distributes |
+                                mul(d, add(j, k)) = add(mul(d, j), mul(d, k))
+                                [by forall_elim(d, j, k) distribute-over-sum]
+                              @sum-of-products-collects |
+                                add(mul(d, j), mul(d, k)) = mul(d, add(j, k))
+                                [by symmetry sum-of-multiples-distributes]
+                              @d-times-j-is-a |
+                                mul(d, j) = a
+                                [by symmetry a-equals-d-times-j]
+                              @d-times-k-is-b |
+                                mul(d, k) = b
+                                [by symmetry b-equals-d-times-k]
+                              @a-plus-multiple-is-d-multiple |
+                                add(a, mul(d, k)) = mul(d, add(j, k))
+                                [by rewrite d-times-j-is-a sum-of-products-collects]
+                              @sum-is-d-multiple |
+                                add(a, b) = mul(d, add(j, k))
+                                [by rewrite d-times-k-is-b a-plus-multiple-is-d-multiple]
+                              @multiple-divides |
+                                forall dd, n, q: Int; n = mul(dd, q) -> divides(dd, n)
+                                [by axiom dividesIntro]
+                              @witness-yields-d-divides-sum |
+                                add(a, b) = mul(d, add(j, k)) -> divides(d, add(a, b))
+                                [by forall_elim(d, add(a, b), add(j, k)) multiple-divides]
+                              @d-divides-sum-under-witness |
+                                divides(d, add(a, b))
+                                [by modus_ponens witness-yields-d-divides-sum sum-is-d-multiple]
+                            }
+                          @d-divides-sum-after-k |
+                            divides(d, add(a, b))
+                            [by exists_elim with-quotient-k]
+                        }
+                      @d-divides-sum |
+                        divides(d, add(a, b))
+                        [by exists_elim with-quotient-j]
+                    }
+                  @d-divides-b-implies-d-divides-sum |
+                    divides(d, b) -> divides(d, add(a, b))
+                    [by implies_intro given-d-divides-b]
+                }
+              @common-divisor-divides-sum |
+                divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
+                [by implies_intro given-d-divides-a]
+            }
+          @discharge-b |
+            forall b: Int; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
+            [by forall_intro generalize-b]
+        }
+      @discharge-a |
+        forall a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
+        [by forall_intro generalize-a]
+    }
+  @conclusion |
+    forall d, a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
     [by forall_intro generalize-d]
 qed

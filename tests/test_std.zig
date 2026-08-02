@@ -41,16 +41,16 @@ pub fn addTests(
     // the integers ℤ ring algebra (std/integer-ring.bpa): left/right recursion,
     // commutativity, associativity, the additive-inverse law n+(-n)=0, and the
     // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
-    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 52 declarations, 9 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 57 declarations, 14 theorems proven\n");
 
     // ℤ subtraction (total: a-b = a+(-b)) + the strict order, over the ring
     // algebra: subSelf (a-a=0) and subAddCancel ((a-b)+b=a), proven with no
     // induction from the inverse law; order via less_than intro/elim.
-    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 76 declarations, 11 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 81 declarations, 16 theorems proven\n");
 
     // ℤ divisibility + powers (std/integer-divides.bpa): divides intro/elim +
     // pow recursion; dividesRefl proven.
-    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 77 declarations, 10 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 86 declarations, 17 theorems proven\n");
 
     // the group theory (std/group.bpa): axioms only, no theorems — so a
     // direct check materializes nothing and exits nonzero with a warning
