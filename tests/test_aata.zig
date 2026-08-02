@@ -18,8 +18,9 @@ pub fn addTests(
     ctx.ok(&.{ "check", "aata/3.2-groups.md" }, "OK: 29 declarations, 10 theorems proven\n");
 
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
-    // (the set-algebra proposition + De Morgan's laws), verified (proven; no accelerated tactic).
-    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 43 declarations, 14 theorems proven\n");
+    // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2
+    // exercises discharged in one line each by the `ext` tactic).
+    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 48 declarations, 19 theorems proven\n");
 
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
     // (composition associativity/preservation + invertible⇒bijective
