@@ -1,0 +1,42 @@
+// std/relation.bpa — binary relations and equivalence relations over a fixed
+// element domain, per Chapter 1 §1.2.3 of Judson's *Abstract Algebra*
+// (vendor/aata/src/sets.xml).
+//
+// A relation on X is modeled as a binary predicate `related(x, y)` over a sort
+// `Element` (the analogue of `member` for sets / `apply` for functions). Its
+// structural properties — reflexive, symmetric, transitive, and being an
+// equivalence relation — are predicates fixed by defining axioms (each an `and`
+// of the two implications, since bpa has no `<->`), exactly like `injective` /
+// `surjective` in std/function.bpa.
+//
+// This is the FOL-tractable layer of §1.2.3. What it does NOT model:
+// equivalence CLASSES `[a]` and PARTITIONS (a set X = ⋃[x] of classes) — those
+// need a quotient / sets-of-sets structure, deferred to a later theory. Every
+// theorem here is about the relation itself, membershipwise-free.
+
+sort Element
+pred related(x: Element, y: Element)
+pred reflexive
+pred symmetric
+pred transitive
+pred equivalence
+
+// reflexive: x ∼ x for every x.
+axiom reflexiveDef:
+  (reflexive -> (forall x: Element; related(x, x)))
+  and ((forall x: Element; related(x, x)) -> reflexive)
+
+// symmetric: x ∼ y implies y ∼ x.
+axiom symmetricDef:
+  (symmetric -> (forall x, y: Element; related(x, y) -> related(y, x)))
+  and ((forall x, y: Element; related(x, y) -> related(y, x)) -> symmetric)
+
+// transitive: x ∼ y and y ∼ z imply x ∼ z.
+axiom transitiveDef:
+  (transitive -> (forall x, y, z: Element; related(x, y) -> related(y, z) -> related(x, z)))
+  and ((forall x, y, z: Element; related(x, y) -> related(y, z) -> related(x, z)) -> transitive)
+
+// an equivalence relation is reflexive, symmetric, and transitive.
+axiom equivalenceDef:
+  (equivalence -> (reflexive and symmetric and transitive))
+  and ((reflexive and symmetric and transitive) -> equivalence)

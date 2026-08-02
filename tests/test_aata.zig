@@ -26,4 +26,9 @@ pub fn addTests(
     // (composition associativity/preservation + invertible⇒bijective
     // forward), verified (proven; no accelerated tactic). The backward direction is a marked wall.
     ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 46 declarations, 11 theorems proven\n");
+
+    // AATA relations: the FOL-tractable part of Chapter 1 §1.2.3 — the three
+    // equivalence-projections + the "reflexivity is redundant" exercise. The
+    // equivalence⇔partition correspondence is deferred (needs sets-of-sets).
+    ctx.ok(&.{ "check", "aata/1.2.3-relations.md" }, "OK: 25 declarations, 4 theorems proven\n");
 }
