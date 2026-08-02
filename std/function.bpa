@@ -53,3 +53,18 @@ axiom invertibleDef: forall f: Fn;
   (exists g: Fn; compose(g, f) = identityFn and compose(f, g) = identityFn))
   and ((exists g: Fn; compose(g, f) = identityFn and compose(f, g) = identityFn)
   -> invertible(f))
+
+// the inverse map. `inverse` is a TOTAL symbol (every Fn has some `inverse(f)`),
+// but its behavior is only PINNED when f is invertible: then inverse(f) is the
+// two-sided inverse. For a non-invertible f, inverse(f) is an unconstrained
+// junk value (never reasoned about) — the standard way to name "f⁻¹" without a
+// choice/definite-description operator. The two axioms below say inverse(f) IS
+// a two-sided inverse whenever one exists; two-sided inverses are unique
+// (provable), so this determines inverse(f) exactly on the invertibles.
+func inverse(f: Fn): Fn
+
+// f invertible ⇒ inverse(f) ∘ f = id
+axiom inverseLeft: forall f: Fn; invertible(f) -> compose(inverse(f), f) = identityFn
+
+// f invertible ⇒ f ∘ inverse(f) = id
+axiom inverseRight: forall f: Fn; invertible(f) -> compose(f, inverse(f)) = identityFn

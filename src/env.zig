@@ -173,6 +173,16 @@ pub const Env = struct {
         return &self.statements.items[@intFromEnum(id)];
     }
 
+    /// Every statement id visible in `file`'s scope (its own + aliased/imported
+    /// names). Used by tactics that must scan a theory's lemmas rather than
+    /// resolve one by a guessed name (e.g. `ext`'s apply-lemma collection).
+    pub fn scopeStatements(self: *Env, file: FileId) []const StatementId {
+        var out: std.ArrayList(StatementId) = .empty;
+        var it = self.scope(file).statement_names.valueIterator();
+        while (it.next()) |sid| out.append(self.arena, sid.*) catch return &.{};
+        return out.items;
+    }
+
     pub fn findNamespace(self: *Env, file: FileId, name: StrId) ?FileId {
         return self.scope(file).namespaces.get(name);
     }

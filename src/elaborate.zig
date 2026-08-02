@@ -3297,20 +3297,19 @@ pub const Elaborator = struct {
     fn extFunctionResidue(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, eq_goal: TermId, loc: u32) ElabError!kernel.Justification {
         const eq = self.pool.get(eq_goal).eq;
         if (self.pool.alphaEq(eq.lhs, eq.rhs)) return .reflexivity;
-        // collect the distinct <op>Apply rules for operators appearing under an
-        // `apply(op(...), _)` on either side.
-        var rules: std.ArrayList(simplify_mod.Rule) = .empty;
-        var seen: std.ArrayList([]const u8) = .empty;
-        try self.extApplyRules(eq.lhs, &rules, &seen, loc);
-        try self.extApplyRules(eq.rhs, &rules, &seen, loc);
-        if (rules.items.len == 0) {
+        // collect every apply-characterization lemma in the theory scope: any
+        // axiom/theorem whose stripped LHS is `apply(…, …)`. Enumerating the
+        // scope (rather than guessing `<op>Apply` names) handles const heads
+        // like `identityFn` (whose lemma is `identityApply`, not `identityFnApply`).
+        const rules = try self.extApplyLemmas(loc);
+        if (rules.len == 0) {
             return self.fail(loc, "ext: no apply lemmas in scope to unfold '{s}'", .{try self.renderTerm(eq_goal)});
         }
-        const rs = simplify_mod.normalize(self.arena, self.pool, self.env, rules.items, eq.lhs, 1000) catch |e| switch (e) {
+        const rs = simplify_mod.normalize(self.arena, self.pool, self.env, rules, eq.lhs, 1000) catch |e| switch (e) {
             error.Limit => return self.fail(loc, "ext: rewrite limit reached", .{}),
             error.OutOfMemory => return error.OutOfMemory,
         };
-        const rt = simplify_mod.normalize(self.arena, self.pool, self.env, rules.items, eq.rhs, 1000) catch |e| switch (e) {
+        const rt = simplify_mod.normalize(self.arena, self.pool, self.env, rules, eq.rhs, 1000) catch |e| switch (e) {
             error.Limit => return self.fail(loc, "ext: rewrite limit reached", .{}),
             error.OutOfMemory => return error.OutOfMemory,
         };
@@ -3319,36 +3318,43 @@ pub const Elaborator = struct {
                 try self.renderTerm(rs.nf), try self.renderTerm(rt.nf),
             });
         }
-        return self.emitJoin(low, block_id, loc, rules.items, eq.lhs, eq.rhs, rs, rt);
+        return self.emitJoin(low, block_id, loc, rules, eq.lhs, eq.rhs, rs, rt);
     }
 
-    /// Collect the `<op>Apply` rewrite rule for every operator under an
-    /// `apply(op(...), _)` subterm of `t`, dedup by lemma name.
-    fn extApplyRules(self: *Elaborator, t: TermId, rules: *std.ArrayList(simplify_mod.Rule), seen: *std.ArrayList([]const u8), loc: u32) ElabError!void {
-        const node = self.pool.get(t);
-        if (node != .app) return;
-        // COPY child ids first: pool.args aliases pool.extra, which wellKnownRule
-        // may grow (it interns/adds terms) — the slice would dangle.
-        const children = try self.arena.dupe(TermId, self.pool.args(node.app));
-        const apply_sym = try self.wellKnownSym("apply");
-        if (apply_sym != null and node.app.sym == apply_sym.? and children.len == 2) {
-            const head = self.pool.get(children[0]);
-            if (head == .app) {
-                const op_name = self.env.sym(head.app.sym).name;
-                const lemma_name = try std.fmt.allocPrint(self.arena, "{s}Apply", .{self.interner.str(op_name)});
-                var already = false;
-                for (seen.items) |s| {
-                    if (std.mem.eql(u8, s, lemma_name)) already = true;
-                }
-                if (!already) {
-                    if (try self.wellKnownRule(lemma_name, loc)) |r| {
-                        try rules.append(self.arena, r);
-                        try seen.append(self.arena, lemma_name);
-                    }
-                }
+    /// Every apply-characterization rewrite lemma in the current theory scope:
+    /// each axiom/theorem whose stripped LHS is `apply(…, …)` (`composeApply`,
+    /// `identityApply`, …), turned into a rewrite rule. Enumerates the scope so a
+    /// const head (`identityFn`) is handled without name-guessing.
+    fn extApplyLemmas(self: *Elaborator, loc: u32) ElabError![]const simplify_mod.Rule {
+        const apply_sym = (try self.wellKnownSym("apply")) orelse return &.{};
+        var rules: std.ArrayList(simplify_mod.Rule) = .empty;
+        for (self.env.scopeStatements(self.theoryScope())) |sid| {
+            const stmt = self.env.statements.items[@intFromEnum(sid)];
+            const fact: struct { formula: TermId, source: simplify_mod.Source } = switch (stmt) {
+                .axiom => |a| .{ .formula = a.formula, .source = .{ .axiom = .{ .id = sid, .loc = loc } } },
+                .theorem => |t| if (t.proven and t.accelerated.len == 0)
+                    .{ .formula = t.formula, .source = .{ .theorem = .{ .id = sid, .loc = loc } } }
+                else
+                    continue,
+                .schema => continue,
+            };
+            // strip the forall prefix; keep only equations whose lhs is apply(…).
+            var body = fact.formula;
+            while (self.pool.get(body) == .quant and self.pool.get(body).quant.q == .forall) {
+                const qn = self.pool.get(body).quant;
+                const fv = try self.pool.add(.{ .fvar = .{ .name = try self.freshNamed("p"), .sort = qn.sort } });
+                body = try self.pool.open(qn.body, fv);
+            }
+            const bn = self.pool.get(body);
+            if (bn != .eq) continue;
+            const lhs = self.pool.get(bn.eq.lhs);
+            if (lhs != .app or lhs.app.sym != apply_sym) continue;
+            switch (try self.equationRule(fact.formula, fact.source)) {
+                .rule => |r| try rules.append(self.arena, r),
+                else => {},
             }
         }
-        for (children) |a| try self.extApplyRules(a, rules, seen, loc);
+        return rules.items;
     }
 
     /// For each `member(x, op(a,b,…))` subterm in `formula`, instantiate the

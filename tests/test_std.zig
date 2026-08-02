@@ -58,7 +58,7 @@ pub fn addTests(
     // the function theory (std/function.bpa): axioms only, no theorems — a
     // direct check materializes nothing and exits nonzero with a warning.
     ctx.okCode(&.{ "check", "std/function.bpa" },
-        \\OK: 14 declarations, 0 theorems proven
+        \\OK: 17 declarations, 0 theorems proven
         \\  — WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).
         \\
     , 1);

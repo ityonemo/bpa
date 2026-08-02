@@ -10,11 +10,28 @@ const identityFn = function.identityFn
 func apply = function.apply
 func compose = function.compose
 axiom composeApply = function.composeApply
+axiom identityApply = function.identityApply
 axiom funcExtensionality = function.funcExtensionality
 
 theorem composeAssociative: forall h, g, f: Fn; compose(compose(h, g), f) = compose(h, compose(g, f))
 proof
   @conclusion |
     forall h, g, f: Fn; compose(compose(h, g), f) = compose(h, compose(g, f))
+    [by ext_quantified(function)]
+qed
+
+// the identity laws: unfolding needs `identityApply` to fire on the `identityFn`
+// CONST (a nullary head), not just `<op>Apply` on compound operators.
+theorem composeIdentityRight: forall f: Fn; compose(f, identityFn) = f
+proof
+  @conclusion |
+    forall f: Fn; compose(f, identityFn) = f
+    [by ext_quantified(function)]
+qed
+
+theorem composeIdentityLeft: forall f: Fn; compose(identityFn, f) = f
+proof
+  @conclusion |
+    forall f: Fn; compose(identityFn, f) = f
     [by ext_quantified(function)]
 qed
