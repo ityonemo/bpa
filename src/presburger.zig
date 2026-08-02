@@ -98,8 +98,11 @@ pub const Replay = struct {
     period: i128,
     boundaries: []const LinearDump,
     disjuncts: []const Disjunct,
-    /// free-variable names in coefficient-index order (Ctx.free_vars order)
+    /// free-variable names (Ctx.free_vars order — first-appearance in the body)
     free_names: []const StrId,
+    /// the coefficient index (variable id) of each free var, parallel to
+    /// free_names; a boundary's `coeffs[free_ids[p]]` is free var p's weight.
+    free_ids: []const u32,
 };
 
 pub const TraceResult = union(enum) {
@@ -304,14 +307,20 @@ const Ctx = struct {
         const body = try self.formula(opened, false);
         const guarded = try self.node(.{ .conj = .{ .lhs = try self.node(.{ .ge = try self.unit(y) }), .rhs = body } });
 
-        var replay: Replay = .{ .delta = 1, .period = 1, .boundaries = &.{}, .disjuncts = &.{}, .free_names = &.{} };
+        var replay: Replay = .{ .delta = 1, .period = 1, .boundaries = &.{}, .disjuncts = &.{}, .free_names = &.{}, .free_ids = &.{} };
         try self.cooperTraced(y, guarded, &replay);
 
-        // export the remaining free variables in coefficient-index order (y is
-        // index 0 and eliminated, so it is not among them).
+        // export the remaining free variables (y is eliminated, not among them)
+        // with their coefficient indices so the certifier maps a boundary's
+        // coeffs back to the goal's fixed variables.
         const names = try self.arena.alloc(StrId, self.free_vars.items.len);
-        for (self.free_vars.items, names) |free, *n| n.* = free.name;
+        const ids = try self.arena.alloc(u32, self.free_vars.items.len);
+        for (self.free_vars.items, names, ids) |free, *n, *id| {
+            n.* = free.name;
+            id.* = free.id;
+        }
         replay.free_names = names;
+        replay.free_ids = ids;
         return .{ .replay = replay };
     }
 

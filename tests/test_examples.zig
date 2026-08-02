@@ -27,12 +27,14 @@ pub fn addTests(
     // hard error pointing at --fast.
     // the evenOrOdd oracle step (∀∃, Cooper-QE) is decided valid but no
     // certifier can prove it; the terminal lists each link's decline reason
-    // (Farkas needs less_than, absent in peano.bpa's local scope).
+    // (Farkas needs less_than, absent in peano.bpa's local scope; cooper's
+    // trace has period 2, which needs the layer-3 induction not yet built).
     ctx.fail(&.{ "check", "examples/peano.bpa" },
         \\examples/peano.bpa:182:9: error: 'arithmetic' is valid but no certifier could prove it here:
         \\  - equation/order/exists: form not in certification scope
         \\  - mixed-skeleton: form not in certification scope
         \\  - farkas: theory lacks symbol 'less_than'
+        \\  - cooper: form not in certification scope
         \\use --fast to accept the oracle verdict
         \\
     );

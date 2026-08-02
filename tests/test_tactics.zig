@@ -168,6 +168,11 @@ pub fn addTests(
     // over the well-known peano axioms — the default check accepts them
     ctx.ok(&.{ "check", "tests/cases/arithmetic_cert.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
 
+    // Cooper-replay layer 2 (witness direction): a `forall x; exists y; …`
+    // goal with a period-1 Cooper trace certifies PURE — the cooper link
+    // picks a boundary witness and emits exists_intro over an or-intro arm.
+    ctx.ok(&.{ "check", "tests/cases/cooper_witness.bpa" }, "OK: 12 declarations, 1 theorems proven\n");
+
     // Milestone D2: mixed skeletons replay as pure certificates
     ctx.ok(&.{ "check", "tests/cases/smt_cert.bpa" }, "OK: 143 declarations, 40 theorems proven\n");
 

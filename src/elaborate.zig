@@ -3648,6 +3648,7 @@ pub const Elaborator = struct {
         .{ .name = "equation/order/exists", .run = &equationCertifier },
         .{ .name = "mixed-skeleton", .run = &mixedCertifier },
         .{ .name = "farkas", .run = &farkasCertificate },
+        .{ .name = "cooper", .run = &cooperCertificate },
     };
 
     /// Adapter: the equation/order/exists cert returns ?Justification; a null
@@ -3794,6 +3795,189 @@ pub const Elaborator = struct {
         }
         self.closeBlock(low, blocks.items[0]);
         return .{ .certified = .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } } };
+    }
+
+    /// The simplify-rule set `planInner` needs: the well-known recursion
+    /// axioms plus the commutativity/left-swap rules (their indices for the
+    /// sorted-tower permutation). Shared by the Cooper certifier's arm planner.
+    const ArithRules = struct {
+        rules: []const simplify_mod.Rule,
+        term_rule_count: usize,
+        comm_idx: ?usize,
+        swap_idx: ?usize,
+    };
+
+    fn arithRules(self: *Elaborator, loc: u32) ElabError!?ArithRules {
+        var rules: std.ArrayList(simplify_mod.Rule) = .empty;
+        for (wk_term_rule_names) |wk| {
+            if (try self.wellKnownRule(wk, loc)) |r| try rules.append(self.arena, r);
+        }
+        if (rules.items.len == 0) return null;
+        const term_rule_count = rules.items.len;
+        var comm_idx: ?usize = null;
+        var swap_idx: ?usize = null;
+        if (try self.wellKnownRule("addIsCommutative", loc)) |r| {
+            comm_idx = rules.items.len;
+            try rules.append(self.arena, r);
+        }
+        if (try self.wellKnownRule("addLeftSwap", loc)) |r| {
+            swap_idx = rules.items.len;
+            try rules.append(self.arena, r);
+        }
+        return .{ .rules = rules.items, .term_rule_count = term_rule_count, .comm_idx = comm_idx, .swap_idx = swap_idx };
+    }
+
+    /// A proof of a (possibly disjunctive) body: the inner plan, plus the
+    /// or-intro path to lift it into the whole disjunction. `path` is the
+    /// sequence of left/right choices from the outside in (empty for a bare
+    /// atom), so the emitter wraps the inner proof in that many `or_intro`s.
+    const DisjPlan = struct { inner: InnerPlan, path: []const bool, atom: TermId };
+
+    /// Plan a body that may be a right/left nest of `or`: find the first arm an
+    /// InnerPlan certifies, recording the or-intro path to it. Returns null when
+    /// no arm is provable.
+    fn planDisjunction(self: *Elaborator, symbols: presburger_mod.Symbols, ar: ArithRules, body: TermId, loc: u32) ElabError!?DisjPlan {
+        var path: std.ArrayList(bool) = .empty;
+        var cur = body;
+        while (true) {
+            const node = self.pool.get(cur);
+            if (node == .bin and node.bin.op == .or_op) {
+                // try the left arm (path so far + left), else descend right.
+                try path.append(self.arena, false);
+                if (try self.planInner(symbols, ar.rules, ar.term_rule_count, ar.comm_idx, ar.swap_idx, node.bin.lhs, loc)) |inner| {
+                    return .{ .inner = inner, .path = try self.arena.dupe(bool, path.items), .atom = node.bin.lhs };
+                }
+                _ = path.pop();
+                try path.append(self.arena, true);
+                cur = node.bin.rhs;
+                continue;
+            }
+            if (try self.planInner(symbols, ar.rules, ar.term_rule_count, ar.comm_idx, ar.swap_idx, cur, loc)) |inner| {
+                return .{ .inner = inner, .path = try self.arena.dupe(bool, path.items), .atom = cur };
+            }
+            return null;
+        }
+    }
+
+    /// Reconstruct a boundary witness `boundaries[i] + j` (a linear form over
+    /// the fixed variables) as a Nat term. Layer 2 handles the single-free-
+    /// variable case: coeff 0 (a constant `succ^(konst+j)(ZERO)`) or coeff 1 on
+    /// the one eigenvariable (`succ^(konst+j)(x)`). A negative total offset or a
+    /// higher coefficient is not a buildable Nat term — return null (that
+    /// candidate is skipped).
+    fn buildWitness(self: *Elaborator, symbols: presburger_mod.Symbols, replay: presburger_mod.Replay, dump: presburger_mod.LinearDump, j: i128, fix_vars: []const term.Node.Fvar) ElabError!?TermId {
+        // find the (at most one) free var with a nonzero coefficient. A boundary
+        // coeff is indexed by presburger variable id; `free_ids[p]` is the id of
+        // the p-th free var, which corresponds to fix_vars[p] (both in first-
+        // appearance / forall-binder order).
+        var fix_index: ?usize = null;
+        for (dump.coeffs, 0..) |co, id| {
+            if (co == 0) continue;
+            if (co != 1) return null; // coeff>1: out of layer-2 scope
+            // locate this id among the free vars
+            const p = std.mem.indexOfScalar(u32, replay.free_ids, @intCast(id)) orelse return null;
+            if (fix_index != null) return null; // 2+ free vars in the witness
+            fix_index = p;
+        }
+        const offset = dump.konst + j;
+        if (offset < 0) return null;
+        const succs: usize = @intCast(offset);
+        const zero_sym = symbols.zero orelse return null;
+        const base = if (fix_index) |p| blk: {
+            if (p >= fix_vars.len) return null;
+            break :blk try self.pool.add(.{ .fvar = fix_vars[p] });
+        } else try self.pool.addApp(.app, zero_sym, &.{});
+        return try self.buildTower(symbols, succs, base);
+    }
+
+    /// The Cooper certifier link (layers 2-3). Layer 2: a `forall x…; exists y;
+    /// body` goal whose Cooper elimination has period 1 is certified by picking
+    /// a boundary witness `y := b + j`, proving the body at it (an or-intro over
+    /// an equation/order arm), and `exists_intro`. Period > 1 needs the layer-3
+    /// induction; nested/multi-var alternation declines (out of scope).
+    fn cooperCertificate(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim, symbols: presburger_mod.Symbols, loc: u32) ElabError!Outcome {
+        _ = c;
+        if (symbols.nat == null) return .{ .declined = .out_of_scope };
+
+        // peel the forall prefix; the body must be `exists y; …`
+        const u = try self.peelUniversal(goal, "cooper");
+        const body_node = self.pool.get(u.body);
+        if (body_node != .quant or body_node.quant.q != .exists) return .{ .declined = .out_of_scope };
+
+        // record the Cooper elimination of the single existential
+        const traced = try presburger_mod.trace(self.arena, self.pool, symbols, &.{}, u.body);
+        if (traced != .replay) return .{ .declined = .out_of_scope };
+        const replay = traced.replay;
+        if (replay.period != 1) return .{ .declined = .out_of_scope }; // layer 3
+
+        const ar = (try self.arithRules(loc)) orelse return .{ .declined = .{ .missing_lemma = "addZeroLeft" } };
+
+        // try each boundary witness `b + j` (and each j in 1..period=1): pick
+        // the first that reconstructs as a Nat term AND proves the opened body.
+        const chosen: ?struct { witness: TermId, instance: TermId, plan: DisjPlan } = blk: {
+            for (replay.disjuncts) |d| {
+                const bw = switch (d) {
+                    .minus_inf => continue, // no finite witness; period-1 goals close on a boundary
+                    .boundary => |b| b,
+                };
+                const witness = (try self.buildWitness(symbols, replay, replay.boundaries[bw.b_index], bw.j, u.fix_vars)) orelse continue;
+                const instance = try self.pool.open(body_node.quant.body, witness);
+                if (try self.planDisjunction(symbols, ar, instance, loc)) |plan| {
+                    break :blk .{ .witness = witness, .instance = instance, .plan = plan };
+                }
+            }
+            break :blk null;
+        };
+        const pick = chosen orelse return .{ .declined = .out_of_scope };
+
+        // emit: fix blocks, then the arm proof -> or_intro path -> exists_intro,
+        // folded back out through the fix blocks.
+        var blocks: std.ArrayList(kernel.BlockId) = .empty;
+        var parent = block_id;
+        for (u.fix_vars) |fv| {
+            const b = try self.newBlock(low, try self.freshNamed("cooper"), parent, .{ .fix = fv });
+            try blocks.append(self.arena, b);
+            parent = b;
+        }
+
+        // prove the chosen arm atom, then lift through the or-intro path to the
+        // full disjunction (the exists body opened at the witness).
+        const inner_just = try self.emitInner(low, parent, loc, pick.plan.inner);
+        var arm_ref = try self.emitStep(low, parent, loc, pick.plan.atom, inner_just);
+        // walk the path outward: each enclosing `or` lifts the proof one level.
+        var pi = pick.plan.path.len;
+        while (pi > 0) {
+            pi -= 1;
+            const disj = try self.disjunctionAt(pick.instance, pick.plan.path[0..pi]);
+            const just: kernel.Justification = if (pick.plan.path[pi])
+                .{ .or_intro_right = arm_ref }
+            else
+                .{ .or_intro_left = arm_ref };
+            arm_ref = try self.emitStep(low, parent, loc, disj, just);
+        }
+
+        const carry: kernel.Justification = .{ .exists_intro = .{ .step = arm_ref, .witness = pick.witness, .witness_loc = loc } };
+        if (blocks.items.len == 0) return .{ .certified = carry };
+        _ = try self.emitStep(low, blocks.items[blocks.items.len - 1], loc, u.body, carry);
+        var i = blocks.items.len;
+        while (i > 1) {
+            i -= 1;
+            self.closeBlock(low, blocks.items[i]);
+            _ = try self.emitStep(low, blocks.items[i - 1], loc, u.opened[i], .{ .forall_intro = .{ .id = blocks.items[i], .loc = loc } });
+        }
+        self.closeBlock(low, blocks.items[0]);
+        return .{ .certified = .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } } };
+    }
+
+    /// Descend `instance` (a right/left nest of `or`) along `path` to the
+    /// sub-disjunction at that prefix. `path` is left(false)/right(true) steps.
+    fn disjunctionAt(self: *Elaborator, instance: TermId, path: []const bool) ElabError!TermId {
+        var cur = instance;
+        for (path) |go_right| {
+            const node = self.pool.get(cur);
+            cur = if (go_right) node.bin.rhs else node.bin.lhs;
+        }
+        return cur;
     }
 
     /// If `t` is a ground successor tower over ZERO (`succ^k(ZERO)`), return k.
