@@ -13,8 +13,14 @@
 // the `and` of its two implications. `complement` needs no explicit "universal
 // set" object — it is fixed purely by its double-negation membership rule, and
 // every theorem is proved membershipwise.
+//
+// `Universe` is the SHARED element carrier (std/element.bpa), so sets compose
+// with any theory over the same elements (e.g. relations, std/relation.bpa):
+// aliasing identifies the sorts, so those theories' theorems apply directly.
 
-sort Universe
+import element <<< "std/element.bpa"
+
+sort Universe = element.Element
 sort Set
 const emptyset: Set
 func union(a: Set, b: Set): Set

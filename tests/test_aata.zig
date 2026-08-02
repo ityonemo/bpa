@@ -20,7 +20,7 @@ pub fn addTests(
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
     // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2
     // exercises discharged in one line each by the `ext` tactic).
-    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 48 declarations, 19 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 50 declarations, 19 theorems proven\n");
 
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
     // (composition associativity/preservation + invertible⇒bijective
@@ -30,5 +30,5 @@ pub fn addTests(
     // AATA relations: the FOL-tractable part of Chapter 1 §1.2.3 — the three
     // equivalence-projections + the "reflexivity is redundant" exercise. The
     // equivalence⇔partition correspondence is deferred (needs sets-of-sets).
-    ctx.ok(&.{ "check", "aata/1.2.3-relations.md" }, "OK: 25 declarations, 4 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.3-relations.md" }, "OK: 27 declarations, 4 theorems proven\n");
 }
