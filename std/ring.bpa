@@ -106,3 +106,217 @@ proof
     forall a: Ring; mul(a, ZERO) = ZERO
     [by forall_intro generalize-a]
 qed
+
+// 0·a = 0. Mirror of mulZeroRight using RIGHT-distributivity and additive
+// cancelRight on the left factor.
+theorem mulZeroLeft: forall a: Ring; mul(ZERO, a) = ZERO
+proof
+  @generalize-a |
+    fix a: Ring {
+      @zero-plus-zero |
+        forall x: Ring; add(ZERO, x) = x
+        [by axiom addZeroLeft]
+      @zero-is-zero-plus-zero |
+        add(ZERO, ZERO) = ZERO
+        [by forall_elim(ZERO) zero-plus-zero]
+      @zero-flip |
+        ZERO = add(ZERO, ZERO)
+        [by symmetry zero-is-zero-plus-zero]
+      @product-refl |
+        mul(ZERO, a) = mul(ZERO, a)
+        [by reflexivity]
+      @product-splits |
+        mul(ZERO, a) = mul(add(ZERO, ZERO), a)
+        [by rewrite zero-flip product-refl]
+      @distribute |
+        forall x, y, z: Ring; mul(add(x, y), z) = add(mul(x, z), mul(y, z))
+        [by axiom mulDistributesRightOverAdd]
+      @product-distributes |
+        mul(add(ZERO, ZERO), a) = add(mul(ZERO, a), mul(ZERO, a))
+        [by forall_elim(ZERO, ZERO, a) distribute]
+      @product-is-sum-of-itself |
+        mul(ZERO, a) = add(mul(ZERO, a), mul(ZERO, a))
+        [by rewrite product-distributes product-splits]
+      @lhs-as-zero-plus |
+        add(ZERO, mul(ZERO, a)) = mul(ZERO, a)
+        [by forall_elim(mul(ZERO, a)) zero-plus-zero]
+      @sum-equals-doubled |
+        add(ZERO, mul(ZERO, a)) = add(mul(ZERO, a), mul(ZERO, a))
+        [by rewrite product-is-sum-of-itself lhs-as-zero-plus]
+      @cancel-right |
+        forall x, b, c: Ring; add(b, x) = add(c, x) -> b = c
+        [by model(AdditiveGroup) group.cancelRight]
+      @cancel-at |
+        add(ZERO, mul(ZERO, a)) = add(mul(ZERO, a), mul(ZERO, a)) -> ZERO = mul(ZERO, a)
+        [by forall_elim(mul(ZERO, a), ZERO, mul(ZERO, a)) cancel-right]
+      @zero-is-product |
+        ZERO = mul(ZERO, a)
+        [by modus_ponens cancel-at sum-equals-doubled]
+      @conclusion-product-zero |
+        mul(ZERO, a) = ZERO
+        [by symmetry zero-is-product]
+    }
+  @conclusion |
+    forall a: Ring; mul(ZERO, a) = ZERO
+    [by forall_intro generalize-a]
+qed
+
+// a·(-b) = -(a·b). Judson: a·b + a·(-b) = a·(b + -b) = a·0 = 0, so a·(-b) is
+// THE additive inverse of a·b, hence = -(a·b) by the transferred `inverseUnique`
+// (a right inverse in the additive group is exactly neg).
+theorem mulNegRight: forall a, b: Ring; mul(a, neg(b)) = neg(mul(a, b))
+proof
+  @generalize-a |
+    fix a: Ring {
+      @generalize-b |
+        fix b: Ring {
+          @distribute |
+            forall x, y, z: Ring; mul(x, add(y, z)) = add(mul(x, y), mul(x, z))
+            [by axiom mulDistributesLeftOverAdd]
+          @product-over-sum |
+            mul(a, add(b, neg(b))) = add(mul(a, b), mul(a, neg(b)))
+            [by forall_elim(a, b, neg(b)) distribute]
+          @b-plus-negb |
+            forall x: Ring; add(x, neg(x)) = ZERO
+            [by axiom addNegRight]
+          @b-plus-negb-is-zero |
+            add(b, neg(b)) = ZERO
+            [by forall_elim(b) b-plus-negb]
+          @product-refl |
+            mul(a, add(b, neg(b))) = mul(a, add(b, neg(b)))
+            [by reflexivity]
+          @product-of-zero |
+            mul(a, add(b, neg(b))) = mul(a, ZERO)
+            [by rewrite b-plus-negb-is-zero product-refl]
+          @mul-zero |
+            forall x: Ring; mul(x, ZERO) = ZERO
+            [by theorem mulZeroRight]
+          @a-times-zero-is-zero |
+            mul(a, ZERO) = ZERO
+            [by forall_elim(a) mul-zero]
+          @product-over-sum-is-zero |
+            mul(a, add(b, neg(b))) = ZERO
+            [by rewrite a-times-zero-is-zero product-of-zero]
+          @sum-of-products-is-zero |
+            add(mul(a, b), mul(a, neg(b))) = ZERO
+            [by rewrite product-over-sum product-over-sum-is-zero]
+          // inverseUnique: op(a, b) = E -> b = inverse(a). Additively:
+          // add(x, y) = ZERO -> y = neg(x). Apply at (mul(a,b), mul(a,neg(b))).
+          @inverse-unique |
+            forall x, y: Ring; add(x, y) = ZERO -> y = neg(x)
+            [by model(AdditiveGroup) group.inverseUnique]
+          @inverse-unique-at |
+            add(mul(a, b), mul(a, neg(b))) = ZERO -> mul(a, neg(b)) = neg(mul(a, b))
+            [by forall_elim(mul(a, b), mul(a, neg(b))) inverse-unique]
+          @conclusion-neg |
+            mul(a, neg(b)) = neg(mul(a, b))
+            [by modus_ponens inverse-unique-at sum-of-products-is-zero]
+        }
+      @discharge-b |
+        forall b: Ring; mul(a, neg(b)) = neg(mul(a, b))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Ring; mul(a, neg(b)) = neg(mul(a, b))
+    [by forall_intro generalize-a]
+qed
+
+// (-a)·b = -(a·b). Mirror of mulNegRight using RIGHT-distributivity:
+// a·b + (-a)·b = (a + -a)·b = 0·b = 0, so (-a)·b is the additive inverse of a·b.
+theorem mulNegLeft: forall a, b: Ring; mul(neg(a), b) = neg(mul(a, b))
+proof
+  @generalize-a |
+    fix a: Ring {
+      @generalize-b |
+        fix b: Ring {
+          @distribute |
+            forall x, y, z: Ring; mul(add(x, y), z) = add(mul(x, z), mul(y, z))
+            [by axiom mulDistributesRightOverAdd]
+          @sum-over-b |
+            mul(add(a, neg(a)), b) = add(mul(a, b), mul(neg(a), b))
+            [by forall_elim(a, neg(a), b) distribute]
+          @a-plus-nega |
+            forall x: Ring; add(x, neg(x)) = ZERO
+            [by axiom addNegRight]
+          @a-plus-nega-is-zero |
+            add(a, neg(a)) = ZERO
+            [by forall_elim(a) a-plus-nega]
+          @sum-refl |
+            mul(add(a, neg(a)), b) = mul(add(a, neg(a)), b)
+            [by reflexivity]
+          @sum-of-zero |
+            mul(add(a, neg(a)), b) = mul(ZERO, b)
+            [by rewrite a-plus-nega-is-zero sum-refl]
+          @mul-zero-left |
+            forall x: Ring; mul(ZERO, x) = ZERO
+            [by theorem mulZeroLeft]
+          @zero-times-b-is-zero |
+            mul(ZERO, b) = ZERO
+            [by forall_elim(b) mul-zero-left]
+          @sum-over-b-is-zero |
+            mul(add(a, neg(a)), b) = ZERO
+            [by rewrite zero-times-b-is-zero sum-of-zero]
+          @sum-of-products-is-zero |
+            add(mul(a, b), mul(neg(a), b)) = ZERO
+            [by rewrite sum-over-b sum-over-b-is-zero]
+          @inverse-unique |
+            forall x, y: Ring; add(x, y) = ZERO -> y = neg(x)
+            [by model(AdditiveGroup) group.inverseUnique]
+          @inverse-unique-at |
+            add(mul(a, b), mul(neg(a), b)) = ZERO -> mul(neg(a), b) = neg(mul(a, b))
+            [by forall_elim(mul(a, b), mul(neg(a), b)) inverse-unique]
+          @conclusion-neg-left |
+            mul(neg(a), b) = neg(mul(a, b))
+            [by modus_ponens inverse-unique-at sum-of-products-is-zero]
+        }
+      @discharge-b |
+        forall b: Ring; mul(neg(a), b) = neg(mul(a, b))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Ring; mul(neg(a), b) = neg(mul(a, b))
+    [by forall_intro generalize-a]
+qed
+
+// (-a)·(-b) = a·b. Judson: (-a)(-b) = -((-a)·b)... use mulNegRight on (-a)·(-b)
+// to get -((-a)·b), then mulNegLeft gives (-a)·b = -(a·b), and the transferred
+// additive invInvolution collapses the double negation.
+theorem negMulNeg: forall a, b: Ring; mul(neg(a), neg(b)) = mul(a, b)
+proof
+  @generalize-a |
+    fix a: Ring {
+      @generalize-b |
+        fix b: Ring {
+          @mul-neg-right |
+            forall x, y: Ring; mul(x, neg(y)) = neg(mul(x, y))
+            [by theorem mulNegRight]
+          @outer-neg |
+            mul(neg(a), neg(b)) = neg(mul(neg(a), b))
+            [by forall_elim(neg(a), b) mul-neg-right]
+          @mul-neg-left |
+            forall x, y: Ring; mul(neg(x), y) = neg(mul(x, y))
+            [by theorem mulNegLeft]
+          @neg-a-times-b |
+            mul(neg(a), b) = neg(mul(a, b))
+            [by forall_elim(a, b) mul-neg-left]
+          @outer-neg-expanded |
+            mul(neg(a), neg(b)) = neg(neg(mul(a, b)))
+            [by rewrite neg-a-times-b outer-neg]
+          @inv-involution |
+            forall x: Ring; neg(neg(x)) = x
+            [by model(AdditiveGroup) group.invInvolution]
+          @double-neg-ab |
+            neg(neg(mul(a, b))) = mul(a, b)
+            [by forall_elim(mul(a, b)) inv-involution]
+          @conclusion-neg-mul-neg |
+            mul(neg(a), neg(b)) = mul(a, b)
+            [by rewrite double-neg-ab outer-neg-expanded]
+        }
+      @discharge-b |
+        forall b: Ring; mul(neg(a), neg(b)) = mul(a, b)
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Ring; mul(neg(a), neg(b)) = mul(a, b)
+    [by forall_intro generalize-a]
+qed

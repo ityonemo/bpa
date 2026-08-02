@@ -67,11 +67,13 @@ pub fn addTests(
 
     // the ring theory (std/ring.bpa): an additive abelian group + associative,
     // distributing multiplication. Its additive half MODELS std/group.bpa (a
-    // TWO-LEVEL structure — a model inside a modelable theory), so the elementary
-    // property mul(a,ZERO)=ZERO is proved by transferring the additive-group
-    // `cancelRight` through the AdditiveGroup model. (11 = the imported group
-    // corpus + ring's own; the synthetic materialized theorem is suppressed.)
-    ctx.ok(&.{ "check", "std/ring.bpa" }, "OK: 38 declarations, 11 theorems proven\n");
+    // TWO-LEVEL structure — a model inside a modelable theory). Judson's first
+    // ring proposition (a·0=0·a=0; a(-b)=(-a)b=-(ab); (-a)(-b)=ab) is proved by
+    // TRANSFERRING the additive-group cancelRight/inverseUnique/invInvolution
+    // through the AdditiveGroup model rather than re-deriving them. (15 = the
+    // imported group corpus (10) + ring's 5 elementary theorems; the synthetic
+    // materialized theorems are suppressed.)
+    ctx.ok(&.{ "check", "std/ring.bpa" }, "OK: 42 declarations, 15 theorems proven\n");
 
     // the set theory (std/set.bpa): the membership axioms + extensionality, and
     // the 19 set-algebra identities (idempotence, identity, associativity,
