@@ -83,6 +83,16 @@ pub fn addTests(
         \\
     );
 
+    // MATERIALIZATION CITATION RULE: a materialized model proof may cite another
+    // materialized theorem; a substitution-INVARIANT theorem/axiom (as-is, walk
+    // ends); or a substituted axiom mapped (to a theorem OR an axiom). It may NOT
+    // cite a fact the substitution AFFECTS but the model doesn't map.
+    // OK exercises invariant-theorem + invariant-axiom + axiom→theorem + axiom→axiom:
+    ctx.ok(&.{ "check", "tests/cases/model_cite_ok.bpa" }, "OK: 20 declarations, 4 theorems proven\n");
+    // BAD leaves an affected axiom (opUnitRight, cited by the transferred proof)
+    // unmapped → rejected, naming it.
+    ctx.fail(&.{ "check", "tests/cases/model_cite_bad.bpa" }, "tests/cases/model_cite_bad.bpa:33:27: error: model materialization cites axiom 'opUnitRight', which the substitution affects but the model does not map; add a mapping for it\n");
+
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source
     // theorem doesn't say).

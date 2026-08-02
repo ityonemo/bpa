@@ -326,6 +326,37 @@ pub const Pool = struct {
             for (self.syms) |m| if (m.from == s) return m.to;
             return s;
         }
+
+        fn hasSortFrom(self: Remap, s: SortId) bool {
+            for (self.sorts) |m| if (m.from == s) return true;
+            return false;
+        }
+        fn hasSymFrom(self: Remap, s: SymId) bool {
+            for (self.syms) |m| if (m.from == s) return true;
+            return false;
+        }
+
+        /// Does `formula` mention any sort or symbol this remap substitutes?
+        /// ("Is it affected by the substitution?") A fact that is NOT affected is
+        /// substitution-invariant — a materialized proof may cite it as-is (the
+        /// remap is the identity on it). A fact that IS affected must be
+        /// accounted for by the mapping, or citing it is the forbidden case.
+        /// See MODEL-DESIGN.md (materialization citation rule).
+        pub fn affects(self: Remap, pool: *const Pool, formula: TermId) bool {
+            switch (pool.get(formula)) {
+                .bvar => return false,
+                .fvar => |v| return self.hasSortFrom(v.sort),
+                .app, .pred => |a| {
+                    if (self.hasSymFrom(a.sym)) return true;
+                    for (pool.args(a)) |arg| if (self.affects(pool, arg)) return true;
+                    return false;
+                },
+                .eq => |p| return self.affects(pool, p.lhs) or self.affects(pool, p.rhs),
+                .not => |t| return self.affects(pool, t),
+                .bin => |b| return self.affects(pool, b.lhs) or self.affects(pool, b.rhs),
+                .quant => |q| return self.hasSortFrom(q.sort) or self.affects(pool, q.body),
+            }
+        }
     };
 
     /// Rewrite a source-theory formula through a structure interpretation

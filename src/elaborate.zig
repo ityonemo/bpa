@@ -3346,24 +3346,14 @@ pub const Elaborator = struct {
     /// Intra-proof SRef/BRef indices are structural — unchanged.
     fn remapJustification(self: *Elaborator, model: *Model, j: kernel.Justification, loc: u32) ElabError!kernel.Justification {
         return switch (j) {
-            .axiom_ref => |r| blk: {
-                // a cited source axiom (a hole is an axiom too) must be discharged
-                // by the model's mapping; unmapped is an undischarged obligation.
-                for (model.stmt_map) |p| {
-                    if (p.from == r.stmt) break :blk .{ .axiom_ref = .{ .stmt = p.to, .loc = loc } };
-                }
-                const nm = self.statementNameOf(r.stmt);
-                break :blk self.fail(loc, "model does not discharge axiom '{s}'; add a mapping for it", .{self.interner.str(nm)});
-            },
-            .theorem_ref => |r| blk: {
-                // a cited source theorem: recursively materialize it, or — if it
-                // is itself discharged by a mapping (a local theorem) — repoint.
-                for (model.stmt_map) |p| {
-                    if (p.from == r.stmt) break :blk .{ .theorem_ref = .{ .stmt = p.to, .loc = loc } };
-                }
-                const mat = try self.materializeModelTheorem(model, r.stmt, loc);
-                break :blk .{ .theorem_ref = .{ .stmt = mat, .loc = loc } };
-            },
+            // a cited statement (axiom or theorem) in a materialized proof. The
+            // citation rule (MODEL-DESIGN.md): it may cite the mapped target (in
+            // the substitution list); an existing fact NOT affected by the
+            // substitution (as-is, walk ends); or, for a source theorem affected
+            // but unmapped, its recursive materialization. It may NOT cite a fact
+            // that IS affected by the substitution but is absent from the mapping.
+            .axiom_ref => |r| try self.remapCitation(model, r.stmt, false, loc),
+            .theorem_ref => |r| try self.remapCitation(model, r.stmt, true, loc),
             .forall_elim => |r| .{ .forall_elim = .{
                 .step = r.step,
                 .with = self.pool.remapFormula(r.with, model.remap) catch return error.OutOfMemory,
@@ -3384,6 +3374,42 @@ pub const Elaborator = struct {
         };
     }
 
+    /// Repoint a cited statement (`source`, `is_theorem` = it was a theorem_ref)
+    /// through the model, per the materialization citation rule (MODEL-DESIGN.md):
+    ///  - in the mapping  → cite the mapped target, kind-matched;
+    ///  - not affected by the substitution → cite as-is, walk ends (its meaning
+    ///    is unchanged by the interpretation);
+    ///  - affected + a theorem → recursively materialize it;
+    ///  - affected + an axiom, unmapped → FORBIDDEN (its meaning shifts under the
+    ///    interpretation with nothing accounting for it) → error.
+    fn remapCitation(self: *Elaborator, model: *Model, source: StatementId, is_theorem: bool, loc: u32) ElabError!kernel.Justification {
+        _ = is_theorem;
+        // in the substitution list → cite the mapped target.
+        for (model.stmt_map) |p| {
+            if (p.from == source) return self.citeStatement(p.to, loc);
+        }
+        // not in the list: decide by whether the remap affects the fact.
+        const stmt = self.env.statements.items[@intFromEnum(source)];
+        const formula = switch (stmt) {
+            .axiom => |f| f.formula,
+            .theorem => |f| f.formula,
+            .schema => return self.fail(loc, "model cannot transfer a proof citing a schema", .{}),
+        };
+        if (!model.remap.affects(self.pool, formula)) {
+            // substitution-invariant: cite as-is, walk ends.
+            return self.citeStatement(source, loc);
+        }
+        // affected but unmapped: a theorem is materialized; an axiom is forbidden.
+        switch (stmt) {
+            .theorem => {
+                const mat = try self.materializeModelTheorem(model, source, loc);
+                return .{ .theorem_ref = .{ .stmt = mat, .loc = loc } };
+            },
+            .axiom => |f| return self.fail(loc, "model materialization cites axiom '{s}', which the substitution affects but the model does not map; add a mapping for it", .{self.interner.str(f.name)}),
+            .schema => unreachable,
+        }
+    }
+
     fn mangledModelName(self: *Elaborator, model_name: StrId, source_name: StrId) ElabError!StrId {
         const text_ = std.fmt.allocPrint(self.arena, "{s}${s}", .{
             self.interner.str(model_name), self.interner.str(source_name),
@@ -3396,6 +3422,18 @@ pub const Elaborator = struct {
             .axiom => |f| f.name,
             .theorem => |f| f.name,
             .schema => |s| s.name,
+        };
+    }
+
+    /// A citation of a statement by the justification matching its kind — so a
+    /// model obligation (an abstract axiom) discharged by a proven local theorem
+    /// cites it as `theorem_ref`, and one discharged by a local axiom as
+    /// `axiom_ref`. (A schema can't discharge an obligation — rejected earlier.)
+    fn citeStatement(self: *Elaborator, id: StatementId, loc: u32) kernel.Justification {
+        return switch (self.env.statements.items[@intFromEnum(id)]) {
+            .axiom => .{ .axiom_ref = .{ .stmt = id, .loc = loc } },
+            .theorem => .{ .theorem_ref = .{ .stmt = id, .loc = loc } },
+            .schema => .{ .axiom_ref = .{ .stmt = id, .loc = loc } }, // unreachable in practice
         };
     }
 

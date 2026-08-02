@@ -1,0 +1,65 @@
+// Abstract theory to exercise the materialization CITATION RULE. A materialized
+// model proof may cite only: another materialized theorem; an existing
+// theorem/axiom with NO substitutions (walk ends); or a substituted axiom mapped
+// (to a theorem OR an axiom). It may NOT cite a fact that IS affected by the
+// substitution but is not in the mapping.
+//
+// Two sorts: `Carrier` (substituted by the model) and `Untouched` (never
+// substituted). Facts mentioning only `Untouched` are substitution-invariant.
+
+sort Carrier
+sort Untouched
+const UNIT: Carrier
+const POINT: Untouched
+func op(a: Carrier, b: Carrier): Carrier
+pred marks(u: Untouched)
+
+// substituted axioms (mention Carrier/op/UNIT — the model must map them):
+axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a // -> mapped to a THEOREM
+axiom opUnitRight: forall a: Carrier; op(a, UNIT) = a // -> mapped to an AXIOM
+
+// a substitution-INVARIANT axiom (mentions only Untouched/POINT/marks):
+axiom pointMarked: marks(POINT)
+
+// a substitution-invariant THEOREM (only Untouched): cite as-is, walk ends.
+theorem pointStays: marks(POINT)
+proof
+  @conclusion |
+    marks(POINT)
+    [by axiom pointMarked]
+qed
+
+// the transferable theorem: its proof cites opUnitLeft (case 4: axiom->theorem)
+// AND opUnitRight (case 5: axiom->axiom), plus pointStays (case 2: invariant
+// theorem, walk ends). Because it cites opUnitRight, a model that leaves
+// opUnitRight unmapped hits the FORBIDDEN case (affected axiom, absent from the
+// mapping). op(UNIT, op(a, UNIT)) = op(UNIT, a): collapse the inner op(a, UNIT)
+// to a via opUnitRight.
+theorem unitCollapsesAndMarks:
+  (forall a: Carrier; op(UNIT, op(a, UNIT)) = op(UNIT, a)) and marks(POINT)
+proof
+  @generalize-a |
+    fix a: Carrier {
+      @unit-right |
+        forall b: Carrier; op(b, UNIT) = b
+        [by axiom opUnitRight]
+      @inner-collapses |
+        op(a, UNIT) = a
+        [by forall_elim(a) unit-right]
+      @op-refl |
+        op(UNIT, op(a, UNIT)) = op(UNIT, op(a, UNIT))
+        [by reflexivity]
+      @conclusion-collapse |
+        op(UNIT, op(a, UNIT)) = op(UNIT, a)
+        [by rewrite inner-collapses op-refl]
+    }
+  @collapses |
+    forall a: Carrier; op(UNIT, op(a, UNIT)) = op(UNIT, a)
+    [by forall_intro generalize-a]
+  @invariant-theorem |
+    marks(POINT)
+    [by theorem pointStays]
+  @conclusion |
+    (forall a: Carrier; op(UNIT, op(a, UNIT)) = op(UNIT, a)) and marks(POINT)
+    [by and_intro collapses invariant-theorem]
+qed

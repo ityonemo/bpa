@@ -211,13 +211,36 @@ AST, not just the statement. So strict mode does exactly this:
    dependencies**: each cited source theorem is recursively materialized the same
    way (`MyModel$someothertheorem`), and the citation is rewritten to the mangled
    name. Memoized per (model, source-theorem) so a diamond emits once.
-3. Axiom leaves: a remapped axiom citation lands on the model's mapped local fact
-   (`source.opUnitLeft: combineZedLeft` → the citation becomes `combineZedLeft`, a
-   real local axiom). If an axiom the proof used is UNMAPPED, its remapped form
-   must still α-match some local fact, or the mangled step fails to check.
+3. Citations obey the CITATION RULE (below) — no cited fact silently changes
+   meaning under the interpretation.
 4. The **kernel checks the whole materialized tree** like any other proof. That
    checking IS the obligation discharge — automatic and exact. No taint, no
    `deps` provenance channel, no meta-argument.
+
+#### The citation rule (soundness of materialization)
+
+A materialized proof's every citation is repointed per this rule — the invariant
+is *a materialized proof never cites a fact whose meaning the substitution shifts
+without the model accounting for it* (which would be "using something unknowingly"
+— the synthesized citation nobody authored). For each cited statement:
+
+- **In the model's mapping** → cite the mapped target, KIND-MATCHED: an obligation
+  discharged by a local *theorem* becomes a `theorem_ref`, by a local *axiom* an
+  `axiom_ref`. (An abstract axiom mapped to a proven theorem is the common case —
+  `divisibility.mulOneRight` → ℤ's `mulOneRight` theorem.)
+- **Not mapped, and NOT affected by the substitution** (its statement mentions no
+  substituted sort/sym) → cite AS-IS, walk ends. The remap is the identity on it,
+  so it is a genuine shared fact — an untouched theorem or axiom both sides have.
+- **Not mapped, affected, a THEOREM** → recursively materialize it (`Model$thm`).
+- **Not mapped, affected, an AXIOM** → **FORBIDDEN.** Its meaning shifts under the
+  interpretation and nothing discharges it → error, naming the axiom. The author
+  must map it (to a theorem that proves it, or to a foundational axiom that IS it).
+
+The "affected by the substitution" test is `Remap.affects` (term.zig): does the
+formula mention any sort/sym the remap substitutes. This is what lets a genuine
+shared fact (unaffected) be cited freely while a shifted-but-unmapped one is
+caught. It is why discharging obligations is uniform (axiom-or-theorem, both are
+facts) yet a synthesized proof can never lean on an axiom *unknowingly*.
 
 Why this is right: the obligation set is NOT the source theory's declared axioms
 (that universe is unbounded and cross-file — a group-powers proof may lean on an
