@@ -356,6 +356,20 @@ at every quantifier over the mapped carrier — applied UNIFORMLY in both direct
 3. **guarded models** — relativization pass; `where nonzero`; ℚ∖{0} mult-group and
    nonneg-ℤ-is-a-ℕ.
 
+## Applications (std reuse candidates)
+
+- **`Int models group` (additive) — DEFERRED to the ring-theory chapter** (user,
+  2026-08-02). `std/integer-ring.bpa` literally re-derives group theorems by hand
+  (`negAdd` = group's `invProduct`; `negNeg` = `invInvolution`), and the 5 group
+  obligations are all present as Int facts (`addIsAssociative`, `addZeroLeft`,
+  `addZeroRight`, `addNegRight`) — missing only `opInverseLeft`
+  (`add(neg(n),n)=ZERO`, a 2-line commutativity corollary). The group theorem
+  corpus (cancelLeft, inverseUnique, invProduct, invInvolution, …) cites ONLY the
+  5 axioms + each other (clean closed dep tree → materializes perfectly). BUT the
+  corpus lives in `aata/3.2-groups.md`, not an importable `std/group-theorems.bpa`
+  — so a prerequisite is moving it to std. Do all this WITH the ring-theory
+  chapter, not before (keeps the current ℤ work stable; the math motivates it there).
+
 ## Still open (not yet decided)
 
 - Do transferred theorems ALSO materialize as citable namespaced facts
