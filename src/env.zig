@@ -68,6 +68,9 @@ pub const Statement = union(enum) {
         /// theorem depends on (transitively), for the rejection enumeration.
         is_hole: bool = false,
         holes: []const StrId = &.{},
+        /// a `model`-materialized theorem (`Model$thm`): kernel-checked machinery,
+        /// not authored — SUPPRESSED from the user-facing declaration/theorem count.
+        synthetic: bool = false,
         /// the LOWERED kernel proof (steps + blocks), RETAINED for proven
         /// theorems so a `model` transfer can materialize a remapped copy in
         /// strict mode (remap each step's formula via remapFormula + translate

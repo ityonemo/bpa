@@ -63,7 +63,9 @@ pub fn checkSource(arena: std.mem.Allocator, source: []const u8) !CheckResult {
 
     var proven: usize = 0;
     for (environment.statements.items) |stmt| {
-        if (stmt == .theorem and stmt.theorem.proven) proven += 1;
+        // synthetic `model`-materialized theorems are machinery, not authored —
+        // suppressed from the user-facing count.
+        if (stmt == .theorem and stmt.theorem.proven and !stmt.theorem.synthetic) proven += 1;
     }
     return .{
         .file = file,
@@ -229,6 +231,8 @@ pub fn checkProject(
     var accelerated_names: std.ArrayList([]const u8) = .empty;
     for (environment.statements.items) |stmt| {
         if (stmt != .theorem) continue;
+        // synthetic `model`-materialized theorems are machinery, not authored.
+        if (stmt.theorem.synthetic) continue;
         // a trusted import IS proven (it was proven in its own file; --faster/
         // --reckless just skipped re-checking it here) — so it counts toward
         // `proven`, with `trusted` as the disclosed subset.

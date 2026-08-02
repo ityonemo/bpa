@@ -318,11 +318,11 @@ pub const Pool = struct {
         /// carrier-guard relativization (guarded models); null = unguarded
         guard: ?Guard = null,
 
-        fn sort(self: Remap, s: SortId) SortId {
+        pub fn sort(self: Remap, s: SortId) SortId {
             for (self.sorts) |m| if (m.from == s) return m.to;
             return s;
         }
-        fn sym(self: Remap, s: SymId) SymId {
+        pub fn sym(self: Remap, s: SymId) SymId {
             for (self.syms) |m| if (m.from == s) return m.to;
             return s;
         }

@@ -59,18 +59,29 @@ pub fn addTests(
     // `model`: structure reuse. The source theory (a carrier + op + left-unit +
     // one proven theorem) is modeled by a concrete sort, and its theorem
     // transfers, remapped through the model. See MODEL-DESIGN.md.
-    ctx.ok(&.{ "check", "tests/cases/model_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_source.bpa" }, "OK: 6 declarations, 2 theorems proven\n");
 
-    // the transfer is an ACCELERANT: --fast trusts it wholesale (remap the source
-    // theorem, α-match the goal, taint accelerated: model)...
+    // --fast trusts the transfer wholesale (remap the source theorem, α-match the
+    // goal, taint accelerated: model) — checks nothing about the source proof.
     ctx.ok(&.{ "check", "--fast", "tests/cases/model_transfer.bpa" },
-        \\OK: 12 declarations, 2 theorems proven (1 accelerated: model)
+        \\OK: 13 declarations, 3 theorems proven (1 accelerated: model)
         \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
-    // ...and default mode REJECTS it (strict obligation-discharge is a later
-    // stage; the MVP's default path has nothing to elaborate, so it points at --fast).
-    ctx.fail(&.{ "check", "tests/cases/model_transfer.bpa" }, "tests/cases/model_transfer.bpa:25:9: error: 'model' could not be emitted as kernel steps here; use --fast to accept the accelerated verdict\n");
+    // default (strict) MATERIALIZES the remapped source proof as a synthetic
+    // kernel-checked theorem (suppressed from the count) and cites it — so it
+    // passes with NO taint. The transfer is genuinely kernel-verified.
+    ctx.ok(&.{ "check", "tests/cases/model_transfer.bpa" }, "OK: 13 declarations, 3 theorems proven\n");
+
+    // DEPENDENCY WALK: transferring a source theorem whose proof cites ANOTHER
+    // source theorem forces strict materialization to recurse into it (memoized —
+    // the shared dependency materializes once across both cites). Kernel-checked.
+    ctx.ok(&.{ "check", "tests/cases/model_recurse.bpa" }, "OK: 14 declarations, 4 theorems proven\n");
+    ctx.ok(&.{ "check", "--fast", "tests/cases/model_recurse.bpa" },
+        \\OK: 14 declarations, 4 theorems proven (2 accelerated: model)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
+        \\
+    );
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source

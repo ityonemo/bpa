@@ -118,7 +118,18 @@ pub const Elaborator = struct {
         remap: term.Pool.Remap,
         source_file: FileId,
         loc: u32,
+        name: StrId,
+        /// axiom obligations: source-axiom StatementId -> the local fact that
+        /// discharges it. Strict materialization repoints an `axiom_ref` to a
+        /// source axiom through this map. Absent source axioms are undischarged.
+        stmt_map: []const StmtPair,
+        /// memo of already-materialized source theorems (strict mode): source
+        /// theorem StatementId -> the synthetic `Model$thm` StatementId. Keyed
+        /// per model so all cites share the materialized copies. Grows lazily.
+        materialized: std.AutoHashMapUnmanaged(StatementId, StatementId) = .empty,
     };
+
+    const StmtPair = struct { from: StatementId, to: StatementId };
 
     const ScopeEntry = struct {
         /// user-facing name (what source text resolves against)
@@ -469,6 +480,7 @@ pub const Elaborator = struct {
 
         var sort_map: std.ArrayList(term.Pool.Remap.SortPair) = .empty;
         var sym_map: std.ArrayList(term.Pool.Remap.SymPair) = .empty;
+        var stmt_map: std.ArrayList(StmtPair) = .empty;
         var source_file: ?FileId = null;
 
         for (d.mappings) |m| {
@@ -492,10 +504,13 @@ pub const Elaborator = struct {
                 const to_sym = self.env.findSym(tgt.file, tgt.base) orelse
                     return self.fail(m.target.start, "'{s}' is not a function/predicate", .{self.text(m.target)});
                 try sym_map.append(self.arena, .{ .from = from_sym, .to = to_sym });
-            } else if (self.env.findStatementId(src.file, src.base)) |_| {
-                // axiom obligation: recorded structurally by the source theorem
-                // transfer at cite time; the target fact discharges it. The MVP
-                // --fast path does not check the discharge here.
+            } else if (self.env.findStatementId(src.file, src.base)) |from_stmt| {
+                // axiom obligation: the local fact `to_stmt` discharges the
+                // source axiom `from_stmt`. Strict materialization repoints an
+                // `axiom_ref` to the source axiom through this map.
+                const to_stmt = self.env.findStatementId(tgt.file, tgt.base) orelse
+                    return self.fail(m.target.start, "'{s}' is not an axiom/theorem", .{self.text(m.target)});
+                try stmt_map.append(self.arena, .{ .from = from_stmt, .to = to_stmt });
             } else {
                 return self.fail(m.source.start, "unknown model mapping source '{s}'", .{self.text(m.source)});
             }
@@ -510,6 +525,8 @@ pub const Elaborator = struct {
             .remap = remap,
             .source_file = source_file orelse self.file,
             .loc = d.name.start,
+            .name = name,
+            .stmt_map = try stmt_map.toOwnedSlice(self.arena),
         });
     }
 
@@ -3186,13 +3203,16 @@ pub const Elaborator = struct {
     }
 
     /// `[by model(<Instance>) <source.theorem>]` — transfer a source theory's
-    /// theorem to the goal through a declared model. Look up the model by the
-    /// instance name (parsed into the `schema` slot), resolve the cited source
-    /// theorem at its origin, `remapFormula` it through the model's interpretation
-    /// (relativizing by the guard, if any), and check the result α-matches the
-    /// goal. MVP: an ACCELERANT — `--fast` accepts the transfer wholesale (marks
-    /// the theorem accelerated-by-`model`); default mode rejects (the strict
-    /// obligation-discharge path is a later stage). See MODEL-DESIGN.md.
+    /// theorem to the goal through a declared model. Look up the model, resolve
+    /// the cited source theorem, `remapFormula` its statement through the
+    /// interpretation, and check it α-matches the goal.
+    ///
+    /// Two modes (MODEL-DESIGN.md):
+    ///  - `--fast` (`!certify_arithmetic`): trust the transfer — taint
+    ///    `accelerated: model`, check nothing about the source proof.
+    ///  - default (strict): MATERIALIZE the source proof remapped as a synthetic
+    ///    checked theorem `Model$thm` (recursively for its cited children), then
+    ///    cite it via `theorem_ref` — kernel-checked, untainted.
     fn modelJustification(self: *Elaborator, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
         const loc = c.rule.start;
         const inst_tok = c.schema orelse
@@ -3201,10 +3221,9 @@ pub const Elaborator = struct {
             return self.fail(loc, "model(<Instance>) cites exactly one source theorem; got {d}", .{c.refs.len});
         }
         const inst_name = try self.internTok(inst_tok);
-        const model = self.models.get(inst_name) orelse
+        const model = self.models.getPtr(inst_name) orelse
             return self.fail(inst_tok.start, "unknown model '{s}'", .{self.text(inst_tok)});
 
-        // resolve the cited source theorem at its origin and remap its formula.
         const stmt_id = try self.resolveStatementRef(c.refs[0]);
         const src_formula = switch (self.env.statements.items[@intFromEnum(stmt_id)]) {
             .axiom => |f| f.formula,
@@ -3212,7 +3231,6 @@ pub const Elaborator = struct {
             .schema => return self.fail(c.refs[0].start, "model cannot transfer a schema; cite a plain axiom/theorem", .{}),
         };
         const transferred = self.pool.remapFormula(src_formula, model.remap) catch return error.OutOfMemory;
-
         if (!self.pool.alphaEq(transferred, goal)) {
             return self.fail(loc, "model transfer of '{s}' does not match the goal:\n  transferred: {s}\n  goal:        {s}", .{
                 self.text(c.refs[0]),
@@ -3221,9 +3239,164 @@ pub const Elaborator = struct {
             });
         }
 
-        const name = self.interner.intern("model") catch return error.OutOfMemory;
-        try self.recordAccelerated(name, loc);
-        return .{ .accelerated = name };
+        if (!self.verify.certify_arithmetic) {
+            // --fast: trust the transfer wholesale.
+            const name = self.interner.intern("model") catch return error.OutOfMemory;
+            try self.recordAccelerated(name, loc);
+            return .{ .accelerated = name };
+        }
+
+        // strict: materialize the remapped source proof and cite it. Inherit the
+        // materialized theorem's provenance (if the source proof leaned on an
+        // accelerated tactic or a hole, the transfer discloses it transitively),
+        // exactly like `fallback`.
+        const mat_id = try self.materializeModelTheorem(model, stmt_id, c.refs[0].start);
+        const mat = self.env.statements.items[@intFromEnum(mat_id)].theorem;
+        try self.inheritAccelerated(mat.accelerated);
+        try self.inheritHoles(mat.holes);
+        return .{ .theorem_ref = .{ .stmt = mat_id, .loc = loc } };
+    }
+
+    /// Materialize a source theorem's proof, remapped through `model`, as a
+    /// synthetic kernel-checked theorem `Model$thm` in the current file — then
+    /// return its StatementId. Recursively materializes any source theorem the
+    /// proof cites (memoized per model, so a diamond emits once). Source axioms
+    /// cited by the proof are repointed through the model's `stmt_map` to their
+    /// discharging local facts; an unmapped axiom is an undischarged obligation.
+    fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId, loc: u32) ElabError!StatementId {
+        if (model.materialized.get(source)) |existing| return existing;
+
+        const stmt = self.env.statements.items[@intFromEnum(source)];
+        const fact = switch (stmt) {
+            .theorem => |t| t,
+            .axiom => return self.fail(loc, "model materialization reached an axiom without a mapping; add it to the model", .{}),
+            .schema => return self.fail(loc, "model cannot materialize a schema", .{}),
+        };
+        const proof = fact.proof orelse
+            return self.fail(loc, "model cannot materialize '{s}': its proof was not retained (trusted import?)", .{self.interner.str(fact.name)});
+
+        // mangled name `Model$sourcename`, bound in the current file. `$` is not
+        // a lexable identifier char, so it cannot collide with a user name.
+        const mangled = try self.mangledModelName(model.name, fact.name);
+        const remapped_formula = self.pool.remapFormula(fact.formula, model.remap) catch return error.OutOfMemory;
+
+        // register (unproven) FIRST so a self/mutual citation resolves; memoize
+        // before recursing so a cycle terminates.
+        const mat_id = try self.env.addStatement(self.file, mangled, .{ .theorem = .{
+            .name = mangled,
+            .formula = remapped_formula,
+            .loc = loc,
+            .proven = false,
+            .synthetic = true,
+        } });
+        try model.materialized.put(self.arena, source, mat_id);
+
+        // remap each step's formula + justification ids.
+        const new_steps = try self.arena.alloc(kernel.Step, proof.steps.len);
+        for (proof.steps, new_steps) |s, *out| {
+            out.* = .{
+                .formula = self.pool.remapFormula(s.formula, model.remap) catch return error.OutOfMemory,
+                .just = try self.remapJustification(model, s.just, loc),
+                .block = s.block,
+                .label = s.label,
+                .loc = loc,
+            };
+        }
+
+        // remap each block's sort-bearing data: a `fix` eigenvariable's sort, an
+        // `assume` formula, an `unpack` witness sort. (SRef/BRef indices and the
+        // step ranges are structural — unchanged.)
+        const new_blocks = try self.arena.alloc(kernel.Block, proof.blocks.len);
+        for (proof.blocks, new_blocks) |b, *out| {
+            out.* = b;
+            out.kind = switch (b.kind) {
+                .root => .root,
+                .assume => |f| .{ .assume = self.pool.remapFormula(f, model.remap) catch return error.OutOfMemory },
+                .fix => |v| .{ .fix = .{ .name = v.name, .sort = model.remap.sort(v.sort) } },
+                .unpack => |u| .{ .unpack = .{
+                    .v = .{ .name = u.v.name, .sort = model.remap.sort(u.v.sort) },
+                    .source = u.source,
+                } },
+            };
+        }
+
+        var k: kernel.Kernel = .{
+            .arena = self.arena,
+            .pool = self.pool,
+            .env = self.env,
+            .interner = self.interner,
+            .sink = self.sink,
+        };
+        const ok = try k.check(.{ .steps = new_steps, .blocks = new_blocks }, remapped_formula, loc);
+        if (!ok) {
+            return self.fail(loc, "model transfer of '{s}' does not kernel-check under the interpretation (an obligation is undischarged?)", .{self.interner.str(fact.name)});
+        }
+        // the materialized theorem inherits the source proof's provenance: if the
+        // source leaned on an accelerated tactic or a hole, so does the transfer.
+        const mat_fact = &self.env.statements.items[@intFromEnum(mat_id)].theorem;
+        mat_fact.proven = true;
+        mat_fact.accelerated = fact.accelerated;
+        mat_fact.holes = fact.holes;
+        return mat_id;
+    }
+
+    /// Remap a justification's embedded ids through the model: TermId fields via
+    /// remapFormula, StatementId fields (axiom/theorem refs) through the model's
+    /// mappings (axioms via `stmt_map`; theorems recursively materialized).
+    /// Intra-proof SRef/BRef indices are structural — unchanged.
+    fn remapJustification(self: *Elaborator, model: *Model, j: kernel.Justification, loc: u32) ElabError!kernel.Justification {
+        return switch (j) {
+            .axiom_ref => |r| blk: {
+                // a cited source axiom (a hole is an axiom too) must be discharged
+                // by the model's mapping; unmapped is an undischarged obligation.
+                for (model.stmt_map) |p| {
+                    if (p.from == r.stmt) break :blk .{ .axiom_ref = .{ .stmt = p.to, .loc = loc } };
+                }
+                const nm = self.statementNameOf(r.stmt);
+                break :blk self.fail(loc, "model does not discharge axiom '{s}'; add a mapping for it", .{self.interner.str(nm)});
+            },
+            .theorem_ref => |r| blk: {
+                // a cited source theorem: recursively materialize it, or — if it
+                // is itself discharged by a mapping (a local theorem) — repoint.
+                for (model.stmt_map) |p| {
+                    if (p.from == r.stmt) break :blk .{ .theorem_ref = .{ .stmt = p.to, .loc = loc } };
+                }
+                const mat = try self.materializeModelTheorem(model, r.stmt, loc);
+                break :blk .{ .theorem_ref = .{ .stmt = mat, .loc = loc } };
+            },
+            .forall_elim => |r| .{ .forall_elim = .{
+                .step = r.step,
+                .with = self.pool.remapFormula(r.with, model.remap) catch return error.OutOfMemory,
+                .with_loc = loc,
+            } },
+            .exists_intro => |r| .{ .exists_intro = .{
+                .step = r.step,
+                .witness = self.pool.remapFormula(r.witness, model.remap) catch return error.OutOfMemory,
+                .witness_loc = loc,
+            } },
+            .schema_instance => |r| .{ .schema_instance = .{
+                .instance = self.pool.remapFormula(r.instance, model.remap) catch return error.OutOfMemory,
+                .premises = r.premises,
+            } },
+            // all other justifications carry only intra-proof SRef/BRef indices
+            // (unchanged by the remap) or nothing.
+            else => j,
+        };
+    }
+
+    fn mangledModelName(self: *Elaborator, model_name: StrId, source_name: StrId) ElabError!StrId {
+        const text_ = std.fmt.allocPrint(self.arena, "{s}${s}", .{
+            self.interner.str(model_name), self.interner.str(source_name),
+        }) catch return error.OutOfMemory;
+        return self.interner.intern(text_) catch return error.OutOfMemory;
+    }
+
+    fn statementNameOf(self: *Elaborator, id: StatementId) StrId {
+        return switch (self.env.statements.items[@intFromEnum(id)]) {
+            .axiom => |f| f.name,
+            .theorem => |f| f.name,
+            .schema => |s| s.name,
+        };
     }
 
     /// The certifier chain's terminal: reached when every link declined a
