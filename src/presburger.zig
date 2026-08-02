@@ -69,6 +69,46 @@ pub const SatResult = union(enum) {
     overflow,
 };
 
+// --- Cooper-replay trace (certificate generation, src/elaborate.zig) ---
+//
+// The decision procedure above discards the elimination disjunction it builds.
+// `trace` re-runs the SAME Cooper elimination on a single `exists y; body`
+// goal but RECORDS what it did into `Replay`: the certifier in elaborate.zig
+// reads this to emit pure kernel steps (the ⟸ witness assembly and the ⟹
+// induction). Plain data — no TermId, no kernel — so the trusted-engine
+// surface stays put and the certifier owns all term/kernel work.
+
+/// A linear form echoed out to the certifier, coefficients indexed by the
+/// same free-variable order as `Replay.free_names`.
+pub const LinearDump = struct { coeffs: []const i128, konst: i128 };
+
+/// One disjunct of Cooper's `exists y. F <=> OR_j (F_-inf(j) OR OR_b F(b+j))`.
+pub const Disjunct = union(enum) {
+    /// the minus-infinity residue at offset j (j in 1..D)
+    minus_inf: struct { j: i128 },
+    /// the boundary probe: witness y := boundaries[b_index] + j
+    boundary: struct { b_index: usize, j: i128 },
+};
+
+/// The recorded elimination of one `exists y` (Cooper). `delta` is the
+/// coefficient LCM (y = delta*x), `period` the divisibility LCM D, and the
+/// disjuncts/boundaries reconstruct each witness in the certifier's term pool.
+pub const Replay = struct {
+    delta: i128,
+    period: i128,
+    boundaries: []const LinearDump,
+    disjuncts: []const Disjunct,
+    /// free-variable names in coefficient-index order (Ctx.free_vars order)
+    free_names: []const StrId,
+};
+
+pub const TraceResult = union(enum) {
+    /// goal was `exists y: Nat; body` over Nat, valid, and traced
+    replay: Replay,
+    /// not the single-existential shape, or out of the linear fragment
+    not_applicable,
+};
+
 /// Decide whether `goal` follows from `premises` in Presburger arithmetic.
 pub fn decide(arena: Allocator, pool: *Pool, symbols: Symbols, premises: []const TermId, goal: TermId) Allocator.Error!Verdict {
     var ctx: Ctx = .{ .arena = arena, .pool = pool, .symbols = symbols };
@@ -82,6 +122,31 @@ pub fn decide(arena: Allocator, pool: *Pool, symbols: Symbols, premises: []const
         .sat_no_witness => .no_witness,
         // runSat reports failures via ctx.reason
         .out_of_fragment, .too_large, .overflow => unreachable,
+    };
+}
+
+/// Record the Cooper elimination of a single `exists y: Nat; body` goal so the
+/// certifier can replay it as pure kernel steps. Returns `.not_applicable`
+/// (never an error verdict) when the goal is not that shape or leaves the
+/// linear fragment — the certifier link simply declines and the chain moves on.
+pub fn trace(arena: Allocator, pool: *Pool, symbols: Symbols, premises: []const TermId, goal: TermId) Allocator.Error!TraceResult {
+    // layer 1 targets premise-free existentials (evenOrOdd has none); a premise
+    // set is out of this scope for now.
+    if (premises.len != 0) return .not_applicable;
+    if (symbols.nat == null) return .not_applicable;
+
+    // the goal must be `exists y: Nat; body`
+    const node = pool.get(goal);
+    if (node != .quant or node.quant.q != .exists or node.quant.sort != symbols.nat.?) {
+        return .not_applicable;
+    }
+
+    var ctx: Ctx = .{ .arena = arena, .pool = pool, .symbols = symbols };
+    return ctx.runTrace(node.quant) catch |err| switch (err) {
+        error.OutOfMemory => error.OutOfMemory,
+        // any compilation failure (out of fragment, too_large, overflow) means
+        // this link can't certify: decline, don't surface an engine error.
+        error.Fail => .not_applicable,
     };
 }
 
@@ -212,6 +277,42 @@ const Ctx = struct {
             return .{ .sat = out };
         }
         return .sat_no_witness;
+    }
+
+    /// Record the Cooper elimination of `exists y; body` (the `q` binder). The
+    /// existential's own variable `y` is opened as a free variable so it can be
+    /// eliminated; the goal's other free variables (e.g. the outer `forall x`
+    /// eigenvariable) stay free and index the recorded boundaries.
+    fn runTrace(self: *Ctx, q: term.Node.Quant) Error!TraceResult {
+        // open the existential binder into a free var named by its hint, and
+        // pre-scan for the vector width (the opened body's leaves + any nested
+        // binders). The +1 covers the eliminated variable itself.
+        const fv = try self.pool.add(.{ .fvar = .{ .name = q.hint, .sort = q.sort } });
+        const opened = try self.pool.open(q.body, fv);
+        var bound: usize = 1;
+        self.countVars(opened, &bound);
+        self.width = bound;
+
+        // reserve index 0 for the eliminated variable y, so `boundaries` (which
+        // drops y's own coefficient) index the remaining free vars by name.
+        const y: u32 = self.next_var;
+        self.next_var += 1;
+        self.vars.put(self.arena, q.hint, y) catch return error.OutOfMemory;
+
+        // Nat semantics: exists y (y >= 0 and body). Compile the body, conjoin
+        // the nonnegativity guard, then trace-eliminate y.
+        const body = try self.formula(opened, false);
+        const guarded = try self.node(.{ .conj = .{ .lhs = try self.node(.{ .ge = try self.unit(y) }), .rhs = body } });
+
+        var replay: Replay = .{ .delta = 1, .period = 1, .boundaries = &.{}, .disjuncts = &.{}, .free_names = &.{} };
+        try self.cooperTraced(y, guarded, &replay);
+
+        // export the remaining free variables in coefficient-index order (y is
+        // index 0 and eliminated, so it is not among them).
+        const names = try self.arena.alloc(StrId, self.free_vars.items.len);
+        for (self.free_vars.items, names) |free, *n| n.* = free.name;
+        replay.free_names = names;
+        return .{ .replay = replay };
     }
 
     // --- compilation: kernel term -> formula over linear atoms ---
@@ -596,9 +697,14 @@ const Ctx = struct {
         }
     }
 
-    /// Eliminate `exists v` from quantifier-free `f` (Cooper):
-    ///   exists y. F  <=>  OR_{j=1..D} ( F_minus_inf(j)  OR_{b in B} F(b+j) )
-    fn cooper(self: *Ctx, v: u32, f: *const Formula) Error!*const Formula {
+    /// The numeric prelude shared by `cooper` (decision) and `cooperTraced`
+    /// (certificate): scale v's coefficient to +-1, conjoin the stride
+    /// `delta | v`, and collect the period D and boundary set B. Both callers
+    /// then enumerate the SAME `OR_{j=1..D}(F_-inf(j) OR_{b in B} F(b+j))`; only
+    /// what they do with each disjunct differs (fold a node vs. record it).
+    const Prepared = struct { g: *const Formula, delta: i128, period: i128, lows: []const Linear };
+
+    fn prepared(self: *Ctx, v: u32, f: *const Formula) Error!Prepared {
         var delta: i128 = 1;
         try self.coefficientLcm(f, v, &delta);
         const norm = try self.normalized(f, v, delta);
@@ -610,20 +716,51 @@ const Ctx = struct {
         try self.modulusLcm(g, v, &period);
         var lows: std.ArrayList(Linear) = .empty;
         try self.boundaries(g, v, &lows);
-
         if (period > 4096) return self.fail(.too_large);
-        const d_steps: usize = @intCast(period);
+        return .{ .g = g, .delta = delta, .period = period, .lows = lows.items };
+    }
+
+    /// Eliminate `exists v` from quantifier-free `f` (Cooper):
+    ///   exists y. F  <=>  OR_{j=1..D} ( F_minus_inf(j)  OR_{b in B} F(b+j) )
+    fn cooper(self: *Ctx, v: u32, f: *const Formula) Error!*const Formula {
+        const p = try self.prepared(v, f);
+        const d_steps: usize = @intCast(p.period);
 
         var result: *const Formula = try self.node(.fls);
         for (1..d_steps + 1) |step| {
             const j: i128 = @intCast(step);
-            result = try self.node(.{ .disj = .{ .lhs = result, .rhs = try self.substInf(g, v, j) } });
-            for (lows.items) |b| {
+            result = try self.node(.{ .disj = .{ .lhs = result, .rhs = try self.substInf(p.g, v, j) } });
+            for (p.lows) |b| {
                 const probe = try self.shifted(b, j);
-                result = try self.node(.{ .disj = .{ .lhs = result, .rhs = try self.subst(g, v, probe) } });
+                result = try self.node(.{ .disj = .{ .lhs = result, .rhs = try self.subst(p.g, v, probe) } });
             }
         }
         return result;
+    }
+
+    /// Certificate twin of `cooper`: same elimination, but instead of folding
+    /// the disjuncts into a formula it RECORDS each one (as an offset j and, for
+    /// a boundary probe, which boundary) into `out`. The certifier reconstructs
+    /// the witnesses `boundaries[i] + j` in its own term pool.
+    fn cooperTraced(self: *Ctx, v: u32, f: *const Formula, out: *Replay) Error!void {
+        const p = try self.prepared(v, f);
+        const d_steps: usize = @intCast(p.period);
+
+        const bounds = try self.arena.alloc(LinearDump, p.lows.len);
+        for (p.lows, bounds) |b, *d| d.* = .{ .coeffs = b.coeffs, .konst = b.konst };
+
+        var disjuncts: std.ArrayList(Disjunct) = .empty;
+        for (1..d_steps + 1) |step| {
+            const j: i128 = @intCast(step);
+            try disjuncts.append(self.arena, .{ .minus_inf = .{ .j = j } });
+            for (0..p.lows.len) |b_index| {
+                try disjuncts.append(self.arena, .{ .boundary = .{ .b_index = b_index, .j = j } });
+            }
+        }
+        out.delta = p.delta;
+        out.period = p.period;
+        out.boundaries = bounds;
+        out.disjuncts = disjuncts.items;
     }
 
     // --- ground evaluation and countermodel search ---
@@ -836,4 +973,51 @@ test "trichotomy: a < b or a = b or b < a" {
     const goal = try r.pool.add(.{ .bin = .{ .op = .or_op, .lhs = first, .rhs = try r.less(b, a) } });
     const v = try decide(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
     try testing.expect(v == .valid);
+}
+
+// --- Cooper-replay trace (layer 1) ---
+
+test "trace: parity body has delta 2, period 2" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var r = Rig.init(arena_state.allocator());
+    // exists y; x = add(y, y) or x = succ(add(y, y))  (x free)
+    const x = try r.fvar(10);
+    const y = try r.fvar(11);
+    const even = try r.eq(x, try r.add(y, y));
+    const odd = try r.eq(x, try r.succ(try r.add(y, y)));
+    const either = try r.pool.add(.{ .bin = .{ .op = .or_op, .lhs = even, .rhs = odd } });
+    const goal = try r.quant(.exists, 11, either);
+    const t = try trace(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
+    try testing.expect(t == .replay);
+    try testing.expectEqual(@as(i128, 2), t.replay.delta);
+    try testing.expectEqual(@as(i128, 2), t.replay.period);
+    // x is the single free variable
+    try testing.expectEqual(@as(usize, 1), t.replay.free_names.len);
+    // the recorded disjunction is nonempty (D * (1 + |B|) probes)
+    try testing.expect(t.replay.disjuncts.len >= 2);
+}
+
+test "trace: a non-existential goal is not applicable" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var r = Rig.init(arena_state.allocator());
+    // a < add(a, succ(b)) — no leading exists
+    const a = try r.fvar(10);
+    const b = try r.fvar(11);
+    const goal = try r.less(a, try r.add(a, try r.succ(b)));
+    const t = try trace(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
+    try testing.expect(t == .not_applicable);
+}
+
+test "trace: a nonlinear existential is not applicable" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var r = Rig.init(arena_state.allocator());
+    // exists y; mul(y, y) = x  (nonlinear — out of fragment)
+    const x = try r.fvar(10);
+    const y = try r.fvar(11);
+    const goal = try r.quant(.exists, 11, try r.eq(try r.mul(y, y), x));
+    const t = try trace(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
+    try testing.expect(t == .not_applicable);
 }
