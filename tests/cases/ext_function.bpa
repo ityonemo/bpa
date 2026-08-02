@@ -4,7 +4,7 @@
 // identityApply), and close the resulting EQUATION with the equation certifier.
 // Same `ext` tactic as the set model; only the residue closer differs.
 import function <<< "std/function.bpa"
-sort Universe = function.Universe
+sort Element = function.Element
 sort Fn = function.Fn
 const identityFn = function.identityFn
 func apply = function.apply

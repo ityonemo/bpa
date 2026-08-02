@@ -19,7 +19,7 @@ import element <<< "std/element.bpa"
 import set <<< "std/set.bpa"
 import relation <<< "std/relation.bpa"
 
-sort Universe = set.Universe
+sort Element = set.Element
 sort Set = set.Set
 
 // re-exported set vocabulary
@@ -46,10 +46,10 @@ axiom equivalenceDef = relation.equivalenceDef
 // -- equivalence classes as sets --------------------------------------------
 
 // the class constructor: classOf(x) = [x] = { y : y ~ x }.
-func classOf(x: Universe): Set
+func classOf(x: Element): Set
 
-// y is in the class of x exactly when y ~ x. (Universe = Element = the shared
+// y is in the class of x exactly when y ~ x. (Element = Element = the shared
 // carrier, so `member(y, ·)` and `related(y, x)` speak of the same y.)
-axiom classMember: forall x: Universe; forall y: Universe;
+axiom classMember: forall x: Element; forall y: Element;
   (member(y, classOf(x)) -> related(y, x))
   and (related(y, x) -> member(y, classOf(x)))

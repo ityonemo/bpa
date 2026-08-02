@@ -201,9 +201,11 @@ pins it to a vetted theory.
   function equations (`ext(function)`), and any future extensional theory.
   Prior art: Lean's `ext`.
 - **What it does (emits kernel steps by default)**: resolves the theory's
-  extensionality lemma (`extensionality` / `funcExtensionality`) and the element
-  sort `Universe`; instantiates the lemma at (LHS, RHS) to reduce `LHS = RHS` to
-  its pointwise obligation(s); for each obligation `fix x: Universe`, unfolds the
+  extensionality lemma (`extensionality` / `funcExtensionality`) and reads the
+  element sort **structurally** off that lemma's first obligation binder
+  (`forall x: <elementSort>; …`) — NOT by a hardcoded sort name (see *Naming
+  couplings* below); instantiates the lemma at (LHS, RHS) to reduce `LHS = RHS`
+  to its pointwise obligation(s); for each obligation `fix x: <elementSort>`, unfolds the
   operators appearing in the goal via their characterization lemmas
   (`<op>Member` for sets, `<op>Apply` for functions, resolved by well-known
   name), and closes the residue — dispatching on its shape:
@@ -215,8 +217,8 @@ pins it to a vetted theory.
   Then `forall_intro` each obligation and `modus_ponens` the chain to the
   equation. Every step is a kernel tactic, so `ext` emits (kernel-checked).
 - **Declines** (accelerated-tactic contract): goal not an equation
-  (`out_of_scope`); no extensionality lemma / `Universe` sort in scope; an
-  operator without a characterization lemma; a residue with a countermodel (the
+  (`out_of_scope`); no extensionality lemma with an element-sort obligation in
+  scope; an operator without a characterization lemma; a residue with a countermodel (the
   identity is likely FALSE) → the closer's own located diagnostic.
 - **Why an accelerated tactic**: it presumes the theory's extensionality
   principle + operator characterizations (resolved by well-known name), the same

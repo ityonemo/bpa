@@ -84,6 +84,17 @@ Every category has a distinct look:
   for conventional mathematical scalars in their home domain: `a, b, m, n`
   ranging over `Nat`; `x, y, z, w` over the reals; `i, j, k` as indices
   (including induction variables). Anything else gets a snake_case word.
+- **Element-domain sorts — prefer `Element`.** When a theory is built over an
+  ambient domain of *underlying individuals* it quantifies over — sets over their
+  members, functions over their points, relations over their relata — name that
+  element-domain sort **`Element`** (as `std/element.bpa` does). Reserve it for the
+  underlying individuals, NOT the structure's own carrier: a group is `Grp`, ℤ is
+  `Int`, a set is `Set` — those *are* the objects the theory is about, not a domain
+  beneath them. A shared canonical name lets element-domains compose (and `model`
+  onto each other) without an aliasing layer. This is a *recommendation*: the older
+  `set.bpa`/`function.bpa` spell the same concept `Universe` and are reconciled to
+  `element.Element` by alias — a working split, not a bug; **do not retrofit them**.
+  The guideline is for new theories, where the name is free.
 
 ## Labels
 

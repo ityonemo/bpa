@@ -3218,7 +3218,7 @@ pub const Elaborator = struct {
         universe: term.SortId,
         lemma: TermId,
         lemma_source: simplify_mod.Source,
-        /// each obligation is `forall x: Universe; <body>`; count = 1 (function)
+        /// each obligation is `forall x: <elementSort>; <body>`; count = 1 (function)
         /// or 2 (set, the two inclusions). Read from the lemma.
         obligation_count: usize,
     };
@@ -3269,7 +3269,7 @@ pub const Elaborator = struct {
     fn extEquation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, loc: u32) ElabError!kernel.Justification {
         const eq = self.pool.get(goal).eq;
         const model = (try self.extModel(loc)) orelse
-            return self.fail(loc, "ext: no extensionality lemma (or Universe sort) in scope", .{});
+            return self.fail(loc, "ext: no extensionality lemma (with an element-sort obligation) in scope", .{});
 
         // instantiate the ext lemma at (lhs, rhs): forall A, B; … peel two
         // binders with the goal's sides.
@@ -3285,7 +3285,7 @@ pub const Elaborator = struct {
         // is this tactic's returned justification, not an emitted step.
         for (0..model.obligation_count) |i| {
             const imp = self.pool.get(chain_formula).bin;
-            const ob = imp.lhs; // forall x: Universe; body
+            const ob = imp.lhs; // forall x: <elementSort>; body
             const ob_ref = try self.extObligation(low, block_id, ob, model, loc);
             const mp: kernel.Justification = .{ .modus_ponens = .{ .implication = chain_ref, .antecedent = ob_ref } };
             chain_formula = imp.rhs;
@@ -3308,11 +3308,11 @@ pub const Elaborator = struct {
         };
     }
 
-    /// Prove one obligation `forall x: Universe; body`. `fix x`, unfold every
+    /// Prove one obligation `forall x: <elementSort>; body`. `fix x`, unfold every
     /// operator characterization lemma relevant to `body`, close the residue,
     /// forall_intro. Returns the step proving the obligation.
     fn extObligation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, ob: TermId, model: ExtModel, loc: u32) ElabError!kernel.SRef {
-        const q = self.pool.get(ob).quant; // forall x: Universe; body
+        const q = self.pool.get(ob).quant; // forall x: <elementSort>; body
         const x: term.Node.Fvar = .{ .name = try self.freshNamed("x"), .sort = model.universe };
         const x_id = try self.pool.add(.{ .fvar = x });
         const body = try self.pool.open(q.body, x_id);
@@ -3465,11 +3465,12 @@ pub const Elaborator = struct {
     }
 
     /// Resolve the extensionality model in the current theory scope. Tries
-    /// `extensionality` then `funcExtensionality`; reads Universe + obligation
-    /// count from the lemma's shape.
+    /// `extensionality` then `funcExtensionality`; reads the element sort +
+    /// obligation count from the lemma's shape. The element sort is derived
+    /// STRUCTURALLY from the first obligation's binder (`forall x: <sort>; …`),
+    /// not looked up by name — so the tactic works whatever that sort is called
+    /// (`Element`, `Universe`, …).
     fn extModel(self: *Elaborator, loc: u32) ElabError!?ExtModel {
-        const universe_name = self.interner.intern("Universe") catch return error.OutOfMemory;
-        const universe = self.env.findSort(self.theoryScope(), universe_name) orelse return null;
         const fact = (try self.wellKnownFact("extensionality", loc)) orelse
             (try self.wellKnownFact("funcExtensionality", loc)) orelse return null;
         // count the leading obligations: peel `forall A, B;` then count the
@@ -3480,11 +3481,18 @@ pub const Elaborator = struct {
             const fv = try self.pool.add(.{ .fvar = .{ .name = try self.freshNamed("s"), .sort = self.pool.get(body).quant.sort } });
             body = try self.pool.open(self.pool.get(body).quant.body, fv);
         }
+        // the element sort is the binder sort of the first obligation
+        // `forall x: <elementSort>; …` (lhs of the first implication).
+        var universe: ?term.SortId = null;
         var obligations: usize = 0;
         while (self.pool.get(body) == .bin and self.pool.get(body).bin.op == .implies) : (obligations += 1) {
+            const premise = self.pool.get(body).bin.lhs;
+            if (universe == null and self.pool.get(premise) == .quant) {
+                universe = self.pool.get(premise).quant.sort;
+            }
             body = self.pool.get(body).bin.rhs;
         }
-        return .{ .universe = universe, .lemma = fact.formula, .lemma_source = fact.source, .obligation_count = obligations };
+        return .{ .universe = universe orelse return null, .lemma = fact.formula, .lemma_source = fact.source, .obligation_count = obligations };
     }
 
     fn tautologyJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
