@@ -1,0 +1,29 @@
+// A goal Presburger DECIDES valid but no certifier can emit, so it needs
+// --fast: a multi-fixed-variable ∀∀∃ (two universally quantified vars, a and
+// b, under the existential). It is the same parity fact as evenOrOdd, over a
+// SUM — but cooperInduction synthesizes an induction on a SINGLE variable, so
+// two fixed vars puts it past the declared boundary and the cooper link
+// declines. A future simultaneous/parameterized induction would close it.
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+axiom addZeroRight: forall a: Nat; add(a, ZERO) = a
+axiom addSuccRight: forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
+axiom mulZeroLeft: forall b: Nat; mul(ZERO, b) = ZERO
+axiom mulSuccLeft: forall a, b: Nat; mul(succ(a), b) = add(mul(a, b), b)
+axiom oneIsSuccZero: ONE = succ(ZERO)
+axiom induction(prop: Nat -> Prop):
+  prop(ZERO) -> (forall k: Nat; prop(k) -> prop(succ(k))) -> forall n: Nat; prop(n)
+
+// for all a, b there is a c with a+b = 2c or a+b = 2c+1 (the sum's parity).
+theorem sumParity: forall a, b: Nat; exists c: Nat; add(a, b) = add(c, c) or add(a, b) = succ(add(c, c))
+proof
+  @conclusion |
+    forall a, b: Nat; exists c: Nat; add(a, b) = add(c, c) or add(a, b) = succ(add(c, c))
+    [by arithmetic]
+qed
