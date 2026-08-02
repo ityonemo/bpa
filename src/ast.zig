@@ -66,7 +66,7 @@ pub const Step = struct {
         refs: []const Token,
         /// `arithmetic ... fallback(<thm>)`: a manually-proven theorem to cite
         /// as the certificate when the certifier chain declines (instead of the
-        /// hard error). Keeps the step pure. Arithmetic-only for now.
+        /// hard error). Keeps the step elaborated. Arithmetic-only for now.
         fallback: ?Token = null,
     };
     pub const Block = struct { formula: *const Expr, steps: []const Step };

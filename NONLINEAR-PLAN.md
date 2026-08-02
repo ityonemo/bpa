@@ -6,9 +6,9 @@ The request "support nonlinear arithmetic" covers several capabilities of
 very different difficulty. Naming them apart is the whole point, because one
 of them is provably impossible and the rest are not.
 
-| Capability | Difficulty | Oracle? |
+| Capability | Difficulty | Accelerated? |
 |---|---|---|
-| Nonlinear **identities** (`(k+1)² = k²+2k+1`) | low — a canonicalizing tactic | **no** (pure rewrites) |
+| Nonlinear **identities** (`(k+1)² = k²+2k+1`) | low — a canonicalizing tactic | **no** (elaborated rewrites) |
 | Polynomial **equality entailment** (Gröbner) | medium | no (reduction is a certificate) |
 | Nonlinear **inequalities** (SOS / Positivstellensatz) | hard, incomplete | yes (disclosed) |
 | **Full** nonlinear decision | **impossible** (Matiyasevich) | n/a |
@@ -18,12 +18,12 @@ of them is provably impossible and the rest are not.
 Key facts that shape everything below:
 
 - **Nonlinear integer arithmetic is undecidable** (Hilbert's 10th / the MRDP
-  theorem). There can be no complete decision oracle, unlike Cooper's
+  theorem). There can be no complete decision procedure, unlike Cooper's
   algorithm for the linear fragment. So the goal is *useful incomplete
   fragments*, disclosed honestly where they fall back.
 - **Polynomial normalization is equational rewriting** — commutativity,
   associativity, and distributivity are all proven `std/peano.bpa` theorems.
-  So a large class of nonlinear *identities* proves **purely**, with zero new
+  So a large class of nonlinear *identities* proves **elaborated**, with zero new
   trust surface, using exactly the fabricated-rewrite-trace machinery the
   `ac` tactic already uses. This is the high-value, low-risk rung.
 - **Division over Nat is a definitional problem, not a solver problem.**
@@ -34,17 +34,17 @@ Key facts that shape everything below:
   nodes in `src/presburger.zig`), so this is mostly declarations + axioms,
   not new solver technology.
 
-## Recommended scope: two rungs, both mostly pure
+## Recommended scope: two rungs, both mostly elaborated
 
-### Rung 1 — `polynomial` tactic (nonlinear identities, pure) — LANDED
+### Rung 1 — `polynomial` tactic (nonlinear identities, elaborated) — LANDED
 
 **STATUS (landed):** `polynomial` / `polynomial_quantified` are implemented in
 `src/elaborate.zig` (`polynomialEquation` + `polyCanon`, reusing `acPlan`/
 `emitJoin`; per-monomial sub-traces lifted to whole-term context via
 `liftMonoTrace`, outer sum right-nested first). It is **theory-parameterized**
 like `arithmetic` (`polynomial(peano)`), NOT well-known-name in local scope —
-the parser's theory-arg gate generalized to an `isTheoryRule` set. Pure by
-construction (no oracle). Fixtures: `tests/cases/polynomial.bpa` (green, incl.
+the parser's theory-arg gate generalized to an `isTheoryRule` set. Elaborated by
+construction (no accelerated step). Fixtures: `tests/cases/polynomial.bpa` (green, incl.
 `(a+b)²`) + `polynomial_bad.bpa` (located "sides expand differently"). The
 Gauss `target` payoff was deferred: it needs `succ`-expansion, and `succ` is
 kept opaque (a deliberate non-privileging decision) — √2's algebra is pure
@@ -69,7 +69,7 @@ mirrors `simplify_quantified` later, via `peelUniversal`).
    phase-1 runs `addIsAssociative`.
 2. **Normalize each monomial** — a product of atoms — with `mulIsAssociative`
    (right-nest) then a `mul`-bubble-sort by `termOrder` (the sorting
-   primitive `mulLeftSwap`, a new pure std lemma — see below). Reuse the
+   primitive `mulLeftSwap`, a new elaborated std lemma — see below). Reuse the
    generalized `sortTrace` with a `mul` symbol instead of `add`.
 3. **Normalize the sum of monomials** — with `addIsAssociative` then the
    `add`-bubble-sort — i.e. delegate to the `ac` machinery for the outer
@@ -78,11 +78,11 @@ mirrors `simplify_quantified` later, via `peelUniversal`).
    `mulZeroRight`/`addZeroLeft`/`addZeroRight` collapse identity/absorbing
    factors, as terminating rules in the same normalize passes.
 5. Both sides reach the same canonical polynomial iff the expansions are
-   equal; `emitJoin` produces the pure certificate. Different expansions →
+   equal; `emitJoin` produces the elaborated certificate. Different expansions →
    located `polynomial: sides expand differently: '<nf(s)>' vs '<nf(t)>'`
-   (never a taint — this tactic has no oracle).
+   (never accelerated — this tactic has no accelerated step).
 
-**Prerequisite std lemma** (provable pure with `simplify`/`ac`, like
+**Prerequisite std lemma** (provable elaborated with `simplify`/`ac`, like
 `addLeftSwap` was): `mulLeftSwap: forall r, y, x; mul(x, mul(y, r)) =
 mul(y, mul(x, r))` — the monomial sorting primitive. Adding it also
 retroactively unblocks `ac`'s mul mode (currently errors "needs mulLeftSwap").
@@ -117,7 +117,7 @@ The `b != ZERO` guards are ordinary TCC obligations (the `div_ok.bpa` /
 `requires` pattern already in the kernel). Reasoning about `div`/`mod` then
 reduces to linear arithmetic plus the two defining facts — and Cooper's
 algorithm in `src/presburger.zig` **already** decides divisibility atoms
-(`.div`/`.ndiv`), so the `arithmetic` oracle largely handles `div`/`mod`
+(`.div`/`.ndiv`), so the `arithmetic` accelerated tactic largely handles `div`/`mod`
 goals once the vocabulary and axioms exist. Certificate coverage grows
 incrementally as with the other C2 stages.
 
@@ -128,8 +128,9 @@ to the well-known-name set the `arithmetic` symbol resolver looks up.
 ## Explicitly deferred / out of scope
 
 - **Nonlinear inequalities** (SOS, Positivstellensatz): incomplete, would be
-  a *disclosed oracle*. Real but a separate, later decision — the pure
-  identity tactic covers the common program-verification identities first.
+  a *disclosed accelerated tactic*. Real but a separate, later decision — the
+  elaborated identity tactic covers the common program-verification identities
+  first.
 - **Gröbner-basis equality entailment** (proving an equation *from* other
   nonlinear equations, not just an identity): medium effort, certificate-
   producing (reduction chain), but only worth it once identities land and a
@@ -142,7 +143,7 @@ to the well-known-name set the `arithmetic` symbol resolver looks up.
 
 ## Sequencing
 
-1. **`mulLeftSwap`** std lemma (pure; also unblocks `ac`'s mul mode).
+1. **`mulLeftSwap`** std lemma (elaborated; also unblocks `ac`'s mul mode).
 2. **`AcOp` refactor** — parameterize the `ac` sort machinery over the
    operator so `add` and `mul` sorting share code.
 3. **`polynomial` tactic** — distribute → sort monomials → sort sum →
@@ -160,8 +161,8 @@ directive, with unit tests in the touched modules.
 ## Verification
 
 - `zig build test` — all existing goldens green + new gates.
-- `bpa check --pure` green on every new fixture (rungs 1–2 are pure; the
-  `div`/`mod` oracle uses are disclosed if any fall outside certificate
+- `bpa check --pure` green on every new fixture (rungs 1–2 are elaborated; the
+  `div`/`mod` accelerated uses are disclosed if any fall outside certificate
   coverage).
 - Payoff: Gauss's `target` step collapses to `[by polynomial]`; a
   `div`/`mod` identity proves in one step.

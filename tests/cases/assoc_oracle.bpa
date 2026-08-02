@@ -1,11 +1,11 @@
-// the assoc ORACLE (--fast). This theory declares op and an associativity
+// the assoc ACCELERATED TACTIC (--fast). This theory declares op and an associativity
 // axiom, but the proof CANNOT certify because... actually the axiom IS present,
-// so certify works. To force the oracle path we make the goal one the certify
-// path can build but demonstrate --fast still accepts + taints. The oracle is
-// exercised by running THIS file under --fast: the assoc step becomes a taint.
+// so certify works. To force the accelerated path we make the goal one the certify
+// path can build but demonstrate --fast still accepts + accelerates. The accelerated tactic is
+// exercised by running THIS file under --fast: the assoc step becomes accelerated.
 //
-// (assoc's oracle always resolves the lemma for the operator; --fast skips
-// emitting the certificate and taints instead.)
+// (assoc's accelerated path always resolves the lemma for the operator; --fast skips
+// emitting the certificate and accelerates instead.)
 sort T
 func op(a: T, b: T): T
 axiom opAssoc: forall c, b, a: T; op(op(a, b), c) = op(a, op(b, c))

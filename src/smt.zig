@@ -1,13 +1,13 @@
-//! TRUSTED ORACLE: propositional tautology checking (surface rule
-//! `tautology`; registry entry in ORACLES.md).
+//! TRUSTED ACCELERATED TACTIC: propositional tautology checking (surface rule
+//! `tautology`; registry entry in ACCELERATION.md).
 //!
 //! Trust surface: when the elaborator takes this module's `.valid` verdict it
-//! lowers an `.oracle` kernel step, and the kernel accepts that claim WITHOUT
-//! a derivation — a bug here can admit a false theorem. Every use is
-//! disclosed: the oracle name taints the enclosing theorem (transitively,
-//! through citations), the summary line reports the taint, and `--pure`
-//! rejects it. Certificate replay (milestone B2) will retire this trust
-//! surface without changing the surface rule.
+//! lowers an `.accelerated` kernel step, and the kernel accepts that claim
+//! WITHOUT a derivation — a bug here can admit a false theorem. Every use is
+//! disclosed: the accelerated-tactic name marks the enclosing theorem
+//! accelerated (transitively, through citations), the summary line reports it,
+//! and `--pure` rejects it. Certificate replay (milestone B2) will retire this
+//! trust surface without changing the surface rule.
 //!
 //! Engine: atoms are the maximal subformulas that are not and/or/not/implies
 //! (predicates, equations, quantified formulas — all opaque). The decision is

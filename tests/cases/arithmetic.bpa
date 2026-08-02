@@ -1,5 +1,5 @@
-// oracle-backed: 'arithmetic' decides linear (Presburger) arithmetic over
-// Nat by quantifier elimination (see ORACLES.md). The symbols ZERO, succ,
+// accelerated tactic: 'arithmetic' decides linear (Presburger) arithmetic over
+// Nat by quantifier elimination (see ACCELERATION.md). The symbols ZERO, succ,
 // add, mul, ONE, and less_than are recognized by name in the current scope.
 sort Nat
 const ZERO: Nat

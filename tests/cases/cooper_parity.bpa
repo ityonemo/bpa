@@ -9,7 +9,7 @@
 //   forall x; exists y; x = add(y, y) or x = succ(add(y, y))
 //
 // This is `evenOrOdd` in add-form (the same theorem examples/peano.bpa proves,
-// there via the oracle). Checks PURE in default mode once layer 3 lands.
+// there via the accelerated tactic). Checks ELABORATED in default mode once layer 3 lands.
 sort Nat
 const ZERO: Nat
 const ONE: Nat

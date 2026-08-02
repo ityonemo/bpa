@@ -6,11 +6,11 @@ All three layers are built and green:
 - **Layer 1** (`2dd2b09`): trace-emitting Cooper engine (`presburger.trace` →
   `Replay`; `cooperTraced` shares the `prepared` prelude with `cooper`).
 - **Layer 2** (`cc0d965`): the `cooper` certifier link, period-1 witness
-  direction (`tests/cases/cooper_witness.bpa`, pure in default mode).
+  direction (`tests/cases/cooper_witness.bpa`, elaborated in default mode).
 - **Layer 3**: induction synthesis (`cooperInduction` in `elaborate.zig`) —
   period-D goals certify via a synthesized induction. `tests/cases/cooper_
-  parity.bpa` and the target `examples/peano.bpa` `evenOrOdd` both check PURE in
-  default mode (`OK: 18 declarations, 6 theorems proven`, no oracle taint).
+  parity.bpa` and the target `examples/peano.bpa` `evenOrOdd` both check ELABORATED in
+  default mode (`OK: 18 declarations, 6 theorems proven`, no accelerated steps).
 
 Declared boundaries (the `cooper` link declines these → `--fast`): multi-fixed-
 variable goals, and nested/deeper alternation (`∀∃∀`). The witness search is a
@@ -21,7 +21,7 @@ original design, kept for the layer detail.
 
 ## 0. Summary and non-goals
 
-**Goal.** Make `by arithmetic` goals with quantifier alternation (∀∃) certify PURE — emit ordinary kernel steps instead of an `.oracle` verdict — so `bpa check` in **default mode** accepts them. Canonical target: `examples/peano.bpa:182`
+**Goal.** Make `by arithmetic` goals with quantifier alternation (∀∃) certify ELABORATED — emit ordinary kernel steps instead of an accelerated verdict — so `bpa check` in **default mode** accepts them. Canonical target: `examples/peano.bpa:182`
 
 ```
 theorem evenOrOdd: forall x: Nat; exists y: Nat; x = add(y, y) or x = succ(add(y, y))
@@ -34,18 +34,18 @@ examples/peano.bpa:182:9: error: 'arithmetic' is valid but no certifier could pr
   - equation/order/exists: form not in certification scope
   - mixed-skeleton: form not in certification scope
   - farkas: theory lacks symbol 'less_than'
-use --fast to accept the oracle verdict
+use --fast to accept the accelerated verdict
 ```
 
-and passes under `--fast` (tainted: `1 via oracles: arithmetic`).
+and passes under `--fast` (accelerated: `1 accelerated: arithmetic`).
 
-The delivered work is a **fourth peer certifier link** — `cooper` — in the `certifiers` array (`src/elaborate.zig:3647`), exactly where the comment at `3644-3646` anticipates it, built as three layers with a pure `.bpa` fixture per replay scope, RED-first.
+The delivered work is a **fourth peer certifier link** — `cooper` — in the `certifiers` array (`src/elaborate.zig:3647`), exactly where the comment at `3644-3646` anticipates it, built as three layers with an elaborated `.bpa` fixture per replay scope, RED-first.
 
 **Non-goals (explicit).**
 - **Nonlinear** (`mul(x,y)` both variable): undecidable, no complete certifier — see `NONLINEAR-PLAN.md`. The Cooper link *declines* (`out_of_scope`) whenever `presburger.outOfFragment` flags the goal; the engine already rejects it at `linearOf` (`src/presburger.zig:324-330`).
 - **Anything already certified**: QF-linear equation/order (`equationCertifier`), the const-witness existential (`ExistsCert`), mixed-skeleton, and Farkas infeasibility. The chain is first-`certified`-wins; `cooper` runs LAST, so it only sees goals the cheaper links declined. It must not regress them.
 - The **positive-conclusion linear-order gap** (`CERTIFICATES-PLAN.md:31-49`) — quantifier-free, a separate near-term link, not Cooper.
-- The mode machinery (`--fast`/`--pure`, taint, summary) is **done** (`CERTIFICATES-PLAN.md:3-15`); this plan only adds coverage.
+- The mode machinery (`--fast`/`--pure`, accelerated disclosure, summary) is **done** (`CERTIFICATES-PLAN.md:3-15`); this plan only adds coverage.
 
 ---
 
@@ -115,7 +115,7 @@ Internally it reuses the existing compilation (`formula`, `linearOf`) but calls 
 - The 9 unit tests at `presburger.zig:748-839` (including `"every number is even or odd"` at `769`) still pass — they call `decide`, which never touches `trace`/`cooperTraced`.
 - **New layer-1 unit tests** (RED first): `trace` on the evenOrOdd body returns `.replay` with `delta == 2`, `period == 2`; `trace` on a nonlinear goal returns `.not_applicable`; `trace` on `∀a,b; a<a+succ(b)` (no ∃) returns `.not_applicable`. `zig build test` green.
 
-**Layer-1 has no `.bpa` fixture** — it emits no kernel steps yet. Its RED gate is the new presburger unit tests. The first *pure `.bpa`* fixture arrives in layer 2.
+**Layer-1 has no `.bpa` fixture** — it emits no kernel steps yet. Its RED gate is the new presburger unit tests. The first *elaborated `.bpa`* fixture arrives in layer 2.
 
 ---
 
@@ -131,7 +131,7 @@ But layer 2 cannot yet PRODUCE the disjunction as a proven step — that is laye
 theorem existsPredecessorOrZero: forall x: Nat; exists y: Nat; x = y or x = succ(y)
 ```
 
-Cooper eliminates `y` with `delta = 1`, `period = 1`, one boundary; the residue is trivially true, so the disjunction is a tautology and the ⟸ step is `exists_intro(x)` in one arm — pure, no induction. Currently falls to the terminal; after layer 2 certifies pure in default mode.
+Cooper eliminates `y` with `delta = 1`, `period = 1`, one boundary; the residue is trivially true, so the disjunction is a tautology and the ⟸ step is `exists_intro(x)` in one arm — elaborated, no induction. Currently falls to the terminal; after layer 2 certifies elaborated in default mode.
 
 ### 2.2 The emit (references verified)
 
@@ -220,9 +220,9 @@ is assembled with `pool.open(P_closed, ZERO)`, `pool.open(P_closed, k_fvar)`, `p
 
 ### 3.4 Layer-3 fixtures (RED-first)
 
-- **`tests/cases/cooper_parity.bpa`** — `evenOrOddArith: forall x: Nat; exists y: Nat; x = add(y, y) or x = succ(add(y, y))` with `addZeroLeft`/`addSuccLeft`/`induction` in scope. RED: certifier terminal error today; GREEN: `ctx.ok(..., "OK: … 1 theorems proven\n")` — default mode, PURE.
+- **`tests/cases/cooper_parity.bpa`** — `evenOrOddArith: forall x: Nat; exists y: Nat; x = add(y, y) or x = succ(add(y, y))` with `addZeroLeft`/`addSuccLeft`/`induction` in scope. RED: certifier terminal error today; GREEN: `ctx.ok(..., "OK: … 1 theorems proven\n")` — default mode, ELABORATED.
 - **`tests/cases/cooper_period3.bpa`** — a `D = 3` theorem (`x = 3y ∨ x = 3y+1 ∨ x = 3y+2`) to exercise the general shift table.
-- **The real target:** `examples/peano.bpa:182` `evenOrOdd` flips from terminal error to pure. Its `tests/test_examples.zig` golden updates from the tainted `--fast` summary to a clean default-mode all-pure line, and the file-header comment (`examples/peano.bpa:9-12`) is corrected.
+- **The real target:** `examples/peano.bpa:182` `evenOrOdd` flips from terminal error to elaborated. Its `tests/test_examples.zig` golden updates from the accelerated `--fast` summary to a clean default-mode all-elaborated line, and the file-header comment (`examples/peano.bpa:9-12`) is corrected.
 
 Unit test (layer 3): `cooperCertificate` on the parity replay returns `.certified` and the emitted proof passes the kernel.
 
@@ -243,12 +243,12 @@ Unit test (layer 3): `cooperCertificate` on the parity replay returns `.certifie
 ## 5. Verification
 
 - `zig build test` green throughout every layer; earlier layers land and stay green independently.
-- **The acceptance flip:** `bpa check examples/peano.bpa` (DEFAULT, no `--fast`) goes from the `evenOrOdd:182` certifier-terminal error to `OK: N declarations, M theorems proven` with evenOrOdd **no longer in the `via oracles: arithmetic` count**.
-- `--fast` still works unchanged (the terminal's `!certify_arithmetic` branch is untouched — the oracle escape hatch for goals outside Cooper's emit scope).
+- **The acceptance flip:** `bpa check examples/peano.bpa` (DEFAULT, no `--fast`) goes from the `evenOrOdd:182` certifier-terminal error to `OK: N declarations, M theorems proven` with evenOrOdd **no longer in the `accelerated: arithmetic` count**.
+- `--fast` still works unchanged (the terminal's `!certify_arithmetic` branch is untouched — the accelerated escape hatch for goals outside Cooper's emit scope).
 - `presburger.zig`'s `decide`/`satisfiable`/`inFragment` and all 9 existing unit tests unchanged.
 
 ## 6. Layer sequence (RED-first each)
 
 1. **Layer 1** — `Replay` struct + `trace`/`cooperTraced` in `presburger.zig`; RED = new presburger unit tests. No `.bpa` fixture.
-2. **Layer 2** — `cooperCertificate` link, `period == 1` witness-⟸ emit reusing `exists_intro`/`or_elim`; RED = `tests/cases/cooper_witness.bpa` (`existsPredecessorOrZero`) failing → passing pure in default mode.
+2. **Layer 2** — `cooperCertificate` link, `period == 1` witness-⟸ emit reusing `exists_intro`/`or_elim`; RED = `tests/cases/cooper_witness.bpa` (`existsPredecessorOrZero`) failing → passing elaborated in default mode.
 3. **Layer 3** — induction synthesis (predicate from `peelUniversal` body, base via layer-2 emitter on `P(ZERO)`, step via `case on` IH + shift table, `schema_instance` citing `induction`); RED = `tests/cases/cooper_parity.bpa` and the `examples/peano.bpa` `evenOrOdd` flip. Named deferred boundaries: nested/multi-∃ alternation and period-D>cap (both DECLINE, never emit unsound).

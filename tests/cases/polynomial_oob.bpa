@@ -1,4 +1,4 @@
-// Regression: the lemma-free polynomial ORACLE normalizer (polyNormForm, the
+// Regression: the lemma-free polynomial ACCELERATED TACTIC normalizer (polyNormForm, the
 // --fast path) distributes a wide-sum 4th power to 256 monomials. Building each
 // product term reallocates the term pool's `extra` arena, which `pool.args`
 // aliases — so the old code read a dangling arg slice (poison 0xAAAAAAAA) and

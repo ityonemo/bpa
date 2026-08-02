@@ -49,9 +49,10 @@ pub const Statement = union(enum) {
         /// proven-by-trust: an imported theorem whose proof was NOT checked
         /// (no --recursive). Reported separately in the summary.
         trusted: bool = false,
-        /// oracle names this proof leaned on, transitively through citations
-        /// (empty = pure). Disclosed in the summary; rejected by --pure.
-        oracles: []const StrId = &.{},
+        /// accelerated-tactic names this proof leaned on, transitively through
+        /// citations (empty = elaborated). Disclosed in the summary; rejected
+        /// by --pure.
+        accelerated: []const StrId = &.{},
     };
     pub const Schema = struct {
         name: StrId,

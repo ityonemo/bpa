@@ -29,19 +29,19 @@ pub fn addTests(
     ctx.fail(&.{ "check", "tests/cases/imports/collide.bpa" }, "tests/cases/imports/collide.bpa:3:8: error: duplicate declaration of 'lib'\n");
 
     // --faster trusts imported proofs (peano-imports imports peano.bpa,
-    // whose one oracle step would otherwise be re-checked and hard-error).
+    // whose one accelerated step would otherwise be re-checked and hard-error).
     ctx.ok(&.{ "check", "--faster", "examples/peano-imports.bpa" },
         \\OK: 24 declarations, 1 theorems proven, 6 imported theorems trusted
-        \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates imported-proofs); re-run `bpa check` before finalizing.
+        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates imported-proofs); re-run `bpa check` to elaborate.
         \\
     );
 
     // --fast re-checks the imported proofs; since Cooper-replay certifies the
-    // once-oracle evenOrOdd, nothing is deferred and all seven are pure (the
+    // once-accelerated evenOrOdd, nothing is deferred and all seven are elaborated (the
     // --fast banner still fires).
     ctx.ok(&.{ "check", "--fast", "examples/peano-imports.bpa" },
         \\OK: 24 declarations, 7 theorems proven
-        \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates); re-run `bpa check` before finalizing.
+        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
         \\
     );
 
@@ -49,7 +49,7 @@ pub fn addTests(
     // (imported proofs trusted)...
     ctx.ok(&.{ "check", "--faster", "tests/cases/imports/trusts_broken.bpa" },
         \\OK: 7 declarations, 1 theorems proven, 1 imported theorems trusted
-        \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates imported-proofs); re-run `bpa check` before finalizing.
+        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates imported-proofs); re-run `bpa check` to elaborate.
         \\
     );
 
@@ -65,7 +65,7 @@ pub fn addTests(
     // three deferred layers)
     ctx.ok(&.{ "check", "--reckless", "examples/peano-imports.bpa" },
         \\OK: 24 declarations, 1 theorems proven, 6 imported theorems trusted
-        \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates imported-proofs imported-schemas); re-run `bpa check` before finalizing.
+        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates imported-proofs imported-schemas); re-run `bpa check` to elaborate.
         \\
     );
 

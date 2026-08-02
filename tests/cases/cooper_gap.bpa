@@ -20,7 +20,7 @@ axiom oneIsSuccZero: ONE = succ(ZERO)
 axiom induction(prop: Nat -> Prop):
   prop(ZERO) -> (forall k: Nat; prop(k) -> prop(succ(k))) -> forall n: Nat; prop(n)
 
-// The single-variable parity, which the cooper link certifies PURE (period-2
+// The single-variable parity, which the cooper link certifies ELABORATED (period-2
 // induction). This is the lemma the multi-variable fallback leans on.
 theorem evenOrOddArith: forall n: Nat; exists c: Nat; n = add(c, c) or n = succ(add(c, c))
 proof
@@ -57,7 +57,7 @@ qed
 // for all a, b there is a c with a+b = 2c or a+b = 2c+1 (the sum's parity).
 // `arithmetic` decides it valid but the cooper link declines (multi-fixed-
 // variable ∀∀∃); `fallback(provedHere)` supplies the manual proof, keeping the
-// step PURE (no --fast, no oracle taint).
+// step ELABORATED (no --fast, no acceleration).
 theorem sumParity: forall a, b: Nat; exists c: Nat; add(a, b) = add(c, c) or add(a, b) = succ(add(c, c))
 proof
   @conclusion |

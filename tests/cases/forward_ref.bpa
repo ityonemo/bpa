@@ -1,6 +1,6 @@
 // forward label references: a step may cite a label defined LATER in the
 // same block. The elaborator topologically sorts before lowering, so the
-// kernel still sees strictly-backward references. Pure.
+// kernel still sees strictly-backward references. Elaborated.
 sort Nat
 const ZERO: Nat
 func succ(n: Nat): Nat

@@ -1,6 +1,6 @@
 // The `assoc` tactic: prove `s = t` when they're equal by ASSOCIATIVITY ALONE
 // of a single operator. The non-commutative sibling of `assoc_commut` — it
-// right-nests both sides and compares, no reordering. Pure (emits a kernel-
+// right-nests both sides and compares, no reordering. Elaborated (emits a kernel-
 // checked rewrite chain).
 //
 // `assoc` REQUIRES its associativity lemma as an argument — there is no bare

@@ -90,8 +90,8 @@ Open implementation questions to resolve while building:
   simpler and correctness-obvious; caching is faster. Start by re-lowering.
 - Schema instances: a schema reached in the closure re-checks its proof per
   instance as today. Edge recording must capture schema→cited-lemmas.
-- Taint (`oracles`) must still propagate correctly to the ROOTS' facts (the
-  summary counts pure/tainted over what was actually verified).
+- Acceleration must still propagate correctly to the ROOTS' facts (the
+  summary counts elaborated/accelerated over what was actually verified).
 
 ## Summary / counts
 

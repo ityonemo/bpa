@@ -14,19 +14,19 @@ pub fn addTests(
     const ctx = Ctx.init(b, exe, test_step);
 
     // the living demo: automation-assisted PA — simplify inside the
-    // inductions and pure arithmetic certificates throughout. Since Cooper-
+    // inductions and elaborated arithmetic certificates throughout. Since Cooper-
     // replay landed, even evenOrOdd (∀∃) certifies, so --fast defers nothing
-    // and reports all six pure (the banner still fires: --fast mode is on).
+    // and reports all six elaborated (the banner still fires: --fast mode is on).
     ctx.ok(&.{ "check", "--fast", "examples/peano.bpa" },
         \\OK: 18 declarations, 6 theorems proven
-        \\  — NOT FULLY VERIFIED (deferred: arithmetic-certificates); re-run `bpa check` before finalizing.
+        \\  — ACCELERATED (results trusted from the procedure, not elaborated to kernel steps; not elaborated: arithmetic-certificates); re-run `bpa check` to elaborate.
         \\
     );
 
-    // ...and under the DEFAULT (verify everything) it is now PURE too: the
-    // evenOrOdd oracle step (∀∃, Cooper-QE) certifies via the cooper link's
+    // ...and under the DEFAULT (verify everything) it is now ELABORATED too: the
+    // evenOrOdd accelerated step (∀∃, Cooper-QE) certifies via the cooper link's
     // synthesized induction (period-2 parity split), so all six theorems are
-    // proven with no oracle taint.
+    // proven with no acceleration.
     ctx.ok(&.{ "check", "examples/peano.bpa" }, "OK: 18 declarations, 6 theorems proven\n");
 
     // the by-hand twin: every induction case in primitive rules
@@ -41,11 +41,11 @@ pub fn addTests(
         \\
     );
 
-    // Gauss's summation formula, by hand, proved pure over the imported base
+    // Gauss's summation formula, by hand, proved elaborated over the imported base
     ctx.ok(&.{ "check", "examples/gauss-pure.bpa" }, "OK: 70 declarations, 19 theorems proven\n");
 
     // the automation-assisted twin: `ac` replaces the by-hand exchange
-    // lemma, still pure
+    // lemma, still elaborated
     ctx.ok(&.{ "check", "examples/gauss.bpa" }, "OK: 70 declarations, 18 theorems proven\n");
 
     // Euclid's algorithm from a consumer's view: import the verified gcd
@@ -54,7 +54,7 @@ pub fn addTests(
 
     ctx.ok(&.{ "check", "examples/euclid-compute.bpa" }, "OK: 259 declarations, 61 theorems proven\n");
 
-    // √2 is irrational (stated over ℕ), proved PURE — the headline result.
+    // √2 is irrational (stated over ℕ), proved ELABORATED — the headline result.
     ctx.ok(&.{ "check", "examples/sqrt2.bpa" }, "OK: 291 declarations, 62 theorems proven\n");
 
     // literate: `check` on a .md checks its ```bpa blocks (prose masked).

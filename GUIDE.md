@@ -2,8 +2,8 @@
 
 This guide covers the whole surface: every keyword, the proof rules, how
 the kernel establishes trust, and the built-in automation. For naming and
-style conventions see `CONVENTIONS.md`; for the oracle registry see
-`ORACLES.md`.
+style conventions see `CONVENTIONS.md`; for the accelerated-tactic registry see
+`ACCELERATION.md`.
 
 ## Files and checking
 
@@ -12,15 +12,15 @@ them in order; every failure is reported as `file:line:col: error:
 <message>` on stderr, and success prints one summary line:
 
 ```
-OK: 18 declarations, 6 theorems proven (5 pure, 1 via oracles: arithmetic)
+OK: 18 declarations, 6 theorems proven (5 elaborated, 1 accelerated: arithmetic)
 ```
 
 By default `bpa check` **verifies everything**: `by arithmetic`/`by
-tautology` must produce a checkable certificate (an oracle fallback is a hard
+tautology` must produce a checkable certificate (an accelerated fallback is a hard
 error), imported proofs are re-checked, and imported schemas are
 re-instantiated. Speed flags defer that work during development, one layer
 each, and say so loudly in the summary:
-- `--fast` — accept oracle verdicts for arithmetic/tautology
+- `--fast` — accept accelerated verdicts for arithmetic/tautology
 - `--faster` — also trust imported theorem proofs (skip re-check)
 - `--reckless` — also trust imported schemas (skip re-instantiation)
 
@@ -361,7 +361,7 @@ keep it that way.
 - **The elaborator is untrusted.** Parsing, name resolution, sort
   checking, schema monomorphization, and every tactic live outside the
   trust boundary. They can only *prepare* steps; the kernel accepts
-  nothing on their word (with the single, disclosed exception of oracle
+  nothing on their word (with the single, disclosed exception of accelerated
   steps — see below).
 - **Terms are locally nameless.** Bound variables are de Bruijn indices,
   free variables are named and sorted. Substitution can never capture,
@@ -380,30 +380,30 @@ keep it that way.
 ## Automation
 
 Three tactic rules discharge goals in one step. All three follow the same
-trust policy, **certificate first, oracle fallback**:
+trust policy, **certificate first, accelerated fallback**:
 
 1. The tactic first tries to emit a *certificate*: ordinary kernel steps
    (rewrites, case splits, witness introductions) synthesized into the
-   proof and checked like hand-written ones. A certificated use is **pure**
+   proof and checked like hand-written ones. A certificated use is **elaborated**
    — exactly as trustworthy as a manual proof.
 2. Only when the goal is decidable but outside the certificate fragment
-   does the tactic reach for its *oracle*: the decision procedure's verdict.
+   does the tactic reach for its *accelerated* path: the decision procedure's verdict.
    By default this is a **hard error** — the goal must certify. Only under
-   `--fast` is the oracle verdict accepted (without a derivation); its name
-   then **taints** the theorem, transitively through citations, and the
-   summary discloses it: `6 theorems proven (5 pure, 1 via oracles:
+   `--fast` is the accelerated verdict accepted (without a derivation); its name
+   then **marks** the theorem accelerated, transitively through citations, and the
+   summary discloses it: `6 theorems proven (5 elaborated, 1 accelerated:
    arithmetic)` under a loud not-fully-verified banner.
 
-A failed tactic never taints anything: wrong goals produce located errors
+A failed tactic never marks anything accelerated: wrong goals produce located errors
 with copy-pasteable detail (unjoinable normal forms, propositional
 countermodels, concrete arithmetic counterexamples).
 
-### `simplify` — equational rewriting (always pure)
+### `simplify` — equational rewriting (always elaborated)
 
 `[by simplify f1 f2 ...]` proves an equation by rewriting both sides to a
 common normal form using the cited facts (universally quantified equations
 or equation steps) as left-to-right rules. The certificate *is* the
-rewrite chain; there is no oracle. Cycling rule sets hit a hard rewrite cap
+rewrite chain; there is no accelerated path. Cycling rule sets hit a hard rewrite cap
 instead of hanging.
 
 ```bpa
@@ -467,14 +467,14 @@ certifies in one step (distribute, then AC-sort the resulting sum of products):
   [by assoc_commut_quantified mulAddDistribRight]
 ```
 
-**The `--fast` oracle** (bare form only): a theory that declares an operator
+**The `--fast` accelerated path** (bare form only): a theory that declares an operator
 but doesn't *prove* its AC laws can't certify — the default declines ("needs
 `addIsAssociative` in scope"). Under `--fast`, `assoc_commut` **decides** the
 reordering by comparing sorted multisets structurally, WITHOUT resolving any
 lemma — **trusting** that the operator is associative-commutative. That
 presumption about a symbol whose laws are never checked is why the result is
-**tainted** (`via oracles: assoc_commut`). The explicit-triple form always
-certifies (the triple is checkable), so it has no oracle path.
+**accelerated** (`accelerated: assoc_commut`). The explicit-triple form always
+certifies (the triple is checkable), so it has no accelerated path.
 
 ### `assoc` — associativity-only reordering
 
@@ -500,10 +500,10 @@ on ambient scope or well-known names). Bare `[by assoc]` is a located error;
 sides that differ by more than associativity report `assoc: sides differ by more
 than associativity`. **Under a `forall` prefix**, use `assoc_quantified`.
 
-**The `--fast` oracle**: under `--fast`, `assoc` skips *emitting* the rewrite
+**The `--fast` accelerated path**: under `--fast`, `assoc` skips *emitting* the rewrite
 certificate — it structurally right-nests both sides and compares, presuming the
-operator is associative without kernel-checking the rearrangement — and taints
-(`via oracles: assoc`). By default it certifies (the rewrite chain is checked).
+operator is associative without kernel-checking the rearrangement — and is marked accelerated
+(`accelerated: assoc`). By default it certifies (the rewrite chain is checked).
 
 ### `polynomial` — nonlinear identities
 
@@ -535,14 +535,14 @@ opaque atoms (unfold `succ(x) = add(x, ONE)` first if a `succ`-shaped identity
 must expand), and cancellation (`x·a = x·b ⊢ a = b`) is not an identity — that
 stays with `mulCancel`/`arithmetic`.
 
-**The `--fast` oracle**: on a theory too thin to certify (`add`/`mul` declared
+**The `--fast` accelerated path**: on a theory too thin to certify (`add`/`mul` declared
 but the ring lemmas absent), the default declines ("needs `mulAddDistribLeft`
 in scope"). Under `--fast`, `polynomial` **decides** the identity by comparing
 pure syntactic semiring normal forms — no lemmas consulted — **trusting** that
 `add`/`mul` form a commutative semiring. That presumption about symbols whose
-laws are never checked is why the result is **tainted** (`via oracles:
-polynomial`). A false identity is still rejected (the oracle *decides*); the
-taint is for the unproven ring-structure assumption, not for the comparison.
+laws are never checked is why the result is **accelerated** (`accelerated:
+polynomial`). A false identity is still rejected (the accelerated tactic *decides*); the
+acceleration is for the unproven ring-structure assumption, not for the comparison.
 
 ### `tautology` — propositional consequence
 
@@ -562,10 +562,10 @@ recognized by those well-known names in the current scope, and
 certificates additionally use the standard peano lemmas
 (`addZeroRight`, `addIsCommutative`, `addLeftSwap`, `lessThanIntro`,
 `lessThanElim`, ...) when they resolve — import them from `std/peano.bpa`
-to keep uses pure. Certificates cover ground and universally quantified
+to keep uses elaborated. Certificates cover ground and universally quantified
 linear goals, order goals, constant-witness existentials, hypothesis
 chains, and mixed skeletons; goals whose replay would itself require
-induction fall back to the oracle. False statements report concrete
+induction fall back to the accelerated path. False statements report concrete
 values: `arithmetic: false at a := 0, b := 0`; a relation that is only
 undecidable because it hides a nonlinear term (e.g. `mul(a, b) = mul(b, a)`)
 reports `'mul(a, b)' is outside linear arithmetic` rather than a countermodel.
@@ -580,8 +580,8 @@ reports `'mul(a, b)' is outside linear arithmetic` rather than a countermodel.
 > This may be expanded in the future to support signed integers (exact, as
 > everything in bpa).
 
-The full trust statement for each oracle — module, verdict semantics,
-certificate coverage — lives in `ORACLES.md`.
+The full trust statement for each accelerated tactic — module, verdict semantics,
+certificate coverage — lives in `ACCELERATION.md`.
 
 ## Query commands (read-only inspection)
 

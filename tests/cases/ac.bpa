@@ -1,6 +1,6 @@
 // ac: proves that two sums differ only by associativity and commutativity
 // of add, over ARBITRARY opaque atoms — the reordering that simplify loops
-// on and arithmetic bails on. Pure (kernel-checked); --pure accepts it.
+// on and arithmetic bails on. Elaborated (kernel-checked); --pure accepts it.
 // The AC lemmas (addIsAssociative / addIsCommutative / addLeftSwap) are
 // looked up by well-known name in scope.
 import peano <<< "std/peano.bpa"
