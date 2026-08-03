@@ -169,15 +169,15 @@ pub const Elaborator = struct {
         };
     }
 
-    fn text(self: *const Elaborator, tok: lexer.Token) []const u8 {
+    pub fn text(self: *const Elaborator, tok: lexer.Token) []const u8 {
         return self.source[tok.start..tok.end];
     }
 
-    fn internTok(self: *Elaborator, tok: lexer.Token) !StrId {
+    pub fn internTok(self: *Elaborator, tok: lexer.Token) !StrId {
         return self.interner.intern(self.text(tok));
     }
 
-    fn fail(self: *Elaborator, offset: u32, comptime fmt: []const u8, args: anytype) ElabError {
+    pub fn fail(self: *Elaborator, offset: u32, comptime fmt: []const u8, args: anytype) ElabError {
         self.sink.add(offset, fmt, args) catch return error.OutOfMemory;
         return error.Recover;
     }
@@ -532,7 +532,7 @@ pub const Elaborator = struct {
 
     // --- proof lowering: surface Fitch tree -> kernel steps + blocks ---
 
-    const Lowering = struct {
+    pub const Lowering = struct {
         steps: std.ArrayList(kernel.Step) = .empty,
         blocks: std.ArrayList(kernel.Block) = .empty,
         labels: std.AutoHashMapUnmanaged(StrId, LabelTarget) = .empty,
@@ -843,7 +843,7 @@ pub const Elaborator = struct {
         } };
     }
 
-    fn newBlock(self: *Elaborator, low: *Lowering, label: StrId, parent: kernel.BlockId, kind: kernel.Block.Kind) ElabError!kernel.BlockId {
+    pub fn newBlock(self: *Elaborator, low: *Lowering, label: StrId, parent: kernel.BlockId, kind: kernel.Block.Kind) ElabError!kernel.BlockId {
         const id: kernel.BlockId = @enumFromInt(low.blocks.items.len);
         try low.blocks.append(self.arena, .{
             .parent = parent,
@@ -855,7 +855,7 @@ pub const Elaborator = struct {
         return id;
     }
 
-    fn closeBlock(self: *Elaborator, low: *Lowering, id: kernel.BlockId) void {
+    pub fn closeBlock(self: *Elaborator, low: *Lowering, id: kernel.BlockId) void {
         _ = self;
         low.blocks.items[@intFromEnum(id)].last_step = @intCast(low.steps.items.len);
     }
@@ -938,7 +938,7 @@ pub const Elaborator = struct {
         };
     }
 
-    fn resolveStatementRef(self: *Elaborator, tok: lexer.Token) ElabError!StatementId {
+    pub fn resolveStatementRef(self: *Elaborator, tok: lexer.Token) ElabError!StatementId {
         const target = try self.resolveTarget(tok);
         return self.env.findStatementId(target.file, target.base) orelse
             self.fail(tok.start, "unknown statement '{s}'", .{self.text(tok)});
@@ -1527,7 +1527,7 @@ pub const Elaborator = struct {
     /// goal after opening the first `i` binders (opened[0] = the whole goal,
     /// opened[len] = body); `fix_vars` are the fresh eigenvariables, one per
     /// peeled binder, outermost-first.
-    const Universal = struct {
+    pub const Universal = struct {
         opened: []const TermId,
         fix_vars: []const term.Node.Fvar,
         body: TermId,
@@ -1535,7 +1535,7 @@ pub const Elaborator = struct {
 
     /// Strip the outer `forall` binders of `goal`, opening each as a fresh
     /// eigenvariable named `prefix`.
-    fn peelUniversal(self: *Elaborator, goal: TermId, prefix: []const u8) ElabError!Universal {
+    pub fn peelUniversal(self: *Elaborator, goal: TermId, prefix: []const u8) ElabError!Universal {
         var opened: std.ArrayList(TermId) = .empty;
         var fix_vars: std.ArrayList(term.Node.Fvar) = .empty;
         var g = goal;
@@ -1555,7 +1555,7 @@ pub const Elaborator = struct {
     /// Open one synthesized `fix` block per peeled binder; returns the block
     /// ids (outermost-first) and the innermost block, which is where the body
     /// justification should be emitted. Pair with `closeUniversal`.
-    fn openUniversal(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, u: Universal) ElabError!struct { blocks: []const kernel.BlockId, innermost: kernel.BlockId } {
+    pub fn openUniversal(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, u: Universal) ElabError!struct { blocks: []const kernel.BlockId, innermost: kernel.BlockId } {
         var blocks: std.ArrayList(kernel.BlockId) = .empty;
         var parent = block_id;
         for (u.fix_vars) |fv| {
@@ -1569,7 +1569,7 @@ pub const Elaborator = struct {
     /// Emit the body claim in the innermost block, then close each fix block
     /// with `forall_intro`, returning the outermost justification. When there
     /// are no binders, `body_just` is returned unchanged (nothing to close).
-    fn closeUniversal(self: *Elaborator, low: *Lowering, loc: u32, u: Universal, blocks: []const kernel.BlockId, body_just: kernel.Justification) ElabError!kernel.Justification {
+    pub fn closeUniversal(self: *Elaborator, low: *Lowering, loc: u32, u: Universal, blocks: []const kernel.BlockId, body_just: kernel.Justification) ElabError!kernel.Justification {
         if (blocks.len == 0) return body_just;
         _ = try self.emitStep(low, blocks[blocks.len - 1], loc, u.body, body_just);
         var i = blocks.len;
@@ -1583,7 +1583,7 @@ pub const Elaborator = struct {
     }
 
     /// Append a synthesized step to the proof; returns a reference to it.
-    fn emitStep(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, formula: TermId, just: kernel.Justification) ElabError!kernel.SRef {
+    pub fn emitStep(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, formula: TermId, just: kernel.Justification) ElabError!kernel.SRef {
         const id: kernel.StepId = @enumFromInt(low.steps.items.len);
         try low.steps.append(self.arena, .{
             .formula = formula,
@@ -1597,7 +1597,7 @@ pub const Elaborator = struct {
 
     /// Emit the citation + forall_elim chain specializing `rule` at
     /// `bindings`; returns the step proving `inst_lhs = inst_rhs`.
-    fn emitInstance(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, rule: simplify_mod.Rule, bindings: []const TermId) ElabError!kernel.SRef {
+    pub fn emitInstance(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, rule: simplify_mod.Rule, bindings: []const TermId) ElabError!kernel.SRef {
         var cur_ref: kernel.SRef = undefined;
         var cur_formula: TermId = rule.formula;
         switch (rule.source) {
@@ -1617,7 +1617,7 @@ pub const Elaborator = struct {
     /// Emit `eq(start, start)` then one rewrite step per trace entry;
     /// returns the step proving `eq(start, <after last entry>)`.
     /// `trace` must be non-empty.
-    fn emitSideChain(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, rules: []const simplify_mod.Rule, start: TermId, trace: []const simplify_mod.Rewrite) ElabError!kernel.SRef {
+    pub fn emitSideChain(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, rules: []const simplify_mod.Rule, start: TermId, trace: []const simplify_mod.Rewrite) ElabError!kernel.SRef {
         const refl = try self.pool.add(.{ .eq = .{ .lhs = start, .rhs = start } });
         var prev = try self.emitStep(low, block_id, loc, refl, .reflexivity);
         for (trace) |rw| {
@@ -2046,7 +2046,7 @@ pub const Elaborator = struct {
     /// duration of the caller (via the returned saved value + defer at the call
     /// site). `polynomial(<module>)` resolves the ring vocabulary + lemmas
     /// against that module's scope; bare `polynomial` resolves locally.
-    fn enterTheory(self: *Elaborator, c: ast.Step.Claim) ElabError!void {
+    pub fn enterTheory(self: *Elaborator, c: ast.Step.Claim) ElabError!void {
         if (c.schema) |theory_tok| {
             const ns = try self.internTok(theory_tok);
             self.theory_file = self.env.findNamespace(self.file, ns) orelse
@@ -2475,7 +2475,7 @@ pub const Elaborator = struct {
     /// Resolve one cited ref (step label or statement) into an L→R rewrite
     /// rule, with the same accessibility/acceleration checks as simplify. `who` names
     /// the citing tactic for error messages.
-    fn resolveRewriteRule(self: *Elaborator, low: *Lowering, emit_block: kernel.BlockId, ref: lexer.Token, comptime who: []const u8) ElabError!simplify_mod.Rule {
+    pub fn resolveRewriteRule(self: *Elaborator, low: *Lowering, emit_block: kernel.BlockId, ref: lexer.Token, comptime who: []const u8) ElabError!simplify_mod.Rule {
         const name = try self.internTok(ref);
         var formula: TermId = undefined;
         var source: simplify_mod.Source = undefined;
@@ -2514,11 +2514,11 @@ pub const Elaborator = struct {
         };
     }
 
-    const RulePrep = union(enum) { rule: simplify_mod.Rule, not_equation, binder_missing };
+    pub const RulePrep = union(enum) { rule: simplify_mod.Rule, not_equation, binder_missing };
 
     /// Strip a fact's forall prefix (binders become pattern fvars) into a
     /// left-to-right rewrite rule.
-    fn equationRule(self: *Elaborator, formula: TermId, source: simplify_mod.Source) ElabError!RulePrep {
+    pub fn equationRule(self: *Elaborator, formula: TermId, source: simplify_mod.Source) ElabError!RulePrep {
         var binders: std.ArrayList(simplify_mod.Binder) = .empty;
         var body = formula;
         while (true) {
@@ -2545,7 +2545,7 @@ pub const Elaborator = struct {
 
     /// Emit the certificate chains joining a successful two-sided
     /// normalization; returns the user's closing justification.
-    fn emitJoin(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, rules: []const simplify_mod.Rule, s: TermId, t: TermId, rs: simplify_mod.Result, rt: simplify_mod.Result) ElabError!kernel.Justification {
+    pub fn emitJoin(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, rules: []const simplify_mod.Rule, s: TermId, t: TermId, rs: simplify_mod.Result, rt: simplify_mod.Result) ElabError!kernel.Justification {
         if (rt.trace.len == 0) {
             // t is already the shared normal form: the last rewrite of the
             // s-chain becomes the user's own justification
@@ -2576,7 +2576,7 @@ pub const Elaborator = struct {
         return .{ .rewrite = .{ .equation = t_sym, .target = s_end } };
     }
 
-    fn renderTerm(self: *Elaborator, id: TermId) ElabError![]const u8 {
+    pub fn renderTerm(self: *Elaborator, id: TermId) ElabError![]const u8 {
         return @import("print.zig").render(self.arena, self.pool, self.env, self.interner, id) catch return error.OutOfMemory;
     }
 
@@ -2668,7 +2668,7 @@ pub const Elaborator = struct {
         return self.theory_file orelse self.file;
     }
 
-    fn wellKnownFact(self: *Elaborator, name_text: []const u8, loc: u32) ElabError!?struct { formula: TermId, source: simplify_mod.Source } {
+    pub fn wellKnownFact(self: *Elaborator, name_text: []const u8, loc: u32) ElabError!?struct { formula: TermId, source: simplify_mod.Source } {
         const name = self.interner.intern(name_text) catch return error.OutOfMemory;
         const stmt_id = self.env.findStatementId(self.theoryScope(), name) orelse return null;
         const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
@@ -2682,7 +2682,7 @@ pub const Elaborator = struct {
         }
     }
 
-    fn wellKnownRule(self: *Elaborator, name_text: []const u8, loc: u32) ElabError!?simplify_mod.Rule {
+    pub fn wellKnownRule(self: *Elaborator, name_text: []const u8, loc: u32) ElabError!?simplify_mod.Rule {
         const fact = (try self.wellKnownFact(name_text, loc)) orelse return null;
         return switch (try self.equationRule(fact.formula, fact.source)) {
             .rule => |r| r,
@@ -3192,7 +3192,7 @@ pub const Elaborator = struct {
     /// default this is a hard error — the goal must certify; the accelerated
     /// verdict is only accepted in `--fast` (verify.certify_arithmetic = false),
     /// where it marks the theorem accelerated.
-    fn recordAccelerated(self: *Elaborator, name: StrId, loc: u32) ElabError!void {
+    pub fn recordAccelerated(self: *Elaborator, name: StrId, loc: u32) ElabError!void {
         if (self.verify.certify_arithmetic) {
             return self.fail(loc, "'{s}' could not be emitted as kernel steps here; use --fast to accept the accelerated verdict", .{self.interner.str(name)});
         }
@@ -3262,7 +3262,7 @@ pub const Elaborator = struct {
     /// the id BEFORE building the proof steps (needed when the steps cite the
     /// theorem itself — model's recursive materialization). `$` in the name is
     /// lexically impossible for a user, so no collision.
-    fn beginSyntheticTheorem(self: *Elaborator, name: StrId, formula: TermId, loc: u32) ElabError!StatementId {
+    pub fn beginSyntheticTheorem(self: *Elaborator, name: StrId, formula: TermId, loc: u32) ElabError!StatementId {
         return try self.env.addStatement(self.file, name, .{ .theorem = .{
             .name = name,
             .formula = formula,
@@ -3279,7 +3279,7 @@ pub const Elaborator = struct {
     /// anchor — it ALWAYS runs when a synthetic theorem is produced, and is never
     /// skipped by `--faster`/`--reckless` (those imply `certify_arithmetic=false`,
     /// so no synthetic theorem is produced at all). `on_fail` is the located error.
-    fn finishSyntheticTheorem(
+    pub fn finishSyntheticTheorem(
         self: *Elaborator,
         id: StatementId,
         steps: []const kernel.Step,
@@ -3312,7 +3312,7 @@ pub const Elaborator = struct {
     /// steps into a named theorem" primitive — used by accelerant certificate
     /// production (the steps an accelerant would have spliced inline become this
     /// theorem's proof). See MODEL-DESIGN.md / the accelerant-unification plan.
-    fn wrapAsTheorem(
+    pub fn wrapAsTheorem(
         self: *Elaborator,
         name: StrId,
         formula: TermId,
@@ -3555,7 +3555,7 @@ pub const Elaborator = struct {
     }
 
     /// Citing a fact inherits its accelerated-tactic names.
-    fn inheritAccelerated(self: *Elaborator, names: []const StrId) Allocator.Error!void {
+    pub fn inheritAccelerated(self: *Elaborator, names: []const StrId) Allocator.Error!void {
         outer: for (names) |name| {
             for (self.accelerated_used.items) |o| {
                 if (o == name) continue :outer;
@@ -3566,7 +3566,7 @@ pub const Elaborator = struct {
 
     /// Record hole dependence for the current theorem: `names` are the holes a
     /// cited fact rests on (a hole is [its own name]; a theorem is its `holes`).
-    fn inheritHoles(self: *Elaborator, names: []const StrId) Allocator.Error!void {
+    pub fn inheritHoles(self: *Elaborator, names: []const StrId) Allocator.Error!void {
         outer: for (names) |name| {
             for (self.holes_used.items) |o| {
                 if (o == name) continue :outer;
@@ -3577,7 +3577,7 @@ pub const Elaborator = struct {
 
     /// Resolve an accelerated tactic's premise refs to formulas (accessible step
     /// labels first, then statements); theorem citations inherit accelerated-tactic names.
-    fn resolvePremises(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, c: ast.Step.Claim, comptime rule: []const u8) ElabError![]const TermId {
+    pub fn resolvePremises(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, c: ast.Step.Claim, comptime rule: []const u8) ElabError![]const TermId {
         const premises = try self.arena.alloc(TermId, c.refs.len);
         for (c.refs, premises) |ref, *out| {
             const name = try self.internTok(ref);
@@ -4420,7 +4420,7 @@ pub const Elaborator = struct {
         return symbols;
     }
 
-    fn wellKnownSym(self: *Elaborator, name: []const u8) ElabError!?term.SymId {
+    pub fn wellKnownSym(self: *Elaborator, name: []const u8) ElabError!?term.SymId {
         const id = self.interner.intern(name) catch return error.OutOfMemory;
         return self.env.findSym(self.theoryScope(), id);
     }
@@ -5501,7 +5501,7 @@ pub const Elaborator = struct {
         }
     }
 
-    fn resolveSort(self: *Elaborator, tok: lexer.Token) ElabError!SortId {
+    pub fn resolveSort(self: *Elaborator, tok: lexer.Token) ElabError!SortId {
         const target = try self.resolveTarget(tok);
         return self.env.findSort(target.file, target.base) orelse
             self.fail(tok.start, "unknown sort '{s}'", .{self.text(tok)});
@@ -5609,7 +5609,7 @@ pub const Elaborator = struct {
     /// hygienic '#'-name with a readable prefix ("simplify#3" in diagnostics,
     /// or a disambiguated eigenvariable "x#7"). The prefix may be an arbitrary
     /// user identifier, so allocate rather than risk truncation.
-    fn freshNamed(self: *Elaborator, prefix: []const u8) ElabError!StrId {
+    pub fn freshNamed(self: *Elaborator, prefix: []const u8) ElabError!StrId {
         self.fresh_counter += 1;
         const s = std.fmt.allocPrint(self.arena, "{s}#{d}", .{ prefix, self.fresh_counter }) catch return error.OutOfMemory;
         return self.interner.intern(s) catch error.OutOfMemory;
