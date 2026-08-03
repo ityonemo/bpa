@@ -124,6 +124,10 @@ pub fn addTests(
     // relativized copy. (∀a;P(a) ⊢ ∀a; guard(a)->P(a).)
     ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
     ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
+    // the paradigm case end to end: a SUBGROUP modeling its own group's carrier —
+    // same-file guarded model + auto-weakening (opIdentityLeft mapped to itself) +
+    // inH(E) proved by contradiction from the definitional subgroup axioms.
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_subgroup.bpa" }, "OK: 14 declarations, 3 theorems proven\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source
