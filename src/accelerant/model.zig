@@ -12,6 +12,7 @@
 
 const elaborate = @import("../elaborate.zig");
 const Elaborator = elaborate.Elaborator;
+const Lowering = Elaborator.Lowering;
 const Model = Elaborator.Model;
 const ElabError = elaborate.ElabError;
 
@@ -31,7 +32,12 @@ const StatementId = @import("../env.zig").StatementId;
 ///  - default (strict): MATERIALIZE the source proof remapped as a synthetic
 ///    checked theorem `Model$thm` (recursively for its cited children), then
 ///    cite it via `theorem_ref` — kernel-checked, untainted.
-pub fn justify(self: *Elaborator, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
+/// Uniform accelerant signature (the registry calls every accelerant the same
+/// way); `model` ignores `low`/`block_id` — it cites its materialized synthetic
+/// theorem, splicing no steps into the caller's block.
+pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
+    _ = low;
+    _ = block_id;
     const loc = c.rule.start;
     const inst_tok = c.schema orelse
         return self.fail(loc, "model requires an instance: model(<Instance>) <source.theorem>", .{});

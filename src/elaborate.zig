@@ -35,6 +35,41 @@ const accel_model = @import("accelerant/model.zig");
 const accel_tautology = @import("accelerant/tautology.zig");
 const accel_arithmetic = @import("accelerant/arithmetic.zig");
 
+/// One accelerated tactic, keyed by the `[by <name>]` spelling it owns. Every
+/// accelerant conforms to the same signature — `justify(self, low, block, goal,
+/// c)` — so the dispatcher is a single table lookup rather than a per-tactic
+/// switch case. A tactic's `foo` / `foo_quantified` spellings are two entries
+/// pointing at `justify` / `justifyQuantified`. Kernel-primitive rules (axiom,
+/// modus_ponens, …) are NOT here — they stay in the `lowerJustification` switch.
+pub const Accelerant = struct {
+    name: []const u8,
+    justify: *const fn (*Elaborator, *Elaborator.Lowering, kernel.BlockId, TermId, ast.Step.Claim) ElabError!kernel.Justification,
+};
+
+const accelerants = [_]Accelerant{
+    .{ .name = "simplify", .justify = &accel_simplify.justify },
+    .{ .name = "simplify_quantified", .justify = &accel_simplify.justifyQuantified },
+    .{ .name = "assoc_commut", .justify = &accel_assoc_commut.justify },
+    .{ .name = "assoc_commut_quantified", .justify = &accel_assoc_commut.justifyQuantified },
+    .{ .name = "assoc", .justify = &accel_assoc.justify },
+    .{ .name = "assoc_quantified", .justify = &accel_assoc.justifyQuantified },
+    .{ .name = "polynomial", .justify = &accel_polynomial.justify },
+    .{ .name = "polynomial_quantified", .justify = &accel_polynomial.justifyQuantified },
+    .{ .name = "tautology", .justify = &accel_tautology.justify },
+    .{ .name = "arithmetic", .justify = &accel_arithmetic.justify },
+    .{ .name = "ext", .justify = &accel_ext.justify },
+    .{ .name = "ext_quantified", .justify = &accel_ext.justifyQuantified },
+    .{ .name = "model", .justify = &accel_model.justify },
+};
+
+/// name -> index into `accelerants`, built once at comptime.
+const accelerant_index = blk: {
+    const Entry = struct { []const u8, usize };
+    var entries: [accelerants.len]Entry = undefined;
+    for (accelerants, 0..) |a, i| entries[i] = .{ a.name, i };
+    break :blk std.StaticStringMap(usize).initComptime(entries);
+};
+
 pub const ElabError = error{ Recover, OutOfMemory };
 
 /// What to actually verify, as independent knobs. Full verification (all true)
@@ -1090,6 +1125,11 @@ pub const Elaborator = struct {
                 self.text(c.rule), wants_args, c.args.len,
             });
         }
+        // accelerated tactics dispatch through the registry (one uniform call);
+        // kernel-primitive rules fall through to the switch below.
+        if (accelerant_index.get(self.text(c.rule))) |i| {
+            return accelerants[i].justify(self, low, block_id, goal, c);
+        }
         switch (kind) {
             .axiom => {
                 try self.wantRefs(c, 1);
@@ -1235,45 +1275,6 @@ pub const Elaborator = struct {
                     .target = try self.resolveStepRef(low, c.refs[1]),
                 } };
             },
-            .simplify => {
-                return accel_simplify.justify(self, low, block_id, goal, c);
-            },
-            .simplify_quantified => {
-                return accel_simplify.justifyQuantified(self, low, block_id, goal, c);
-            },
-            .ac => {
-                return accel_assoc_commut.justify(self, low, block_id, goal, c);
-            },
-            .ac_quantified => {
-                return accel_assoc_commut.justifyQuantified(self, low, block_id, goal, c);
-            },
-            .assoc => {
-                return accel_assoc.justify(self, low, block_id, goal, c);
-            },
-            .assoc_quantified => {
-                return accel_assoc.justifyQuantified(self, low, block_id, goal, c);
-            },
-            .polynomial => {
-                return accel_polynomial.justify(self, low, block_id, goal, c);
-            },
-            .polynomial_quantified => {
-                return accel_polynomial.justifyQuantified(self, low, block_id, goal, c);
-            },
-            .tautology => {
-                return accel_tautology.justify(self, low, block_id, goal, c);
-            },
-            .arithmetic => {
-                return accel_arithmetic.justify(self, low, block_id, goal, c);
-            },
-            .ext => {
-                return accel_ext.justify(self, low, block_id, goal, c);
-            },
-            .ext_quantified => {
-                return accel_ext.justifyQuantified(self, low, block_id, goal, c);
-            },
-            .model => {
-                return accel_model.justify(self, goal, c);
-            },
             .instantiate => {
                 const name_tok = c.schema.?; // parser guarantees presence
                 const stmt_id = try self.resolveStatementRef(name_tok);
@@ -1286,6 +1287,8 @@ pub const Elaborator = struct {
                 for (c.refs, premises) |r, *out| out.* = try self.resolveStepRef(low, r);
                 return .{ .schema_instance = .{ .instance = inst, .premises = premises } };
             },
+            // accelerated tactics were dispatched through the registry above.
+            .simplify, .simplify_quantified, .ac, .ac_quantified, .assoc, .assoc_quantified, .polynomial, .polynomial_quantified, .tautology, .arithmetic, .ext, .ext_quantified, .model => unreachable,
         }
     }
 
