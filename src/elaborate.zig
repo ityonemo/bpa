@@ -533,11 +533,11 @@ pub const Elaborator = struct {
         for (d.mappings) |m| {
             const src = try self.resolveTarget(m.source);
             const tgt = try self.resolveTarget(m.target);
-            // every source must be qualified (name a theory); record its file so
-            // cited source theorems resolve at their origin.
-            if (src.file == self.file) {
-                return self.fail(m.source.start, "model mapping source '{s}' must name the abstract theory (e.g. group.op)", .{self.text(m.source)});
-            }
+            // Source and target are distinguished by POSITION (left is source), not
+            // by file: a subgroup models its own carrier, so the source theory may
+            // be in THIS file (bare names) — an inlined `std/group.bpa`. Record the
+            // source's file so cited source theorems resolve at their origin
+            // (self.file for the same-file case). All sources must share one file.
             if (source_file) |sf| {
                 if (sf != src.file) return self.fail(m.source.start, "all model mappings must come from one source theory", .{});
             } else source_file = src.file;

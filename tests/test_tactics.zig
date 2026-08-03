@@ -114,6 +114,10 @@ pub fn addTests(
     ctx.ok(&.{ "check", "tests/cases/model_guarded_case_source.bpa" }, "OK: 10 declarations, 1 theorems proven\n");
     // case split (or_elim + hypothesis) now materializes guardedly.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_case.bpa" }, "OK: 23 declarations, 2 theorems proven\n");
+    // SAME-FILE guarded model: the source theory and the model share one file (the
+    // paradigm subgroup case — H ⊆ G on one carrier). Mapping sources are bare
+    // (unqualified) names resolved locally; no import/two-file split required.
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_samefile.bpa" }, "OK: 10 declarations, 2 theorems proven\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source
