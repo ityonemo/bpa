@@ -784,3 +784,6 @@ It loads through the full multi-file loader, so it works on files with imports
 (and on recursive synthetics like a `model` materialization citing another). The
 kernel-steps → bpa-source renderer underneath is also the IR a mechanical
 Lean/Isabelle/Rocq export would consume.
+
+(To locate *where* a theorem's acceleration comes from — every accelerated step
+at its `file:line:col` — use `bpa query accelerated`, above.)
