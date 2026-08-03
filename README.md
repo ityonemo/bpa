@@ -168,10 +168,9 @@ across files*, or *finding a lemma by concept* when the name is fuzzy.
   cites (its own step labels excluded). Answers "which proofs use `assoc`?" and
   "what does theorem X depend on?" — semantic and alias-aware, where a
   multi-line `[by …]` defeats `grep`.
-- `query accelerated <file> [theorem]` — the **acceleration audit**: per proof, every step
-  whose rule can fall back to an accelerated tactic (`arithmetic`, `tautology`, `polynomial`,
-  `assoc_commut`, `assoc`, `ext`, and their quantified variants), flagged at its
-  `file:line:col`. A clean report means every step in the file is kernel-checked.
+
+(The **acceleration audit** — where trust enters a proof — is `bpa debug taint`,
+below, not a query.)
 
 Query may support semantic searching in the future.
 
@@ -202,6 +201,12 @@ label (`… <file> <theorem> <label>`). The output is valid bpa — fed back thr
 `bpa check` it re-verifies from scratch. Useful for reviewing exactly what a
 tactic discharged, and (as the underlying named-theorem chain) the export IR for a
 future Lean/Isabelle/Rocq backend.
+
+`bpa debug taint <file> [theorem]` is the companion audit: per proof, every step
+whose rule can fall back to an accelerated verdict (`arithmetic`, `tautology`,
+`polynomial`, `assoc_commut`, `assoc`, `ext`, and their quantified variants),
+flagged at its `file:line:col` — *where trust enters the proof*. A clean report
+means every step is kernel-checked.
 
 ## How it works
 

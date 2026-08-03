@@ -1,6 +1,6 @@
 ---
 name: bpa-query
-description: Inspect and navigate a bpa proof corpus (.bpa files) with the `bpa query` commands — outline a proof's structure, print a theorem's full source or one-line signature, trace an identifier to its origin across alias/import hops, fuzzy-search for a lemma by name/concept, audit what a proof depends on (rules + cited axioms/theorems), or flag its accelerated tactics. Use these BEFORE grepping for anything that involves a proof's shape, a theorem's exact statement/binder-order, following an alias to another file, finding a lemma when you don't recall its name, "which proofs use rule/lemma X" or "what does theorem X depend on", or "is this file fully elaborated / where might it accelerate". For plain text searches (counts, listing declarations, raw label greps) prefer grep — these tools cover only what grep can't do cleanly.
+description: Inspect and navigate a bpa proof corpus (.bpa files) with the `bpa query` commands — outline a proof's structure, print a theorem's full source or one-line signature, trace an identifier to its origin across alias/import hops, fuzzy-search for a lemma by name/concept, or audit what a proof depends on (rules + cited axioms/theorems). Use these BEFORE grepping for anything that involves a proof's shape, a theorem's exact statement/binder-order, following an alias to another file, finding a lemma when you don't recall its name, or "which proofs use rule/lemma X" / "what does theorem X depend on". (To flag a proof's accelerated tactics — "is this fully kernel-checked, where does trust enter" — use `bpa debug taint`, not a query.) For plain text searches (counts, listing declarations, raw label greps) prefer grep — these tools cover only what grep can't do cleanly.
 ---
 
 # bpa query — navigating a proof corpus
@@ -97,21 +97,23 @@ theorem invProduct
 "Which proofs use `assoc`?" — `bpa query uses <file> | grep -B1 'rules:.*assoc'`
 (the query gets the semantics right; grep just filters its clean output).
 
-### `bpa query accelerated <file> [theorem]`
-The **elaboration audit**: per proof, every step whose rule is an **accelerated
-tactic** (`arithmetic`, `tautology`, `polynomial`, `assoc_commut`, `assoc`, and
-their quantified variants), flagged at its `file:line:col`. These are the steps
-that *could* accelerate (and do, under `--fast`, when they can't elaborate). A
-clean report means the file's proofs are fully elaborated.
+### `bpa debug taint <file> [theorem]` (NOT a query — under `debug`)
+The **trust-entry audit**: per proof, every step whose rule is an **accelerated
+tactic** (`arithmetic`, `tautology`, `polynomial`, `assoc_commut`, `assoc`, `ext`,
+and their quantified variants), flagged at its `file:line:col`. These are the
+steps that *could* accelerate (and do, under `--fast`, when they can't elaborate).
+A clean report means the file's proofs are fully kernel-checked.
 `simplify`/`simplify_quantified` never accelerate, so they are never flagged.
+(It lives under `bpa debug`, not `bpa query` — see `bpa debug accelerant` for the
+companion "what did this accelerated step actually prove".)
 
 ```
-$ bpa query accelerated examples/peano.bpa
+$ bpa debug taint examples/peano.bpa
 theorem twoPlusTwo
-  examples/peano.bpa:162:9: arithmetic
+  examples/peano.bpa:192:9: arithmetic
 ...
-$ bpa query accelerated std/peano-gcd.bpa
-no accelerated tactics — this file's proofs are fully elaborated
+$ bpa debug taint std/peano-gcd.bpa
+no accelerated tactics — every step is kernel-checked
 ```
 
 ## Typical workflow
@@ -128,7 +130,7 @@ Writing a proof and need a lemma:
 Auditing a proof or a file:
 - `bpa query uses <file> <theorem>` — what a proof leans on (before refactoring
   a lemma: who depends on it? run `uses` over the corpus and filter).
-- `bpa query accelerated <file>` — is it fully elaborated, and if not, exactly
+- `bpa debug taint <file>` — is it fully kernel-checked, and if not, exactly
   which steps are the ones that accelerate, to make certificate-clean.
 
 For plain text (counts, `^theorem`/`^axiom` listings, raw label greps), grep.

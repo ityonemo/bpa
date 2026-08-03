@@ -17,20 +17,13 @@ pub const kernel = @import("kernel.zig");
 pub const fmt = @import("fmt.zig");
 pub const literate = @import("literate.zig");
 pub const lint = @import("lint.zig");
-pub const debug = @import("debug.zig");
 pub const simplify = @import("simplify.zig");
 pub const smt = @import("accelerant/arithmetic/smt.zig");
 pub const presburger = @import("accelerant/arithmetic/presburger.zig");
 pub const farkas = @import("accelerant/arithmetic/farkas.zig");
 
-pub const query = struct {
-    pub const outline = @import("query/outline.zig");
-    pub const theorem = @import("query/theorem.zig");
-    pub const whereis = @import("query/whereis.zig");
-    pub const search = @import("query/search.zig");
-    pub const uses = @import("query/uses.zig");
-    pub const accelerated = @import("query/accelerated.zig");
-};
+pub const query = @import("query.zig");
+pub const debug = @import("debug.zig");
 
 pub const CheckResult = struct {
     file: ast.File,
@@ -348,8 +341,8 @@ test {
     std.testing.refAllDecls(query.whereis);
     std.testing.refAllDecls(query.search);
     std.testing.refAllDecls(query.uses);
-    std.testing.refAllDecls(query.accelerated);
+    std.testing.refAllDecls(debug.accelerant);
+    std.testing.refAllDecls(debug.taint);
     std.testing.refAllDecls(literate);
     std.testing.refAllDecls(lint);
-    std.testing.refAllDecls(debug);
 }

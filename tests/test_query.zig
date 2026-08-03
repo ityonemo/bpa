@@ -62,14 +62,14 @@ pub fn addTests(
         \\
     );
 
-    // `query accelerated <file>`: a proof with no accelerated tactic reports
-    // that every step is kernel-checked.
-    ctx.ok(&.{ "query", "accelerated", "tests/cases/outline.bpa" }, "no accelerated tactics — every step is kernel-checked\n");
+    // `debug taint <file>`: a proof with no accelerated tactic reports that
+    // every step is kernel-checked.
+    ctx.ok(&.{ "debug", "taint", "tests/cases/outline.bpa" }, "no accelerated tactics — every step is kernel-checked\n");
 
-    // `query accelerated <file>`: accelerated tactics flagged at file:line:col
-    // with the rule name — here both `assoc_quantified` and `assoc` (the
-    // quantified variant runs the same accelerated core).
-    ctx.ok(&.{ "query", "accelerated", "tests/cases/assoc.bpa" },
+    // `debug taint <file>`: accelerated tactics flagged at file:line:col with
+    // the rule name — here both `assoc_quantified` and `assoc` (the quantified
+    // variant runs the same accelerated core).
+    ctx.ok(&.{ "debug", "taint", "tests/cases/assoc.bpa" },
         \\theorem reassoc1
         \\  tests/cases/assoc.bpa:19:9: assoc_quantified
         \\

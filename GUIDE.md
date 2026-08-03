@@ -785,5 +785,9 @@ It loads through the full multi-file loader, so it works on files with imports
 kernel-steps → bpa-source renderer underneath is also the IR a mechanical
 Lean/Isabelle/Rocq export would consume.
 
-(To locate *where* a theorem's acceleration comes from — every accelerated step
-at its `file:line:col` — use `bpa query accelerated`, above.)
+`bpa debug taint <file> [theorem]` is the companion trust-entry audit: per proof,
+every step whose rule can fall back to an accelerated verdict (`arithmetic`,
+`tautology`, `polynomial`, `assoc_commut`, `assoc`, `ext`, and quantified
+variants), at its `file:line:col`. A syntactic upper bound — a flagged step may
+still certify — so a clean report guarantees every step is kernel-checked. Pure
+over the AST (no elaboration), like the `query` commands.

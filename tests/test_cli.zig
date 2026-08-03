@@ -21,12 +21,12 @@ pub fn addTests(
             "       bpa fmt [--check] <file.bpa|.md>\n" ++
             "       bpa lint <file.bpa|.md>\n" ++
             "       bpa debug accelerant <file> <line | theorem step-label>\n" ++
+            "       bpa debug taint <file> [theorem]\n" ++
             "       bpa query outline <file.bpa> [theorem]\n" ++
             "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
             "       bpa query whereis <file.bpa> <identifier>\n" ++
             "       bpa query search <file.bpa|dir> <query>\n" ++
-            "       bpa query uses <file.bpa> [theorem]\n" ++
-            "       bpa query accelerated <file.bpa> [theorem]\n",
+            "       bpa query uses <file.bpa> [theorem]\n",
     );
     no_args.expectExitCode(1);
     test_step.dependOn(&no_args.step);

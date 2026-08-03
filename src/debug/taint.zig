@@ -1,4 +1,5 @@
-//! `bpa query accelerated <file> [theorem]` — the acceleration audit of a proof.
+//! `bpa debug taint <file> [theorem]` — the acceleration (trust-entry) audit of
+//! a proof: where does trust enter, if anywhere?
 //!
 //! Walks the parsed AST (never elaborates) and reports every step whose
 //! justification rule is an **accelerated tactic** — one that, when it cannot
@@ -52,7 +53,7 @@ fn isAcceleratedRule(name: []const u8) bool {
     return false;
 }
 
-pub fn accelerated(
+pub fn taint(
     arena: Allocator,
     path: []const u8,
     source: []const u8,
