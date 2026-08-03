@@ -26,14 +26,14 @@ proof
     fix a: Nat {
       @generalize-b |
         fix b: Nat {
-          // gcdDividesBoth is stated `forall b, a` (b outermost); specialize it
-          // at these fixed a, b, then take the left conjunct
+          // gcdDividesBoth is stated `forall a, b`; specialize it at these
+          // fixed a, b, then take the left conjunct
           @gcd-divides-both |
-            forall bb, aa: Nat; divides(gcd_of(aa, bb), aa) and divides(gcd_of(aa, bb), bb)
+            forall aa, bb: Nat; divides(gcd_of(aa, bb), aa) and divides(gcd_of(aa, bb), bb)
             [by theorem gcd.gcdDividesBoth]
           @specialized-to-this-a-b |
             divides(gcd_of(a, b), a) and divides(gcd_of(a, b), b)
-            [by forall_elim(b, a) gcd-divides-both]
+            [by forall_elim(a, b) gcd-divides-both]
           @keep-left-conjunct |
             divides(gcd_of(a, b), a)
             [by and_elim_left specialized-to-this-a-b]
@@ -62,30 +62,30 @@ qed
 
 // The headline: any d dividing both a and b divides their gcd. This is
 // exactly gcdGreatest, re-exported here as the consumer-facing statement.
-theorem gcdIsGreatest: forall a, b, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
+theorem gcdIsGreatest: forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
 proof
-  @generalize-a |
-    fix a: Nat {
-      @generalize-b |
-        fix b: Nat {
-          @generalize-d |
-            fix d: Nat {
+  @generalize-d |
+    fix d: Nat {
+      @generalize-a |
+        fix a: Nat {
+          @generalize-b |
+            fix b: Nat {
               @gcd-is-greatest |
-                forall bb, aa, dd: Nat; divides(dd, aa) -> divides(dd, bb) -> divides(dd, gcd_of(aa, bb))
+                forall dd, aa, bb: Nat; divides(dd, aa) -> divides(dd, bb) -> divides(dd, gcd_of(aa, bb))
                 [by theorem gcd.gcdGreatest]
-              @specialized-to-this-a-b-d |
+              @specialized-to-this-d-a-b |
                 divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
-                [by forall_elim(b, a, d) gcd-is-greatest]
+                [by forall_elim(d, a, b) gcd-is-greatest]
             }
-          @discharge-d |
-            forall d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
-            [by forall_intro generalize-d]
+          @discharge-b |
+            forall b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
+            [by forall_intro generalize-b]
         }
-      @discharge-b |
-        forall b, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
-        [by forall_intro generalize-b]
+      @discharge-a |
+        forall a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
+        [by forall_intro generalize-a]
     }
   @conclusion |
-    forall a, b, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
-    [by forall_intro generalize-a]
+    forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
+    [by forall_intro generalize-d]
 qed

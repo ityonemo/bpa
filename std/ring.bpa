@@ -19,7 +19,7 @@ func mul(a: Ring, b: Ring): Ring
 func neg(a: Ring): Ring
 
 // additive abelian group axioms (discharge the group model below).
-axiom addAssoc: forall c, b, a: Ring; add(add(a, b), c) = add(a, add(b, c))
+axiom addAssoc: forall a, b, c: Ring; add(add(a, b), c) = add(a, add(b, c))
 axiom addZeroLeft: forall a: Ring; add(ZERO, a) = a
 axiom addZeroRight: forall a: Ring; add(a, ZERO) = a
 axiom addNegLeft: forall a: Ring; add(neg(a), a) = ZERO
@@ -27,7 +27,7 @@ axiom addNegRight: forall a: Ring; add(a, neg(a)) = ZERO
 axiom addCommutative: forall a, b: Ring; add(a, b) = add(b, a)
 
 // multiplicative + distributive axioms.
-axiom mulAssoc: forall c, b, a: Ring; mul(mul(a, b), c) = mul(a, mul(b, c))
+axiom mulAssoc: forall a, b, c: Ring; mul(mul(a, b), c) = mul(a, mul(b, c))
 axiom mulDistributesLeftOverAdd: forall a, b, c: Ring; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
 axiom mulDistributesRightOverAdd: forall a, b, c: Ring; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
 
@@ -87,14 +87,14 @@ proof
       @sum-equals-doubled |
         add(ZERO, mul(a, ZERO)) = add(mul(a, ZERO), mul(a, ZERO))
         [by rewrite product-is-sum-of-itself lhs-as-zero-plus]
-      // cancelRight: forall a, b, c; add(b, a) = add(c, a) -> b = c, transferred
-      // additively (the cancelled element `a` is the outermost binder).
+      // cancelRight: forall b, a, c; add(b, a) = add(c, a) -> b = c, transferred
+      // additively (the cancelled element `x` is the middle binder).
       @cancel-right |
-        forall x, b, c: Ring; add(b, x) = add(c, x) -> b = c
+        forall b, x, c: Ring; add(b, x) = add(c, x) -> b = c
         [by model(AdditiveGroup) group.cancelRight]
       @cancel-at |
         add(ZERO, mul(a, ZERO)) = add(mul(a, ZERO), mul(a, ZERO)) -> ZERO = mul(a, ZERO)
-        [by forall_elim(mul(a, ZERO), ZERO, mul(a, ZERO)) cancel-right]
+        [by forall_elim(ZERO, mul(a, ZERO), mul(a, ZERO)) cancel-right]
       @zero-is-product |
         ZERO = mul(a, ZERO)
         [by modus_ponens cancel-at sum-equals-doubled]
@@ -144,11 +144,11 @@ proof
         add(ZERO, mul(ZERO, a)) = add(mul(ZERO, a), mul(ZERO, a))
         [by rewrite product-is-sum-of-itself lhs-as-zero-plus]
       @cancel-right |
-        forall x, b, c: Ring; add(b, x) = add(c, x) -> b = c
+        forall b, x, c: Ring; add(b, x) = add(c, x) -> b = c
         [by model(AdditiveGroup) group.cancelRight]
       @cancel-at |
         add(ZERO, mul(ZERO, a)) = add(mul(ZERO, a), mul(ZERO, a)) -> ZERO = mul(ZERO, a)
-        [by forall_elim(mul(ZERO, a), ZERO, mul(ZERO, a)) cancel-right]
+        [by forall_elim(ZERO, mul(ZERO, a), mul(ZERO, a)) cancel-right]
       @zero-is-product |
         ZERO = mul(ZERO, a)
         [by modus_ponens cancel-at sum-equals-doubled]

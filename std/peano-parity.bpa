@@ -201,11 +201,11 @@ proof
                     m = succ(mp)
                     [by hypothesis with-mp]
                   @two-times-succ |
-                    forall b, a: Nat; mul(a, succ(b)) = add(mul(a, b), a)
+                    forall a, b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
                     [by theorem mulSuccRight]
                   @unfold-mul |
                     mul(TWO, succ(mp)) = add(mul(TWO, mp), TWO)
-                    [by forall_elim(mp, TWO) two-times-succ]
+                    [by forall_elim(TWO, mp) two-times-succ]
                   @succ-p-eq1 |
                     succ(p) = mul(TWO, succ(mp))
                     [by rewrite m-is-succ-mp succ-p-is-two-m]
@@ -383,11 +383,11 @@ proof
                       // 2*succ(xp) = succ(succ(2*xp)); ONE = succ(ZERO) so
                       // succ(ZERO) = succ(succ(2xp)) ⇒ ZERO = succ(2xp), absurd
                       @two-succ |
-                        forall b, a: Nat; mul(a, succ(b)) = add(mul(a, b), a)
+                        forall a, b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
                         [by theorem mulSuccRight]
                       @unfold |
                         mul(TWO, succ(xp)) = add(mul(TWO, xp), TWO)
-                        [by forall_elim(xp, TWO) two-succ]
+                        [by forall_elim(TWO, xp) two-succ]
                       @one-eq1 |
                         ONE = mul(TWO, succ(xp))
                         [by rewrite x-is-succ one-is-two-x]
@@ -517,7 +517,7 @@ proof
                         [by rewrite odd-sq-at sq-step2]
                       // now 2 | succ(2M) with M = ...; subtract 2M ⇒ 2 | 1
                       @intro |
-                        forall d, n, k: Nat; n = mul(d, k) -> divides(d, n)
+                        forall n, d, k: Nat; n = mul(d, k) -> divides(d, n)
                         [by axiom dividesIntro]
                       @two-m-refl |
                         mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))) = mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))
@@ -525,7 +525,7 @@ proof
                       @intro-at |
                         mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))) = mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))
                           -> divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        [by forall_elim(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), add(mul(TWO, mul(j, j)), mul(TWO, j))) intro]
+                        [by forall_elim(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))) intro]
                       @two-m-even |
                         divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
                         [by modus_ponens intro-at two-m-refl]
@@ -558,17 +558,17 @@ proof
                         [by modus_ponens sub-step two-m-even]
                       // sub(add(2M, ONE), 2M) = ONE  (subAddCancel needs add(ONE, 2M); commute first)
                       @cancel |
-                        forall b, a: Nat; sub(add(a, b), b) = a
+                        forall a, b: Nat; sub(add(a, b), b) = a
                         [by theorem subAddCancel]
                       @cancel-at |
                         sub(add(ONE, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))) = ONE
-                        [by forall_elim(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE) cancel]
+                        [by forall_elim(ONE, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))) cancel]
                       @comm |
-                        forall b, a: Nat; add(a, b) = add(b, a)
+                        forall a, b: Nat; add(a, b) = add(b, a)
                         [by theorem addIsCommutative]
                       @comm-at |
                         add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE) = add(ONE, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        [by forall_elim(ONE, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))) comm]
+                        [by forall_elim(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE) comm]
                       @sub-commuted |
                         divides(TWO, sub(add(ONE, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))), mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))))
                         [by rewrite comm-at two-div-sub]

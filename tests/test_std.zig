@@ -83,11 +83,12 @@ pub fn addTests(
 
     // ℤ as a thin model of the ring theory (std/integer-ring-model.bpa): the
     // THREE-LEVEL chain ℤ → ring → group. `model IntegerRing = Int` discharges
-    // ring's 9 axioms from ℤ's facts (with binder-order adapters for the c,b,a
-    // associativity axioms), and negMulNeg ((-a)(-b)=ab, new to ℤ) transfers —
-    // its ring proof having itself transferred group.invInvolution through ring's
-    // AdditiveGroup model, re-materialized here.
-    ctx.ok(&.{ "check", "std/integer-ring-model.bpa" }, "OK: 123 declarations, 34 theorems proven\n");
+    // ring's 9 axioms from ℤ's facts (associativity axioms now bind the canonical
+    // a,b,c order, so ℤ's assoc theorems α-match the remapped ring axioms directly
+    // — no binder-order adapters needed), and negMulNeg ((-a)(-b)=ab, new to ℤ)
+    // transfers — its ring proof having itself transferred group.invInvolution
+    // through ring's AdditiveGroup model, re-materialized here.
+    ctx.ok(&.{ "check", "std/integer-ring-model.bpa" }, "OK: 121 declarations, 32 theorems proven\n");
 
     // the set theory (std/set.bpa): the membership axioms + extensionality, and
     // the 19 set-algebra identities (idempotence, identity, associativity,

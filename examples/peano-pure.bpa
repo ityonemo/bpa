@@ -79,9 +79,9 @@ qed
 
 // Strategy: fix b, then induct on the left argument with
 // prop(k) := add(k, succ(b)) = succ(add(k, b)).
-// Stated forall b, a (b outermost) because induction binds its variable
-// innermost; use sites forall_elim twice anyway, so the order costs nothing.
-theorem addSuccRight: forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
+// Induction binds its variable innermost, so the proof discharges forall b, a
+// and then re-quantifies into the canonical forall a, b at the end.
+theorem addSuccRight: forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
 proof
   @generalize-b |
     fix b: Nat {
@@ -151,14 +151,29 @@ proof
         forall a: Nat; add(a, succ(b)) = succ(add(a, b))
         [by instantiate induction((fun k: Nat => add(k, succ(b)) = succ(add(k, b)))) base-case induction-step-for-all-k]
     }
-  @conclusion |
+  @add-succ-right-swapped |
     forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
     [by forall_intro generalize-b]
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @add-succ-right-at-a-b |
+            add(a, succ(b)) = succ(add(a, b))
+            [by forall_elim(b, a) add-succ-right-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; add(a, succ(b)) = succ(add(a, b))
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
+    [by forall_intro reorder-a]
 qed
 
 // Strategy: induction on b with prop(k) := forall a; add(a, k) = add(k, a);
 // each case handles all a at once (an inner fix).
-theorem addIsCommutative: forall b, a: Nat; add(a, b) = add(b, a)
+theorem addIsCommutative: forall a, b: Nat; add(a, b) = add(b, a)
 proof
   // base case: add(a, ZERO) = a = add(ZERO, a), chaining the two ZERO facts
   @base-case-proof |
@@ -197,14 +212,11 @@ proof
           @pointwise |
             fix a2: Nat {
               @add-succ-right |
-                forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
+                forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
                 [by theorem addSuccRight]
-              @add-succ-right-at-k |
-                forall a: Nat; add(a, succ(k)) = succ(add(a, k))
-                [by forall_elim(k) add-succ-right]
               @left-unfold |
                 add(a2, succ(k)) = succ(add(a2, k))
-                [by forall_elim(a2) add-succ-right-at-k]
+                [by forall_elim(a2, k) add-succ-right]
               @inductive-hypothesis |
                 forall a: Nat; add(a, k) = add(k, a)
                 [by hypothesis given-inductive-hypothesis]
@@ -245,7 +257,22 @@ proof
     forall k: Nat; (forall a: Nat; add(a, k) = add(k, a)) -> forall a: Nat; add(a, succ(k)) = add(succ(k), a)
     [by forall_intro induction-step]
 
-  @conclusion |
+  @add-is-commutative-swapped |
     forall b, a: Nat; add(a, b) = add(b, a)
     [by instantiate induction((fun k: Nat => forall a: Nat; add(a, k) = add(k, a))) base-case induction-step-for-all-k]
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @add-is-commutative-at-a-b |
+            add(a, b) = add(b, a)
+            [by forall_elim(b, a) add-is-commutative-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; add(a, b) = add(b, a)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; add(a, b) = add(b, a)
+    [by forall_intro reorder-a]
 qed

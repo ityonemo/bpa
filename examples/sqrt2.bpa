@@ -63,11 +63,11 @@ proof
 
                   // 2 | p²  (witness q²)
                   @intro |
-                    forall d, n, k: Nat; n = mul(d, k) -> divides(d, n)
+                    forall n, d, k: Nat; n = mul(d, k) -> divides(d, n)
                     [by axiom dividesIntro]
                   @intro-psq |
                     mul(p, p) = mul(TWO, mul(q, q)) -> divides(TWO, mul(p, p))
-                    [by forall_elim(TWO, mul(p, p), mul(q, q)) intro]
+                    [by forall_elim(mul(p, p), TWO, mul(q, q)) intro]
                   @two-div-psq |
                     divides(TWO, mul(p, p))
                     [by modus_ponens intro-psq square-eq]
@@ -157,7 +157,7 @@ proof
                       // 2 | q²  (witness k²), then 2 | q
                       @intro-qsq |
                         mul(q, q) = mul(TWO, mul(k, k)) -> divides(TWO, mul(q, q))
-                        [by forall_elim(TWO, mul(q, q), mul(k, k)) intro]
+                        [by forall_elim(mul(q, q), TWO, mul(k, k)) intro]
                       @two-div-qsq |
                         divides(TWO, mul(q, q))
                         [by modus_ponens intro-qsq qsq-eq-two-ksq]
@@ -170,11 +170,11 @@ proof
 
                       // 2 | gcd(p, q) = 1
                       @greatest |
-                        forall b, a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
+                        forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
                         [by theorem gcdGreatest]
                       @greatest-at |
                         divides(TWO, p) -> divides(TWO, q) -> divides(TWO, gcd_of(p, q))
-                        [by forall_elim(q, p, TWO) greatest]
+                        [by forall_elim(TWO, p, q) greatest]
                       @g1 |
                         divides(TWO, q) -> divides(TWO, gcd_of(p, q))
                         [by modus_ponens greatest-at two-div-p]

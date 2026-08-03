@@ -1239,11 +1239,11 @@ fn emitSumEdge(
     const r = hb.lo;
     const s = hb.hi;
 
-    // additionPreservesOrder binders (c, b, a); body
+    // additionPreservesOrder binders (a, b, c); body
     //   less_than(a,b) -> less_than(add(c,a), add(c,b)).
-    // lift p<q by c:=r -> forall_elim(r, q, p): add(r,p)<add(r,q)
+    // lift p<q by c:=r -> forall_elim(p, q, r): add(r,p)<add(r,q)
     const apo_rule1 = try self.strippedRule(apo_formula, apo_source);
-    const imp1 = try self.emitInstance(low, block, loc, apo_rule1, &.{ r, q, p });
+    const imp1 = try self.emitInstance(low, block, loc, apo_rule1, &.{ p, q, r });
     const lifted1 = self.pool.get(low.steps.items[@intFromEnum(imp1.id)].formula).bin.rhs;
     const rp_lt_rq = try self.emitStep(low, block, loc, lifted1, .{ .modus_ponens = .{ .implication = imp1, .antecedent = ha.ref } });
 
@@ -1260,16 +1260,16 @@ fn emitSumEdge(
     const pr_lt_qr_f = try self.pool.addApp(.pred, symbols.less_than.?, &.{ pr, qr });
     const pr_lt_qr = try self.emitStep(low, block, loc, pr_lt_qr_f, .{ .rewrite = .{ .equation = eq_rq, .target = pr_lt_rq } });
 
-    // lift r<s by c:=q -> forall_elim(q, s, r): add(q,r)<add(q,s)
+    // lift r<s by c:=q -> forall_elim(r, s, q): add(q,r)<add(q,s)
     const apo_rule2 = try self.strippedRule(apo_formula, apo_source);
-    const imp2 = try self.emitInstance(low, block, loc, apo_rule2, &.{ q, s, r });
+    const imp2 = try self.emitInstance(low, block, loc, apo_rule2, &.{ r, s, q });
     const lifted2 = self.pool.get(low.steps.items[@intFromEnum(imp2.id)].formula).bin.rhs;
     const qr_lt_qs = try self.emitStep(low, block, loc, lifted2, .{ .modus_ponens = .{ .implication = imp2, .antecedent = hb.ref } });
 
     // chain add(p,r) < add(q,r) < add(q,s) via lessThanTransitive
     const qs = try self.pool.addApp(.app, add, &.{ q, s });
     const tr_rule = try self.strippedRule(transitive_formula, transitive_source);
-    const chain = try self.emitInstance(low, block, loc, tr_rule, &.{ qs, qr, pr });
+    const chain = try self.emitInstance(low, block, loc, tr_rule, &.{ pr, qr, qs });
     const chain_inner = self.pool.get(low.steps.items[@intFromEnum(chain.id)].formula).bin.rhs;
     const chain2 = try self.emitStep(low, block, loc, chain_inner, .{ .modus_ponens = .{ .implication = chain, .antecedent = pr_lt_qr } });
     const summed_f = self.pool.get(chain_inner).bin.rhs;
@@ -1280,11 +1280,11 @@ fn emitSumEdge(
 /// Emit `lhs = rhs` where they differ by one addIsCommutative rewrite,
 /// using the comm rule instantiated to the right pair.
 fn emitCommEq(self: *Elaborator, low: *Lowering, block: kernel.BlockId, loc: u32, comm: simplify_mod.Rule, lhs: TermId, rhs: TermId) ElabError!kernel.SRef {
-    // comm: forall b, a; add(a, b) = add(b, a). lhs = add(x, y), want
-    // add(x,y) = add(y,x): match a:=x, b:=y -> forall_elim(b:=y, a:=x).
+    // comm: forall a, b; add(a, b) = add(b, a). lhs = add(x, y), want
+    // add(x,y) = add(y,x): match a:=x, b:=y -> forall_elim(a:=x, b:=y).
     _ = rhs; // determined by the instance; named for the caller's clarity
     const la = self.pool.args(self.pool.get(lhs).app);
-    return self.emitInstance(low, block, loc, comm, &.{ la[1], la[0] });
+    return self.emitInstance(low, block, loc, comm, &.{ la[0], la[1] });
 }
 
 /// For each base order hypothesis and each literal k in `literals`, emit a
@@ -1317,11 +1317,11 @@ fn emitScaledEdges(
         for (0..k - 1) |_| c = try self.pool.addApp(.app, succ, &.{c});
         for (0..base_count) |bi| {
             const h = hyps.items[bi];
-            // multiplicationPreservesOrder binders (c, b, a); body
+            // multiplicationPreservesOrder binders (a, b, c); body
             //   less_than(a,b) -> less_than(mul(succ(c),a), mul(succ(c),b)).
-            // want a:=h.lo, b:=h.hi, c:=c -> forall_elim(c, h.hi, h.lo).
+            // want a:=h.lo, b:=h.hi, c:=c -> forall_elim(h.lo, h.hi, c).
             const rule = try self.strippedRule(mpo.formula, mpo.source);
-            const imp = try self.emitInstance(low, block, loc, rule, &.{ c, h.hi, h.lo });
+            const imp = try self.emitInstance(low, block, loc, rule, &.{ h.lo, h.hi, c });
             const concl = self.pool.get(low.steps.items[@intFromEnum(imp.id)].formula).bin.rhs;
             const scaled_ref = try self.emitStep(low, block, loc, concl, .{ .modus_ponens = .{ .implication = imp, .antecedent = h.ref } });
             const scaled = self.pool.get(concl).pred;
@@ -1416,12 +1416,12 @@ fn emitFarkasFold(
 
     for (chain[1..]) |idx| {
         const next = hyps[idx];
-        // lessThanTransitive has binders `forall c, b, a` over body
+        // lessThanTransitive has binders `forall a, b, c` over body
         //   less_than(a, b) -> less_than(b, c) -> less_than(a, c).
         // We want a:=acc_lo, b:=acc_hi, c:=next.hi, so specialize in
-        // binder order (c, b, a) = (next.hi, acc_hi, acc_lo).
+        // binder order (a, b, c) = (acc_lo, acc_hi, next.hi).
         const rule = try self.strippedRule(transitive_formula, transitive_source);
-        const imp3 = try self.emitInstance(low, block, loc, rule, &.{ next.hi, acc_hi, acc_lo });
+        const imp3 = try self.emitInstance(low, block, loc, rule, &.{ acc_lo, acc_hi, next.hi });
         // apply to the two order proofs: modus_ponens twice
         const inner = self.pool.get(low.steps.items[@intFromEnum(imp3.id)].formula).bin.rhs;
         const imp2 = try self.emitStep(low, block, loc, inner, .{ .modus_ponens = .{ .implication = imp3, .antecedent = acc_ref } });

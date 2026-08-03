@@ -34,7 +34,7 @@ axiom induction = integer.induction
 // -- divisibility -----------------------------------------------------------
 
 pred divides(d: Int, n: Int)
-axiom dividesIntro: forall d, n, k: Int; n = mul(d, k) -> divides(d, n)
+axiom dividesIntro: forall n, d, k: Int; n = mul(d, k) -> divides(d, n)
 axiom dividesElim: forall d, n: Int; divides(d, n) -> exists k: Int; n = mul(d, k)
 
 // ℤ is a model of the abstract divisibility theory: its mul is associative with

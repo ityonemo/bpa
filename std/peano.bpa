@@ -118,12 +118,12 @@ proof
 qed
 
 // Strategy: fix b, then induct on the left argument with
-// prop(k) := add(k, succ(b)) = succ(add(k, b)).
-// Stated forall b, a (b outermost) because induction binds its variable
-// innermost; use sites forall_elim twice anyway, so the order costs nothing.
-theorem addSuccRight: forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
+// prop(k) := add(k, succ(b)) = succ(add(k, b)). Induction binds its variable
+// innermost, so this yields `forall b, a`; a final swap re-quantifies it into
+// the canonical (first-appearance) `forall a, b` order.
+theorem addSuccRight: forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
 proof
-  @generalize-b |
+  @add-succ-right-swapped |
     fix b: Nat {
       // base case: reduce both sides with addZeroLeft, then chain via symmetry
       @add-zero-left |
@@ -191,14 +191,31 @@ proof
         forall a: Nat; add(a, succ(b)) = succ(add(a, b))
         [by instantiate induction((fun k: Nat => add(k, succ(b)) = succ(add(k, b)))) base-case induction-step-for-all-k]
     }
-  @conclusion |
+  @swapped |
     forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
-    [by forall_intro generalize-b]
+    [by forall_intro add-succ-right-swapped]
+  // swap the two leading universals into first-appearance order.
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
+          @at-a-b |
+            add(a, succ(b)) = succ(add(a, b))
+            [by forall_elim(b, a) swapped]
+        }
+      @discharge-b |
+        forall b: Nat; add(a, succ(b)) = succ(add(a, b))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
+    [by forall_intro generalize-a]
 qed
 
 // Strategy: induction on b with prop(k) := forall a; add(a, k) = add(k, a);
-// each case handles all a at once (an inner fix).
-theorem addIsCommutative: forall b, a: Nat; add(a, b) = add(b, a)
+// each case handles all a at once (an inner fix). Induction yields `forall b, a`;
+// a final swap re-quantifies it into the canonical `forall a, b`.
+theorem addIsCommutative: forall a, b: Nat; add(a, b) = add(b, a)
 proof
   // base case: add(a, ZERO) = a = add(ZERO, a), chaining the two ZERO facts
   @base-case-proof |
@@ -237,11 +254,11 @@ proof
           @pointwise |
             fix a2: Nat {
               @add-succ-right |
-                forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
+                forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
                 [by theorem addSuccRight]
               @left-unfold |
                 add(a2, succ(k)) = succ(add(a2, k))
-                [by forall_elim(k, a2) add-succ-right]
+                [by forall_elim(a2, k) add-succ-right]
               @inductive-hypothesis |
                 forall a: Nat; add(a, k) = add(k, a)
                 [by hypothesis given-inductive-hypothesis]
@@ -279,15 +296,33 @@ proof
     forall k: Nat; (forall a: Nat; add(a, k) = add(k, a)) -> forall a: Nat; add(a, succ(k)) = add(succ(k), a)
     [by forall_intro induction-step]
 
-  @conclusion |
+  @add-is-commutative-swapped |
     forall b, a: Nat; add(a, b) = add(b, a)
     [by instantiate induction((fun k: Nat => forall a: Nat; add(a, k) = add(k, a))) base-case induction-step-for-all-k]
+  // swap the two leading universals into first-appearance order.
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
+          @at-a-b |
+            add(a, b) = add(b, a)
+            [by forall_elim(b, a) add-is-commutative-swapped]
+        }
+      @discharge-b |
+        forall b: Nat; add(a, b) = add(b, a)
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Nat; add(a, b) = add(b, a)
+    [by forall_intro generalize-a]
 qed
 
 // Strategy: fix c and b, induct on the leftmost summand with
 // prop(k) := add(add(k, b), c) = add(k, add(b, c)); every rewrite is
-// mechanical pushing of succ through addSuccLeft.
-theorem addIsAssociative: forall c, b, a: Nat; add(add(a, b), c) = add(a, add(b, c))
+// mechanical pushing of succ through addSuccLeft. Induction binds the leftmost
+// summand innermost, so this yields `forall c, b, a`; a final swap re-quantifies
+// it into the canonical `forall a, b, c`.
+theorem addIsAssociative: forall a, b, c: Nat; add(add(a, b), c) = add(a, add(b, c))
 proof
   @generalize-c |
     fix c: Nat {
@@ -380,9 +415,31 @@ proof
         forall b, a: Nat; add(add(a, b), c) = add(a, add(b, c))
         [by forall_intro generalize-b]
     }
-  @conclusion |
+  @add-is-associative-swapped |
     forall c, b, a: Nat; add(add(a, b), c) = add(a, add(b, c))
     [by forall_intro generalize-c]
+  // swap the three leading universals into first-appearance order.
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @reorder-c |
+            fix c: Nat {
+              @at-a-b-c |
+                add(add(a, b), c) = add(a, add(b, c))
+                [by forall_elim(c, b, a) add-is-associative-swapped]
+            }
+          @reorder-discharge-c |
+            forall c: Nat; add(add(a, b), c) = add(a, add(b, c))
+            [by forall_intro reorder-c]
+        }
+      @reorder-discharge-b |
+        forall b, c: Nat; add(add(a, b), c) = add(a, add(b, c))
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b, c: Nat; add(add(a, b), c) = add(a, add(b, c))
+    [by forall_intro reorder-a]
 qed
 
 // -- multiplication ---------------------------------------------------------
@@ -437,10 +494,12 @@ proof
 qed
 
 // Strategy: fix b, induct on a with prop(k) := mul(k, succ(b)) = add(mul(k, b), k)
-// — the mirror-image recursion for mul, as addSuccRight is for add.
-theorem mulSuccRight: forall b, a: Nat; mul(a, succ(b)) = add(mul(a, b), a)
+// — the mirror-image recursion for mul, as addSuccRight is for add. Induction
+// binds a innermost, yielding `forall b, a`; a final swap re-quantifies it into
+// the canonical `forall a, b`.
+theorem mulSuccRight: forall a, b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
 proof
-  @generalize-b |
+  @mul-succ-right-swapped |
     fix b: Nat {
       // base case: both sides are ZERO
       @mul-zero-left |
@@ -492,32 +551,29 @@ proof
                 mul(succ(k), succ(b)) = add(add(mul(k, b), k), succ(b))
                 [by rewrite inductive-hypothesis lhs-unfolded]
               @add-succ-right |
-                forall d, m: Nat; add(m, succ(d)) = succ(add(m, d))
+                forall m, d: Nat; add(m, succ(d)) = succ(add(m, d))
                 [by theorem addSuccRight]
-              @add-succ-right-at-b |
-                forall m: Nat; add(m, succ(b)) = succ(add(m, b))
-                [by forall_elim(b) add-succ-right]
               @pull-succ-b |
                 add(add(mul(k, b), k), succ(b)) = succ(add(add(mul(k, b), k), b))
-                [by forall_elim(add(mul(k, b), k)) add-succ-right-at-b]
+                [by forall_elim(add(mul(k, b), k), b) add-succ-right]
               @lhs-succ-pulled |
                 mul(succ(k), succ(b)) = succ(add(add(mul(k, b), k), b))
                 [by rewrite pull-succ-b lhs-with-inductive-hypothesis]
               @add-assoc |
-                forall e, d, m: Nat; add(add(m, d), e) = add(m, add(d, e))
+                forall m, d, e: Nat; add(add(m, d), e) = add(m, add(d, e))
                 [by theorem addIsAssociative]
               @reassociated-lhs |
                 add(add(mul(k, b), k), b) = add(mul(k, b), add(k, b))
-                [by forall_elim(b, k, mul(k, b)) add-assoc]
+                [by forall_elim(mul(k, b), k, b) add-assoc]
               @lhs-assoc |
                 mul(succ(k), succ(b)) = succ(add(mul(k, b), add(k, b)))
                 [by rewrite reassociated-lhs lhs-succ-pulled]
               @add-comm |
-                forall e, d: Nat; add(d, e) = add(e, d)
+                forall d, e: Nat; add(d, e) = add(e, d)
                 [by theorem addIsCommutative]
               @summands-commuted |
                 add(k, b) = add(b, k)
-                [by forall_elim(b, k) add-comm]
+                [by forall_elim(k, b) add-comm]
               @lhs-comm |
                 mul(succ(k), succ(b)) = succ(add(mul(k, b), add(b, k)))
                 [by rewrite summands-commuted lhs-assoc]
@@ -531,18 +587,15 @@ proof
               @rhs-inner |
                 add(mul(succ(k), b), succ(k)) = add(add(mul(k, b), b), succ(k))
                 [by rewrite rhs-unfolded rhs-start-refl]
-              @add-succ-right-at-k |
-                forall m: Nat; add(m, succ(k)) = succ(add(m, k))
-                [by forall_elim(k) add-succ-right]
               @pull-succ-k |
                 add(add(mul(k, b), b), succ(k)) = succ(add(add(mul(k, b), b), k))
-                [by forall_elim(add(mul(k, b), b)) add-succ-right-at-k]
+                [by forall_elim(add(mul(k, b), b), k) add-succ-right]
               @rhs-succ-pulled |
                 add(mul(succ(k), b), succ(k)) = succ(add(add(mul(k, b), b), k))
                 [by rewrite pull-succ-k rhs-inner]
               @reassociated-rhs |
                 add(add(mul(k, b), b), k) = add(mul(k, b), add(b, k))
-                [by forall_elim(k, b, mul(k, b)) add-assoc]
+                [by forall_elim(mul(k, b), b, k) add-assoc]
               @rhs-normal |
                 add(mul(succ(k), b), succ(k)) = succ(add(mul(k, b), add(b, k)))
                 [by rewrite reassociated-rhs rhs-succ-pulled]
@@ -568,15 +621,32 @@ proof
         forall a: Nat; mul(a, succ(b)) = add(mul(a, b), a)
         [by instantiate induction((fun k: Nat => mul(k, succ(b)) = add(mul(k, b), k))) base-case induction-step-for-all-k]
     }
-  @conclusion |
+  @mul-succ-right-in-swapped-order |
     forall b, a: Nat; mul(a, succ(b)) = add(mul(a, b), a)
-    [by forall_intro generalize-b]
+    [by forall_intro mul-succ-right-swapped]
+  // swap the two leading universals into first-appearance order.
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @at-a-b |
+            mul(a, succ(b)) = add(mul(a, b), a)
+            [by forall_elim(b, a) mul-succ-right-in-swapped-order]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
+    [by forall_intro reorder-a]
 qed
 
 // Strategy: induction on b with prop(k) := forall a; mul(a, k) = mul(k, a),
 // exactly the shape of addIsCommutative — mulSuccRight/mulSuccLeft unfold the
-// two sides to the same sum.
-theorem mulIsCommutative: forall b, a: Nat; mul(a, b) = mul(b, a)
+// two sides to the same sum. Induction yields `forall b, a`; a final swap
+// re-quantifies it into the canonical `forall a, b`.
+theorem mulIsCommutative: forall a, b: Nat; mul(a, b) = mul(b, a)
 proof
   // base case: both sides are ZERO
   @base-case-proof |
@@ -616,11 +686,11 @@ proof
           @pointwise |
             fix a2: Nat {
               @mul-succ-right |
-                forall c, m: Nat; mul(m, succ(c)) = add(mul(m, c), m)
+                forall m, c: Nat; mul(m, succ(c)) = add(mul(m, c), m)
                 [by theorem mulSuccRight]
               @left-unfold |
                 mul(a2, succ(k)) = add(mul(a2, k), a2)
-                [by forall_elim(k, a2) mul-succ-right]
+                [by forall_elim(a2, k) mul-succ-right]
               @inductive-hypothesis |
                 forall a: Nat; mul(a, k) = mul(k, a)
                 [by hypothesis given-inductive-hypothesis]
@@ -658,17 +728,34 @@ proof
     forall k: Nat; (forall a: Nat; mul(a, k) = mul(k, a)) -> forall a: Nat; mul(a, succ(k)) = mul(succ(k), a)
     [by forall_intro induction-step]
 
-  @conclusion |
+  @mul-is-commutative-swapped |
     forall b, a: Nat; mul(a, b) = mul(b, a)
     [by instantiate induction((fun k: Nat => forall a: Nat; mul(a, k) = mul(k, a))) base-case induction-step-for-all-k]
+  // swap the two leading universals into first-appearance order.
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @at-a-b |
+            mul(a, b) = mul(b, a)
+            [by forall_elim(b, a) mul-is-commutative-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; mul(a, b) = mul(b, a)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; mul(a, b) = mul(b, a)
+    [by forall_intro reorder-a]
 qed
 
 // Strategy: fix c and b, induct on a with
 // prop(k) := mul(add(k, b), c) = add(mul(k, c), mul(b, c)).
 // The inductive step needs the add-shuffle add(add(X, Y), c) = add(add(X, c), Y),
 // built from associativity and commutativity. This is the stepping stone to
-// mulIsAssociative.
-theorem mulAddDistribRight: forall c, b, a: Nat; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+// mulIsAssociative. Induction binds a innermost, yielding `forall c, b, a`;
+// a final swap re-quantifies it into the canonical `forall a, b, c`.
+theorem mulAddDistribRight: forall a, b, c: Nat; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
 proof
   @generalize-c |
     fix c: Nat {
@@ -748,26 +835,26 @@ proof
                     mul(add(succ(k), b), c) = add(add(mul(k, c), mul(b, c)), c)
                     [by rewrite inductive-hypothesis lhs-unfolded]
                   @add-assoc |
-                    forall f, e, d: Nat; add(add(d, e), f) = add(d, add(e, f))
+                    forall d, e, f: Nat; add(add(d, e), f) = add(d, add(e, f))
                     [by theorem addIsAssociative]
                   @reassociated |
                     add(add(mul(k, c), mul(b, c)), c) = add(mul(k, c), add(mul(b, c), c))
-                    [by forall_elim(c, mul(b, c), mul(k, c)) add-assoc]
+                    [by forall_elim(mul(k, c), mul(b, c), c) add-assoc]
                   @lhs-assoc |
                     mul(add(succ(k), b), c) = add(mul(k, c), add(mul(b, c), c))
                     [by rewrite reassociated lhs-with-inductive-hypothesis]
                   @add-comm |
-                    forall e, d: Nat; add(d, e) = add(e, d)
+                    forall d, e: Nat; add(d, e) = add(e, d)
                     [by theorem addIsCommutative]
                   @product-and-c-commuted |
                     add(mul(b, c), c) = add(c, mul(b, c))
-                    [by forall_elim(c, mul(b, c)) add-comm]
+                    [by forall_elim(mul(b, c), c) add-comm]
                   @lhs-comm |
                     mul(add(succ(k), b), c) = add(mul(k, c), add(c, mul(b, c)))
                     [by rewrite product-and-c-commuted lhs-assoc]
                   @reassociated-back |
                     add(add(mul(k, c), c), mul(b, c)) = add(mul(k, c), add(c, mul(b, c)))
-                    [by forall_elim(mul(b, c), c, mul(k, c)) add-assoc]
+                    [by forall_elim(mul(k, c), c, mul(b, c)) add-assoc]
                   @reassociated-back-refl |
                     add(add(mul(k, c), c), mul(b, c)) = add(add(mul(k, c), c), mul(b, c))
                     [by reflexivity]
@@ -806,15 +893,38 @@ proof
         forall b, a: Nat; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
         [by forall_intro generalize-b]
     }
-  @conclusion |
+  @mul-add-distrib-right-swapped |
     forall c, b, a: Nat; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
     [by forall_intro generalize-c]
+  // swap the three leading universals into first-appearance order.
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @reorder-c |
+            fix c: Nat {
+              @at-a-b-c |
+                mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+                [by forall_elim(c, b, a) mul-add-distrib-right-swapped]
+            }
+          @reorder-discharge-c |
+            forall c: Nat; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+            [by forall_intro reorder-c]
+        }
+      @reorder-discharge-b |
+        forall b, c: Nat; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b, c: Nat; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+    [by forall_intro reorder-a]
 qed
 
 // Strategy: fix c and b, induct on a with
 // prop(k) := mul(mul(k, b), c) = mul(k, mul(b, c)); distributivity carries
-// the inductive step.
-theorem mulIsAssociative: forall c, b, a: Nat; mul(mul(a, b), c) = mul(a, mul(b, c))
+// the inductive step. Induction binds a innermost, yielding `forall c, b, a`;
+// a final swap re-quantifies it into the canonical `forall a, b, c`.
+theorem mulIsAssociative: forall a, b, c: Nat; mul(mul(a, b), c) = mul(a, mul(b, c))
 proof
   @generalize-c |
     fix c: Nat {
@@ -873,11 +983,11 @@ proof
                     mul(mul(succ(k), b), c) = mul(add(mul(k, b), b), c)
                     [by rewrite inner-unfold start-refl]
                   @mul-add-distrib-right |
-                    forall f, e, d: Nat; mul(add(d, e), f) = add(mul(d, f), mul(e, f))
+                    forall d, e, f: Nat; mul(add(d, e), f) = add(mul(d, f), mul(e, f))
                     [by theorem mulAddDistribRight]
                   @product-of-sum-expanded |
                     mul(add(mul(k, b), b), c) = add(mul(mul(k, b), c), mul(b, c))
-                    [by forall_elim(c, b, mul(k, b)) mul-add-distrib-right]
+                    [by forall_elim(mul(k, b), b, c) mul-add-distrib-right]
                   @lhs-distributed |
                     mul(mul(succ(k), b), c) = add(mul(mul(k, b), c), mul(b, c))
                     [by rewrite product-of-sum-expanded lhs-inner]
@@ -916,9 +1026,31 @@ proof
         forall b, a: Nat; mul(mul(a, b), c) = mul(a, mul(b, c))
         [by forall_intro generalize-b]
     }
-  @conclusion |
+  @mul-is-associative-swapped |
     forall c, b, a: Nat; mul(mul(a, b), c) = mul(a, mul(b, c))
     [by forall_intro generalize-c]
+  // swap the three leading universals into first-appearance order.
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @reorder-c |
+            fix c: Nat {
+              @at-a-b-c |
+                mul(mul(a, b), c) = mul(a, mul(b, c))
+                [by forall_elim(c, b, a) mul-is-associative-swapped]
+            }
+          @reorder-discharge-c |
+            forall c: Nat; mul(mul(a, b), c) = mul(a, mul(b, c))
+            [by forall_intro reorder-c]
+        }
+      @reorder-discharge-b |
+        forall b, c: Nat; mul(mul(a, b), c) = mul(a, mul(b, c))
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b, c: Nat; mul(mul(a, b), c) = mul(a, mul(b, c))
+    [by forall_intro reorder-a]
 qed
 
 // Strategy: no induction — unfold ONE, one step of mulSuccRight, then collapse.
@@ -936,11 +1068,11 @@ proof
         mul(n, ONE) = mul(n, succ(ZERO))
         [by rewrite one-def start-refl]
       @mul-succ-right |
-        forall c, m: Nat; mul(m, succ(c)) = add(mul(m, c), m)
+        forall m, c: Nat; mul(m, succ(c)) = add(mul(m, c), m)
         [by theorem mulSuccRight]
       @unfolded-eq |
         mul(n, succ(ZERO)) = add(mul(n, ZERO), n)
-        [by forall_elim(ZERO, n) mul-succ-right]
+        [by forall_elim(n, ZERO) mul-succ-right]
       @unfolded |
         mul(n, ONE) = add(mul(n, ZERO), n)
         [by rewrite unfolded-eq as-succ]
@@ -1017,65 +1149,63 @@ qed
 
 // Strategy: no induction — swap with commutativity, apply right
 // distributivity, swap the products back.
-theorem mulAddDistribLeft: forall c, b, a: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
+theorem mulAddDistribLeft: forall a, b, c: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
 proof
-  @generalize-c |
-    fix c: Nat {
+  @generalize-a |
+    fix a: Nat {
       @generalize-b |
         fix b: Nat {
-          @generalize-a |
-            fix a: Nat {
+          @generalize-c |
+            fix c: Nat {
               @mul-comm |
-                forall e, d: Nat; mul(d, e) = mul(e, d)
+                forall d, e: Nat; mul(d, e) = mul(e, d)
                 [by theorem mulIsCommutative]
               @swap-outer |
                 mul(a, add(b, c)) = mul(add(b, c), a)
-                [by forall_elim(add(b, c), a) mul-comm]
+                [by forall_elim(a, add(b, c)) mul-comm]
               @mul-add-distrib-right |
-                forall f, e, d: Nat; mul(add(d, e), f) = add(mul(d, f), mul(e, f))
+                forall d, e, f: Nat; mul(add(d, e), f) = add(mul(d, f), mul(e, f))
                 [by theorem mulAddDistribRight]
               @sum-times-a-distributed |
                 mul(add(b, c), a) = add(mul(b, a), mul(c, a))
-                [by forall_elim(a, c, b) mul-add-distrib-right]
+                [by forall_elim(b, c, a) mul-add-distrib-right]
               @product-of-sum-expanded |
                 mul(a, add(b, c)) = add(mul(b, a), mul(c, a))
                 [by rewrite sum-times-a-distributed swap-outer]
-              @swap-a-leftward |
-                forall d: Nat; mul(d, a) = mul(a, d)
-                [by forall_elim(a) mul-comm]
               @b-a-commuted |
                 mul(b, a) = mul(a, b)
-                [by forall_elim(b) swap-a-leftward]
+                [by forall_elim(b, a) mul-comm]
               @left-fixed |
                 mul(a, add(b, c)) = add(mul(a, b), mul(c, a))
                 [by rewrite b-a-commuted product-of-sum-expanded]
               @c-a-commuted |
                 mul(c, a) = mul(a, c)
-                [by forall_elim(c) swap-a-leftward]
+                [by forall_elim(c, a) mul-comm]
               @both-fixed |
                 mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
                 [by rewrite c-a-commuted left-fixed]
             }
-          @discharge-a |
-            forall a: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
-            [by forall_intro generalize-a]
+          @discharge-c |
+            forall c: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
+            [by forall_intro generalize-c]
         }
       @discharge-b |
-        forall b, a: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
+        forall b, c: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall c, b, a: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
-    [by forall_intro generalize-c]
+    forall a, b, c: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
+    [by forall_intro generalize-a]
 qed
 
 // -- order theory -----------------------------------------------------------
 
 // Strategy: fix d, induct on a with prop(k) := add(k, succ(d)) != k. The
-// first real use of succInjective and succNotZero.
-theorem addSuccNeverSelf: forall d, a: Nat; add(a, succ(d)) != a
+// first real use of succInjective and succNotZero. Induction binds a innermost,
+// yielding `forall d, a`; a final swap re-quantifies it into `forall a, d`.
+theorem addSuccNeverSelf: forall a, d: Nat; add(a, succ(d)) != a
 proof
-  @generalize-d |
+  @add-succ-never-self-swapped |
     fix d: Nat {
       // base case: add(ZERO, succ(d)) is succ(d), which is not ZERO
       @suppose-base |
@@ -1163,9 +1293,25 @@ proof
         forall a: Nat; add(a, succ(d)) != a
         [by instantiate induction((fun k: Nat => add(k, succ(d)) != k)) base-case induction-step-for-all-k]
     }
-  @conclusion |
+  @add-succ-never-self-in-swapped-order |
     forall d, a: Nat; add(a, succ(d)) != a
-    [by forall_intro generalize-d]
+    [by forall_intro add-succ-never-self-swapped]
+  // swap the two leading universals into first-appearance order.
+  @reorder-a |
+    fix a: Nat {
+      @reorder-d |
+        fix d: Nat {
+          @at-a-d |
+            add(a, succ(d)) != a
+            [by forall_elim(d, a) add-succ-never-self-in-swapped-order]
+        }
+      @reorder-discharge-d |
+        forall d: Nat; add(a, succ(d)) != a
+        [by forall_intro reorder-d]
+    }
+  @conclusion |
+    forall a, d: Nat; add(a, succ(d)) != a
+    [by forall_intro reorder-a]
 qed
 
 // Strategy: unpack the witness of a < b and push succ through the sum.
@@ -1314,14 +1460,14 @@ qed
 
 // Cancel a common left addend under the order: reassociate the witness
 // equation (simplify does the grind) and cancel with addCancelLeft.
-theorem addLeftSwap: forall r, y, x: Nat; add(x, add(y, r)) = add(y, add(x, r))
+theorem addLeftSwap: forall x, y, r: Nat; add(x, add(y, r)) = add(y, add(x, r))
 proof
-  @generalize-r |
-    fix r: Nat {
+  @generalize-x |
+    fix x: Nat {
       @generalize-y |
         fix y: Nat {
-          @generalize-x |
-            fix x: Nat {
+          @generalize-r |
+            fix r: Nat {
               @reassociated-x-y |
                 add(add(x, y), r) = add(x, add(y, r))
                 [by simplify addIsAssociative]
@@ -1329,11 +1475,11 @@ proof
                 add(add(y, x), r) = add(y, add(x, r))
                 [by simplify addIsAssociative]
               @add-is-commutative |
-                forall m, n: Nat; add(n, m) = add(m, n)
+                forall m, n: Nat; add(m, n) = add(n, m)
                 [by theorem addIsCommutative]
               @x-y-commuted |
                 add(x, y) = add(y, x)
-                [by forall_elim(y, x) add-is-commutative]
+                [by forall_elim(x, y) add-is-commutative]
               @grouped-refl |
                 add(add(x, y), r) = add(add(x, y), r)
                 [by reflexivity]
@@ -1347,28 +1493,28 @@ proof
                 add(x, add(y, r)) = add(y, add(x, r))
                 [by rewrite reassociated-y-x swapped]
             }
-          @discharge-x |
-            forall x: Nat; add(x, add(y, r)) = add(y, add(x, r))
-            [by forall_intro generalize-x]
+          @discharge-r |
+            forall r: Nat; add(x, add(y, r)) = add(y, add(x, r))
+            [by forall_intro generalize-r]
         }
       @discharge-y |
-        forall y, x: Nat; add(x, add(y, r)) = add(y, add(x, r))
+        forall y, r: Nat; add(x, add(y, r)) = add(y, add(x, r))
         [by forall_intro generalize-y]
     }
   @conclusion |
-    forall r, y, x: Nat; add(x, add(y, r)) = add(y, add(x, r))
-    [by forall_intro generalize-r]
+    forall x, y, r: Nat; add(x, add(y, r)) = add(y, add(x, r))
+    [by forall_intro generalize-x]
 qed
 
 // the multiplication analog of addLeftSwap: the sorting primitive for mul-AC.
-theorem mulLeftSwap: forall r, y, x: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
+theorem mulLeftSwap: forall x, y, r: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
 proof
-  @generalize-r |
-    fix r: Nat {
+  @generalize-x |
+    fix x: Nat {
       @generalize-y |
         fix y: Nat {
-          @generalize-x |
-            fix x: Nat {
+          @generalize-r |
+            fix r: Nat {
               @reassociated-x-y |
                 mul(mul(x, y), r) = mul(x, mul(y, r))
                 [by simplify mulIsAssociative]
@@ -1376,11 +1522,11 @@ proof
                 mul(mul(y, x), r) = mul(y, mul(x, r))
                 [by simplify mulIsAssociative]
               @mul-is-commutative |
-                forall m, n: Nat; mul(n, m) = mul(m, n)
+                forall m, n: Nat; mul(m, n) = mul(n, m)
                 [by theorem mulIsCommutative]
               @x-y-commuted |
                 mul(x, y) = mul(y, x)
-                [by forall_elim(y, x) mul-is-commutative]
+                [by forall_elim(x, y) mul-is-commutative]
               @grouped-refl |
                 mul(mul(x, y), r) = mul(mul(x, y), r)
                 [by reflexivity]
@@ -1394,15 +1540,15 @@ proof
                 mul(x, mul(y, r)) = mul(y, mul(x, r))
                 [by rewrite reassociated-y-x swapped]
             }
-          @discharge-x |
-            forall x: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
-            [by forall_intro generalize-x]
+          @discharge-r |
+            forall r: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
+            [by forall_intro generalize-r]
         }
       @discharge-y |
-        forall y, x: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
+        forall y, r: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
         [by forall_intro generalize-y]
     }
   @conclusion |
-    forall r, y, x: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
-    [by forall_intro generalize-r]
+    forall x, y, r: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))
+    [by forall_intro generalize-x]
 qed

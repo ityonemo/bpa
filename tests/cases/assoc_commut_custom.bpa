@@ -8,9 +8,9 @@
 
 sort T
 func join(a: T, b: T): T
-axiom joinAssoc: forall c, b, a: T; join(join(a, b), c) = join(a, join(b, c))
-axiom joinComm: forall b, a: T; join(a, b) = join(b, a)
-axiom joinSwap: forall r, y, x: T; join(x, join(y, r)) = join(y, join(x, r))
+axiom joinAssoc: forall a, b, c: T; join(join(a, b), c) = join(a, join(b, c))
+axiom joinComm: forall a, b: T; join(a, b) = join(b, a)
+axiom joinSwap: forall x, y, r: T; join(x, join(y, r)) = join(y, join(x, r))
 
 // reorder a join-sum with the explicit triple (no add/mul, no well-known names)
 theorem reorderQuantified: forall a, b, c, d: T;

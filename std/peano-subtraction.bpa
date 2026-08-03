@@ -84,7 +84,7 @@ proof
 qed
 
 // sub(add(a, b), b) = a — the left inverse of adding b. Induction on b.
-theorem subAddCancel: forall b, a: Nat; sub(add(a, b), b) = a
+theorem subAddCancel: forall a, b: Nat; sub(add(a, b), b) = a
 proof
   @generalize-a |
     fix a: Nat {
@@ -140,14 +140,29 @@ proof
   @induction-step-for-all-k |
     forall k: Nat; (forall a: Nat; sub(add(a, k), k) = a) -> forall a: Nat; sub(add(a, succ(k)), succ(k)) = a
     [by forall_intro induction-step]
-  @conclusion |
+  @cancel-holds-swapped |
     forall b, a: Nat; sub(add(a, b), b) = a
     [by instantiate induction((fun j: Nat => forall a: Nat; sub(add(a, j), j) = a)) base-case induction-step-for-all-k]
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @cancel-at-a-b |
+            sub(add(a, b), b) = a
+            [by forall_elim(b, a) cancel-holds-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; sub(add(a, b), b) = a
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; sub(add(a, b), b) = a
+    [by forall_intro reorder-a]
 qed
 
 // b <= a  ->  add(sub(a, b), b) = a  (recovering a from a - b). Here b <= a is
 // spelled less_than(b, succ(a)). Induction on a; inner case-split on b.
-theorem addSubCancel: forall a, b: Nat; less_than(b, succ(a)) -> add(sub(a, b), b) = a
+theorem addSubCancel: forall b, a: Nat; less_than(b, succ(a)) -> add(sub(a, b), b) = a
 proof
   @generalize-b |
     fix bb: Nat {
@@ -157,11 +172,11 @@ proof
             less_than(bb, succ(ZERO))
             [by hypothesis given-b-below-one]
           @less-than-succ-splits |
-            forall kk, mm: Nat; less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
+            forall mm, kk: Nat; less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
             [by theorem lessThanSuccSplit]
           @b-below-one-splits |
             less_than(bb, succ(ZERO)) -> (less_than(bb, ZERO) or bb = ZERO)
-            [by forall_elim(ZERO, bb) less-than-succ-splits]
+            [by forall_elim(bb, ZERO) less-than-succ-splits]
           @b-below-zero-or-zero |
             less_than(bb, ZERO) or bb = ZERO
             [by modus_ponens b-below-one-splits b-below-one]
@@ -262,11 +277,11 @@ proof
                             less_than(succ(cp), succ(succ(k)))
                             [by rewrite b-is-succ-cp b-below-succ-succ-k]
                           @succ-reflects-order |
-                            forall b, a: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
+                            forall a, b: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
                             [by theorem succReflectsOrder]
                           @cp-below-succ-k-if-succ |
                             less_than(succ(cp), succ(succ(k))) -> less_than(cp, succ(k))
-                            [by forall_elim(succ(k), cp) succ-reflects-order]
+                            [by forall_elim(cp, succ(k)) succ-reflects-order]
                           @cp-below-succ-k |
                             less_than(cp, succ(k))
                             [by modus_ponens cp-below-succ-k-if-succ succ-cp-below-succ-succ-k]
@@ -330,19 +345,34 @@ proof
   @induction-step-for-all-k |
     forall k: Nat; (forall b: Nat; less_than(b, succ(k)) -> add(sub(k, b), b) = k) -> forall b: Nat; less_than(b, succ(succ(k))) -> add(sub(succ(k), b), b) = succ(k)
     [by forall_intro induction-step]
-  @conclusion |
+  @cancel-holds-swapped |
     forall a, b: Nat; less_than(b, succ(a)) -> add(sub(a, b), b) = a
     [by instantiate induction((fun j: Nat => forall b: Nat; less_than(b, succ(j)) -> add(sub(j, b), b) = j)) base-case induction-step-for-all-k]
+  @reorder-b |
+    fix b: Nat {
+      @reorder-a |
+        fix a: Nat {
+          @cancel-at-b-a |
+            less_than(b, succ(a)) -> add(sub(a, b), b) = a
+            [by forall_elim(a, b) cancel-holds-swapped]
+        }
+      @reorder-discharge-a |
+        forall a: Nat; less_than(b, succ(a)) -> add(sub(a, b), b) = a
+        [by forall_intro reorder-a]
+    }
+  @conclusion |
+    forall b, a: Nat; less_than(b, succ(a)) -> add(sub(a, b), b) = a
+    [by forall_intro reorder-b]
 qed
 
 // THE MEASURE LEMMA: 0 < b and b <= a  ->  a - b < a. This is what makes
 // subtractive gcd terminate (each step's first argument strictly drops).
-theorem subStrictlyDecreases: forall a, b: Nat; less_than(ZERO, b) -> less_than(b, succ(a)) -> less_than(sub(a, b), a)
+theorem subStrictlyDecreases: forall b, a: Nat; less_than(ZERO, b) -> less_than(b, succ(a)) -> less_than(sub(a, b), a)
 proof
-  @generalize-a |
-    fix a: Nat {
-      @generalize-b |
-        fix b: Nat {
+  @generalize-b |
+    fix b: Nat {
+      @generalize-a |
+        fix a: Nat {
           @given-b-positive |
             assume less_than(ZERO, b) {
               @given-b-below-succ-a |
@@ -354,20 +384,20 @@ proof
                     less_than(b, succ(a))
                     [by hypothesis given-b-below-succ-a]
                   @add-sub-cancels |
-                    forall aa, bb: Nat; less_than(bb, succ(aa)) -> add(sub(aa, bb), bb) = aa
+                    forall bb, aa: Nat; less_than(bb, succ(aa)) -> add(sub(aa, bb), bb) = aa
                     [by theorem addSubCancel]
                   @cancel-a-b-if-below |
                     less_than(b, succ(a)) -> add(sub(a, b), b) = a
-                    [by forall_elim(a, b) add-sub-cancels]
+                    [by forall_elim(b, a) add-sub-cancels]
                   @cancel-recovers-a |
                     add(sub(a, b), b) = a
                     [by modus_ponens cancel-a-b-if-below b-below-succ-a]
                   @less-than-gives-gap |
-                    forall y, x: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
+                    forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
                     [by axiom lessThanElim]
                   @zero-below-b-gives-gap |
                     less_than(ZERO, b) -> exists d: Nat; add(ZERO, succ(d)) = b
-                    [by forall_elim(b, ZERO) less-than-gives-gap]
+                    [by forall_elim(ZERO, b) less-than-gives-gap]
                   @gap-exists |
                     exists d: Nat; add(ZERO, succ(d)) = b
                     [by modus_ponens zero-below-b-gives-gap b-positive]
@@ -389,11 +419,11 @@ proof
                         add(sub(a, b), succ(d0)) = a
                         [by rewrite b-is-succ-d cancel-recovers-a]
                       @gap-witnesses-less-than |
-                        forall y, x, d: Nat; add(x, succ(d)) = y -> less_than(x, y)
+                        forall x, d, y: Nat; add(x, succ(d)) = y -> less_than(x, y)
                         [by axiom lessThanIntro]
                       @sub-below-a-if-gap |
                         add(sub(a, b), succ(d0)) = a -> less_than(sub(a, b), a)
-                        [by forall_elim(a, sub(a, b), d0) gap-witnesses-less-than]
+                        [by forall_elim(sub(a, b), d0, a) gap-witnesses-less-than]
                       @sub-is-below-a |
                         less_than(sub(a, b), a)
                         [by modus_ponens sub-below-a-if-gap cancel-recovers-a-via-gap]
@@ -410,18 +440,18 @@ proof
             less_than(ZERO, b) -> less_than(b, succ(a)) -> less_than(sub(a, b), a)
             [by implies_intro given-b-positive]
         }
-      @sub-decreases-discharge-b |
-        forall b: Nat; less_than(ZERO, b) -> less_than(b, succ(a)) -> less_than(sub(a, b), a)
-        [by forall_intro generalize-b]
+      @sub-decreases-discharge-a |
+        forall a: Nat; less_than(ZERO, b) -> less_than(b, succ(a)) -> less_than(sub(a, b), a)
+        [by forall_intro generalize-a]
     }
   @conclusion |
-    forall a, b: Nat; less_than(ZERO, b) -> less_than(b, succ(a)) -> less_than(sub(a, b), a)
-    [by forall_intro generalize-a]
+    forall b, a: Nat; less_than(ZERO, b) -> less_than(b, succ(a)) -> less_than(sub(a, b), a)
+    [by forall_intro generalize-b]
 qed
 
 // sub(add(x, d), add(y, d)) = sub(x, y): a common right addend cancels under
 // subtraction. By induction on d.
-theorem subAddSameRight: forall d, x, y: Nat; sub(add(x, d), add(y, d)) = sub(x, y)
+theorem subAddSameRight: forall x, d, y: Nat; sub(add(x, d), add(y, d)) = sub(x, y)
 proof
   @generalize-x |
     fix bx: Nat {
@@ -502,14 +532,35 @@ proof
   @induction-step-for-all-k |
     forall k: Nat; (forall x, y: Nat; sub(add(x, k), add(y, k)) = sub(x, y)) -> forall x, y: Nat; sub(add(x, succ(k)), add(y, succ(k))) = sub(x, y)
     [by forall_intro induction-step]
-  @conclusion |
+  @same-right-cancels-swapped |
     forall d, x, y: Nat; sub(add(x, d), add(y, d)) = sub(x, y)
     [by instantiate induction((fun j: Nat => forall x, y: Nat; sub(add(x, j), add(y, j)) = sub(x, y))) base-case induction-step-for-all-k]
+  @reorder-x |
+    fix x: Nat {
+      @reorder-d |
+        fix d: Nat {
+          @reorder-y |
+            fix y: Nat {
+              @same-right-cancels-at-x-d-y |
+                sub(add(x, d), add(y, d)) = sub(x, y)
+                [by forall_elim(d, x, y) same-right-cancels-swapped]
+            }
+          @reorder-discharge-y |
+            forall y: Nat; sub(add(x, d), add(y, d)) = sub(x, y)
+            [by forall_intro reorder-y]
+        }
+      @reorder-discharge-d |
+        forall d, y: Nat; sub(add(x, d), add(y, d)) = sub(x, y)
+        [by forall_intro reorder-d]
+    }
+  @conclusion |
+    forall x, d, y: Nat; sub(add(x, d), add(y, d)) = sub(x, y)
+    [by forall_intro reorder-x]
 qed
 
 // mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b)): multiplication distributes over
 // truncated subtraction. Induction on b with an inner case-split on a.
-theorem mulSubDistribLeft: forall b, a, d: Nat; mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b))
+theorem mulSubDistribLeft: forall d, a, b: Nat; mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b))
 proof
   @generalize-a |
     fix ba: Nat {
@@ -606,14 +657,14 @@ proof
                             [by rewrite inductive-hypothesis-at-ap-d lhs-peels]
                           // RHS: sub(mul(d, succ ap), mul(d, succ k))
                           @mul-succ-right |
-                            forall bb, aa: Nat; mul(aa, succ(bb)) = add(mul(aa, bb), aa)
+                            forall aa, bb: Nat; mul(aa, succ(bb)) = add(mul(aa, bb), aa)
                             [by theorem mulSuccRight]
                           @mul-d-succ-ap-unfolds |
                             mul(d, succ(ap)) = add(mul(d, ap), d)
-                            [by forall_elim(ap, d) mul-succ-right]
+                            [by forall_elim(d, ap) mul-succ-right]
                           @mul-d-succ-k-unfolds |
                             mul(d, succ(k)) = add(mul(d, k), d)
-                            [by forall_elim(k, d) mul-succ-right]
+                            [by forall_elim(d, k) mul-succ-right]
                           // sub(mul(d,succ ap), mul(d, succ k)) = sub(add(mul(d,ap),d), add(mul(d,k),d))
                           @rhs-is-reflexive |
                             sub(mul(d, succ(ap)), mul(d, succ(k))) = sub(mul(d, succ(ap)), mul(d, succ(k)))
@@ -626,11 +677,11 @@ proof
                             [by rewrite mul-d-succ-k-unfolds rhs-ap-unfolded]
                           // sub(add(x,d), add(y,d)) = sub(x,y) [subAddSameRight]
                           @subtract-same-right |
-                            forall dd, x, y: Nat; sub(add(x, dd), add(y, dd)) = sub(x, y)
+                            forall x, dd, y: Nat; sub(add(x, dd), add(y, dd)) = sub(x, y)
                             [by theorem subAddSameRight]
                           @same-right-cancels-here |
                             sub(add(mul(d, ap), d), add(mul(d, k), d)) = sub(mul(d, ap), mul(d, k))
-                            [by forall_elim(d, mul(d, ap), mul(d, k)) subtract-same-right]
+                            [by forall_elim(mul(d, ap), d, mul(d, k)) subtract-same-right]
                           // rhs-both-unfolded LHS = sub(add..,add..); rewrite it to sub(mul(d,ap),mul(d,k))
                           @rhs-is-unfolded-form |
                             sub(mul(d, succ(ap)), mul(d, succ(k))) = sub(add(mul(d, ap), d), add(mul(d, k), d))
@@ -677,7 +728,28 @@ proof
   @induction-step-for-all-k |
     forall k: Nat; (forall a, d: Nat; mul(d, sub(a, k)) = sub(mul(d, a), mul(d, k))) -> forall a, d: Nat; mul(d, sub(a, succ(k))) = sub(mul(d, a), mul(d, succ(k)))
     [by forall_intro induction-step]
-  @conclusion |
+  @distributes-swapped |
     forall b, a, d: Nat; mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b))
     [by instantiate induction((fun j: Nat => forall a, d: Nat; mul(d, sub(a, j)) = sub(mul(d, a), mul(d, j)))) base-case induction-step-for-all-k]
+  @reorder-d |
+    fix d: Nat {
+      @reorder-a |
+        fix a: Nat {
+          @reorder-b |
+            fix b: Nat {
+              @distributes-at-d-a-b |
+                mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b))
+                [by forall_elim(b, a, d) distributes-swapped]
+            }
+          @reorder-discharge-b |
+            forall b: Nat; mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b))
+            [by forall_intro reorder-b]
+        }
+      @reorder-discharge-a |
+        forall a, b: Nat; mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b))
+        [by forall_intro reorder-a]
+    }
+  @conclusion |
+    forall d, a, b: Nat; mul(d, sub(a, b)) = sub(mul(d, a), mul(d, b))
+    [by forall_intro reorder-d]
 qed

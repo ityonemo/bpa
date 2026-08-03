@@ -29,66 +29,6 @@ theorem mulIsAssociative = ring_algebra.mulIsAssociative
 theorem mulAddDistribLeft = ring_algebra.mulAddDistribLeft
 theorem mulAddDistribRight = ring_algebra.mulAddDistribRight
 
-// ring's associativity axioms bind `forall c, b, a` (inherited from group's
-// opAssoc), but ℤ's associativity theorems bind `forall a, b, c` — and α-matching
-// is binder-order-sensitive, so a discharge fact must match ring's order exactly.
-// These thin adapters restate ℤ's associativity in ring's binder order.
-theorem addAssocForRing: forall c, b, a: Int; add(add(a, b), c) = add(a, add(b, c))
-proof
-  @fix-c |
-    fix c: Int {
-      @fix-b |
-        fix b: Int {
-          @fix-a |
-            fix a: Int {
-              @assoc |
-                forall x, y, z: Int; add(add(x, y), z) = add(x, add(y, z))
-                [by theorem addIsAssociative]
-              @at-abc |
-                add(add(a, b), c) = add(a, add(b, c))
-                [by forall_elim(a, b, c) assoc]
-            }
-          @discharge-a |
-            forall a: Int; add(add(a, b), c) = add(a, add(b, c))
-            [by forall_intro fix-a]
-        }
-      @discharge-b |
-        forall b, a: Int; add(add(a, b), c) = add(a, add(b, c))
-        [by forall_intro fix-b]
-    }
-  @conclusion |
-    forall c, b, a: Int; add(add(a, b), c) = add(a, add(b, c))
-    [by forall_intro fix-c]
-qed
-
-theorem mulAssocForRing: forall c, b, a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
-proof
-  @fix-c |
-    fix c: Int {
-      @fix-b |
-        fix b: Int {
-          @fix-a |
-            fix a: Int {
-              @assoc |
-                forall x, y, z: Int; mul(mul(x, y), z) = mul(x, mul(y, z))
-                [by theorem mulIsAssociative]
-              @at-abc |
-                mul(mul(a, b), c) = mul(a, mul(b, c))
-                [by forall_elim(a, b, c) assoc]
-            }
-          @discharge-a |
-            forall a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
-            [by forall_intro fix-a]
-        }
-      @discharge-b |
-        forall b, a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
-        [by forall_intro fix-b]
-    }
-  @conclusion |
-    forall c, b, a: Int; mul(mul(a, b), c) = mul(a, mul(b, c))
-    [by forall_intro fix-c]
-qed
-
 // ℤ is a ring: discharge ring's nine axioms.
 model IntegerRing = Int {
   ring.Ring: Int
@@ -97,13 +37,13 @@ model IntegerRing = Int {
   ring.add: add
   ring.mul: mul
   ring.neg: neg
-  ring.addAssoc: addAssocForRing
+  ring.addAssoc: addIsAssociative
   ring.addZeroLeft: addZeroLeft
   ring.addZeroRight: addZeroRight
   ring.addNegLeft: addNegLeft
   ring.addNegRight: addNegRight
   ring.addCommutative: addIsCommutative
-  ring.mulAssoc: mulAssocForRing
+  ring.mulAssoc: mulIsAssociative
   ring.mulDistributesLeftOverAdd: mulAddDistribLeft
   ring.mulDistributesRightOverAdd: mulAddDistribRight
   }

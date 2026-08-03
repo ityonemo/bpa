@@ -101,16 +101,16 @@ proof
                     forall a: Grp; forall n: Nat; pow(a, succ(n)) = op(pow(a, n), a)
                     [by axiom powSucc]
                   @op-is-associative |
-                    forall c, b, a: Grp; op(op(a, b), c) = op(a, op(b, c))
+                    forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
                     [by axiom opAssoc]
 
                   // rewrite the exponent add(m, succ k) as succ(add(m, k)).
                   @add-succ-on-the-right |
-                    forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
+                    forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
                     [by theorem addSuccRight]
                   @exponent-unfolds |
                     add(m, succ(k)) = succ(add(m, k))
-                    [by forall_elim(k, m) add-succ-on-the-right]
+                    [by forall_elim(m, k) add-succ-on-the-right]
                   @lhs-exponent-refl |
                     pow(g, add(m, succ(k))) = pow(g, add(m, succ(k)))
                     [by reflexivity]
@@ -129,7 +129,7 @@ proof
                   // reassociate op(op(g^m, g^k), g) = op(g^m, op(g^k, g)).
                   @reassociates |
                     op(op(pow(g, m), pow(g, k)), g) = op(pow(g, m), op(pow(g, k), g))
-                    [by forall_elim(g, pow(g, k), pow(g, m)) op-is-associative]
+                    [by forall_elim(pow(g, m), pow(g, k), g) op-is-associative]
                   @lhs-reassociated |
                     pow(g, succ(add(m, k))) = op(pow(g, m), op(pow(g, k), g))
                     [by rewrite reassociates lhs-with-hypothesis]

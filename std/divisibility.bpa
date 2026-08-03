@@ -19,7 +19,7 @@ func mul(a: Dividable, b: Dividable): Dividable
 func add(a: Dividable, b: Dividable): Dividable
 
 pred divides(d: Dividable, n: Dividable)
-axiom dividesIntro: forall d, n, k: Dividable; n = mul(d, k) -> divides(d, n)
+axiom dividesIntro: forall n, d, k: Dividable; n = mul(d, k) -> divides(d, n)
 axiom dividesElim: forall d, n: Dividable; divides(d, n) -> exists k: Dividable; n = mul(d, k)
 
 // the multiplicative structure the divisibility proofs rely on (obligations).
@@ -44,7 +44,7 @@ proof
         d = mul(d, ONE)
         [by symmetry d-is-d-times-one]
       @intro |
-        forall a, n, k: Dividable; n = mul(a, k) -> divides(a, n)
+        forall n, a, k: Dividable; n = mul(a, k) -> divides(a, n)
         [by axiom dividesIntro]
       @intro-at |
         d = mul(d, ONE) -> divides(d, d)
@@ -104,11 +104,11 @@ proof
                         mul(a, c) = mul(d, mul(k, c))
                         [by rewrite product-reassociates product-with-a-expanded]
                       @multiple-divides |
-                        forall dd, n, j: Dividable; n = mul(dd, j) -> divides(dd, n)
+                        forall n, dd, j: Dividable; n = mul(dd, j) -> divides(dd, n)
                         [by axiom dividesIntro]
                       @witness-yields-d-divides-product |
                         mul(a, c) = mul(d, mul(k, c)) -> divides(d, mul(a, c))
-                        [by forall_elim(d, mul(a, c), mul(k, c)) multiple-divides]
+                        [by forall_elim(mul(a, c), d, mul(k, c)) multiple-divides]
                       @d-divides-product-under-witness |
                         divides(d, mul(a, c))
                         [by modus_ponens witness-yields-d-divides-product product-is-d-multiple]
@@ -202,11 +202,11 @@ proof
                                 add(a, b) = mul(d, add(j, k))
                                 [by rewrite d-times-k-is-b a-plus-multiple-is-d-multiple]
                               @multiple-divides |
-                                forall dd, n, q: Dividable; n = mul(dd, q) -> divides(dd, n)
+                                forall n, dd, q: Dividable; n = mul(dd, q) -> divides(dd, n)
                                 [by axiom dividesIntro]
                               @witness-yields-d-divides-sum |
                                 add(a, b) = mul(d, add(j, k)) -> divides(d, add(a, b))
-                                [by forall_elim(d, add(a, b), add(j, k)) multiple-divides]
+                                [by forall_elim(add(a, b), d, add(j, k)) multiple-divides]
                               @d-divides-sum-under-witness |
                                 divides(d, add(a, b))
                                 [by modus_ponens witness-yields-d-divides-sum sum-is-d-multiple]

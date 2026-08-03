@@ -15,7 +15,7 @@ sort T
 const E: T
 func op(a: T, b: T): T
 
-axiom opComm: forall b, a: T; op(a, b) = op(b, a)
+axiom opComm: forall a, b: T; op(a, b) = op(b, a)
 axiom opIdRight: forall a: T; op(a, E) = a
 ```
 
@@ -32,11 +32,11 @@ proof
   @generalize-a |
     fix a: T {
       @commuted |
-        forall y, x: T; op(x, y) = op(y, x)
+        forall x, y: T; op(x, y) = op(y, x)
         [by axiom opComm]
       @commute |
         op(E, a) = op(a, E)
-        [by forall_elim(a, E) commuted]
+        [by forall_elim(E, a) commuted]
       @right-id |
         forall x: T; op(x, E) = x
         [by axiom opIdRight]

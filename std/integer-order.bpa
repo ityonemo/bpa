@@ -35,8 +35,8 @@ axiom subDef: forall a, b: Int; sub(a, b) = add(a, neg(b))
 // -- the strict order: a < b iff b = a + succ(d) for some d ----------------
 
 pred less_than(a: Int, b: Int)
-axiom lessThanIntro: forall b, a, d: Int; add(a, succ(d)) = b -> less_than(a, b)
-axiom lessThanElim: forall b, a: Int; less_than(a, b) -> exists d: Int; add(a, succ(d)) = b
+axiom lessThanIntro: forall a, d, b: Int; add(a, succ(d)) = b -> less_than(a, b)
+axiom lessThanElim: forall a, b: Int; less_than(a, b) -> exists d: Int; add(a, succ(d)) = b
 
 // -- subtraction facts (proven from the ring algebra, no induction) ---------
 

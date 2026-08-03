@@ -15,7 +15,7 @@ func op(a: Grp, b: Grp): Grp
 func inverse(a: Grp): Grp
 
 // A group's three axioms (the identity and inverse laws are two-sided).
-axiom opAssoc: forall c, b, a: Grp; op(op(a, b), c) = op(a, op(b, c))
+axiom opAssoc: forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
 axiom opIdentityLeft: forall a: Grp; op(E, a) = a
 axiom opIdentityRight: forall a: Grp; op(a, E) = a
 axiom opInverseLeft: forall a: Grp; op(inverse(a), a) = E
@@ -207,12 +207,12 @@ proof
     forall a: Grp; inverse(inverse(a)) = a
     [by forall_intro generalize-a]
 qed
-theorem solutionExists: forall a, b: Grp; op(op(b, inverse(a)), a) = b
+theorem solutionExists: forall b, a: Grp; op(op(b, inverse(a)), a) = b
 proof
-  @generalize-a |
-    fix a: Grp {
-      @generalize-b |
-        fix b: Grp {
+  @generalize-b |
+    fix b: Grp {
+      @generalize-a |
+        fix a: Grp {
           @assoc-step |
             op(op(b, inverse(a)), a) = op(b, op(inverse(a), a))
             [by assoc(opAssoc)]
@@ -235,23 +235,23 @@ proof
             op(op(b, inverse(a)), a) = b
             [by rewrite b-times-identity-is-b with-E]
         }
-      @discharge-b |
-        forall b: Grp; op(op(b, inverse(a)), a) = b
-        [by forall_intro generalize-b]
+      @discharge-a |
+        forall a: Grp; op(op(b, inverse(a)), a) = b
+        [by forall_intro generalize-a]
     }
   @conclusion |
-    forall a, b: Grp; op(op(b, inverse(a)), a) = b
-    [by forall_intro generalize-a]
+    forall b, a: Grp; op(op(b, inverse(a)), a) = b
+    [by forall_intro generalize-b]
 qed
-theorem solutionUnique: forall a, b, x, y: Grp;
+theorem solutionUnique: forall x, a, b, y: Grp;
   op(x, a) = b -> op(y, a) = b -> x = y
 proof
-  @generalize-a |
-    fix a: Grp {
-      @generalize-b |
-        fix b: Grp {
-          @generalize-x |
-            fix x: Grp {
+  @generalize-x |
+    fix x: Grp {
+      @generalize-a |
+        fix a: Grp {
+          @generalize-b |
+            fix b: Grp {
               @generalize-y |
                 fix y: Grp {
                   @given-x |
@@ -334,24 +334,24 @@ proof
                 forall y: Grp; op(x, a) = b -> op(y, a) = b -> x = y
                 [by forall_intro generalize-y]
             }
-          @discharge-x |
-            forall x, y: Grp; op(x, a) = b -> op(y, a) = b -> x = y
-            [by forall_intro generalize-x]
+          @discharge-b |
+            forall b, y: Grp; op(x, a) = b -> op(y, a) = b -> x = y
+            [by forall_intro generalize-b]
         }
-      @discharge-b |
-        forall b, x, y: Grp; op(x, a) = b -> op(y, a) = b -> x = y
-        [by forall_intro generalize-b]
+      @discharge-a |
+        forall a, b, y: Grp; op(x, a) = b -> op(y, a) = b -> x = y
+        [by forall_intro generalize-a]
     }
   @conclusion |
-    forall a, b, x, y: Grp; op(x, a) = b -> op(y, a) = b -> x = y
-    [by forall_intro generalize-a]
+    forall x, a, b, y: Grp; op(x, a) = b -> op(y, a) = b -> x = y
+    [by forall_intro generalize-x]
 qed
-theorem cancelRight: forall a, b, c: Grp; op(b, a) = op(c, a) -> b = c
+theorem cancelRight: forall b, a, c: Grp; op(b, a) = op(c, a) -> b = c
 proof
-  @generalize-a |
-    fix a: Grp {
-      @generalize-b |
-        fix b: Grp {
+  @generalize-b |
+    fix b: Grp {
+      @generalize-a |
+        fix a: Grp {
           @generalize-c |
             fix c: Grp {
               @given-right-products-equal |
@@ -416,13 +416,13 @@ proof
             forall c: Grp; op(b, a) = op(c, a) -> b = c
             [by forall_intro generalize-c]
         }
-      @discharge-b |
-        forall b, c: Grp; op(b, a) = op(c, a) -> b = c
-        [by forall_intro generalize-b]
+      @discharge-a |
+        forall a, c: Grp; op(b, a) = op(c, a) -> b = c
+        [by forall_intro generalize-a]
     }
   @conclusion |
-    forall a, b, c: Grp; op(b, a) = op(c, a) -> b = c
-    [by forall_intro generalize-a]
+    forall b, a, c: Grp; op(b, a) = op(c, a) -> b = c
+    [by forall_intro generalize-b]
 qed
 theorem cancelLeft: forall a, b, c: Grp; op(a, b) = op(a, c) -> b = c
 proof

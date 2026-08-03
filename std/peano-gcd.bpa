@@ -34,7 +34,7 @@ axiom succNotZero = peano.succNotZero
 
 func gcd(a: Nat, b: Nat): Nat
 axiom gcdZero: forall a: Nat; gcd(a, ZERO) = a
-axiom gcdStep: forall a, b: Nat; b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
+axiom gcdStep: forall b, a: Nat; b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
 
 // -- forwarded theorems -----------------------------------------------------
 
@@ -43,7 +43,7 @@ forward gcdGreatest
 
 // -- correctness ------------------------------------------------------------
 
-theorem gcdDividesBoth: forall b, a: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+theorem gcdDividesBoth: forall a, b: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
 proof
   // step of strong induction: (forall m; m<b -> P(m)) -> P(b),
   // where P(n) = forall a; divides(gcd(a,n),a) and divides(gcd(a,n),n)
@@ -130,20 +130,20 @@ proof
                         b != ZERO
                         [by rewrite successor-bp-is-b successor-bp-is-nonzero]
                       @gcd-recurses-on-mod |
-                        forall aa, bb: Nat; bb != ZERO -> gcd(aa, bb) = gcd(bb, mod(aa, bb))
+                        forall bb, aa: Nat; bb != ZERO -> gcd(aa, bb) = gcd(bb, mod(aa, bb))
                         [by axiom gcdStep]
                       @gcd-step-if-nonzero |
                         b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
-                        [by forall_elim(a, b) gcd-recurses-on-mod]
+                        [by forall_elim(b, a) gcd-recurses-on-mod]
                       @gcd-recurses |
                         gcd(a, b) = gcd(b, mod(a, b))
                         [by modus_ponens gcd-step-if-nonzero b-is-nonzero]
                       @mod-is-below-divisor |
-                        forall aa, bb: Nat; bb != ZERO -> less_than(mod(aa, bb), bb)
+                        forall bb, aa: Nat; bb != ZERO -> less_than(mod(aa, bb), bb)
                         [by axiom modBound]
                       @mod-below-b-if-nonzero |
                         b != ZERO -> less_than(mod(a, b), b)
-                        [by forall_elim(a, b) mod-is-below-divisor]
+                        [by forall_elim(b, a) mod-is-below-divisor]
                       @mod-is-below-b |
                         less_than(mod(a, b), b)
                         [by modus_ponens mod-below-b-if-nonzero b-is-nonzero]
@@ -172,11 +172,11 @@ proof
                         divides(gcd(a, b), mod(a, b))
                         [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-mod]
                       @divisor-crosses-mod |
-                        forall d, aa, bb: Nat; bb != ZERO -> divides(d, bb) -> ((divides(d, aa) -> divides(d, mod(aa, bb))) and (divides(d, mod(aa, bb)) -> divides(d, aa)))
+                        forall bb, d, aa: Nat; bb != ZERO -> divides(d, bb) -> ((divides(d, aa) -> divides(d, mod(aa, bb))) and (divides(d, mod(aa, bb)) -> divides(d, aa)))
                         [by theorem dividesModStep]
                       @common-divisor-crosses-mod-at-gcd |
                         b != ZERO -> divides(gcd(a, b), b) -> ((divides(gcd(a, b), a) -> divides(gcd(a, b), mod(a, b))) and (divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a)))
-                        [by forall_elim(gcd(a, b), a, b) divisor-crosses-mod]
+                        [by forall_elim(b, gcd(a, b), a) divisor-crosses-mod]
                       @mod-crossing-holds-if-divides-b |
                         divides(gcd(a, b), b) -> ((divides(gcd(a, b), a) -> divides(gcd(a, b), mod(a, b))) and (divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a)))
                         [by modus_ponens common-divisor-crosses-mod-at-gcd b-is-nonzero]
@@ -213,12 +213,28 @@ proof
     forall b: Nat; (forall m: Nat; less_than(m, b) -> (forall a: Nat; divides(gcd(a, m), a) and divides(gcd(a, m), m))) -> forall a: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
     [by forall_intro induction-step]
   // strong induction gives forall b; P(b)
-  @conclusion |
+  @gcd-divides-both-swapped |
     forall b, a: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
     [by instantiate strongInduction((fun n: Nat => forall a: Nat; divides(gcd(a, n), a) and divides(gcd(a, n), n))) induction-step-for-all-k]
+  // re-quantify in first-appearance order (a before b)
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @gcd-divides-both-reordered |
+            divides(gcd(a, b), a) and divides(gcd(a, b), b)
+            [by forall_elim(b, a) gcd-divides-both-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+    [by forall_intro reorder-a]
 qed
 
-theorem gcdGreatest: forall b, a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+theorem gcdGreatest: forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
 proof
   @induction-step |
     fix b: Nat {
@@ -294,20 +310,20 @@ proof
                                     b != ZERO
                                     [by rewrite successor-bp-is-b successor-bp-is-nonzero]
                                   @gcd-recurses-on-mod |
-                                    forall aa, bb: Nat; bb != ZERO -> gcd(aa, bb) = gcd(bb, mod(aa, bb))
+                                    forall bb, aa: Nat; bb != ZERO -> gcd(aa, bb) = gcd(bb, mod(aa, bb))
                                     [by axiom gcdStep]
                                   @gcd-step-if-nonzero |
                                     b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
-                                    [by forall_elim(a, b) gcd-recurses-on-mod]
+                                    [by forall_elim(b, a) gcd-recurses-on-mod]
                                   @gcd-recurses |
                                     gcd(a, b) = gcd(b, mod(a, b))
                                     [by modus_ponens gcd-step-if-nonzero b-is-nonzero]
                                   @divisor-crosses-mod |
-                                    forall dd, aa, bb: Nat; bb != ZERO -> divides(dd, bb) -> ((divides(dd, aa) -> divides(dd, mod(aa, bb))) and (divides(dd, mod(aa, bb)) -> divides(dd, aa)))
+                                    forall bb, dd, aa: Nat; bb != ZERO -> divides(dd, bb) -> ((divides(dd, aa) -> divides(dd, mod(aa, bb))) and (divides(dd, mod(aa, bb)) -> divides(dd, aa)))
                                     [by theorem dividesModStep]
                                   @divisor-crosses-mod-at-d |
                                     b != ZERO -> divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
-                                    [by forall_elim(d, a, b) divisor-crosses-mod]
+                                    [by forall_elim(b, d, a) divisor-crosses-mod]
                                   @mod-crossing-holds-if-divides-b |
                                     divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
                                     [by modus_ponens divisor-crosses-mod-at-d b-is-nonzero]
@@ -321,11 +337,11 @@ proof
                                     divides(d, mod(a, b))
                                     [by modus_ponens divides-a-implies-divides-mod d-divides-a]
                                   @mod-is-below-divisor |
-                                    forall aa, bb: Nat; bb != ZERO -> less_than(mod(aa, bb), bb)
+                                    forall bb, aa: Nat; bb != ZERO -> less_than(mod(aa, bb), bb)
                                     [by axiom modBound]
                                   @mod-below-b-if-nonzero |
                                     b != ZERO -> less_than(mod(a, b), b)
-                                    [by forall_elim(a, b) mod-is-below-divisor]
+                                    [by forall_elim(b, a) mod-is-below-divisor]
                                   @mod-is-below-b |
                                     less_than(mod(a, b), b)
                                     [by modus_ponens mod-below-b-if-nonzero b-is-nonzero]
@@ -382,7 +398,29 @@ proof
   @induction-step-for-all-k |
     forall b: Nat; (forall m: Nat; less_than(m, b) -> (forall a, d: Nat; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))) -> forall a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
     [by forall_intro induction-step]
-  @conclusion |
+  @gcd-greatest-swapped |
     forall b, a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
     [by instantiate strongInduction((fun n: Nat => forall a, d: Nat; divides(d, a) -> divides(d, n) -> divides(d, gcd(a, n)))) induction-step-for-all-k]
+  // re-quantify in first-appearance order (d before a before b)
+  @reorder-d |
+    fix d: Nat {
+      @reorder-a |
+        fix a: Nat {
+          @reorder-b |
+            fix b: Nat {
+              @greatest-at-d-a-b |
+                divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                [by forall_elim(b, a, d) gcd-greatest-swapped]
+            }
+          @reorder-discharge-b |
+            forall b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+            [by forall_intro reorder-b]
+        }
+      @reorder-discharge-a |
+        forall a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+        [by forall_intro reorder-a]
+    }
+  @conclusion |
+    forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by forall_intro reorder-d]
 qed

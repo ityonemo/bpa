@@ -34,10 +34,10 @@ proof
     [by arithmetic]
 qed
 
-theorem boundGrows: forall b, a: Nat; less_than(a, add(a, succ(b)))
+theorem boundGrows: forall a, b: Nat; less_than(a, add(a, succ(b)))
 proof
   @conclusion |
-    forall b, a: Nat; less_than(a, add(a, succ(b)))
+    forall a, b: Nat; less_than(a, add(a, succ(b)))
     [by arithmetic]
 qed
 
@@ -62,12 +62,12 @@ proof
     [by arithmetic]
 qed
 
-theorem stepUpPure: forall b, a: Nat; less_than(a, b) -> less_than(a, succ(b))
+theorem stepUpPure: forall a, b: Nat; less_than(a, b) -> less_than(a, succ(b))
 proof
-  @gen-b |
-    fix b: Nat {
-      @gen-a |
-        fix a: Nat {
+  @gen-a |
+    fix a: Nat {
+      @gen-b |
+        fix b: Nat {
           @hyp |
             assume less_than(a, b) {
               @have |
@@ -81,11 +81,11 @@ proof
             less_than(a, b) -> less_than(a, succ(b))
             [by implies_intro hyp]
         }
-      @all-a |
-        forall a: Nat; less_than(a, b) -> less_than(a, succ(b))
-        [by forall_intro gen-a]
+      @all-b |
+        forall b: Nat; less_than(a, b) -> less_than(a, succ(b))
+        [by forall_intro gen-b]
     }
   @conclusion |
-    forall b, a: Nat; less_than(a, b) -> less_than(a, succ(b))
-    [by forall_intro gen-b]
+    forall a, b: Nat; less_than(a, b) -> less_than(a, succ(b))
+    [by forall_intro gen-a]
 qed

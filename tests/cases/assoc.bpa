@@ -9,7 +9,7 @@
 // totally custom `op`.
 sort T
 func op(a: T, b: T): T
-axiom opAssoc: forall c, b, a: T; op(op(a, b), c) = op(a, op(b, c))
+axiom opAssoc: forall a, b, c: T; op(op(a, b), c) = op(a, op(b, c))
 
 // one re-association
 theorem reassoc1: forall a, b, c: T; op(op(a, b), c) = op(a, op(b, c))

@@ -69,7 +69,7 @@ qed
 // Strategy: fix b, induct on the left argument with
 // prop(k) := add(k, succ(b)) = succ(add(k, b)). The hypothesis step is
 // cited as a rewrite rule alongside the axiom.
-theorem addSuccRight: forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
+theorem addSuccRight: forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
 proof
   @generalize-b |
     fix b: Nat {
@@ -98,14 +98,29 @@ proof
         forall a: Nat; add(a, succ(b)) = succ(add(a, b))
         [by instantiate induction((fun k: Nat => add(k, succ(b)) = succ(add(k, b)))) base-case induction-step-for-all-k]
     }
-  @conclusion |
+  @add-succ-right-swapped |
     forall b, a: Nat; add(a, succ(b)) = succ(add(a, b))
     [by forall_intro generalize-b]
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @add-succ-right-at-a-b |
+            add(a, succ(b)) = succ(add(a, b))
+            [by forall_elim(b, a) add-succ-right-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; add(a, succ(b)) = succ(add(a, b))
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
+    [by forall_intro reorder-a]
 qed
 
 // Strategy: induction on b with prop(k) := forall a; add(a, k) = add(k, a).
 // Each case that took seven primitive steps by hand is one simplify.
-theorem addIsCommutative: forall b, a: Nat; add(a, b) = add(b, a)
+theorem addIsCommutative: forall a, b: Nat; add(a, b) = add(b, a)
 proof
   @base-case-proof |
     fix a: Nat {
@@ -143,9 +158,24 @@ proof
   @induction-step-for-all-k |
     forall k: Nat; (forall a: Nat; add(a, k) = add(k, a)) -> forall a: Nat; add(a, succ(k)) = add(succ(k), a)
     [by forall_intro induction-step]
-  @conclusion |
+  @add-is-commutative-swapped |
     forall b, a: Nat; add(a, b) = add(b, a)
     [by instantiate induction((fun k: Nat => forall a: Nat; add(a, k) = add(k, a))) base-case induction-step-for-all-k]
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @add-is-commutative-at-a-b |
+            add(a, b) = add(b, a)
+            [by forall_elim(b, a) add-is-commutative-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; add(a, b) = add(b, a)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; add(a, b) = add(b, a)
+    [by forall_intro reorder-a]
 qed
 
 // `define` names a term: uses expand transparently at elaboration, so the

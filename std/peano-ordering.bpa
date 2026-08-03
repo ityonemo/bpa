@@ -33,14 +33,14 @@ theorem addSuccNeverSelf = peano.addSuccNeverSelf
 theorem zeroOrSucc = peano.zeroOrSucc
 
 pred less_than(a: Nat, b: Nat)
-axiom lessThanIntro: forall b, a, d: Nat; add(a, succ(d)) = b -> less_than(a, b)
-axiom lessThanElim: forall b, a: Nat; less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
+axiom lessThanIntro: forall a, d, b: Nat; add(a, succ(d)) = b -> less_than(a, b)
+axiom lessThanElim: forall a, b: Nat; less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
 
 // a <= b iff b is a plus SOME amount (the gap d may be ZERO, unlike
 // less_than's succ(d)). Same intro/elim shape as less_than.
 pred less_or_equal(a: Nat, b: Nat)
-axiom lessOrEqualIntro: forall b, a, d: Nat; add(a, d) = b -> less_or_equal(a, b)
-axiom lessOrEqualElim: forall b, a: Nat; less_or_equal(a, b) -> exists d: Nat; add(a, d) = b
+axiom lessOrEqualIntro: forall a, d, b: Nat; add(a, d) = b -> less_or_equal(a, b)
+axiom lessOrEqualElim: forall a, b: Nat; less_or_equal(a, b) -> exists d: Nat; add(a, d) = b
 
 // -- forwarded theorems -----------------------------------------------------
 
@@ -70,20 +70,20 @@ forward mulCancelLeft
 
 // -- order theory ----------------------------------------------------------
 
-theorem succPreservesOrder: forall b, a: Nat; less_than(a, b) -> less_than(succ(a), succ(b))
+theorem succPreservesOrder: forall a, b: Nat; less_than(a, b) -> less_than(succ(a), succ(b))
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-a-below-b |
             assume less_than(a, b) {
               @less-than-elim |
-                forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+                forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
                 [by axiom lessThanElim]
               @gap-exists-if-below |
                 less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                [by forall_elim(b, a) less-than-elim]
+                [by forall_elim(a, b) less-than-elim]
               @a-below-b |
                 less_than(a, b)
                 [by hypothesis given-a-below-b]
@@ -105,11 +105,11 @@ proof
                     add(succ(a), succ(u)) = succ(b)
                     [by rewrite gap-witnesses-b successor-gap-unfolds]
                   @a-gap-witnesses-less-than |
-                    forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
                   @successors-below-if-gap |
                     add(succ(a), succ(u)) = succ(b) -> less_than(succ(a), succ(b))
-                    [by forall_elim(succ(b), succ(a), u) a-gap-witnesses-less-than]
+                    [by forall_elim(succ(a), u, succ(b)) a-gap-witnesses-less-than]
                   @successors-preserve-order |
                     less_than(succ(a), succ(b))
                     [by modus_ponens successors-below-if-gap successor-gap-witnesses-succ-b]
@@ -122,34 +122,34 @@ proof
             less_than(a, b) -> less_than(succ(a), succ(b))
             [by implies_intro given-a-below-b]
         }
-      @discharge-a |
-        forall a: Nat; less_than(a, b) -> less_than(succ(a), succ(b))
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_than(a, b) -> less_than(succ(a), succ(b))
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_than(a, b) -> less_than(succ(a), succ(b))
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_than(a, b) -> less_than(succ(a), succ(b))
+    [by forall_intro generalize-a]
 qed
 
 // The inverse of succPreservesOrder: stripping a common successor preserves
 // the strict order. (Needed to reason about measures under subtraction.)
-theorem succReflectsOrder: forall b, a: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
+theorem succReflectsOrder: forall a, b: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-successors-below |
             assume less_than(succ(a), succ(b)) {
               @successors-below |
                 less_than(succ(a), succ(b))
                 [by hypothesis given-successors-below]
               @less-than-elim |
-                forall y, x: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
+                forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
                 [by axiom lessThanElim]
               @successor-gap-exists-if-below |
                 less_than(succ(a), succ(b)) -> exists d: Nat; add(succ(a), succ(d)) = succ(b)
-                [by forall_elim(succ(b), succ(a)) less-than-elim]
+                [by forall_elim(succ(a), succ(b)) less-than-elim]
               @successor-gap-exists |
                 exists d: Nat; add(succ(a), succ(d)) = succ(b)
                 [by modus_ponens successor-gap-exists-if-below successors-below]
@@ -174,11 +174,11 @@ proof
                     add(a, succ(d0)) = b
                     [by modus_ponens gap-is-b-if-succ-equal succ-of-gap-is-succ-b]
                   @a-gap-witnesses-less-than |
-                    forall y, x, d: Nat; add(x, succ(d)) = y -> less_than(x, y)
+                    forall x, d, y: Nat; add(x, succ(d)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
                   @a-below-b-if-gap |
                     add(a, succ(d0)) = b -> less_than(a, b)
-                    [by forall_elim(b, a, d0) a-gap-witnesses-less-than]
+                    [by forall_elim(a, d0, b) a-gap-witnesses-less-than]
                   @a-below-b |
                     less_than(a, b)
                     [by modus_ponens a-below-b-if-gap gap-witnesses-b]
@@ -191,35 +191,35 @@ proof
             less_than(succ(a), succ(b)) -> less_than(a, b)
             [by implies_intro given-successors-below]
         }
-      @discharge-a |
-        forall a: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_than(succ(a), succ(b)) -> less_than(a, b)
+    [by forall_intro generalize-a]
 qed
 
 // Strategy: unpack both witnesses; the combined gap is add(u, succ(v)),
 // assembled with associativity and one succ-pull.
-theorem lessThanTransitive: forall c, b, a: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
+theorem lessThanTransitive: forall a, b, c: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
 proof
-  @generalize-c |
-    fix c: Nat {
+  @generalize-a |
+    fix a: Nat {
       @generalize-b |
         fix b: Nat {
-          @generalize-a |
-            fix a: Nat {
+          @generalize-c |
+            fix c: Nat {
               @given-a-below-b |
                 assume less_than(a, b) {
                   @given-b-below-c |
                     assume less_than(b, c) {
                       @less-than-elim |
-                        forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+                        forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
                         [by axiom lessThanElim]
                       @gap-ab-exists-if-below |
                         less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                        [by forall_elim(b, a) less-than-elim]
+                        [by forall_elim(a, b) less-than-elim]
                       @a-below-b |
                         less_than(a, b)
                         [by hypothesis given-a-below-b]
@@ -228,7 +228,7 @@ proof
                         [by modus_ponens gap-ab-exists-if-below a-below-b]
                       @gap-bc-exists-if-below |
                         less_than(b, c) -> exists w: Nat; add(b, succ(w)) = c
-                        [by forall_elim(c, b) less-than-elim]
+                        [by forall_elim(b, c) less-than-elim]
                       @b-below-c |
                         less_than(b, c)
                         [by hypothesis given-b-below-c]
@@ -255,11 +255,11 @@ proof
                                 add(add(a, succ(u)), succ(v)) = c
                                 [by rewrite b-is-a-plus-gap-u gap-v-witnesses-c]
                               @add-assoc |
-                                forall f, e, m: Nat; add(add(m, e), f) = add(m, add(e, f))
+                                forall m, e, f: Nat; add(add(m, e), f) = add(m, add(e, f))
                                 [by theorem addIsAssociative]
                               @nested-gaps-regroup |
                                 add(add(a, succ(u)), succ(v)) = add(a, add(succ(u), succ(v)))
-                                [by forall_elim(succ(v), succ(u), a) add-assoc]
+                                [by forall_elim(a, succ(u), succ(v)) add-assoc]
                               @combined-gap-reaches-c |
                                 add(a, add(succ(u), succ(v))) = c
                                 [by rewrite nested-gaps-regroup nested-gaps-reach-c]
@@ -273,11 +273,11 @@ proof
                                 add(a, succ(add(u, succ(v)))) = c
                                 [by rewrite combined-gap-is-successor combined-gap-reaches-c]
                               @a-gap-witnesses-less-than |
-                                forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                                forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                                 [by axiom lessThanIntro]
                               @a-below-c-if-gap |
                                 add(a, succ(add(u, succ(v)))) = c -> less_than(a, c)
-                                [by forall_elim(c, a, add(u, succ(v))) a-gap-witnesses-less-than]
+                                [by forall_elim(a, add(u, succ(v)), c) a-gap-witnesses-less-than]
                               @a-below-c |
                                 less_than(a, c)
                                 [by modus_ponens a-below-c-if-gap successor-gap-reaches-c]
@@ -298,17 +298,17 @@ proof
                 less_than(a, b) -> less_than(b, c) -> less_than(a, c)
                 [by implies_intro given-a-below-b]
             }
-          @discharge-a |
-            forall a: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
-            [by forall_intro generalize-a]
+          @discharge-c |
+            forall c: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
+            [by forall_intro generalize-c]
         }
       @discharge-b |
-        forall b, a: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
+        forall b, c: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall c, b, a: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
-    [by forall_intro generalize-c]
+    forall a, b, c: Nat; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
+    [by forall_intro generalize-a]
 qed
 
 // Strategy: a witness for n < n would make add(n, succ(w)) = n, contradicting
@@ -320,7 +320,7 @@ proof
       @given-n-below-n |
         assume less_than(n, n) {
           @less-than-elim |
-            forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+            forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
             [by axiom lessThanElim]
           @self-gap-exists-if-below |
             less_than(n, n) -> exists w: Nat; add(n, succ(w)) = n
@@ -337,11 +337,11 @@ proof
                 add(n, succ(u)) = n
                 [by hypothesis with-gap-u]
               @successor-sum-never-self |
-                forall e, m: Nat; add(m, succ(e)) != m
+                forall m, e: Nat; add(m, succ(e)) != m
                 [by theorem addSuccNeverSelf]
               @gap-cannot-witness-self |
                 add(n, succ(u)) != n
-                [by forall_elim(u, n) successor-sum-never-self]
+                [by forall_elim(n, u) successor-sum-never-self]
               @not-n-below-n |
                 not less_than(n, n)
                 [by absurd gap-witnesses-self gap-cannot-witness-self]
@@ -364,22 +364,22 @@ qed
 
 // Strategy: the same witness works after adding c on the left, regrouped with
 // associativity.
-theorem additionPreservesOrder: forall c, b, a: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
+theorem additionPreservesOrder: forall a, b, c: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
 proof
-  @generalize-c |
-    fix c: Nat {
+  @generalize-a |
+    fix a: Nat {
       @generalize-b |
         fix b: Nat {
-          @generalize-a |
-            fix a: Nat {
+          @generalize-c |
+            fix c: Nat {
               @given-a-below-b |
                 assume less_than(a, b) {
                   @less-than-elim |
-                    forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+                    forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
                     [by axiom lessThanElim]
                   @gap-exists-if-below |
                     less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                    [by forall_elim(b, a) less-than-elim]
+                    [by forall_elim(a, b) less-than-elim]
                   @a-below-b |
                     less_than(a, b)
                     [by hypothesis given-a-below-b]
@@ -392,20 +392,20 @@ proof
                         add(a, succ(u)) = b
                         [by hypothesis with-gap-u]
                       @add-assoc |
-                        forall f, e, m: Nat; add(add(m, e), f) = add(m, add(e, f))
+                        forall m, e, f: Nat; add(add(m, e), f) = add(m, add(e, f))
                         [by theorem addIsAssociative]
                       @shifted-gap-regroups |
                         add(add(c, a), succ(u)) = add(c, add(a, succ(u)))
-                        [by forall_elim(succ(u), a, c) add-assoc]
+                        [by forall_elim(c, a, succ(u)) add-assoc]
                       @shifted-gap-witnesses-c-plus-b |
                         add(add(c, a), succ(u)) = add(c, b)
                         [by rewrite gap-witnesses-b shifted-gap-regroups]
                       @a-gap-witnesses-less-than |
-                        forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                        forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                         [by axiom lessThanIntro]
                       @shifted-below-if-gap |
                         add(add(c, a), succ(u)) = add(c, b) -> less_than(add(c, a), add(c, b))
-                        [by forall_elim(add(c, b), add(c, a), u) a-gap-witnesses-less-than]
+                        [by forall_elim(add(c, a), u, add(c, b)) a-gap-witnesses-less-than]
                       @shifted-preserves-order |
                         less_than(add(c, a), add(c, b))
                         [by modus_ponens shifted-below-if-gap shifted-gap-witnesses-c-plus-b]
@@ -418,37 +418,37 @@ proof
                 less_than(a, b) -> less_than(add(c, a), add(c, b))
                 [by implies_intro given-a-below-b]
             }
-          @discharge-a |
-            forall a: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
-            [by forall_intro generalize-a]
+          @discharge-c |
+            forall c: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
+            [by forall_intro generalize-c]
         }
       @discharge-b |
-        forall b, a: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
+        forall b, c: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall c, b, a: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
-    [by forall_intro generalize-c]
+    forall a, b, c: Nat; less_than(a, b) -> less_than(add(c, a), add(c, b))
+    [by forall_intro generalize-a]
 qed
 
 // Strategy: induction; every natural is ZERO or a successor. The case-split
 // helper for trichotomy.
-theorem multiplicationPreservesOrder: forall c, b, a: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
+theorem multiplicationPreservesOrder: forall a, b, c: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
 proof
-  @generalize-c |
-    fix c: Nat {
+  @generalize-a |
+    fix a: Nat {
       @generalize-b |
         fix b: Nat {
-          @generalize-a |
-            fix a: Nat {
+          @generalize-c |
+            fix c: Nat {
               @given-a-below-b |
                 assume less_than(a, b) {
                   @less-than-elim |
-                    forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+                    forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
                     [by axiom lessThanElim]
                   @gap-exists-if-below |
                     less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                    [by forall_elim(b, a) less-than-elim]
+                    [by forall_elim(a, b) less-than-elim]
                   @a-below-b |
                     less_than(a, b)
                     [by hypothesis given-a-below-b]
@@ -473,11 +473,11 @@ proof
                         mul(succ(c), b) = mul(succ(c), add(a, succ(u)))
                         [by rewrite b-is-a-plus-gap scaled-b-refl]
                       @scaling-distributes-over-sum |
-                        forall f, e, m: Nat; mul(m, add(e, f)) = add(mul(m, e), mul(m, f))
+                        forall m, e, f: Nat; mul(m, add(e, f)) = add(mul(m, e), mul(m, f))
                         [by theorem peano.mulAddDistribLeft]
                       @scaled-sum-distributes |
                         mul(succ(c), add(a, succ(u))) = add(mul(succ(c), a), mul(succ(c), succ(u)))
-                        [by forall_elim(succ(u), a, succ(c)) scaling-distributes-over-sum]
+                        [by forall_elim(succ(c), a, succ(u)) scaling-distributes-over-sum]
                       @scaled-b-distributed |
                         mul(succ(c), b) = add(mul(succ(c), a), mul(succ(c), succ(u)))
                         [by rewrite scaled-sum-distributes scaled-b-is-scaled-sum]
@@ -488,11 +488,11 @@ proof
                         mul(succ(c), succ(u)) = add(mul(c, succ(u)), succ(u))
                         [by forall_elim(c, succ(u)) mul-succ-left]
                       @add-succ-right |
-                        forall e, m: Nat; add(m, succ(e)) = succ(add(m, e))
+                        forall m, e: Nat; add(m, succ(e)) = succ(add(m, e))
                         [by theorem addSuccRight]
                       @scaled-gap-is-successor |
                         add(mul(c, succ(u)), succ(u)) = succ(add(mul(c, succ(u)), u))
-                        [by forall_elim(u, mul(c, succ(u))) add-succ-right]
+                        [by forall_elim(mul(c, succ(u)), u) add-succ-right]
                       @scaled-gap-total |
                         mul(succ(c), succ(u)) = succ(add(mul(c, succ(u)), u))
                         [by rewrite scaled-gap-is-successor scaled-gap-unfolds]
@@ -500,11 +500,11 @@ proof
                         mul(succ(c), b) = add(mul(succ(c), a), succ(add(mul(c, succ(u)), u)))
                         [by rewrite scaled-gap-total scaled-b-distributed]
                       @a-gap-witnesses-less-than |
-                        forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                        forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                         [by axiom lessThanIntro]
                       @scaled-below-if-gap |
                         add(mul(succ(c), a), succ(add(mul(c, succ(u)), u))) = mul(succ(c), b) -> less_than(mul(succ(c), a), mul(succ(c), b))
-                        [by forall_elim(mul(succ(c), b), mul(succ(c), a), add(mul(c, succ(u)), u)) a-gap-witnesses-less-than]
+                        [by forall_elim(mul(succ(c), a), add(mul(c, succ(u)), u), mul(succ(c), b)) a-gap-witnesses-less-than]
                       @scaled-b-has-gap-refl |
                         mul(succ(c), b) = mul(succ(c), b)
                         [by reflexivity]
@@ -523,17 +523,17 @@ proof
                 less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
                 [by implies_intro given-a-below-b]
             }
-          @discharge-a |
-            forall a: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
-            [by forall_intro generalize-a]
+          @discharge-c |
+            forall c: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
+            [by forall_intro generalize-c]
         }
       @discharge-b |
-        forall b, a: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
+        forall b, c: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall c, b, a: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
-    [by forall_intro generalize-c]
+    forall a, b, c: Nat; less_than(a, b) -> less_than(mul(succ(c), a), mul(succ(c), b))
+    [by forall_intro generalize-a]
 qed
 
 // Strategy: ONE covers ZERO — ZERO < ONE, and nothing sits strictly between:
@@ -560,11 +560,11 @@ proof
     add(ZERO, succ(ZERO)) = ONE
     [by rewrite succ-zero-is-one zero-gap-is-succ-zero]
   @a-gap-witnesses-less-than |
-    forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
     [by axiom lessThanIntro]
   @zero-below-one-if-gap |
     add(ZERO, succ(ZERO)) = ONE -> less_than(ZERO, ONE)
-    [by forall_elim(ONE, ZERO, ZERO) a-gap-witnesses-less-than]
+    [by forall_elim(ZERO, ZERO, ONE) a-gap-witnesses-less-than]
   @part-one |
     less_than(ZERO, ONE)
     [by modus_ponens zero-below-one-if-gap zero-gap-reaches-one]
@@ -584,17 +584,17 @@ proof
             less_than(n, ONE)
             [by and_elim_right n-is-strictly-between]
           @less-than-elim |
-            forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+            forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
             [by axiom lessThanElim]
           @lower-gap-exists-if-below |
             less_than(ZERO, n) -> exists w: Nat; add(ZERO, succ(w)) = n
-            [by forall_elim(n, ZERO) less-than-elim]
+            [by forall_elim(ZERO, n) less-than-elim]
           @lower-gap-exists |
             exists w: Nat; add(ZERO, succ(w)) = n
             [by modus_ponens lower-gap-exists-if-below zero-below-n]
           @upper-gap-exists-if-below |
             less_than(n, ONE) -> exists w: Nat; add(n, succ(w)) = ONE
-            [by forall_elim(ONE, n) less-than-elim]
+            [by forall_elim(n, ONE) less-than-elim]
           @upper-gap-exists |
             exists w: Nat; add(n, succ(w)) = ONE
             [by modus_ponens upper-gap-exists-if-below n-below-one]
@@ -657,11 +657,11 @@ proof
                     add(u, succ(v)) = ZERO
                     [by modus_ponens inner-gap-is-zero-if-succ-equal succ-of-inner-gap-is-succ-zero]
                   @add-succ-right |
-                    forall e, m: Nat; add(m, succ(e)) = succ(add(m, e))
+                    forall m, e: Nat; add(m, succ(e)) = succ(add(m, e))
                     [by theorem addSuccRight]
                   @inner-gap-unfolds |
                     add(u, succ(v)) = succ(add(u, v))
-                    [by forall_elim(v, u) add-succ-right]
+                    [by forall_elim(u, v) add-succ-right]
                   @inner-gap-refl |
                     add(u, succ(v)) = add(u, succ(v))
                     [by reflexivity]
@@ -752,11 +752,11 @@ proof
                 add(ZERO, succ(m0)) = succ(m0)
                 [by forall_elim(succ(m0)) add-zero-left]
               @a-gap-witnesses-less-than |
-                forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                 [by axiom lessThanIntro]
               @zero-below-succ-m-if-gap |
                 add(ZERO, succ(m0)) = succ(m0) -> less_than(ZERO, succ(m0))
-                [by forall_elim(succ(m0), ZERO, m0) a-gap-witnesses-less-than]
+                [by forall_elim(ZERO, m0, succ(m0)) a-gap-witnesses-less-than]
               @zero-below-succ-m |
                 less_than(ZERO, succ(m0))
                 [by modus_ponens zero-below-succ-m-if-gap zero-gap-reaches-succ-m]
@@ -810,11 +810,11 @@ proof
                     add(ZERO, succ(k)) = succ(k)
                     [by forall_elim(succ(k)) add-zero-left]
                   @a-gap-witnesses-less-than |
-                    forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
                   @zero-below-succ-k-if-gap |
                     add(ZERO, succ(k)) = succ(k) -> less_than(ZERO, succ(k))
-                    [by forall_elim(succ(k), ZERO, k) a-gap-witnesses-less-than]
+                    [by forall_elim(ZERO, k, succ(k)) a-gap-witnesses-less-than]
                   @zero-below-succ-k |
                     less_than(ZERO, succ(k))
                     [by modus_ponens zero-below-succ-k-if-gap zero-gap-reaches-succ-k]
@@ -861,11 +861,11 @@ proof
                                 less_than(k, m1)
                                 [by hypothesis when-k-below-m]
                               @successors-preserve-order |
-                                forall y, x: Nat; less_than(x, y) -> less_than(succ(x), succ(y))
+                                forall x, y: Nat; less_than(x, y) -> less_than(succ(x), succ(y))
                                 [by theorem succPreservesOrder]
                               @succ-k-below-succ-m-if-below |
                                 less_than(k, m1) -> less_than(succ(k), succ(m1))
-                                [by forall_elim(m1, k) successors-preserve-order]
+                                [by forall_elim(k, m1) successors-preserve-order]
                               @succ-k-below-succ-m |
                                 less_than(succ(k), succ(m1))
                                 [by modus_ponens succ-k-below-succ-m-if-below k-below-m]
@@ -922,11 +922,11 @@ proof
                             less_than(m1, k)
                             [by hypothesis when-m-below-k]
                           @successors-preserve-order |
-                            forall y, x: Nat; less_than(x, y) -> less_than(succ(x), succ(y))
+                            forall x, y: Nat; less_than(x, y) -> less_than(succ(x), succ(y))
                             [by theorem succPreservesOrder]
                           @succ-m-below-succ-k-if-below |
                             less_than(m1, k) -> less_than(succ(m1), succ(k))
-                            [by forall_elim(k, m1) successors-preserve-order]
+                            [by forall_elim(m1, k) successors-preserve-order]
                           @succ-m-below-succ-k |
                             less_than(succ(m1), succ(k))
                             [by modus_ponens succ-m-below-succ-k-if-below m-below-k]
@@ -981,11 +981,11 @@ proof
       @given-a-below-zero |
         assume less_than(a, ZERO) {
           @less-than-elim |
-            forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+            forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
             [by axiom lessThanElim]
           @gap-to-zero-exists-if-below |
             less_than(a, ZERO) -> exists w: Nat; add(a, succ(w)) = ZERO
-            [by forall_elim(ZERO, a) less-than-elim]
+            [by forall_elim(a, ZERO) less-than-elim]
           @a-below-zero |
             less_than(a, ZERO)
             [by hypothesis given-a-below-zero]
@@ -1030,20 +1030,20 @@ proof
 qed
 
 // Growing the bound preserves order: the witness for a < b grows by one.
-theorem lessThanSuccRight: forall b, a: Nat; less_than(a, b) -> less_than(a, succ(b))
+theorem lessThanSuccRight: forall a, b: Nat; less_than(a, b) -> less_than(a, succ(b))
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-a-below-b |
             assume less_than(a, b) {
               @less-than-elim |
-                forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+                forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
                 [by axiom lessThanElim]
               @gap-exists-if-below |
                 less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                [by forall_elim(b, a) less-than-elim]
+                [by forall_elim(a, b) less-than-elim]
               @a-below-b |
                 less_than(a, b)
                 [by hypothesis given-a-below-b]
@@ -1062,11 +1062,11 @@ proof
                     add(a, succ(succ(u))) = succ(b)
                     [by rewrite gap-witnesses-b grown-gap-is-successor]
                   @a-gap-witnesses-less-than |
-                    forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
                   @a-below-succ-b-if-gap |
                     add(a, succ(succ(u))) = succ(b) -> less_than(a, succ(b))
-                    [by forall_elim(succ(b), a, succ(u)) a-gap-witnesses-less-than]
+                    [by forall_elim(a, succ(u), succ(b)) a-gap-witnesses-less-than]
                   @a-below-succ-b |
                     less_than(a, succ(b))
                     [by modus_ponens a-below-succ-b-if-gap grown-gap-reaches-succ-b]
@@ -1079,13 +1079,13 @@ proof
             less_than(a, b) -> less_than(a, succ(b))
             [by implies_intro given-a-below-b]
         }
-      @discharge-a |
-        forall a: Nat; less_than(a, b) -> less_than(a, succ(b))
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_than(a, b) -> less_than(a, succ(b))
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_than(a, b) -> less_than(a, succ(b))
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_than(a, b) -> less_than(a, succ(b))
+    [by forall_intro generalize-a]
 qed
 
 // Strategy: induction on c with
@@ -1102,11 +1102,11 @@ proof
               @given-shifted-below |
                 assume less_than(add(c, a), add(c, b)) {
                   @less-than-elim |
-                    forall y, x: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+                    forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
                     [by axiom lessThanElim]
                   @shifted-gap-exists-if-below |
                     less_than(add(c, a), add(c, b)) -> exists w: Nat; add(add(c, a), succ(w)) = add(c, b)
-                    [by forall_elim(add(c, b), add(c, a)) less-than-elim]
+                    [by forall_elim(add(c, a), add(c, b)) less-than-elim]
                   @shifted-below |
                     less_than(add(c, a), add(c, b))
                     [by hypothesis given-shifted-below]
@@ -1134,11 +1134,11 @@ proof
                         add(a, succ(u)) = b
                         [by modus_ponens gap-witnesses-b-if-cancelled c-plus-gap-is-c-plus-b]
                       @a-gap-witnesses-less-than |
-                        forall y, x, w: Nat; add(x, succ(w)) = y -> less_than(x, y)
+                        forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                         [by axiom lessThanIntro]
                       @a-below-b-if-gap |
                         add(a, succ(u)) = b -> less_than(a, b)
-                        [by forall_elim(b, a, u) a-gap-witnesses-less-than]
+                        [by forall_elim(a, u, b) a-gap-witnesses-less-than]
                       @a-below-b |
                         less_than(a, b)
                         [by modus_ponens a-below-b-if-gap gap-witnesses-b]
@@ -1178,11 +1178,11 @@ proof
         add(n, succ(ZERO)) = succ(n)
         [by simplify addSuccRight addZeroRight]
       @a-gap-witnesses-less-than |
-        forall b, a, d: Nat; add(a, succ(d)) = b -> less_than(a, b)
+        forall a, d, b: Nat; add(a, succ(d)) = b -> less_than(a, b)
         [by axiom lessThanIntro]
       @n-below-succ-n-if-gap |
         add(n, succ(ZERO)) = succ(n) -> less_than(n, succ(n))
-        [by forall_elim(succ(n), n, ZERO) a-gap-witnesses-less-than]
+        [by forall_elim(n, ZERO, succ(n)) a-gap-witnesses-less-than]
       @n-below-succ-n |
         less_than(n, succ(n))
         [by modus_ponens n-below-succ-n-if-gap unit-gap-reaches-succ-n]
@@ -1195,23 +1195,23 @@ qed
 // m < succ(k)  ->  (m < k or m = k). The "predecessor bound": splits a
 // strict-below-successor into strictly-below-or-equal. (trichotomy gives the
 // three-way split; this is the two-way form the induction step needs.)
-theorem lessThanSuccSplit: forall k, m: Nat; less_than(m, succ(k)) -> (less_than(m, k) or m = k)
+theorem lessThanSuccSplit: forall m, k: Nat; less_than(m, succ(k)) -> (less_than(m, k) or m = k)
 proof
-  @generalize-k |
-    fix k: Nat {
-      @generalize-m |
-        fix m: Nat {
+  @generalize-m |
+    fix m: Nat {
+      @generalize-k |
+        fix k: Nat {
           @given-m-below-succ-k |
             assume less_than(m, succ(k)) {
               @m-below-succ-k |
                 less_than(m, succ(k))
                 [by hypothesis given-m-below-succ-k]
               @less-than-elim |
-                forall b, a: Nat; less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
+                forall a, b: Nat; less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
                 [by axiom lessThanElim]
               @gap-exists-if-below |
                 less_than(m, succ(k)) -> exists d: Nat; add(m, succ(d)) = succ(k)
-                [by forall_elim(succ(k), m) less-than-elim]
+                [by forall_elim(m, succ(k)) less-than-elim]
               @gap-exists |
                 exists d: Nat; add(m, succ(d)) = succ(k)
                 [by modus_ponens gap-exists-if-below m-below-succ-k]
@@ -1293,11 +1293,11 @@ proof
                             add(m, succ(e0)) = k
                             [by modus_ponens inner-gap-is-k-if-succ-equal succ-of-inner-gap-is-succ-k]
                           @a-gap-witnesses-less-than |
-                            forall b, a, d: Nat; add(a, succ(d)) = b -> less_than(a, b)
+                            forall a, d, b: Nat; add(a, succ(d)) = b -> less_than(a, b)
                             [by axiom lessThanIntro]
                           @m-below-k-if-gap |
                             add(m, succ(e0)) = k -> less_than(m, k)
-                            [by forall_elim(k, m, e0) a-gap-witnesses-less-than]
+                            [by forall_elim(m, e0, k) a-gap-witnesses-less-than]
                           @m-below-k |
                             less_than(m, k)
                             [by modus_ponens m-below-k-if-gap inner-gap-reaches-k]
@@ -1321,13 +1321,13 @@ proof
             less_than(m, succ(k)) -> (less_than(m, k) or m = k)
             [by implies_intro given-m-below-succ-k]
         }
-      @discharge-m |
-        forall m: Nat; less_than(m, succ(k)) -> (less_than(m, k) or m = k)
-        [by forall_intro generalize-m]
+      @discharge-k |
+        forall k: Nat; less_than(m, succ(k)) -> (less_than(m, k) or m = k)
+        [by forall_intro generalize-k]
     }
   @conclusion |
-    forall k, m: Nat; less_than(m, succ(k)) -> (less_than(m, k) or m = k)
-    [by forall_intro generalize-k]
+    forall m, k: Nat; less_than(m, succ(k)) -> (less_than(m, k) or m = k)
+    [by forall_intro generalize-m]
 qed
 
 // -- strong induction -------------------------------------------------------
@@ -1399,11 +1399,11 @@ proof
                         less_than(m1, succ(k))
                         [by hypothesis given-m-below-succ-k]
                       @below-succ-splits |
-                        forall kk, mm: Nat; less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
+                        forall mm, kk: Nat; less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
                         [by theorem lessThanSuccSplit]
                       @m-below-k-or-equal-if-below-succ |
                         less_than(m1, succ(k)) -> (less_than(m1, k) or m1 = k)
-                        [by forall_elim(k, m1) below-succ-splits]
+                        [by forall_elim(m1, k) below-succ-splits]
                       @m-below-k-or-equal |
                         less_than(m1, k) or m1 = k
                         [by modus_ponens m-below-k-or-equal-if-below-succ m-below-succ-k]
@@ -1486,23 +1486,23 @@ qed
 
 // -- the less_or_equal relation -------------------------------------------
 
-theorem lessOrEqualToLessThanSucc: forall b, a: Nat; less_or_equal(a, b) -> less_than(a, succ(b))
+theorem lessOrEqualToLessThanSucc: forall a, b: Nat; less_or_equal(a, b) -> less_than(a, succ(b))
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-a-at-most-b |
             assume less_or_equal(a, b) {
               @a-at-most-b |
                 less_or_equal(a, b)
                 [by hypothesis given-a-at-most-b]
               @less-or-equal-elim |
-                forall bb, aa: Nat; less_or_equal(aa, bb) -> exists d: Nat; add(aa, d) = bb
+                forall aa, bb: Nat; less_or_equal(aa, bb) -> exists d: Nat; add(aa, d) = bb
                 [by axiom lessOrEqualElim]
               @gap-exists-if-at-most |
                 less_or_equal(a, b) -> exists d: Nat; add(a, d) = b
-                [by forall_elim(b, a) less-or-equal-elim]
+                [by forall_elim(a, b) less-or-equal-elim]
               @gap-exists |
                 exists d: Nat; add(a, d) = b
                 [by modus_ponens gap-exists-if-at-most a-at-most-b]
@@ -1525,11 +1525,11 @@ proof
                     add(a, succ(d0)) = succ(b)
                     [by rewrite gap-successor-is-succ-b grown-gap-is-successor]
                   @a-gap-witnesses-less-than |
-                    forall y, x, d: Nat; add(x, succ(d)) = y -> less_than(x, y)
+                    forall x, d, y: Nat; add(x, succ(d)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
                   @a-below-succ-b-if-gap |
                     add(a, succ(d0)) = succ(b) -> less_than(a, succ(b))
-                    [by forall_elim(succ(b), a, d0) a-gap-witnesses-less-than]
+                    [by forall_elim(a, d0, succ(b)) a-gap-witnesses-less-than]
                   @a-below-succ-b |
                     less_than(a, succ(b))
                     [by modus_ponens a-below-succ-b-if-gap grown-gap-reaches-succ-b]
@@ -1542,35 +1542,35 @@ proof
             less_or_equal(a, b) -> less_than(a, succ(b))
             [by implies_intro given-a-at-most-b]
         }
-      @discharge-a |
-        forall a: Nat; less_or_equal(a, b) -> less_than(a, succ(b))
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_or_equal(a, b) -> less_than(a, succ(b))
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_or_equal(a, b) -> less_than(a, succ(b))
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_or_equal(a, b) -> less_than(a, succ(b))
+    [by forall_intro generalize-a]
 qed
 
 // Bridge 2 (reverse): less_than(a, succ b) -> le(a, b).
 // From lessThanElim: add(a, succ d) = succ b; succInjective-ish? No: succ b so add(a,succ d)=succ b.
 // add(a, succ d) = succ(add(a,d)) [addSuccRight]; = succ b; succInjective => add(a,d) = b; leIntro.
-theorem lessThanSuccToLessOrEqual: forall b, a: Nat; less_than(a, succ(b)) -> less_or_equal(a, b)
+theorem lessThanSuccToLessOrEqual: forall a, b: Nat; less_than(a, succ(b)) -> less_or_equal(a, b)
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-a-below-succ-b |
             assume less_than(a, succ(b)) {
               @a-below-succ-b |
                 less_than(a, succ(b))
                 [by hypothesis given-a-below-succ-b]
               @less-than-elim |
-                forall y, x: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
+                forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
                 [by axiom lessThanElim]
               @gap-exists-if-below |
                 less_than(a, succ(b)) -> exists d: Nat; add(a, succ(d)) = succ(b)
-                [by forall_elim(succ(b), a) less-than-elim]
+                [by forall_elim(a, succ(b)) less-than-elim]
               @gap-exists |
                 exists d: Nat; add(a, succ(d)) = succ(b)
                 [by modus_ponens gap-exists-if-below a-below-succ-b]
@@ -1595,11 +1595,11 @@ proof
                     add(a, d0) = b
                     [by modus_ponens lesser-gap-is-b-if-succ-equal succ-of-lesser-gap-is-succ-b]
                   @a-gap-witnesses-at-most |
-                    forall bb, aa, d: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
+                    forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
                     [by axiom lessOrEqualIntro]
                   @a-at-most-b-if-gap |
                     add(a, d0) = b -> less_or_equal(a, b)
-                    [by forall_elim(b, a, d0) a-gap-witnesses-at-most]
+                    [by forall_elim(a, d0, b) a-gap-witnesses-at-most]
                   @a-at-most-b |
                     less_or_equal(a, b)
                     [by modus_ponens a-at-most-b-if-gap lesser-gap-witnesses-b]
@@ -1612,13 +1612,13 @@ proof
             less_than(a, succ(b)) -> less_or_equal(a, b)
             [by implies_intro given-a-below-succ-b]
         }
-      @discharge-a |
-        forall a: Nat; less_than(a, succ(b)) -> less_or_equal(a, b)
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_than(a, succ(b)) -> less_or_equal(a, b)
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_than(a, succ(b)) -> less_or_equal(a, b)
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_than(a, succ(b)) -> less_or_equal(a, b)
+    [by forall_intro generalize-a]
 qed
 
 // reflexivity: le(a, a). Witness d = ZERO: add(a, ZERO) = a.
@@ -1633,11 +1633,11 @@ proof
         add(a, ZERO) = a
         [by forall_elim(a) add-zero-right]
       @a-gap-witnesses-at-most |
-        forall bb, aa, d: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
+        forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
         [by axiom lessOrEqualIntro]
       @a-at-most-a-if-gap |
         add(a, ZERO) = a -> less_or_equal(a, a)
-        [by forall_elim(a, a, ZERO) a-gap-witnesses-at-most]
+        [by forall_elim(a, ZERO, a) a-gap-witnesses-at-most]
       @a-at-most-a |
         less_or_equal(a, a)
         [by modus_ponens a-at-most-a-if-gap zero-gap-reaches-a]
@@ -1648,12 +1648,12 @@ proof
 qed
 
 // less_than implies less_or_equal
-theorem lessThanToLessOrEqual: forall b, a: Nat; less_than(a, b) -> less_or_equal(a, b)
+theorem lessThanToLessOrEqual: forall a, b: Nat; less_than(a, b) -> less_or_equal(a, b)
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-a-below-b |
             assume less_than(a, b) {
               @a-below-b |
@@ -1661,11 +1661,11 @@ proof
                 [by hypothesis given-a-below-b]
               // a < b gives a strict gap add(a, succ d) = b, which is also an at-most gap
               @less-than-elim |
-                forall y, x: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
+                forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
                 [by axiom lessThanElim]
               @gap-exists-if-below |
                 less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
-                [by forall_elim(b, a) less-than-elim]
+                [by forall_elim(a, b) less-than-elim]
               @gap-exists |
                 exists d: Nat; add(a, succ(d)) = b
                 [by modus_ponens gap-exists-if-below a-below-b]
@@ -1675,11 +1675,11 @@ proof
                     add(a, succ(d0)) = b
                     [by hypothesis with-gap-d]
                   @a-gap-witnesses-at-most |
-                    forall bb, aa, d: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
+                    forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
                     [by axiom lessOrEqualIntro]
                   @a-at-most-b-if-gap |
                     add(a, succ(d0)) = b -> less_or_equal(a, b)
-                    [by forall_elim(b, a, succ(d0)) a-gap-witnesses-at-most]
+                    [by forall_elim(a, succ(d0), b) a-gap-witnesses-at-most]
                   @a-at-most-b |
                     less_or_equal(a, b)
                     [by modus_ponens a-at-most-b-if-gap gap-witnesses-b]
@@ -1692,25 +1692,25 @@ proof
             less_than(a, b) -> less_or_equal(a, b)
             [by implies_intro given-a-below-b]
         }
-      @discharge-a |
-        forall a: Nat; less_than(a, b) -> less_or_equal(a, b)
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_than(a, b) -> less_or_equal(a, b)
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_than(a, b) -> less_or_equal(a, b)
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_than(a, b) -> less_or_equal(a, b)
+    [by forall_intro generalize-a]
 qed
 
 // transitivity: le(a,b) -> le(b,c) -> le(a,c).
 // witnesses: add(a,d1)=b, add(b,d2)=c; then add(a, add(d1,d2)) = c via assoc.
-theorem lessOrEqualTransitive: forall c, b, a: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
+theorem lessOrEqualTransitive: forall a, b, c: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
 proof
-  @generalize-c |
-    fix c: Nat {
+  @generalize-a |
+    fix a: Nat {
       @generalize-b |
         fix b: Nat {
-          @generalize-a |
-            fix a: Nat {
+          @generalize-c |
+            fix c: Nat {
               @given-a-at-most-b |
                 assume less_or_equal(a, b) {
                   @given-b-at-most-c |
@@ -1722,17 +1722,17 @@ proof
                         less_or_equal(b, c)
                         [by hypothesis given-b-at-most-c]
                       @less-or-equal-elim |
-                        forall bb, aa: Nat; less_or_equal(aa, bb) -> exists d: Nat; add(aa, d) = bb
+                        forall aa, bb: Nat; less_or_equal(aa, bb) -> exists d: Nat; add(aa, d) = bb
                         [by axiom lessOrEqualElim]
                       @gap-ab-exists-if-at-most |
                         less_or_equal(a, b) -> exists d: Nat; add(a, d) = b
-                        [by forall_elim(b, a) less-or-equal-elim]
+                        [by forall_elim(a, b) less-or-equal-elim]
                       @gap-ab-exists |
                         exists d: Nat; add(a, d) = b
                         [by modus_ponens gap-ab-exists-if-at-most a-at-most-b]
                       @gap-bc-exists-if-at-most |
                         less_or_equal(b, c) -> exists d: Nat; add(b, d) = c
-                        [by forall_elim(c, b) less-or-equal-elim]
+                        [by forall_elim(b, c) less-or-equal-elim]
                       @gap-bc-exists |
                         exists d: Nat; add(b, d) = c
                         [by modus_ponens gap-bc-exists-if-at-most b-at-most-c]
@@ -1761,11 +1761,11 @@ proof
                                 add(a, add(d1, d2)) = c
                                 [by rewrite nested-gaps-regroup nested-gaps-reach-c]
                               @a-gap-witnesses-at-most |
-                                forall bb, aa, d: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
+                                forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
                                 [by axiom lessOrEqualIntro]
                               @a-at-most-c-if-gap |
                                 add(a, add(d1, d2)) = c -> less_or_equal(a, c)
-                                [by forall_elim(c, a, add(d1, d2)) a-gap-witnesses-at-most]
+                                [by forall_elim(a, add(d1, d2), c) a-gap-witnesses-at-most]
                               @a-at-most-c |
                                 less_or_equal(a, c)
                                 [by modus_ponens a-at-most-c-if-gap combined-gap-reaches-c]
@@ -1786,26 +1786,26 @@ proof
                 less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
                 [by implies_intro given-a-at-most-b]
             }
-          @discharge-a |
-            forall a: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
-            [by forall_intro generalize-a]
+          @discharge-c |
+            forall c: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
+            [by forall_intro generalize-c]
         }
       @discharge-b |
-        forall b, a: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
+        forall b, c: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall c, b, a: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
-    [by forall_intro generalize-c]
+    forall a, b, c: Nat; less_or_equal(a, b) -> less_or_equal(b, c) -> less_or_equal(a, c)
+    [by forall_intro generalize-a]
 qed
 
 // disjunctive form: le(a,b) -> (a < b or a = b). Via bridge1 (a < succ b) + lessThanSuccSplit.
-theorem lessOrEqualSplit: forall b, a: Nat; less_or_equal(a, b) -> (less_than(a, b) or a = b)
+theorem lessOrEqualSplit: forall a, b: Nat; less_or_equal(a, b) -> (less_than(a, b) or a = b)
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-a-at-most-b |
             assume less_or_equal(a, b) {
               @a-at-most-b |
@@ -1813,21 +1813,21 @@ proof
                 [by hypothesis given-a-at-most-b]
               // le -> a < succ b
               @at-most-implies-below-succ |
-                forall bb, aa: Nat; less_or_equal(aa, bb) -> less_than(aa, succ(bb))
+                forall aa, bb: Nat; less_or_equal(aa, bb) -> less_than(aa, succ(bb))
                 [by theorem lessOrEqualToLessThanSucc]
               @a-below-succ-b-if-at-most |
                 less_or_equal(a, b) -> less_than(a, succ(b))
-                [by forall_elim(b, a) at-most-implies-below-succ]
+                [by forall_elim(a, b) at-most-implies-below-succ]
               @a-below-succ-b |
                 less_than(a, succ(b))
                 [by modus_ponens a-below-succ-b-if-at-most a-at-most-b]
               // a < succ b -> a < b or a = b [lessThanSuccSplit]
               @below-succ-splits |
-                forall kk, mm: Nat; less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
+                forall mm, kk: Nat; less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
                 [by theorem lessThanSuccSplit]
               @a-below-b-or-equal-if-below-succ |
                 less_than(a, succ(b)) -> (less_than(a, b) or a = b)
-                [by forall_elim(b, a) below-succ-splits]
+                [by forall_elim(a, b) below-succ-splits]
               @a-below-b-or-equal |
                 less_than(a, b) or a = b
                 [by modus_ponens a-below-b-or-equal-if-below-succ a-below-succ-b]
@@ -1836,23 +1836,23 @@ proof
             less_or_equal(a, b) -> (less_than(a, b) or a = b)
             [by implies_intro given-a-at-most-b]
         }
-      @discharge-a |
-        forall a: Nat; less_or_equal(a, b) -> (less_than(a, b) or a = b)
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_or_equal(a, b) -> (less_than(a, b) or a = b)
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_or_equal(a, b) -> (less_than(a, b) or a = b)
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_or_equal(a, b) -> (less_than(a, b) or a = b)
+    [by forall_intro generalize-a]
 qed
 
 // equal-or-less builds le the other way: a = b -> le(a,b) is refl+rewrite; a<b -> le is lessThanToLessOrEqual.
 // antisymmetry: le(a,b) -> le(b,a) -> a = b. Use split: a<b or a=b; if a<b and b<=a then a<a (contra via transitive+irrefl).
-theorem lessOrEqualAntisymmetric: forall b, a: Nat; less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
+theorem lessOrEqualAntisymmetric: forall a, b: Nat; less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
 proof
-  @generalize-b |
-    fix b: Nat {
-      @generalize-a |
-        fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
           @given-a-at-most-b |
             assume less_or_equal(a, b) {
               @given-b-at-most-a |
@@ -1865,11 +1865,11 @@ proof
                     [by hypothesis given-b-at-most-a]
                   // split le(a,b): a<b or a=b
                   @at-most-splits |
-                    forall bb, aa: Nat; less_or_equal(aa, bb) -> (less_than(aa, bb) or aa = bb)
+                    forall aa, bb: Nat; less_or_equal(aa, bb) -> (less_than(aa, bb) or aa = bb)
                     [by theorem lessOrEqualSplit]
                   @a-below-b-or-equal-if-at-most |
                     less_or_equal(a, b) -> (less_than(a, b) or a = b)
-                    [by forall_elim(b, a) at-most-splits]
+                    [by forall_elim(a, b) at-most-splits]
                   @a-below-b-or-equal |
                     less_than(a, b) or a = b
                     [by modus_ponens a-below-b-or-equal-if-at-most a-at-most-b]
@@ -1881,7 +1881,7 @@ proof
                       // le(b,a) and a<b: split le(b,a) -> b<a or b=a
                       @b-below-a-or-equal-if-at-most |
                         less_or_equal(b, a) -> (less_than(b, a) or b = a)
-                        [by forall_elim(a, b) at-most-splits]
+                        [by forall_elim(b, a) at-most-splits]
                       @b-below-a-or-equal |
                         less_than(b, a) or b = a
                         [by modus_ponens b-below-a-or-equal-if-at-most b-at-most-a]
@@ -1892,7 +1892,7 @@ proof
                             [by hypothesis when-b-below-a]
                           // a<b and b<a -> a<a via transitive, contradiction with irreflexive
                           @less-than-transitive |
-                            forall cc, bb, aa: Nat; less_than(aa, bb) -> less_than(bb, cc) -> less_than(aa, cc)
+                            forall aa, bb, cc: Nat; less_than(aa, bb) -> less_than(bb, cc) -> less_than(aa, cc)
                             [by theorem lessThanTransitive]
                           @a-below-a-if-below-both-ways |
                             less_than(a, b) -> less_than(b, a) -> less_than(a, a)
@@ -1944,13 +1944,13 @@ proof
             less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
             [by implies_intro given-a-at-most-b]
         }
-      @discharge-a |
-        forall a: Nat; less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
-        [by forall_intro generalize-a]
+      @discharge-b |
+        forall b: Nat; less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall b, a: Nat; less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
-    [by forall_intro generalize-b]
+    forall a, b: Nat; less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
+    [by forall_intro generalize-a]
 qed
 
 // Left multiplicative cancellation: a nonzero common left factor cancels.
@@ -2004,11 +2004,11 @@ proof
                                     less_than(a, b)
                                     [by hypothesis a-below-b]
                                   @mono |
-                                    forall cc, bb, aa: Nat; less_than(aa, bb) -> less_than(mul(succ(cc), aa), mul(succ(cc), bb))
+                                    forall aa, bb, cc: Nat; less_than(aa, bb) -> less_than(mul(succ(cc), aa), mul(succ(cc), bb))
                                     [by theorem multiplicationPreservesOrder]
                                   @mono-at |
                                     less_than(a, b) -> less_than(mul(succ(cp), a), mul(succ(cp), b))
-                                    [by forall_elim(cp, b, a) mono]
+                                    [by forall_elim(a, b, cp) mono]
                                   @scaled |
                                     less_than(mul(succ(cp), a), mul(succ(cp), b))
                                     [by modus_ponens mono-at a-lt-b]
@@ -2046,11 +2046,11 @@ proof
                                     less_than(b, a)
                                     [by hypothesis b-below-a]
                                   @mono |
-                                    forall cc, bb, aa: Nat; less_than(aa, bb) -> less_than(mul(succ(cc), aa), mul(succ(cc), bb))
+                                    forall aa, bb, cc: Nat; less_than(aa, bb) -> less_than(mul(succ(cc), aa), mul(succ(cc), bb))
                                     [by theorem multiplicationPreservesOrder]
                                   @mono-at |
                                     less_than(b, a) -> less_than(mul(succ(cp), b), mul(succ(cp), a))
-                                    [by forall_elim(cp, a, b) mono]
+                                    [by forall_elim(b, a, cp) mono]
                                   @scaled |
                                     less_than(mul(succ(cp), b), mul(succ(cp), a))
                                     [by modus_ponens mono-at b-lt-a]

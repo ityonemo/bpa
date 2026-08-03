@@ -50,28 +50,28 @@ axiom induction = peano.induction
 // (a + b) + (c + d) = (a + c) + (b + d). Pure rearrangement, proven with
 // directed single rewrites so it holds for ANY summands — including the
 // opaque term sumTo(k), which the automated tactics cannot reorder past.
-theorem sumSwap: forall d, c, b, a: Nat;
+theorem sumSwap: forall a, b, c, d: Nat;
   add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
 proof
-  @generalize-d |
-    fix d: Nat {
-      @generalize-c |
-        fix c: Nat {
-          @generalize-b |
-            fix b: Nat {
-              @generalize-a |
-                fix a: Nat {
+  @generalize-a |
+    fix a: Nat {
+      @generalize-b |
+        fix b: Nat {
+          @generalize-c |
+            fix c: Nat {
+              @generalize-d |
+                fix d: Nat {
                   // right-nest the left side: (a+b)+(c+d) = a+(b+(c+d))
                   @lhs-right-nested |
                     add(add(a, b), add(c, d)) = add(a, add(b, add(c, d)))
                     [by simplify addIsAssociative]
                   // swap b past c inside the inner triple
                   @left-swap |
-                    forall r, y, x: Nat; add(x, add(y, r)) = add(y, add(x, r))
+                    forall x, y, r: Nat; add(x, add(y, r)) = add(y, add(x, r))
                     [by theorem addLeftSwap]
                   @b-swaps-past-c |
                     add(b, add(c, d)) = add(c, add(b, d))
-                    [by forall_elim(d, c, b) left-swap]
+                    [by forall_elim(b, c, d) left-swap]
                   @lhs-with-b-c-swapped |
                     add(add(a, b), add(c, d)) = add(a, add(c, add(b, d)))
                     [by rewrite b-swaps-past-c lhs-right-nested]
@@ -90,21 +90,21 @@ proof
                     add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
                     [by rewrite rhs-nesting-flipped lhs-with-b-c-swapped]
                 }
-              @discharge-a |
-                forall a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-                [by forall_intro generalize-a]
+              @discharge-d |
+                forall d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+                [by forall_intro generalize-d]
             }
-          @discharge-b |
-            forall b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-            [by forall_intro generalize-b]
+          @discharge-c |
+            forall c, d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+            [by forall_intro generalize-c]
         }
-      @discharge-c |
-        forall c, b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-        [by forall_intro generalize-c]
+      @discharge-b |
+        forall b, c, d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    forall d, c, b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-    [by forall_intro generalize-d]
+    forall a, b, c, d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+    [by forall_intro generalize-a]
 qed
 
 // -- the summation function -------------------------------------------------
@@ -145,13 +145,13 @@ proof
 
           // regroup (s+c)+(s+c) into (s+s)+(c+c) via the exchange lemma,
           // instantiated at a = c' = sumTo(k), b = d' = succ(k)
-          // (binders bind d, c, b, a outermost-first)
+          // (binders bind a, b, c, d outermost-first)
           @sum-exchange |
-            forall d, c, b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+            forall a, b, c, d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
             [by theorem sumSwap]
           @exchange-groups-the-sums |
             add(add(sumTo(k), succ(k)), add(sumTo(k), succ(k))) = add(add(sumTo(k), sumTo(k)), add(succ(k), succ(k)))
-            [by forall_elim(succ(k), sumTo(k), succ(k), sumTo(k)) sum-exchange]
+            [by forall_elim(sumTo(k), succ(k), sumTo(k), succ(k)) sum-exchange]
           @regrouped-into-sums-and-successors |
             add(sumTo(succ(k)), sumTo(succ(k))) = add(add(sumTo(k), sumTo(k)), add(succ(k), succ(k)))
             [by rewrite exchange-groups-the-sums both-copies-unfolded]

@@ -27,10 +27,10 @@ theorem addIsCommutative = peano.addIsCommutative
 theorem addLeftSwap = peano.addLeftSwap
 pred p
 
-theorem mixedStepUp: forall b, a: Nat; less_than(a, b) -> (p or less_than(a, succ(b)))
+theorem mixedStepUp: forall a, b: Nat; less_than(a, b) -> (p or less_than(a, succ(b)))
 proof
   @conclusion |
-    forall b, a: Nat; less_than(a, b) -> (p or less_than(a, succ(b)))
+    forall a, b: Nat; less_than(a, b) -> (p or less_than(a, succ(b)))
     [by arithmetic]
 qed
 

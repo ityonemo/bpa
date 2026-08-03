@@ -118,11 +118,11 @@ proof
     ZERO = mul(THREE, ZERO)
     [by symmetry three-times-zero]
   @divides-intro |
-    forall d, n, k: Int; n = mul(d, k) -> does_divide(d, n)
+    forall n, d, k: Int; n = mul(d, k) -> does_divide(d, n)
     [by axiom dividesIntro]
   @intro-at-zero |
     ZERO = mul(THREE, ZERO) -> does_divide(THREE, ZERO)
-    [by forall_elim(THREE, ZERO, ZERO) divides-intro]
+    [by forall_elim(ZERO, THREE, ZERO) divides-intro]
   @three-divides-zero |
     does_divide(THREE, ZERO)
     [by modus_ponens intro-at-zero zero-as-product]

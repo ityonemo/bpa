@@ -93,11 +93,11 @@ proof
     add(mul(SIX, ONE), THREE) = NINE
     [by simplify mulSuccLeft mulZeroLeft addSuccLeft addZeroLeft]
   @remainder-is-unique |
-    forall a, b, q, r: Nat; b != ZERO -> less_than(r, b) -> add(mul(b, q), r) = a -> mod(a, b) = r
+    forall b, r, q, a: Nat; b != ZERO -> less_than(r, b) -> add(mul(b, q), r) = a -> mod(a, b) = r
     [by theorem modIntro]
   @remainder-is-determined-nine-six |
     SIX != ZERO -> less_than(THREE, SIX) -> add(mul(SIX, ONE), THREE) = NINE -> mod(NINE, SIX) = THREE
-    [by forall_elim(NINE, SIX, ONE, THREE) remainder-is-unique]
+    [by forall_elim(SIX, THREE, ONE, NINE) remainder-is-unique]
   @conclusion |
     mod(NINE, SIX) = THREE
     [by tautology remainder-is-determined-nine-six six-is-nonzero three-is-below-six six-times-one-plus-three-is-nine]
@@ -116,11 +116,11 @@ proof
     add(mul(THREE, TWO), ZERO) = SIX
     [by simplify mulSuccLeft mulZeroLeft addSuccLeft addZeroLeft]
   @remainder-is-unique |
-    forall a, b, q, r: Nat; b != ZERO -> less_than(r, b) -> add(mul(b, q), r) = a -> mod(a, b) = r
+    forall b, r, q, a: Nat; b != ZERO -> less_than(r, b) -> add(mul(b, q), r) = a -> mod(a, b) = r
     [by theorem modIntro]
   @remainder-is-determined-six-three |
     THREE != ZERO -> less_than(ZERO, THREE) -> add(mul(THREE, TWO), ZERO) = SIX -> mod(SIX, THREE) = ZERO
-    [by forall_elim(SIX, THREE, TWO, ZERO) remainder-is-unique]
+    [by forall_elim(THREE, ZERO, TWO, SIX) remainder-is-unique]
   @conclusion |
     mod(SIX, THREE) = ZERO
     [by tautology remainder-is-determined-six-three three-is-nonzero zero-is-below-three three-times-two-is-six]
@@ -137,11 +137,11 @@ proof
     THREE != ZERO
     [by theorem threeNotZero]
   @gcd-recurses-on-mod |
-    forall a, b: Nat; b != ZERO -> gcd_of(a, b) = gcd_of(b, mod(a, b))
+    forall b, a: Nat; b != ZERO -> gcd_of(a, b) = gcd_of(b, mod(a, b))
     [by axiom gcdStep]
   @gcd-nine-six-recurses-if-nonzero |
     SIX != ZERO -> gcd_of(NINE, SIX) = gcd_of(SIX, mod(NINE, SIX))
-    [by forall_elim(NINE, SIX) gcd-recurses-on-mod]
+    [by forall_elim(SIX, NINE) gcd-recurses-on-mod]
   @gcd-nine-six-recurses |
     gcd_of(NINE, SIX) = gcd_of(SIX, mod(NINE, SIX))
     [by modus_ponens gcd-nine-six-recurses-if-nonzero six-is-nonzero]
@@ -153,7 +153,7 @@ proof
     [by rewrite mod-nine-six-is-three gcd-nine-six-recurses]
   @gcd-six-three-recurses-if-nonzero |
     THREE != ZERO -> gcd_of(SIX, THREE) = gcd_of(THREE, mod(SIX, THREE))
-    [by forall_elim(SIX, THREE) gcd-recurses-on-mod]
+    [by forall_elim(THREE, SIX) gcd-recurses-on-mod]
   @gcd-six-three-recurses |
     gcd_of(SIX, THREE) = gcd_of(THREE, mod(SIX, THREE))
     [by modus_ponens gcd-six-three-recurses-if-nonzero three-is-nonzero]

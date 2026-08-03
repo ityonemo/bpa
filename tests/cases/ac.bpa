@@ -15,56 +15,56 @@ theorem addLeftSwap = peano.addLeftSwap
 
 // the four-summand middle exchange that needed a hand-proved lemma in
 // gauss-pure.bpa — now one step, over opaque atoms a, b, c, d
-theorem exchange: forall d, c, b, a: Nat;
+theorem exchange: forall a, b, c, d: Nat;
   add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
 proof
-  @gen-d |
-    fix d: Nat {
-      @gen-c |
-        fix c: Nat {
-          @gen-b |
-            fix b: Nat {
-              @gen-a |
-                fix a: Nat {
+  @gen-a |
+    fix a: Nat {
+      @gen-b |
+        fix b: Nat {
+          @gen-c |
+            fix c: Nat {
+              @gen-d |
+                fix d: Nat {
                   @swapped |
                     add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
                     [by assoc_commut]
                 }
-              @all-a |
-                forall a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-                [by forall_intro gen-a]
+              @all-d |
+                forall d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+                [by forall_intro gen-d]
             }
-          @all-b |
-            forall b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-            [by forall_intro gen-b]
+          @all-c |
+            forall c, d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+            [by forall_intro gen-c]
         }
-      @all-c |
-        forall c, b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-        [by forall_intro gen-c]
+      @all-b |
+        forall b, c, d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+        [by forall_intro gen-b]
     }
   @conclusion |
-    forall d, c, b, a: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
-    [by forall_intro gen-d]
+    forall a, b, c, d: Nat; add(add(a, b), add(c, d)) = add(add(a, c), add(b, d))
+    [by forall_intro gen-a]
 qed
 
 // reordering over compound opaque atoms (mul terms are opaque to add-AC)
-theorem compound: forall b, a: Nat;
+theorem compound: forall a, b: Nat;
   add(mul(a, a), add(mul(b, b), a)) = add(a, add(mul(a, a), mul(b, b)))
 proof
-  @gen-b |
-    fix b: Nat {
-      @gen-a |
-        fix a: Nat {
+  @gen-a |
+    fix a: Nat {
+      @gen-b |
+        fix b: Nat {
           @reordered |
             add(mul(a, a), add(mul(b, b), a)) = add(a, add(mul(a, a), mul(b, b)))
             [by assoc_commut]
         }
-      @all-a |
-        forall a: Nat; add(mul(a, a), add(mul(b, b), a)) = add(a, add(mul(a, a), mul(b, b)))
-        [by forall_intro gen-a]
+      @all-b |
+        forall b: Nat; add(mul(a, a), add(mul(b, b), a)) = add(a, add(mul(a, a), mul(b, b)))
+        [by forall_intro gen-b]
     }
   @conclusion |
-    forall b, a: Nat;
+    forall a, b: Nat;
       add(mul(a, a), add(mul(b, b), a)) = add(a, add(mul(a, a), mul(b, b)))
-    [by forall_intro gen-b]
+    [by forall_intro gen-a]
 qed
