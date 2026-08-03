@@ -50,6 +50,25 @@ fn fmtCommand(arena: std.mem.Allocator, rest: []const [:0]const u8) !u8 {
     return 0;
 }
 
+/// `bpa lint <file>`: convention checks (binder order, later casing/labels).
+/// Reports violations with locations; exit 1 if any (or a parse error). Reads
+/// `.md` through the literate extractor and tells the linter the input was
+/// literate so source-mirroring rules stay suspended.
+fn lintCommand(arena: std.mem.Allocator, rest: []const [:0]const u8) !u8 {
+    var path: ?[]const u8 = null;
+    for (rest) |arg| {
+        if (path == null) path = arg else return fail("usage: bpa lint <file.bpa|.md>\n", .{});
+    }
+    const p = path orelse return fail("usage: bpa lint <file.bpa|.md>\n", .{});
+    const is_literate = std.mem.endsWith(u8, p, ".md");
+    const source = readSource(arena, p) catch |e| switch (e) {
+        error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{p}),
+        else => return fail("error: cannot open '{s}': {t}\n", .{ p, e }),
+    };
+    const result = try bpa.lint.lint(arena, p, source, is_literate);
+    return emitQuery(result.text, result.ok);
+}
+
 const query_usage =
     "usage: bpa query outline <file.bpa> [theorem]\n" ++
     "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
@@ -312,7 +331,10 @@ pub fn main(init: std.process.Init) !u8 {
     if (args.len >= 2 and std.mem.eql(u8, args[1], "query")) {
         return queryCommand(arena, std_root, args[2..]);
     }
-    const usage = "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query accelerated <file.bpa> [theorem]\n";
+    if (args.len >= 2 and std.mem.eql(u8, args[1], "lint")) {
+        return lintCommand(arena, args[2..]);
+    }
+    const usage = "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa lint <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query accelerated <file.bpa> [theorem]\n";
     if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
         return fail(usage, .{});
     }

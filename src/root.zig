@@ -16,6 +16,7 @@ pub const print = @import("print.zig");
 pub const kernel = @import("kernel.zig");
 pub const fmt = @import("fmt.zig");
 pub const literate = @import("literate.zig");
+pub const lint = @import("lint.zig");
 pub const simplify = @import("simplify.zig");
 pub const smt = @import("accelerant/arithmetic/smt.zig");
 pub const presburger = @import("accelerant/arithmetic/presburger.zig");
@@ -304,4 +305,5 @@ test {
     std.testing.refAllDecls(query.uses);
     std.testing.refAllDecls(query.accelerated);
     std.testing.refAllDecls(literate);
+    std.testing.refAllDecls(lint);
 }

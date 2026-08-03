@@ -19,6 +19,7 @@ pub fn addTests(
     no_args.expectStdErrEqual(
         "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n" ++
             "       bpa fmt [--check] <file.bpa|.md>\n" ++
+            "       bpa lint <file.bpa|.md>\n" ++
             "       bpa query outline <file.bpa> [theorem]\n" ++
             "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
             "       bpa query whereis <file.bpa> <identifier>\n" ++
@@ -41,6 +42,13 @@ pub fn addTests(
         fmt_check.expectExitCode(0);
         test_step.dependOn(&fmt_check.step);
     }
+
+    // lint: canonical binder order. The fixture's `bad` axiom reverses
+    // first-appearance order; lint flags it (exit 1) and leaves `good` alone.
+    ctx.fail(
+        &.{ "lint", "tests/cases/lint_binder_order.bpa" },
+        "tests/cases/lint_binder_order.bpa:11:12: error: non-canonical binder order: 'forall b, a' should be 'forall a, b' (first-appearance order in the body)\n",
+    );
 
     // Nonexistent file -> clean diagnostic on stderr, exit 1.
     ctx.fail(&.{ "check", "nosuchfile.bpa" }, "error: cannot open 'nosuchfile.bpa': file not found\n");

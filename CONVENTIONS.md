@@ -96,6 +96,26 @@ Every category has a distinct look:
   `element.Element` by alias — a working split, not a bug; **do not retrofit them**.
   The guideline is for new theories, where the name is free.
 
+## Binder order — canonical, first-appearance (lint-enforced)
+
+A statement's leading `forall` block binds its variables in **first-appearance
+order**: the order they first occur, left to right, in the body. `add` is
+associative as `forall a, b, c: Nat; add(add(a, b), c) = add(a, add(b, c))` —
+`a`, then `b`, then `c` as you read the left-hand side — **never** `forall c, b,
+a` even if the proof fixes them in that order.
+
+The rule exists because a statement's signature is a property of *what it says*,
+not *how it is proved*. Two logically identical facts whose binders are permuted
+are NOT alpha-equal, so a proof-convenience ordering silently breaks any
+mechanism that matches on syntactic shape — most sharply `model`, whose axiom
+discharge needs a local fact to alpha-match the (remapped) abstract axiom. Keep
+every statement canonical and a local fact discharges the abstract axiom
+directly, with no binder-reordering adapter theorem in between.
+
+`bpa lint <file>` flags every violation (`'forall c, b, a' should be 'forall a,
+b, c'`). Run it on new `.bpa`; it also reads `.md` (only source-agnostic rules
+like this one apply to a literate transliteration — its naming mirrors the book).
+
 ## Labels
 
 **The dump test.** The label column IS the proof outline: stripping every
