@@ -15,11 +15,14 @@ pub fn addTests(
 
     // the living demo: automation-assisted PA — simplify inside the
     // inductions and arithmetic certificates throughout. Since Cooper-
-    // replay landed, even evenOrOdd (∀∃) certifies, so --fast defers nothing
-    // and reports all six proven, every accelerated step emitting its chain
-    // (the banner still fires: --fast mode is on).
+    // --fast = DECIDE only: each accelerant consults its procedure (rejecting a
+    // false goal) but emits NO kernel-checked theorem, disclosing itself as
+    // accelerated instead. simplify (and arithmetic's certifiers) therefore taint
+    // here rather than emitting their chains; all six still report proven, and
+    // the banner fires. Under the default mode below they build kernel-checked
+    // certificates (no acceleration).
     ctx.ok(&.{ "check", "--fast", "examples/peano.bpa" },
-        \\OK: 18 declarations, 6 theorems proven
+        \\OK: 18 declarations, 6 theorems proven (4 accelerated: simplify, arithmetic)
         \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );

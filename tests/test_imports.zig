@@ -38,9 +38,11 @@ pub fn addTests(
 
     // --fast re-checks the imported proofs; since Cooper-replay emits the
     // once-accelerated evenOrOdd as kernel steps, nothing is trusted and all
-    // seven are proven (the --fast banner still fires).
+    // seven are proven (the --fast banner still fires). --fast is decide-only, so
+    // simplify (and arithmetic's certifiers) disclose as accelerated rather than
+    // emitting kernel chains.
     ctx.ok(&.{ "check", "--fast", "examples/peano-imports.bpa" },
-        \\OK: 24 declarations, 7 theorems proven
+        \\OK: 24 declarations, 7 theorems proven (5 accelerated: simplify, arithmetic)
         \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );

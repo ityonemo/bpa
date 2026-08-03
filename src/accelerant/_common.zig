@@ -155,6 +155,21 @@ pub fn generate(
     // (from `body_just`) — emitting here too would duplicate.
     var body_mut = body;
     const cert_just = try body_mut.emit(self, &plow, parent, body_goal);
+
+    // DECIDE vs GENERATE. The body-emit above did the validity work in `plow`
+    // (a false goal already failed inside it — with a located error). In --fast
+    // (`!certify_arithmetic`) we stop here: DISCARD the constructed certificate,
+    // record the accelerated taint, and return the verdict the kernel accepts on
+    // trust. No synthetic theorem is registered, nothing is kernel-checked, and
+    // the caller's `low` is untouched (everything went into the throwaway `plow`).
+    // In strict mode we continue: wrap the certificate into a kernel-checked
+    // synthetic theorem and cite it.
+    if (!self.verify.certify_arithmetic) {
+        const taint = try self.interner.intern(tactic);
+        try self.recordAccelerated(taint, loc);
+        return .{ .accelerated = taint };
+    }
+
     if (assume_blocks.items.len > 0) {
         _ = try self.emitStep(&plow, parent, loc, body_goal, cert_just);
     }
