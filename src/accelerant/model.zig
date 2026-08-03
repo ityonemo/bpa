@@ -192,6 +192,7 @@ fn materializeGuardedModelTheorem(self: *Elaborator, model: *Model, source: Stat
         .proof = proof,
         .step_map = .empty,
         .guard_hyp = .empty,
+        .block_map = .empty,
         .loc = loc,
     };
 
@@ -215,6 +216,9 @@ const GuardedCtx = struct {
     /// carrier eigenvariable name -> the SRef of its `assume guard(a)` hypothesis
     /// step (the base case of `emitGuardProof` for a fixed variable).
     guard_hyp: std.AutoHashMapUnmanaged(StrId, kernel.SRef),
+    /// source BlockId -> the new BlockId it re-emitted to (for BRef-carrying
+    /// justifications: hypothesis, or_elim arms).
+    block_map: std.AutoHashMapUnmanaged(kernel.BlockId, kernel.BlockId),
     loc: u32,
 };
 
@@ -229,8 +233,20 @@ fn reemitBlock(self: *Elaborator, plow: *Lowering, target: kernel.BlockId, ctx: 
     while (i < sb.last_step) : (i += 1) {
         const step = ctx.proof.steps[@intFromEnum(@as(kernel.StepId, @enumFromInt(i)))];
         if (@intFromEnum(step.block) != @intFromEnum(src_block)) continue; // owned by a nested child; emitted there
-        // does this step OPEN a child block? (its justification closes one)
-        if (childBlockOf(step.just)) |child| {
+        if (step.just == .or_elim) {
+            // case split: re-emit both arm subproofs, then the or_elim step
+            // citing them + the (already-emitted) disjunction step.
+            const r = step.just.or_elim;
+            try reemitArm(self, plow, target, ctx, r.left.id);
+            try reemitArm(self, plow, target, ctx, r.right.id);
+            const new_formula = try remapStepFormula(self, ctx, step.formula);
+            const ref = try self.emitStep(plow, target, ctx.loc, new_formula, .{ .or_elim = .{
+                .disj = ctx.step_map.get(r.disj.id).?,
+                .left = .{ .id = ctx.block_map.get(r.left.id).?, .loc = ctx.loc },
+                .right = .{ .id = ctx.block_map.get(r.right.id).?, .loc = ctx.loc },
+            } });
+            try ctx.step_map.put(self.arena, @enumFromInt(i), ref);
+        } else if (childBlockOf(step.just)) |child| {
             try reemitChild(self, plow, target, ctx, child, @enumFromInt(i));
         } else {
             const new_ref = try emitGuardedStep(self, plow, target, ctx, step);
@@ -286,6 +302,7 @@ fn reemitChild(self: *Elaborator, plow: *Lowering, parent: kernel.BlockId, ctx: 
         .assume => |f| {
             const asm_f = try remapStepFormula(self, ctx, f);
             const asm_b = try self.newBlock(plow, try self.freshNamed("gm-assume"), parent, .{ .assume = asm_f });
+            try ctx.block_map.put(self.arena, child, asm_b);
             try reemitBlock(self, plow, asm_b, ctx, child);
             self.closeBlock(plow, asm_b);
             const closed = try remapStepFormula(self, ctx, ctx.proof.steps[@intFromEnum(closing_src)].formula);
@@ -299,6 +316,19 @@ fn reemitChild(self: *Elaborator, plow: *Lowering, parent: kernel.BlockId, ctx: 
         .unpack => return self.fail(loc, "guarded model materialization does not yet handle an `unpack` (existential witness) in the transferred proof", .{}),
         .root => unreachable,
     }
+}
+
+/// Re-emit an `assume`-arm block of a case split (the `or_elim` step, emitted by
+/// the caller, references it). Records the block in `block_map` so its inner
+/// `hypothesis` steps resolve. No closing step (the arm is closed by or_elim).
+fn reemitArm(self: *Elaborator, plow: *Lowering, parent: kernel.BlockId, ctx: *GuardedCtx, arm: kernel.BlockId) ElabError!void {
+    const ab = ctx.proof.blocks[@intFromEnum(arm)];
+    std.debug.assert(ab.kind == .assume);
+    const asm_f = try remapStepFormula(self, ctx, ab.kind.assume);
+    const new_b = try self.newBlock(plow, try self.freshNamed("gm-arm"), parent, .{ .assume = asm_f });
+    try ctx.block_map.put(self.arena, arm, new_b);
+    try reemitBlock(self, plow, new_b, ctx, arm);
+    self.closeBlock(plow, new_b);
 }
 
 fn remapStepFormula(self: *Elaborator, ctx: *GuardedCtx, f: TermId) ElabError!TermId {
@@ -350,6 +380,9 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
             const guard_ref = try emitGuardProof(self, plow, block, ctx, with);
             return self.emitStep(plow, block, loc, new_formula, .{ .modus_ponens = .{ .implication = elim_ref, .antecedent = guard_ref } });
         },
+        // a `hypothesis` step surfaces its (assume) block's formula; re-point at
+        // the mapped block.
+        .hypothesis => |b| return self.emitStep(plow, block, loc, new_formula, .{ .hypothesis = .{ .id = ctx.block_map.get(b.id).?, .loc = loc } }),
         // steps that reference other steps by SRef (no guard-discharge needed):
         // translate each ref through step_map and re-emit 1:1.
         .reflexivity => return self.emitStep(plow, block, loc, new_formula, .reflexivity),
