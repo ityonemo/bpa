@@ -396,13 +396,20 @@ pub const Pool = struct {
             },
             .quant => |q| {
                 var body = try self.remapFormula(q.body, remap);
-                // guard relativization: if this binder is over the (source)
-                // carrier, wrap the body `guard(bvar 0) -> body`.
+                // guard relativization: a binder over the (source) carrier is
+                // restricted to the guarded subset. The connective differs by
+                // quantifier: `∀x; P` → `∀x; guard(x) -> P` (implication), but
+                // `∃x; P` → `∃x; guard(x) and P` (conjunction) — an existential
+                // asserts a witness that is BOTH in the subset AND satisfies P.
                 if (remap.guard) |g| {
                     if (q.sort == g.carrier) {
                         const bound = try self.add(.{ .bvar = 0 });
                         const guard_app = try self.addApp(.pred, g.pred, &.{bound});
-                        body = try self.add(.{ .bin = .{ .op = .implies, .lhs = guard_app, .rhs = body } });
+                        const connective: BinOp = switch (q.q) {
+                            .forall => .implies,
+                            .exists => .and_op,
+                        };
+                        body = try self.add(.{ .bin = .{ .op = connective, .lhs = guard_app, .rhs = body } });
                     }
                 }
                 return self.add(.{ .quant = .{
@@ -668,6 +675,53 @@ test "remapFormula: guarded model injects guard(x) -> at the carrier binder" {
     const want = try p.add(.{ .quant = .{ .q = .forall, .sort = rat, .hint = sid(1), .body = body2 } });
 
     try testing.expect(p.alphaEq(out, want));
+}
+
+test "remapFormula: guarded model uses `and` (not `->`) for an EXISTENTIAL binder" {
+    // ∃x; P(x) relativized to a subset is `∃x; guard(x) and P(x)` — a witness
+    // that is BOTH in the subset AND satisfies P. (Using `->` here would be a
+    // near-vacuous, unsound relativization; regression-pin the `and`.)
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var pool: Pool = .init(arena_state.allocator());
+    const p = &pool;
+
+    const grp = ssort(1);
+    const rat = ssort(2);
+    const op = tsym(1);
+    const mul = tsym(3);
+    const nonzero = tsym(9);
+
+    // source: exists a: Grp; op(a, a) = a
+    const a_fv = try p.add(.{ .fvar = .{ .name = sid(1), .sort = grp } });
+    const op_aa = try p.addApp(.app, op, &.{ a_fv, a_fv });
+    const eq = try p.add(.{ .eq = .{ .lhs = op_aa, .rhs = a_fv } });
+    const body = try p.close(eq, sid(1));
+    const src = try p.add(.{ .quant = .{ .q = .exists, .sort = grp, .hint = sid(1), .body = body } });
+
+    const remap: Pool.Remap = .{
+        .sorts = &.{.{ .from = grp, .to = rat }},
+        .syms = &.{.{ .from = op, .to = mul }},
+        .guard = .{ .pred = nonzero, .carrier = grp },
+    };
+    const out = try p.remapFormula(src, remap);
+
+    // expected: exists a: Rat; nonzero(a) and mul(a, a) = a  (AND, not implies)
+    const a2 = try p.add(.{ .fvar = .{ .name = sid(1), .sort = rat } });
+    const mul_aa = try p.addApp(.app, mul, &.{ a2, a2 });
+    const eq2 = try p.add(.{ .eq = .{ .lhs = mul_aa, .rhs = a2 } });
+    const guard_a = try p.addApp(.pred, nonzero, &.{a2});
+    const conj = try p.add(.{ .bin = .{ .op = .and_op, .lhs = guard_a, .rhs = eq2 } });
+    const body2 = try p.close(conj, sid(1));
+    const want = try p.add(.{ .quant = .{ .q = .exists, .sort = rat, .hint = sid(1), .body = body2 } });
+
+    try testing.expect(p.alphaEq(out, want));
+
+    // and NOT the `->` form (the pre-fix bug).
+    const impl = try p.add(.{ .bin = .{ .op = .implies, .lhs = guard_a, .rhs = eq2 } });
+    const bad_body = try p.close(impl, sid(1));
+    const bad = try p.add(.{ .quant = .{ .q = .exists, .sort = rat, .hint = sid(1), .body = bad_body } });
+    try testing.expect(!p.alphaEq(out, bad));
 }
 
 test "remapFormula: sorts/syms absent from the map pass through unchanged" {

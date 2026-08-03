@@ -292,7 +292,12 @@ fn reemitChild(self: *Elaborator, plow: *Lowering, parent: kernel.BlockId, ctx: 
             const ref = try self.emitStep(plow, parent, loc, closed, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
             try ctx.step_map.put(self.arena, closing_src, ref);
         },
-        else => return self.fail(loc, "guarded model materialization does not yet handle this block kind", .{}),
+        // `unpack` (existential witness) is the known boundary: a relativized
+        // `∃x; guard(x) and P` unpacks a witness whose `guard(w)` is available
+        // from the surfaced conjunct, but wiring that into `guard_hyp` is not yet
+        // done. `root` is unreachable as a child kind.
+        .unpack => return self.fail(loc, "guarded model materialization does not yet handle an `unpack` (existential witness) in the transferred proof", .{}),
+        .root => unreachable,
     }
 }
 

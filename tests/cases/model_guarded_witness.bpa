@@ -1,0 +1,34 @@
+// FAILURE BOUNDARY — existential witness. Transferring `someUnitFixed` to a
+// guarded model: its proof unpacks a witness `w` and instantiates the guarded
+// axiom at `w`, so materialization owes `good(w)` — but the witness is not known
+// to be in the guarded subset, and no closure fact covers a bare unknown. This
+// should FAIL, ideally with a clear message (the boundary where auto-discharge
+// cannot succeed — the point where an author-supplied obligation would be needed).
+import source <<< "model_guarded_witness_source.bpa"
+
+sort Thing
+const ZED: Thing
+func combine(a: Thing, b: Thing): Thing
+pred good(x: Thing)
+pred flagged(x: Thing)
+
+axiom combineZedLeftGuarded: forall a: Thing; good(a) -> combine(ZED, a) = a
+axiom somethingThing: exists x: Thing; flagged(x)
+
+model ThingModel = Thing where good {
+  source.Carrier: Thing
+  source.UNIT: ZED
+  source.op: combine
+  source.marked: flagged
+  source.opUnitLeft: combineZedLeftGuarded
+  source.something: somethingThing
+  }
+
+// the correctly-relativized statement: ∃ an x that is BOTH in the subset AND
+// fixed by ZED. (The `and` — not `->` — is the sound relativization of ∃.)
+theorem someCombineZedFixed: exists x: Thing; good(x) and combine(ZED, x) = x
+proof
+  @conclusion |
+    exists x: Thing; good(x) and combine(ZED, x) = x
+    [by model(ThingModel) source.someUnitFixed]
+qed

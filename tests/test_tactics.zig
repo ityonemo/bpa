@@ -105,6 +105,15 @@ pub fn addTests(
     // with no closure fact in scope fails with an actionable message (the graceful
     // fallback point for future author-supplied obligations).
     ctx.fail(&.{ "check", "tests/cases/model_guarded_noclose.bpa" }, "tests/cases/model_guarded_noclose.bpa:28:27: error: guarded model: cannot prove 'good(ZED)' — supply a closure fact for it\n");
+    // FAILURE-BOUNDARY fixtures (documented limitations, expected-fail): the
+    // guarded re-emitter does not yet handle a transferred proof that unpacks an
+    // existential witness, nor one that does a case split (or_elim/hypothesis) —
+    // the group corpus uses neither, so these reject cleanly rather than mis-emit.
+    // (The sources check fine; only the guarded TRANSFER is out of scope for now.)
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_witness_source.bpa" }, "OK: 7 declarations, 1 theorems proven\n");
+    ctx.fail(&.{ "check", "tests/cases/model_guarded_witness.bpa" }, "tests/cases/model_guarded_witness.bpa:33:27: error: guarded model materialization does not yet handle an `unpack` (existential witness) in the transferred proof\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_case_source.bpa" }, "OK: 10 declarations, 1 theorems proven\n");
+    ctx.fail(&.{ "check", "tests/cases/model_guarded_case.bpa" }, "tests/cases/model_guarded_case.bpa:36:27: error: guarded model materialization does not yet handle this proof shape\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source

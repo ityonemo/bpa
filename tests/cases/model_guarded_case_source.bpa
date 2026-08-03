@@ -1,0 +1,66 @@
+// Source for the CASE-SPLIT / hypothesis failure boundary. A theorem whose proof
+// splits on a disjunction and, in an arm, uses the arm hypothesis. Guarded
+// materialization does not yet re-emit `or_elim`/assume-arm blocks or bare
+// `hypothesis` steps (the group corpus has none), so a guarded transfer of this
+// hits the boundary.
+sort Carrier
+const UNIT: Carrier
+func op(a: Carrier, b: Carrier): Carrier
+pred p(x: Carrier)
+pred q(x: Carrier)
+
+axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
+axiom pOrQ: forall a: Carrier; p(a) or q(a)
+axiom pGivesUnit: forall a: Carrier; p(a) -> op(UNIT, a) = a
+axiom qGivesUnit: forall a: Carrier; q(a) -> op(UNIT, a) = a
+
+// prove op(UNIT, a) = a by cases on p(a) ∨ q(a).
+theorem unitByCases: forall a: Carrier; op(UNIT, a) = a
+proof
+  @generalize-a |
+    fix a: Carrier {
+      @p-or-q-rule |
+        forall b: Carrier; p(b) or q(b)
+        [by axiom pOrQ]
+      @p-or-q |
+        p(a) or q(a)
+        [by forall_elim(a) p-or-q-rule]
+      @by-cases |
+        op(UNIT, a) = a
+        case on p-or-q {
+          @when-p |
+            assume p(a) {
+              @have-p |
+                p(a)
+                [by hypothesis when-p]
+              @p-rule |
+                forall b: Carrier; p(b) -> op(UNIT, b) = b
+                [by axiom pGivesUnit]
+              @p-at-a |
+                p(a) -> op(UNIT, a) = a
+                [by forall_elim(a) p-rule]
+              @concl-p |
+                op(UNIT, a) = a
+                [by modus_ponens p-at-a have-p]
+            }
+          @when-q |
+            assume q(a) {
+              @have-q |
+                q(a)
+                [by hypothesis when-q]
+              @q-rule |
+                forall b: Carrier; q(b) -> op(UNIT, b) = b
+                [by axiom qGivesUnit]
+              @q-at-a |
+                q(a) -> op(UNIT, a) = a
+                [by forall_elim(a) q-rule]
+              @concl-q |
+                op(UNIT, a) = a
+                [by modus_ponens q-at-a have-q]
+            }
+        }
+    }
+  @conclusion |
+    forall a: Carrier; op(UNIT, a) = a
+    [by forall_intro generalize-a]
+qed
