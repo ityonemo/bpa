@@ -20,8 +20,8 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const StrId = @import("intern.zig").StrId;
-const term = @import("term.zig");
+const StrId = @import("../../intern.zig").StrId;
+const term = @import("../../term.zig");
 const TermId = term.TermId;
 const SortId = term.SortId;
 const SymId = term.SymId;

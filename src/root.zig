@@ -17,9 +17,9 @@ pub const kernel = @import("kernel.zig");
 pub const fmt = @import("fmt.zig");
 pub const literate = @import("literate.zig");
 pub const simplify = @import("simplify.zig");
-pub const smt = @import("smt.zig");
-pub const presburger = @import("presburger.zig");
-pub const farkas = @import("farkas.zig");
+pub const smt = @import("accelerant/arithmetic/smt.zig");
+pub const presburger = @import("accelerant/arithmetic/presburger.zig");
+pub const farkas = @import("accelerant/arithmetic/farkas.zig");
 
 pub const query = struct {
     pub const outline = @import("query/outline.zig");

@@ -23,9 +23,9 @@ const StatementId = @import("env.zig").StatementId;
 const Diagnostics = @import("diagnostics.zig");
 const kernel = @import("kernel.zig");
 const simplify_mod = @import("simplify.zig");
-const smt_mod = @import("smt.zig");
-const presburger_mod = @import("presburger.zig");
-const farkas_mod = @import("farkas.zig");
+const smt_mod = @import("accelerant/arithmetic/smt.zig");
+const presburger_mod = @import("accelerant/arithmetic/presburger.zig");
+const farkas_mod = @import("accelerant/arithmetic/farkas.zig");
 
 const ElabError = error{ Recover, OutOfMemory };
 
