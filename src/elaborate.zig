@@ -1601,6 +1601,29 @@ pub const Elaborator = struct {
         return .{ .opened = opened.items, .fix_vars = fix_vars.items, .body = g };
     }
 
+    /// Like `peelUniversal`, but strips AT MOST `max` binders — the rest stay in
+    /// `body`. Used when the closure prefix (caller eigenvariables) must be
+    /// peeled but the goal's OWN leading binders must be left intact for the
+    /// body-emit to handle. `max` greater than the available binders peels all.
+    pub fn peelUniversalN(self: *Elaborator, goal: TermId, prefix: []const u8, max: usize) ElabError!Universal {
+        var opened: std.ArrayList(TermId) = .empty;
+        var fix_vars: std.ArrayList(term.Node.Fvar) = .empty;
+        var g = goal;
+        try opened.append(self.arena, g);
+        while (fix_vars.items.len < max) {
+            const node = self.pool.get(g);
+            if (node != .quant or node.quant.q != .forall) break;
+            const hint = self.interner.str(node.quant.hint);
+            const name_prefix = if (hint.len > 0) hint else prefix;
+            const fv: term.Node.Fvar = .{ .name = try self.freshNamed(name_prefix), .sort = node.quant.sort };
+            const fv_id = try self.pool.add(.{ .fvar = fv });
+            g = try self.pool.open(node.quant.body, fv_id);
+            try fix_vars.append(self.arena, fv);
+            try opened.append(self.arena, g);
+        }
+        return .{ .opened = opened.items, .fix_vars = fix_vars.items, .body = g };
+    }
+
     /// Open one synthesized `fix` block per peeled binder; returns the block
     /// ids (outermost-first) and the innermost block, which is where the body
     /// justification should be emitted. Pair with `closeUniversal`.

@@ -31,6 +31,7 @@ const simplify_mod = @import("../simplify.zig");
 const smt_mod = @import("arithmetic/smt.zig");
 const presburger_mod = @import("arithmetic/presburger.zig");
 const farkas_mod = @import("arithmetic/farkas.zig");
+const common = @import("_common.zig");
 
 // Plan/context types that live on the Elaborator (shared with the surface
 // certificate machinery) but are named here.
@@ -42,6 +43,28 @@ const SchemaArgs = Elaborator.SchemaArgs;
 pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     return arithmeticJustification(self, low, block_id, goal, c);
 }
+
+/// The body-emit for arithmetic's strict-mode closure (`common.generate`): walk
+/// the certifier chain against the fresh-eigenvar body, first-`certified`-wins.
+/// The closure has surfaced each cited premise as a labeled hypothesis in the
+/// fresh Lowering, so a certifier's `c.refs` lookups resolve them there. Returns
+/// null when EVERY certifier declines (valid-but-uncertifiable) — the caller
+/// then does fallback/terminal; each link's decline reason is left in `.reasons`.
+const CertifierBody = struct {
+    c: ast.Step.Claim,
+    symbols: presburger_mod.Symbols,
+    loc: u32,
+    reasons: [certifiers.len]Reason,
+    pub fn emit(b: *CertifierBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!?kernel.Justification {
+        for (certifiers, 0..) |link, i| {
+            switch (try link.run(self, low, block, body_goal, b.c, b.symbols, b.loc)) {
+                .certified => |just| return just,
+                .declined => |r| b.reasons[i] = r,
+            }
+        }
+        return null;
+    }
+};
 
 /// A cited hypothesis prepared for certificate use. A less_than premise
 /// contributes its witness equation (via lessThanElim + unpack) as a
@@ -1484,20 +1507,29 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
     const verdict = smt_mod.decideMixed(self.arena, self.pool, symbols, premises, stripped) catch return error.OutOfMemory;
     switch (verdict) {
         .valid => {
-            // Walk the certifier chain, first-`certified`-wins; collect
-            // each link's decline reason for the honest terminal.
-            var reasons: [certifiers.len]Reason = undefined;
-            for (certifiers, 0..) |link, i| {
-                switch (try link.run(self, low, block_id, goal, c, symbols, loc)) {
-                    .certified => |just| return just,
-                    .declined => |r| reasons[i] = r,
-                }
+            // --fast: DECIDE-only. decideMixed already settled validity; take the
+            // accelerated verdict (taint, no certificate) without running the
+            // certifiers. A `fallback(<thm>)` still resolves to its manual proof.
+            if (!self.verify.certify_arithmetic) {
+                if (c.fallback) |fb| return arithmeticFallback(self, fb, goal);
+                var reasons: [certifiers.len]Reason = undefined;
+                @memset(&reasons, .out_of_scope);
+                return arithmeticTerminal(self, loc, &reasons);
             }
-            // every link declined: valid but not certifiable here. A
-            // `fallback(<thm>)` cites a manual proof (proven) instead; else
-            // hard error (default) listing the reasons, or accelerated (--fast).
+
+            // strict: GENERATE a context-free synthetic theorem — the certifier
+            // chain builds the proof in a FRESH Lowering (its cited premises are
+            // surfaced as hypotheses by the closure), which is wrapped + cited.
+            // `body.reasons` captures each link's decline reason for the terminal.
+            var body: CertifierBody = .{ .c = c, .symbols = symbols, .loc = loc, .reasons = undefined };
+            if (try common.generate(self, low, block_id, loc, "arithmetic", goal, c.refs, &body)) |just| {
+                return just;
+            }
+            // every certifier declined: valid but not certifiable here. A
+            // `fallback(<thm>)` cites a manual proof (proven); else hard error
+            // (default) listing why each link declined.
             if (c.fallback) |fb| return arithmeticFallback(self, fb, goal);
-            return arithmeticTerminal(self, loc, &reasons);
+            return arithmeticTerminal(self, loc, &body.reasons);
         },
         .countermodel => |cm| {
             if (!cm.values_found) {

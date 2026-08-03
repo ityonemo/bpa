@@ -22,7 +22,7 @@ pub fn addTests(
     // the banner fires. Under the default mode below they build kernel-checked
     // certificates (no acceleration).
     ctx.ok(&.{ "check", "--fast", "examples/peano.bpa" },
-        \\OK: 18 declarations, 6 theorems proven (4 accelerated: simplify, arithmetic)
+        \\OK: 18 declarations, 6 theorems proven (6 accelerated: simplify, arithmetic)
         \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );

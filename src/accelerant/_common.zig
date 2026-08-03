@@ -131,10 +131,10 @@ pub fn generate(
     });
     const root: kernel.BlockId = @enumFromInt(0);
 
-    // peel the ∀-prefix into fresh eigenvariables, one fix block each. Peeling
-    // stops at the `->` chain (or the bare goal) — `u.body` is the fresh-eigenvar
-    // implication chain.
-    const u = try self.peelUniversal(closed, tactic);
+    // peel EXACTLY the closure-added eigenvariable prefix (`vars.len` binders),
+    // one fix block each — the goal's OWN leading binders stay in the body for
+    // the body-emit to handle. `u.body` is the fresh-eigenvar implication chain.
+    const u = try self.peelUniversalN(closed, tactic, vars.items.len);
     const opened = try self.openUniversal(&plow, root, u);
 
     // one assume block per premise, surfacing each as a labeled hypothesis step

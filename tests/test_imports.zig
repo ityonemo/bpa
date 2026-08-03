@@ -42,7 +42,7 @@ pub fn addTests(
     // simplify (and arithmetic's certifiers) disclose as accelerated rather than
     // emitting kernel chains.
     ctx.ok(&.{ "check", "--fast", "examples/peano-imports.bpa" },
-        \\OK: 24 declarations, 7 theorems proven (5 accelerated: simplify, arithmetic)
+        \\OK: 24 declarations, 7 theorems proven (7 accelerated: simplify, arithmetic)
         \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
