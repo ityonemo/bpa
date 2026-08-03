@@ -13,12 +13,16 @@ divisibility and powers (`std/integer-divides.bpa`), and — for ℕ-indexed
 statements — the nonnegative integers with upward-from-0 induction
 (`std/integer-nonneg.bpa`).
 
+The integers are the axiomatic theory `std/integer.bpa` — a successor *and* a
+predecessor, with a bidirectional induction schema over all of ℤ — together with
+its ring algebra (`std/integer-ring.bpa`) and order/subtraction
+(`std/integer-order.bpa`). We open by naming the arithmetic vocabulary the whole
+chapter uses: the carrier `Int`, its operations, and the ring facts.
+
 ```bpa
 import integer <<< "std/integer.bpa"
 import ring <<< "std/integer-ring.bpa"
 import order <<< "std/integer-order.bpa"
-import divides <<< "std/integer-divides.bpa"
-import nonneg <<< "std/integer-nonneg.bpa"
 
 sort Int = integer.Int
 const ZERO = integer.ZERO
@@ -28,9 +32,6 @@ func add = integer.add
 func mul = integer.mul
 func neg = integer.neg
 func sub = order.sub
-func pow = divides.pow
-pred is_nonneg = nonneg.nonneg
-pred does_divide = divides.divides
 axiom addZeroRight = integer.addZeroRight
 axiom mulZeroRight = integer.mulZeroRight
 axiom mulSuccRight = integer.mulSuccRight
@@ -41,12 +42,7 @@ axiom negZero = integer.negZero
 axiom oneIsSuccZero = integer.oneIsSuccZero
 axiom succPrev = integer.succPrev
 axiom prevSucc = integer.prevSucc
-axiom powZero = divides.powZero
-axiom powSucc = divides.powSucc
-axiom dividesIntro = divides.dividesIntro
-axiom dividesElim = divides.dividesElim
 axiom subDef = order.subDef
-axiom nonnegInduction = nonneg.nonnegInduction
 theorem addZeroLeft = ring.addZeroLeft
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
@@ -54,9 +50,6 @@ theorem addSuccLeft = ring.addSuccLeft
 theorem addPrevLeft = ring.addPrevLeft
 theorem mulOneRight = ring.mulOneRight
 theorem subSelf = order.subSelf
-theorem dividesRefl = divides.dividesRefl
-theorem dividesMul = divides.dividesMul
-theorem dividesAdd = divides.dividesAdd
 
 define TWO = succ(ONE)
 define THREE = succ(TWO)
@@ -75,12 +68,36 @@ bidirectional induction schema over all of ℤ, and `std/integer-nonneg.bpa`
 carves out the nonnegatives $\mathbb N$ with the upward-from-0 principle
 `nonnegInduction` — prove $P(0)$ and that $P(k) \Rightarrow P(\operatorname{succ}
 k)$ for nonnegative $k$, and $P$ holds on all of $\mathbb N$. That is the first
-principle at $n_0 = 0$, which (after a shift) is all the examples use.
+principle at $n_0 = 0$, which (after a shift) is all the examples use. We bring in
+that nonnegative subclass and its induction principle now.
+
+```bpa
+import nonneg <<< "std/integer-nonneg.bpa"
+
+pred is_nonneg = nonneg.nonneg
+axiom nonnegInduction = nonneg.nonnegInduction
+```
 
 The book illustrates induction with divisibility facts such as "$9$ divides
 $10^{n+1} + 3\cdot 10^n + 5$." We prove one of the same flavour, whose induction
 starts cleanly at $0$: **$3$ divides $4^n - 1$** for every $n \ge 0$ (equivalently
-$4^n \equiv 1 \pmod 3$).
+$4^n \equiv 1 \pmod 3$). This is the chapter's first use of *divisibility* and
+*powers*, so we introduce those here — `does_divide` and `pow` with their
+defining axioms and the divisibility lemmas the proofs cite.
+
+```bpa
+import divides <<< "std/integer-divides.bpa"
+
+func pow = divides.pow
+pred does_divide = divides.divides
+axiom powZero = divides.powZero
+axiom powSucc = divides.powSucc
+axiom dividesIntro = divides.dividesIntro
+axiom dividesElim = divides.dividesElim
+theorem dividesRefl = divides.dividesRefl
+theorem dividesMul = divides.dividesMul
+theorem dividesAdd = divides.dividesAdd
+```
 
 At $n = 0$: $4^0 - 1 = 1 - 1 = 0$, and $3 \mid 0$.
 

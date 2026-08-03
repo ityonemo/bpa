@@ -22,6 +22,35 @@ checked at declaration, only at use).
 
 The header comment states what the file is and what it proves.
 
+## Literate `.md` structure — introduce components as the prose reaches them
+
+The front-loaded layout above is for `.bpa` files. A literate `.md`
+transliteration (`aata/*.md`) does **not** ape it. Prose is the spine; the
+```bpa fence blocks are woven into it, and each component is introduced **where
+it belongs in the exposition** — imports, aliases, and declarations sit at the
+top of the fence block that *first needs* them, not hoisted into one preamble
+block at the top of the file. The reader should never meet a name before the
+text has introduced it.
+
+This is sound because the literate checker concatenates every ```bpa block into
+one logical file **in document order, sharing one scope** (`src/literate.zig`) —
+so document order = declaration order (declare-before-use, reading downward), and
+an import in one section's block is visible to every later block. There is no
+per-block preamble tax.
+
+In practice: the *core vocabulary the whole chapter is about* (the carrier sort +
+its operations — `Int`/`add`/`mul`, `Grp`/`op`, `Set`/`member`) is introduced
+once, with the opening prose that first names the object (the book opens the same
+way). *Concept-specific machinery* enters in the section that first discusses that
+concept — the reader meets `does_divide` when the text reaches divisibility, `gcd`
+when it reaches the Euclidean algorithm, the subgroup predicate when subgroups are
+defined. A single-theory chapter (one import used throughout) naturally satisfies
+this by introducing its one import with the opening prose; a multi-concept chapter
+scatters its imports across the sections that motivate them. The test is "does
+this read most naturally as exposition" — not a mechanical rule. (This overrides
+nothing in `agents/style-guide.md`'s transcription exception, which still governs
+*naming* inside a literate file — alias to the book's notation.)
+
 ## The forward manifest
 
 An optional block of `forward <name>` lines after the axioms declares, up
