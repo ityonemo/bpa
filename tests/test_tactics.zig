@@ -118,6 +118,12 @@ pub fn addTests(
     // paradigm subgroup case — H ⊆ G on one carrier). Mapping sources are bare
     // (unqualified) names resolved locally; no import/two-file split required.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_samefile.bpa" }, "OK: 10 declarations, 2 theorems proven\n");
+    // AUTO-WEAKENING: a source axiom that holds unconditionally on the carrier,
+    // mapped to ITSELF, has its relativized obligation (`inH(a) -> P(a)`)
+    // synthesized by the materializer as a free weakening — no hand-written
+    // relativized copy. (∀a;P(a) ⊢ ∀a; guard(a)->P(a).)
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source

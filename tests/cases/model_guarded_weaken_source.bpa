@@ -1,0 +1,19 @@
+// Source theory for the AUTO-WEAKENING fixture: a carrier with a left-absorbing
+// constant E under `op`. `absorbs` holds UNCONDITIONALLY on all of Grp — so when a
+// guarded model maps it to itself, its relativized obligation is a free weakening.
+sort Grp
+const E: Grp
+func op(a: Grp, b: Grp): Grp
+
+axiom absorbs: forall a: Grp; op(E, a) = a
+
+// a theorem whose proof forall_elims `absorbs` at the constant E.
+theorem absorbsAtIdentity: op(E, E) = E
+proof
+  @absorbs-law |
+    forall a: Grp; op(E, a) = a
+    [by axiom absorbs]
+  @conclusion |
+    op(E, E) = E
+    [by forall_elim(E) absorbs-law]
+qed

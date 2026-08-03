@@ -388,6 +388,16 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
 
     switch (s.just) {
         .axiom_ref, .theorem_ref => {
+            // AUTO-WEAKENING: a mapped axiom that holds UNCONDITIONALLY on the
+            // carrier (its target is the unguarded universal `∀x; P`) has a
+            // relativized obligation `∀x; guard(x) -> P` — a free weakening. When
+            // the target's formula is that unguarded universal, synthesize the
+            // weakening rather than citing the target directly (which would
+            // mismatch the relativized claim). Real (guard-restricted) axioms whose
+            // author-supplied target is ALREADY relativized fall through unchanged.
+            if (s.just == .axiom_ref) {
+                if (try emitWeakenedAxiom(self, plow, block, ctx, s.just.axiom_ref.stmt, new_formula)) |ref| return ref;
+            }
             const j = try remapJustification(self, model, s.just, loc);
             return self.emitStep(plow, block, loc, new_formula, j);
         },
@@ -451,6 +461,61 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
         // proofs); reject cleanly if one appears.
         else => return self.fail(loc, "guarded model materialization does not yet handle this proof shape", .{}),
     }
+}
+
+/// AUTO-WEAKENING of an unconditional mapped axiom. If `source_axiom` maps to a
+/// target whose formula is the UNGUARDED universal `∀x:carrier; P(x)` while the
+/// relativized claim `new_formula` is `∀x:carrier; guard(x) -> P(x)`, synthesize
+/// the weakening — `fix x; assume guard(x); { P(x) by forall_elim of target };
+/// implies_intro; forall_intro` — and return its ref. Returns null (fall through
+/// to a direct citation) when the target is NOT the unguarded universal (i.e. the
+/// author supplied an already-relativized, genuinely guard-restricted target).
+/// Only the single-carrier-binder shape is handled; other shapes fall through.
+fn emitWeakenedAxiom(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, source_axiom: StatementId, new_formula: TermId) ElabError!?kernel.SRef {
+    const model = ctx.model;
+    const loc = ctx.loc;
+    const guard = model.remap.guard.?;
+
+    // find the mapped target for this source axiom.
+    var target: ?StatementId = null;
+    for (model.stmt_map) |p| {
+        if (p.from == source_axiom) target = p.to;
+    }
+    const tgt = target orelse return null;
+    const tgt_formula = switch (self.env.statements.items[@intFromEnum(tgt)]) {
+        .axiom => |f| f.formula,
+        .theorem => |f| f.formula,
+        .schema => return null,
+    };
+
+    // the claim must be `∀x:carrier; guard(x) -> body`.
+    const claim = self.pool.get(new_formula);
+    if (claim != .quant or claim.quant.q != .forall or claim.quant.sort != guard.carrier) return null;
+    const claim_body = self.pool.get(claim.quant.body);
+    if (claim_body != .bin or claim_body.bin.op != .implies) return null;
+
+    // the target must be the UNGUARDED universal `∀x:carrier; body` (α-equal to
+    // the claim with the guard hypothesis stripped). If it already carries the
+    // guard (author-relativized), this is not a weakening — fall through.
+    const unguarded = try self.pool.add(.{ .quant = .{ .q = .forall, .sort = guard.carrier, .hint = claim.quant.hint, .body = claim_body.bin.rhs } });
+    if (!self.pool.alphaEq(tgt_formula, unguarded)) return null;
+
+    // synthesize: fix x; assume guard(x); forall_elim(x) on the target; implies_intro; forall_intro.
+    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-fix"), block, .{ .fix = .{ .name = claim.quant.hint, .sort = guard.carrier } });
+    const x = try self.pool.add(.{ .fvar = .{ .name = claim.quant.hint, .sort = guard.carrier } });
+    const guard_x = try self.pool.addApp(.pred, guard.pred, &.{x});
+    const asm_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-guard"), fix_b, .{ .assume = guard_x });
+    _ = try self.emitStep(plow, asm_b, loc, guard_x, .{ .hypothesis = .{ .id = asm_b, .loc = loc } });
+    // the unconditional fact, cited and specialized at x.
+    const cite = try self.emitStep(plow, asm_b, loc, tgt_formula, citeStatement(self, tgt, loc));
+    const body_at_x = try self.pool.open(claim_body.bin.rhs, x); // P(x)
+    _ = try self.emitStep(plow, asm_b, loc, body_at_x, .{ .forall_elim = .{ .step = cite, .with = x, .with_loc = loc } });
+    self.closeBlock(plow, asm_b);
+    // guard(x) -> P(x)
+    const impl = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_x, .rhs = body_at_x } });
+    _ = try self.emitStep(plow, fix_b, loc, impl, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
+    self.closeBlock(plow, fix_b);
+    return try self.emitStep(plow, block, loc, new_formula, .{ .forall_intro = .{ .id = fix_b, .loc = loc } });
 }
 
 /// Emit a proof of `guard(t)` and return its ref, by recursion on `t`:
