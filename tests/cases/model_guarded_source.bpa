@@ -1,0 +1,41 @@
+// Source theory for the GUARDED `model … where` fixtures. A carrier with a
+// binary `op` and left-identity `UNIT`, plus two derived theorems whose proofs
+// forall_elim the axiom at (a) the bound variable only, and (b) a composite
+// carrier term — the two shapes that stress guarded materialization differently.
+sort Carrier
+const UNIT: Carrier
+func op(a: Carrier, b: Carrier): Carrier
+
+axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
+
+// (L1) GROUND: proof forall_elims the axiom at the CONSTANT UNIT only — no fix,
+// no eigenvariable. The guard obligation to discharge is `good(UNIT)`, from the
+// model's base closure fact. Smallest guarded case (isolates discharge from any
+// block surgery).
+theorem opUnitAtUnit: op(UNIT, UNIT) = UNIT
+proof
+  @unit-left |
+    forall a: Carrier; op(UNIT, a) = a
+    [by axiom opUnitLeft]
+  @at-unit |
+    op(UNIT, UNIT) = UNIT
+    [by forall_elim(UNIT) unit-left]
+qed
+
+// (a) proof forall_elims the axiom at the BOUND variable `a` only: the injected
+// guard antecedent is exactly the one the relativized statement binds.
+theorem opUnitLeftOnce: forall a: Carrier; op(UNIT, a) = a
+proof
+  @generalize-a |
+    fix a: Carrier {
+      @unit-left |
+        forall b: Carrier; op(UNIT, b) = b
+        [by axiom opUnitLeft]
+      @at-a |
+        op(UNIT, a) = a
+        [by forall_elim(a) unit-left]
+    }
+  @conclusion |
+    forall a: Carrier; op(UNIT, a) = a
+    [by forall_intro generalize-a]
+qed

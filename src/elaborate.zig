@@ -509,8 +509,12 @@ pub const Elaborator = struct {
         const carrier = self.env.findSort(self.file, try self.internTok(d.carrier)) orelse
             return self.fail(d.carrier.start, "model carrier '{s}' is not a sort in scope", .{self.text(d.carrier)});
 
-        // optional guard: a local UNARY predicate over the carrier.
-        var guard: ?term.Pool.Remap.Guard = null;
+        // optional guard: a local UNARY predicate over the (target) carrier. Its
+        // Guard.carrier must be the SOURCE carrier sort (remapFormula keys the
+        // relativization on the pre-remap binder sort — term.zig), which we only
+        // know once the sort mapping is built, so capture the pred id here and
+        // assemble the Guard after the mappings below.
+        var guard_pred: ?term.SymId = null;
         if (d.guard) |g| {
             const gsym_id = self.env.findSym(self.file, try self.internTok(g)) orelse
                 return self.fail(g.start, "model guard '{s}' is not a predicate in scope", .{self.text(g)});
@@ -518,7 +522,7 @@ pub const Elaborator = struct {
             if (gsym.kind != .pred or gsym.arg_sorts.len != 1 or gsym.arg_sorts[0] != carrier) {
                 return self.fail(g.start, "model guard '{s}' must be a unary predicate over the carrier sort", .{self.text(g)});
             }
-            guard = .{ .pred = gsym_id, .carrier = carrier };
+            guard_pred = gsym_id;
         }
 
         var sort_map: std.ArrayList(term.Pool.Remap.SortPair) = .empty;
@@ -559,8 +563,24 @@ pub const Elaborator = struct {
             }
         }
 
+        const sorts = try sort_map.toOwnedSlice(self.arena);
+
+        // assemble the guard now that the sort mapping is known: Guard.carrier is
+        // the SOURCE sort that maps to the target carrier (relativization keys on
+        // the pre-remap binder sort), while Guard.pred is the target predicate.
+        var guard: ?term.Pool.Remap.Guard = null;
+        if (guard_pred) |gp| {
+            var source_carrier: ?SortId = null;
+            for (sorts) |p| {
+                if (p.to == carrier) source_carrier = p.from;
+            }
+            const sc = source_carrier orelse
+                return self.fail(d.guard.?.start, "guarded model must map the source theory's carrier sort to '{s}'", .{self.text(d.carrier)});
+            guard = .{ .pred = gp, .carrier = sc };
+        }
+
         const remap: term.Pool.Remap = .{
-            .sorts = try sort_map.toOwnedSlice(self.arena),
+            .sorts = sorts,
             .syms = try sym_map.toOwnedSlice(self.arena),
             .guard = guard,
         };

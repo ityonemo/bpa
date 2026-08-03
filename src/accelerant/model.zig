@@ -90,6 +90,14 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
 fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId, loc: u32) ElabError!StatementId {
     if (model.materialized.get(source)) |existing| return existing;
 
+    // A guarded model (`where <pred>`) relativizes every carrier ∀ to
+    // `guard(x) -> …`, which the strict 1:1 remap below cannot honor in the proof
+    // BODY (each forall_elim over a guarded universal now owes a `guard(t)`
+    // discharge). Guarded transfer takes a distinct re-emitting path that inserts
+    // those discharges (and the `fix a { assume guard(a) }` blocks); the unguarded
+    // path here stays structure-preserving and untouched.
+    if (model.remap.guard != null) return materializeGuardedModelTheorem(self, model, source, loc);
+
     const stmt = self.env.statements.items[@intFromEnum(source)];
     const fact = switch (stmt) {
         .theorem => |t| t,
@@ -145,6 +153,131 @@ fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId
     const on_fail = try std.fmt.allocPrint(self.arena, "model transfer of '{s}' does not kernel-check under the interpretation (an obligation is undischarged?)", .{self.interner.str(fact.name)});
     try self.finishSyntheticTheorem(mat_id, new_steps, new_blocks, fact.accelerated, fact.holes, loc, on_fail);
     return mat_id;
+}
+
+/// Materialize a source theorem's proof through a GUARDED model. Unlike the
+/// unguarded 1:1 remap, guard relativization is not structure-preserving: it
+/// re-emits the proof into a fresh Lowering, inserting `assume guard(a)` blocks
+/// under each carrier `fix` and a `guard(t)` discharge at each `forall_elim` over
+/// a guarded universal. SRefs are captured as steps are emitted (no index
+/// arithmetic). (Built rung by rung: L1 = flat proofs, constant discharge.)
+fn materializeGuardedModelTheorem(self: *Elaborator, model: *Model, source: StatementId, loc: u32) ElabError!StatementId {
+    const stmt = self.env.statements.items[@intFromEnum(source)];
+    const fact = switch (stmt) {
+        .theorem => |t| t,
+        .axiom => return self.fail(loc, "model materialization reached an axiom without a mapping; add it to the model", .{}),
+        .schema => return self.fail(loc, "model cannot materialize a schema", .{}),
+    };
+    const proof = fact.proof orelse
+        return self.fail(loc, "model cannot materialize '{s}': its proof was not retained (trusted import?)", .{self.interner.str(fact.name)});
+
+    const mangled = try mangledModelName(self, model.name, fact.name);
+    const remapped_formula = self.pool.remapFormula(fact.formula, model.remap) catch return error.OutOfMemory;
+    const mat_id = try self.beginSyntheticTheorem(mangled, remapped_formula, loc);
+    try model.materialized.put(self.arena, source, mat_id);
+
+    // re-emit into a fresh Lowering, capturing each source step's new ref.
+    var plow: Lowering = .{};
+    try plow.blocks.append(self.arena, .{
+        .parent = null,
+        .label = try self.interner.intern("proof"),
+        .kind = .root,
+        .first_step = 0,
+        .last_step = 0,
+    });
+    const root: kernel.BlockId = @enumFromInt(0);
+
+    var ctx: GuardedCtx = .{
+        .model = model,
+        .proof = proof,
+        .step_map = .empty,
+        .loc = loc,
+    };
+
+    // L1: flat proofs only — every source step lives in the root block. (Block
+    // structure / fix-assume insertion arrives at L2.)
+    for (proof.steps, 0..) |s, i| {
+        const sid: kernel.StepId = @enumFromInt(i);
+        const new_ref = try emitGuardedStep(self, &plow, root, &ctx, s);
+        try ctx.step_map.put(self.arena, sid, new_ref);
+    }
+    plow.blocks.items[0].last_step = @intCast(plow.steps.items.len);
+
+    const on_fail = try std.fmt.allocPrint(self.arena, "guarded model transfer of '{s}' does not kernel-check under the interpretation", .{self.interner.str(fact.name)});
+    try self.finishSyntheticTheorem(mat_id, plow.steps.items, plow.blocks.items, fact.accelerated, fact.holes, loc, on_fail);
+    return mat_id;
+}
+
+/// State threaded through the guarded re-emitter.
+const GuardedCtx = struct {
+    model: *Model,
+    proof: @import("../env.zig").Statement.LoweredProof,
+    /// source StepId -> the captured ref of its (final) re-emitted step
+    step_map: std.AutoHashMapUnmanaged(kernel.StepId, kernel.SRef),
+    loc: u32,
+};
+
+/// Re-emit one source step into `plow`; return the ref of its (final) emitted
+/// step. A `forall_elim` over a guarded (carrier-sorted) universal expands to
+/// three steps — the elim (`guard(t) -> C`), a `guard(t)` discharge, and a
+/// modus_ponens yielding the bare `C` (whose ref is returned).
+fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, s: kernel.Step) ElabError!kernel.SRef {
+    const model = ctx.model;
+    const loc = ctx.loc;
+    const new_formula = self.pool.remapFormula(s.formula, model.remap) catch return error.OutOfMemory;
+
+    switch (s.just) {
+        .axiom_ref, .theorem_ref => {
+            const j = try remapJustification(self, model, s.just, loc);
+            return self.emitStep(plow, block, loc, new_formula, j);
+        },
+        .forall_elim => |r| {
+            // the cited universal, in the SOURCE proof, before remap.
+            const cited_src = ctx.proof.steps[@intFromEnum(r.step.id)].formula;
+            const cited_node = self.pool.get(cited_src);
+            const guarded = cited_node == .quant and cited_node.quant.q == .forall and
+                cited_node.quant.sort == model.remap.guard.?.carrier;
+            const with = self.pool.remapFormula(r.with, model.remap) catch return error.OutOfMemory;
+            const cited_ref = ctx.step_map.get(r.step.id).?;
+            if (!guarded) {
+                return self.emitStep(plow, block, loc, new_formula, .{ .forall_elim = .{ .step = cited_ref, .with = with, .with_loc = loc } });
+            }
+            // guarded: the elim derives `guard(with) -> new_formula`.
+            const guard = model.remap.guard.?;
+            const guard_app = try self.pool.addApp(.pred, guard.pred, &.{with});
+            const implied = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_app, .rhs = new_formula } });
+            const elim_ref = try self.emitStep(plow, block, loc, implied, .{ .forall_elim = .{ .step = cited_ref, .with = with, .with_loc = loc } });
+            const guard_ref = try emitGuardProof(self, plow, block, ctx, with);
+            return self.emitStep(plow, block, loc, new_formula, .{ .modus_ponens = .{ .implication = elim_ref, .antecedent = guard_ref } });
+        },
+        else => return self.fail(loc, "guarded model materialization does not yet handle this proof shape", .{}),
+    }
+}
+
+/// Emit a proof of `guard(t)` and return its ref. (L1: `t` a mapped constant —
+/// cite the model's base closure fact `guard(t)`.) Recurses on `t` at L3.
+fn emitGuardProof(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, t: TermId) ElabError!kernel.SRef {
+    const guard = ctx.model.remap.guard.?;
+    const want = try self.pool.addApp(.pred, guard.pred, &.{t});
+    // find a proven local fact whose formula is exactly `guard(t)`.
+    if (findFactByFormula(self, want)) |id| {
+        return self.emitStep(plow, block, ctx.loc, want, citeStatement(self, id, ctx.loc));
+    }
+    return self.fail(ctx.loc, "guarded model: cannot prove '{s}' — supply a closure fact for it", .{try self.renderTerm(want)});
+}
+
+/// The StatementId of a proven axiom/theorem in the current file whose formula is
+/// alpha-equal to `formula` (used to find guard-closure facts by shape).
+fn findFactByFormula(self: *Elaborator, formula: TermId) ?StatementId {
+    for (self.env.statements.items, 0..) |st, i| {
+        const f: TermId = switch (st) {
+            .axiom => |a| a.formula,
+            .theorem => |t| if (t.proven) t.formula else continue,
+            .schema => continue,
+        };
+        if (self.pool.alphaEq(f, formula)) return @enumFromInt(i);
+    }
+    return null;
 }
 
 /// Remap a justification's embedded ids through the model: TermId fields via

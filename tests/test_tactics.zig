@@ -93,6 +93,15 @@ pub fn addTests(
     // unmapped → rejected, naming it.
     ctx.fail(&.{ "check", "tests/cases/model_cite_bad.bpa" }, "tests/cases/model_cite_bad.bpa:33:27: error: model materialization cites axiom 'opUnitRight', which the substitution affects but the model does not map; add a mapping for it\n");
 
+    // GUARDED model (`model … where <pred>`): the transfer is RELATIVIZED — every
+    // carrier ∀ gains `guard(x) ->` — and strict materialization discharges the
+    // guard obligation at each forall_elim over a guarded universal (recursing on
+    // the instantiation term: constant → base closure fact; eigenvariable → the
+    // in-scope `assume guard(a)`; composite → a closure fact + recursion). Fully
+    // kernel-checked, no taint.
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_source.bpa" }, "OK: 6 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded.bpa" }, "OK: 16 declarations, 3 theorems proven\n");
+
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source
     // theorem doesn't say).
