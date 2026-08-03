@@ -71,6 +71,13 @@ pub fn addTests(
     // powAdd: pow(g, m+n) = op(pow(g,m), pow(g,n)) by induction on n.
     ctx.ok(&.{ "check", "std/group-power.bpa" }, "OK: 87 declarations, 28 theorems proven\n");
 
+    // subgroups (std/subgroup.bpa, Judson §3.3): membership predicate inSubgroup
+    // characterized by the three subgroup-criterion conditions; proves the one-step
+    // test (both directions: forward subgroupClosedDivide, converse the three
+    // conditions from nonempty + divide-closed) and that the intersection of two
+    // subgroups is a subgroup. Layered on std/group.bpa; accelerated-free.
+    ctx.ok(&.{ "check", "std/subgroup.bpa" }, "OK: 47 declarations, 17 theorems proven\n");
+
     // the ring theory (std/ring.bpa): an additive abelian group + associative,
     // distributing multiplication. Its additive half MODELS std/group.bpa (a
     // TWO-LEVEL structure — a model inside a modelable theory). Judson's first
