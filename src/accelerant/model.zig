@@ -365,7 +365,105 @@ fn emitGuardProof(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx
     if (findFactByFormula(self, want)) |id| {
         return self.emitStep(plow, block, ctx.loc, want, citeStatement(self, id, ctx.loc));
     }
+    // composite: a closure fact `∀v…; guard(p₁) -> … -> guard(pₖ) -> guard(C)`
+    // whose conclusion C unifies with t — instantiate it, recurse on each
+    // antecedent, and chain forall_elim + modus_ponens.
+    if (try emitCompositeGuard(self, plow, block, ctx, t, want)) |ref| return ref;
     return self.fail(ctx.loc, "guarded model: cannot prove '{s}' — supply a closure fact for it", .{try self.renderTerm(want)});
+}
+
+/// Discharge `guard(t)` for a composite `t` via a closure fact. Searches for a
+/// proven fact `∀v…; guard(p₁) -> … -> guard(pₖ) -> guard(C)` whose conclusion
+/// `C` matches `t` (solving the binders), recurses to prove each instantiated
+/// antecedent, and emits the forall_elim + modus_ponens chain. Returns null if no
+/// closure fact matches (the caller then errors cleanly).
+fn emitCompositeGuard(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, t: TermId, want: TermId) ElabError!?kernel.SRef {
+    const guard = ctx.model.remap.guard.?;
+    for (self.env.statements.items, 0..) |st, si| {
+        const fact_formula: TermId, const is_axiom: bool = switch (st) {
+            .axiom => |a| .{ a.formula, true },
+            .theorem => |th| if (th.proven) .{ th.formula, false } else continue,
+            .schema => continue,
+        };
+        // peel leading ∀ binders (collect their sorts).
+        var binder_sorts: std.ArrayList(term.SortId) = .empty;
+        var body = fact_formula;
+        while (true) {
+            const n = self.pool.get(body);
+            if (n != .quant or n.quant.q != .forall) break;
+            try binder_sorts.append(self.arena, n.quant.sort);
+            body = n.quant.body; // keep bvars loose; we solve for them
+        }
+        // peel `->` antecedents; the conclusion must be `guard(C)`.
+        var antecedents: std.ArrayList(TermId) = .empty;
+        var concl = body;
+        while (true) {
+            const n = self.pool.get(concl);
+            if (n != .bin or n.bin.op != .implies) break;
+            try antecedents.append(self.arena, n.bin.lhs);
+            concl = n.bin.rhs;
+        }
+        const cn = self.pool.get(concl);
+        if (cn != .pred or cn.pred.sym != guard.pred or cn.pred.args_len != 1) continue;
+        const concl_arg = self.pool.args(cn.pred)[0];
+        // solve binders by matching the conclusion arg (a bvar-pattern) against t.
+        const binding = try self.arena.alloc(?TermId, binder_sorts.items.len);
+        @memset(binding, null);
+        if (!matchBvarPattern(self.pool, concl_arg, t, binding)) continue;
+        // every binder must be solved (no unused-binder guessing).
+        for (binding) |b| if (b == null) continue;
+        const args = try self.arena.alloc(TermId, binding.len);
+        for (binding, args) |b, *out| out.* = b orelse continue;
+
+        // cite the closure fact, forall_elim at the solved args, then MP each
+        // (recursively-proved) antecedent.
+        var cur = try self.emitStep(plow, block, ctx.loc, fact_formula, if (is_axiom)
+            .{ .axiom_ref = .{ .stmt = @as(StatementId, @enumFromInt(si)), .loc = ctx.loc } }
+        else
+            .{ .theorem_ref = .{ .stmt = @as(StatementId, @enumFromInt(si)), .loc = ctx.loc } });
+        var cur_formula = fact_formula;
+        for (args) |arg| {
+            const q = self.pool.get(cur_formula).quant;
+            const opened = try self.pool.open(q.body, arg);
+            cur = try self.emitStep(plow, block, ctx.loc, opened, .{ .forall_elim = .{ .step = cur, .with = arg, .with_loc = ctx.loc } });
+            cur_formula = opened;
+        }
+        // cur_formula is now `guard(p₁[args]) -> … -> guard(C[args]=t)`.
+        for (antecedents.items) |_| {
+            const node = self.pool.get(cur_formula);
+            const ante = node.bin.lhs; // guard(pᵢ[args])
+            const ante_arg = self.pool.args(self.pool.get(ante).pred)[0];
+            const ante_ref = try emitGuardProof(self, plow, block, ctx, ante_arg);
+            cur_formula = node.bin.rhs;
+            cur = try self.emitStep(plow, block, ctx.loc, cur_formula, .{ .modus_ponens = .{ .implication = cur, .antecedent = ante_ref } });
+        }
+        _ = want;
+        return cur;
+    }
+    return null;
+}
+
+/// First-order match of a pattern (loose bvars are variables) against a ground
+/// term `t`, filling `binding[deBruijn] = subterm`. Bvar index is depth-from-here
+/// (no binders inside our patterns), so `bvar i` binds `binding[i]`.
+fn matchBvarPattern(pool: *term.Pool, pattern: TermId, t: TermId, binding: []?TermId) bool {
+    switch (pool.get(pattern)) {
+        .bvar => |i| {
+            if (i >= binding.len) return false;
+            if (binding[i]) |prev| return pool.alphaEq(prev, t);
+            binding[i] = t;
+            return true;
+        },
+        .app => |pa| {
+            const tn = pool.get(t);
+            if (tn != .app or tn.app.sym != pa.sym or tn.app.args_len != pa.args_len) return false;
+            const pargs = pool.args(pa);
+            const targs = pool.args(tn.app);
+            for (pargs, targs) |p, tt| if (!matchBvarPattern(pool, p, tt, binding)) return false;
+            return true;
+        },
+        else => return pool.alphaEq(pattern, t),
+    }
 }
 
 /// The StatementId of a proven axiom/theorem in the current file whose formula is

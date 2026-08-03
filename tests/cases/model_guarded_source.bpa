@@ -39,3 +39,22 @@ proof
     forall a: Carrier; op(UNIT, a) = a
     [by forall_intro generalize-a]
 qed
+
+// (L3) COMPOSITE: proof forall_elims the axiom at the composite term op(UNIT, a).
+// Guarded materialization must discharge good(op(UNIT, a)) via a closure fact,
+// recursing to good(UNIT) [base] and good(a) [the fix assumption].
+theorem opUnitLeftTwice: forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+proof
+  @generalize-a |
+    fix a: Carrier {
+      @unit-left |
+        forall b: Carrier; op(UNIT, b) = b
+        [by axiom opUnitLeft]
+      @at-op-unit-a |
+        op(UNIT, op(UNIT, a)) = op(UNIT, a)
+        [by forall_elim(op(UNIT, a)) unit-left]
+    }
+  @conclusion |
+    forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+    [by forall_intro generalize-a]
+qed

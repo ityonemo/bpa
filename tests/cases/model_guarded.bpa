@@ -48,3 +48,14 @@ proof
     forall a: Thing; good(a) -> combine(ZED, a) = a
     [by model(ThingModel) source.opUnitLeftOnce]
 qed
+
+// L3 (composite): transfer opUnitLeftTwice — the proof forall_elims at the
+// composite op(UNIT,a)→combine(ZED,a), so materialization discharges
+// good(combine(ZED,a)) via goodCombineZed, recursing to good(a) (the assumption).
+theorem combineZedTwiceForGood:
+  forall a: Thing; good(a) -> combine(ZED, combine(ZED, a)) = combine(ZED, a)
+proof
+  @conclusion |
+    forall a: Thing; good(a) -> combine(ZED, combine(ZED, a)) = combine(ZED, a)
+    [by model(ThingModel) source.opUnitLeftTwice]
+qed
