@@ -1,9 +1,13 @@
-- ~~QE oracle~~ DONE (Cooper-QE-replay, all 3 layers; evenOrOdd pure)
-- accelerant unification through mangled function names
 - bpa debug accelerant <line #? theorem-step?> to output the theorem produced by an accelerant
 - finish rest of algebra book
-- ~~manual proofs for oracles~~ DONE (`[by arithmetic fallback(<thm>)]`)
 - to-lean/isabelle/rocq mechanical export
+
+positive-conclusion linear order — `by arithmetic` decides VALID but no certifier
+  emits it: equation + strict bound ⊢ positive strict order, e.g.
+  `add(x, b) = a -> less_than(ZERO, b) -> less_than(x, a)` (the in-fragment tail of
+  peano-subtraction's subStrictlyDecreases, today hand-proved). Fix: an
+  equation→order certifier that rearranges into lessThanIntro gap form. Distinct
+  from the (landed) Cooper tail.
 
 
 long-range:
