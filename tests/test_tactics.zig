@@ -124,6 +124,11 @@ pub fn addTests(
     // relativized copy. (∀a;P(a) ⊢ ∀a; guard(a)->P(a).)
     ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
     ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
+    // MULTI-BINDER auto-weakening: an unconditional axiom over N carrier binders
+    // (here 2), mapped to itself, weakened by nested fix/assume with one chained
+    // forall_elim at the core. Needed for group axioms like opAssoc (3 binders).
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_multi_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_multi.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
     // the paradigm case end to end: a SUBGROUP modeling its own group's carrier —
     // same-file guarded model + auto-weakening (opIdentityLeft mapped to itself) +
     // inH(E) proved by contradiction from the definitional subgroup axioms.

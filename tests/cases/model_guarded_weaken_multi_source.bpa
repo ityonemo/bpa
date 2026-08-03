@@ -1,0 +1,19 @@
+// Source for MULTI-BINDER auto-weakening: an axiom with TWO carrier binders that
+// holds unconditionally, and a theorem instantiating it.
+sort Grp
+const E: Grp
+func op(a: Grp, b: Grp): Grp
+
+// two-binder unconditional axiom (like opCommutative / a 2-arg law).
+axiom opSwapsToE: forall a, b: Grp; op(a, b) = op(b, a)
+
+// a theorem citing it at two constants.
+theorem swapAtIdentity: op(E, E) = op(E, E)
+proof
+  @swap-law |
+    forall a, b: Grp; op(a, b) = op(b, a)
+    [by axiom opSwapsToE]
+  @conclusion |
+    op(E, E) = op(E, E)
+    [by forall_elim(E, E) swap-law]
+qed

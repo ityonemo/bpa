@@ -464,16 +464,15 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
 }
 
 /// AUTO-WEAKENING of an unconditional mapped axiom. If `source_axiom` maps to a
-/// target whose formula is the UNGUARDED universal `∀x:carrier; P(x)` while the
-/// relativized claim `new_formula` is `∀x:carrier; guard(x) -> P(x)`, synthesize
-/// the weakening — `fix x; assume guard(x); { P(x) by forall_elim of target };
-/// implies_intro; forall_intro` — and return its ref. Returns null (fall through
-/// to a direct citation) when the target is NOT the unguarded universal (i.e. the
+/// target whose formula is an UNGUARDED universal over N carrier binders,
+/// `∀x₁…xₙ:carrier; P`, while the relativized claim `new_formula` is the guarded
+/// `∀x₁; guard(x₁) -> … -> ∀xₙ; guard(xₙ) -> P`, synthesize the weakening — nested
+/// `fix xᵢ; assume guard(xᵢ)` blocks with one multi-arg `forall_elim(x₁…xₙ)` of
+/// the target at the core — and return its ref. Returns null (fall through to a
+/// direct citation) when the target is NOT the matching unguarded universal (the
 /// author supplied an already-relativized, genuinely guard-restricted target).
-/// Only the single-carrier-binder shape is handled; other shapes fall through.
 fn emitWeakenedAxiom(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, source_axiom: StatementId, new_formula: TermId) ElabError!?kernel.SRef {
     const model = ctx.model;
-    const loc = ctx.loc;
     const guard = model.remap.guard.?;
 
     // find the mapped target for this source axiom.
@@ -488,34 +487,83 @@ fn emitWeakenedAxiom(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, 
         .schema => return null,
     };
 
-    // the claim must be `∀x:carrier; guard(x) -> body`.
-    const claim = self.pool.get(new_formula);
-    if (claim != .quant or claim.quant.q != .forall or claim.quant.sort != guard.carrier) return null;
-    const claim_body = self.pool.get(claim.quant.body);
-    if (claim_body != .bin or claim_body.bin.op != .implies) return null;
+    // peel the claim's alternating `∀xᵢ:carrier; guard(xᵢ) -> …` layers, collecting
+    // the binder hints; the residual (after n layers) is the guard-free body P.
+    var hints: std.ArrayList(StrId) = .empty;
+    var residual = new_formula;
+    while (true) {
+        const q = self.pool.get(residual);
+        if (q != .quant or q.quant.q != .forall or q.quant.sort != guard.carrier) break;
+        const b = self.pool.get(q.quant.body);
+        if (b != .bin or b.bin.op != .implies) break;
+        // the antecedent must be exactly `guard(bvar0)` for this to be a weakening layer.
+        const ante = self.pool.get(b.bin.lhs);
+        if (ante != .pred or ante.pred.sym != guard.pred or ante.pred.args_len != 1) break;
+        const arg = self.pool.args(ante.pred)[0];
+        if (self.pool.get(arg) != .bvar or self.pool.get(arg).bvar != 0) break;
+        try hints.append(self.arena, q.quant.hint);
+        residual = b.bin.rhs;
+    }
+    if (hints.items.len == 0) return null;
 
-    // the target must be the UNGUARDED universal `∀x:carrier; body` (α-equal to
-    // the claim with the guard hypothesis stripped). If it already carries the
-    // guard (author-relativized), this is not a weakening — fall through.
-    const unguarded = try self.pool.add(.{ .quant = .{ .q = .forall, .sort = guard.carrier, .hint = claim.quant.hint, .body = claim_body.bin.rhs } });
+    // the target must be the UNGUARDED universal `∀x₁…xₙ:carrier; <residual>` —
+    // rebuild it and α-compare. (If the target already carries guards, no match.)
+    var unguarded = residual;
+    var i: usize = hints.items.len;
+    while (i > 0) {
+        i -= 1;
+        unguarded = try self.pool.add(.{ .quant = .{ .q = .forall, .sort = guard.carrier, .hint = hints.items[i], .body = unguarded } });
+    }
     if (!self.pool.alphaEq(tgt_formula, unguarded)) return null;
 
-    // synthesize: fix x; assume guard(x); forall_elim(x) on the target; implies_intro; forall_intro.
-    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-fix"), block, .{ .fix = .{ .name = claim.quant.hint, .sort = guard.carrier } });
-    const x = try self.pool.add(.{ .fvar = .{ .name = claim.quant.hint, .sort = guard.carrier } });
+    return try emitWeakenLayer(self, plow, block, ctx, tgt, tgt_formula, new_formula, hints.items, &.{});
+}
+
+/// Emit one `fix xᵢ; assume guard(xᵢ) { … }` layer of a multi-binder weakening,
+/// recursing on the remaining binders. `fixed` are the eigenvariables fixed by the
+/// enclosing layers (in order); at the base (no binders left) it cites the target
+/// and specializes it at all fixed vars in one `forall_elim`. `claim` is the still-
+/// guarded formula this layer proves (`∀xᵢ; guard(xᵢ) -> <rest>`).
+fn emitWeakenLayer(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, tgt: StatementId, tgt_formula: TermId, claim: TermId, hints: []const StrId, fixed: []const TermId) ElabError!kernel.SRef {
+    const loc = ctx.loc;
+    const guard = ctx.model.remap.guard.?;
+
+    if (hints.len == 0) {
+        // base: cite the unconditional target, specialize at every fixed var by a
+        // CHAIN of single-arg forall_elims (the kernel elim takes one `with`).
+        var step_ref = try self.emitStep(plow, block, loc, tgt_formula, citeStatement(self, tgt, loc));
+        var current = tgt_formula;
+        for (fixed) |fv| {
+            const q = self.pool.get(current);
+            const opened = try self.pool.open(q.quant.body, fv);
+            step_ref = try self.emitStep(plow, block, loc, opened, .{ .forall_elim = .{ .step = step_ref, .with = fv, .with_loc = loc } });
+            current = opened;
+        }
+        return step_ref;
+    }
+
+    const hint = hints[0];
+    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-fix"), block, .{ .fix = .{ .name = hint, .sort = guard.carrier } });
+    const x = try self.pool.add(.{ .fvar = .{ .name = hint, .sort = guard.carrier } });
     const guard_x = try self.pool.addApp(.pred, guard.pred, &.{x});
     const asm_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-guard"), fix_b, .{ .assume = guard_x });
     _ = try self.emitStep(plow, asm_b, loc, guard_x, .{ .hypothesis = .{ .id = asm_b, .loc = loc } });
-    // the unconditional fact, cited and specialized at x.
-    const cite = try self.emitStep(plow, asm_b, loc, tgt_formula, citeStatement(self, tgt, loc));
-    const body_at_x = try self.pool.open(claim_body.bin.rhs, x); // P(x)
-    _ = try self.emitStep(plow, asm_b, loc, body_at_x, .{ .forall_elim = .{ .step = cite, .with = x, .with_loc = loc } });
+
+    // `claim` = `∀xᵢ:carrier; guard(xᵢ) -> rest`; the inner formula, opened at x, is
+    // `guard(x) -> rest[x]`, whose consequent `rest[x]` is what the recursion proves.
+    const claim_node = self.pool.get(claim);
+    const opened = try self.pool.open(claim_node.quant.body, x); // guard(x) -> rest[x]
+    const inner_claim = self.pool.get(opened).bin.rhs; // rest[x]
+
+    const new_fixed = try self.arena.alloc(TermId, fixed.len + 1);
+    @memcpy(new_fixed[0..fixed.len], fixed);
+    new_fixed[fixed.len] = x;
+    _ = try emitWeakenLayer(self, plow, asm_b, ctx, tgt, tgt_formula, inner_claim, hints[1..], new_fixed);
+
     self.closeBlock(plow, asm_b);
-    // guard(x) -> P(x)
-    const impl = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_x, .rhs = body_at_x } });
-    _ = try self.emitStep(plow, fix_b, loc, impl, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
+    _ = try self.emitStep(plow, fix_b, loc, opened, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
     self.closeBlock(plow, fix_b);
-    return try self.emitStep(plow, block, loc, new_formula, .{ .forall_intro = .{ .id = fix_b, .loc = loc } });
+    return self.emitStep(plow, block, loc, claim, .{ .forall_intro = .{ .id = fix_b, .loc = loc } });
 }
 
 /// Emit a proof of `guard(t)` and return its ref, by recursion on `t`:
