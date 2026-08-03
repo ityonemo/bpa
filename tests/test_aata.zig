@@ -19,6 +19,13 @@ pub fn addTests(
     // derivations live in std) — verified (proven; no accelerated tactic).
     ctx.ok(&.{ "check", "aata/3.2-groups.md" }, "OK: 40 declarations, 10 theorems proven\n");
 
+    // AATA §3.3 Subgroups: the literate transliteration of the subgroup definition,
+    // the one-step subgroup test (both directions), and the intersection-of-
+    // subgroups exercise. Aliases std/subgroup.bpa to the book's H ≤ G notation;
+    // concrete example subgroups (ℚ*, SL₂, ℤ₄, ℤ₂×ℤ₂) are summarized, not formalized
+    // (Tier-3 carriers). Proven; no accelerated tactic.
+    ctx.ok(&.{ "check", "aata/3.3-subgroups.md" }, "OK: 62 declarations, 24 theorems proven\n");
+
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
     // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2
     // exercises discharged in one line each by the `ext` tactic).
