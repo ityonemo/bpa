@@ -59,3 +59,14 @@ proof
     forall a: Thing; good(a) -> combine(ZED, combine(ZED, a)) = combine(ZED, a)
     [by model(ThingModel) source.opUnitLeftTwice]
 qed
+
+// L4 (recursive citation + rewrite): transfer opUnitLeftThrice — its proof cites
+// opUnitLeftTwice (forcing recursive guarded materialization of that dependency)
+// and uses `rewrite`. Exercises the memoized recursion + the rewrite re-emit path.
+theorem combineZedThriceForGood:
+  forall a: Thing; good(a) -> combine(ZED, combine(ZED, combine(ZED, a))) = combine(ZED, a)
+proof
+  @conclusion |
+    forall a: Thing; good(a) -> combine(ZED, combine(ZED, combine(ZED, a))) = combine(ZED, a)
+    [by model(ThingModel) source.opUnitLeftThrice]
+qed

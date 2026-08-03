@@ -58,3 +58,28 @@ proof
     forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
     [by forall_intro generalize-a]
 qed
+
+// (L4) RECURSIVE CITATION: a theorem whose proof CITES another (opUnitLeftTwice),
+// forcing guarded materialization to recurse into that dependency (memoized) and
+// materialize IT guardedly too. Also instantiates the cited universal at op(UNIT,a).
+theorem opUnitLeftThrice: forall a: Carrier; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
+proof
+  @generalize-a |
+    fix a: Carrier {
+      @twice |
+        forall b: Carrier; op(UNIT, op(UNIT, b)) = op(UNIT, b)
+        [by theorem opUnitLeftTwice]
+      @inner-collapses |
+        op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, op(UNIT, a))
+        [by forall_elim(op(UNIT, a)) twice]
+      @outer-collapses |
+        op(UNIT, op(UNIT, a)) = op(UNIT, a)
+        [by forall_elim(a) twice]
+      @conclusion-thrice |
+        op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
+        [by rewrite outer-collapses inner-collapses]
+    }
+  @conclusion |
+    forall a: Carrier; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
+    [by forall_intro generalize-a]
+qed

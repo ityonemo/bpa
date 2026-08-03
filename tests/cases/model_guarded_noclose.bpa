@@ -1,0 +1,29 @@
+// GUARDED model, CLEAN-ERROR case: the transferred proof instantiates the
+// guarded axiom at a term (WOT) for which no closure fact `good(WOT)` is in
+// scope, so materialization fails cleanly with "supply a closure fact" — the
+// graceful fallback boundary (a future author-supplied-obligation path).
+import source <<< "model_guarded_source.bpa"
+
+sort Thing
+const ZED: Thing
+const WOT: Thing
+func combine(a: Thing, b: Thing): Thing
+pred good(x: Thing)
+
+axiom combineZedLeftGuarded: forall a: Thing; good(a) -> combine(ZED, a) = a
+// NOTE: no `good(WOT)` fact — so discharging good(WOT) must fail cleanly.
+
+model ThingModel = Thing where good {
+  source.Carrier: Thing
+  source.UNIT: ZED
+  source.op: combine
+  source.opUnitLeft: combineZedLeftGuarded
+  }
+
+// opUnitAtUnit instantiates at UNIT→ZED, needing good(ZED) — absent here.
+theorem combineZedAtZed: combine(ZED, ZED) = ZED
+proof
+  @conclusion |
+    combine(ZED, ZED) = ZED
+    [by model(ThingModel) source.opUnitAtUnit]
+qed

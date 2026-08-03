@@ -99,8 +99,12 @@ pub fn addTests(
     // the instantiation term: constant → base closure fact; eigenvariable → the
     // in-scope `assume guard(a)`; composite → a closure fact + recursion). Fully
     // kernel-checked, no taint.
-    ctx.ok(&.{ "check", "tests/cases/model_guarded_source.bpa" }, "OK: 7 declarations, 3 theorems proven\n");
-    ctx.ok(&.{ "check", "tests/cases/model_guarded.bpa" }, "OK: 19 declarations, 6 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_source.bpa" }, "OK: 8 declarations, 4 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded.bpa" }, "OK: 21 declarations, 8 theorems proven\n");
+    // clean-error boundary: a guarded transfer whose proof instantiates at a term
+    // with no closure fact in scope fails with an actionable message (the graceful
+    // fallback point for future author-supplied obligations).
+    ctx.fail(&.{ "check", "tests/cases/model_guarded_noclose.bpa" }, "tests/cases/model_guarded_noclose.bpa:28:27: error: guarded model: cannot prove 'good(ZED)' — supply a closure fact for it\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source

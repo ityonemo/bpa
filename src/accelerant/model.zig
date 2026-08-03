@@ -345,6 +345,23 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
             const guard_ref = try emitGuardProof(self, plow, block, ctx, with);
             return self.emitStep(plow, block, loc, new_formula, .{ .modus_ponens = .{ .implication = elim_ref, .antecedent = guard_ref } });
         },
+        // steps that reference other steps by SRef (no guard-discharge needed):
+        // translate each ref through step_map and re-emit 1:1.
+        .reflexivity => return self.emitStep(plow, block, loc, new_formula, .reflexivity),
+        .modus_ponens => |r| return self.emitStep(plow, block, loc, new_formula, .{ .modus_ponens = .{ .implication = ctx.step_map.get(r.implication.id).?, .antecedent = ctx.step_map.get(r.antecedent.id).? } }),
+        .rewrite => |r| return self.emitStep(plow, block, loc, new_formula, .{ .rewrite = .{ .equation = ctx.step_map.get(r.equation.id).?, .target = ctx.step_map.get(r.target.id).? } }),
+        .symmetry => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .symmetry = ctx.step_map.get(sr.id).? }),
+        .double_negation => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .double_negation = ctx.step_map.get(sr.id).? }),
+        .and_intro => |r| return self.emitStep(plow, block, loc, new_formula, .{ .and_intro = .{ .left = ctx.step_map.get(r.left.id).?, .right = ctx.step_map.get(r.right.id).? } }),
+        .and_elim_left => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .and_elim_left = ctx.step_map.get(sr.id).? }),
+        .and_elim_right => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .and_elim_right = ctx.step_map.get(sr.id).? }),
+        .or_intro_left => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .or_intro_left = ctx.step_map.get(sr.id).? }),
+        .or_intro_right => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .or_intro_right = ctx.step_map.get(sr.id).? }),
+        .absurd => |r| return self.emitStep(plow, block, loc, new_formula, .{ .absurd = .{ .s1 = ctx.step_map.get(r.s1.id).?, .s2 = ctx.step_map.get(r.s2.id).? } }),
+        .exists_intro => |r| return self.emitStep(plow, block, loc, new_formula, .{ .exists_intro = .{ .step = ctx.step_map.get(r.step.id).?, .witness = self.pool.remapFormula(r.witness, model.remap) catch return error.OutOfMemory, .witness_loc = loc } }),
+        // BRef-carrying / hypothesis / case-split forms not yet needed (the group
+        // corpus has no case-splits, unpacks, or bare hypotheses in transferable
+        // proofs); reject cleanly if one appears.
         else => return self.fail(loc, "guarded model materialization does not yet handle this proof shape", .{}),
     }
 }
