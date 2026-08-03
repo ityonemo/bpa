@@ -104,7 +104,7 @@ pub fn addTests(
     // clean-error boundary: a guarded transfer whose proof instantiates at a term
     // with no closure fact in scope fails with an actionable message (the graceful
     // fallback point for future author-supplied obligations).
-    ctx.fail(&.{ "check", "tests/cases/model_guarded_noclose.bpa" }, "tests/cases/model_guarded_noclose.bpa:28:27: error: guarded model: cannot prove 'good(ZED)' — supply a closure fact for it\n");
+    ctx.fail(&.{ "check", "tests/cases/model_guarded_noclose.bpa" }, "tests/cases/model_guarded_noclose.bpa:28:27: error: guarded model: cannot prove 'good(ZED)' — supply an axiom or theorem establishing it\n");
     // BOUNDARY fixtures (all now handled): a guarded transfer of a proof that
     // unpacks an existential witness surfaces `guard(w)` from the relativized
     // `∃x; guard(x) and P(x)` conjunct (and re-guards a matching `exists_intro`);
