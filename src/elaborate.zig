@@ -19,7 +19,7 @@ const Env = @import("env.zig").Env;
 const FileId = @import("env.zig").FileId;
 const Symbol = @import("env.zig").Symbol;
 const Statement = @import("env.zig").Statement;
-const StatementId = @import("env.zig").StatementId;
+pub const StatementId = @import("env.zig").StatementId;
 const Diagnostics = @import("diagnostics.zig");
 const kernel = @import("kernel.zig");
 const simplify_mod = @import("simplify.zig");
@@ -952,6 +952,42 @@ pub const Elaborator = struct {
             self.fail(tok.start, "unknown statement '{s}'", .{self.text(tok)});
     }
 
+    /// What a cited ref resolves to, in the caller's proof: a caller-LOCAL step
+    /// (a hypothesis / prior derived fact — only in scope here), or a GLOBAL
+    /// statement (axiom/theorem in the environment). Accelerant-agnostic
+    /// mechanics: an accelerant that wants to CLOSE its refs (e.g. make each a
+    /// premise of a context-free synthetic theorem) uses this to decide, per
+    /// ref, how it appears in the signature and how it is discharged at the
+    /// cite. `formula` is the ref's stated formula either way.
+    pub const RefTarget = union(enum) {
+        local_step: struct { sref: kernel.SRef, formula: TermId },
+        global: struct { stmt: StatementId, formula: TermId, is_theorem: bool },
+    };
+
+    pub fn refTarget(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, tok: lexer.Token) ElabError!RefTarget {
+        const name = try self.internTok(tok);
+        if (low.labels.get(name)) |target| switch (target) {
+            .step => |sid| {
+                const s = low.steps.items[@intFromEnum(sid)];
+                if (!lowAncestorOrSelf(low, s.block, block_id)) {
+                    return self.fail(tok.start, "'{s}' is not accessible from this step (closed subproof)", .{self.text(tok)});
+                }
+                return .{ .local_step = .{ .sref = .{ .id = sid, .loc = tok.start }, .formula = s.formula } };
+            },
+            .block => return self.fail(tok.start, "'{s}' names a subproof; a formula reference is required", .{self.text(tok)}),
+        };
+        const stmt_id = try self.resolveStatementRef(tok);
+        const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
+        return switch (stmt) {
+            .axiom => |a| .{ .global = .{ .stmt = stmt_id, .formula = a.formula, .is_theorem = false } },
+            .theorem => |t| blk: {
+                if (!t.proven) return self.fail(tok.start, "cites unproven theorem '{s}'", .{self.text(tok)});
+                break :blk .{ .global = .{ .stmt = stmt_id, .formula = t.formula, .is_theorem = true } };
+            },
+            .schema => self.fail(tok.start, "'{s}' is a schema; a formula reference is required", .{self.text(tok)}),
+        };
+    }
+
     const RuleKind = enum {
         axiom,
         theorem,
@@ -1551,7 +1587,12 @@ pub const Elaborator = struct {
         while (true) {
             const node = self.pool.get(g);
             if (node != .quant or node.quant.q != .forall) break;
-            const fv: term.Node.Fvar = .{ .name = try self.freshNamed(prefix), .sort = node.quant.sort };
+            // name the eigenvariable after the binder's own hint when it has one
+            // (so diagnostics read `n`, not the synthetic `<prefix>`); the `#N`
+            // suffix `freshNamed` adds keeps it unique and is stripped on display.
+            const hint = self.interner.str(node.quant.hint);
+            const name_prefix = if (hint.len > 0) hint else prefix;
+            const fv: term.Node.Fvar = .{ .name = try self.freshNamed(name_prefix), .sort = node.quant.sort };
             const fv_id = try self.pool.add(.{ .fvar = fv });
             g = try self.pool.open(node.quant.body, fv_id);
             try fix_vars.append(self.arena, fv);

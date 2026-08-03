@@ -43,7 +43,7 @@ pub fn addTests(
     ctx.ok(&.{ "check", "tests/cases/polynomial.bpa" }, "OK: 54 declarations, 19 theorems proven\n");
 
     // sides with different expansions → located error, exit 1 (not accelerated)
-    ctx.fail(&.{ "check", "tests/cases/polynomial_bad.bpa" }, "tests/cases/polynomial_bad.bpa:18:9: error: polynomial: sides expand differently: 'add(mul(poly, poly), add(mul(poly, poly), add(mul(poly, poly), mul(poly, poly))))' vs 'add(mul(poly, poly), mul(poly, poly))'\n");
+    ctx.fail(&.{ "check", "tests/cases/polynomial_bad.bpa" }, "tests/cases/polynomial_bad.bpa:18:9: error: polynomial: sides expand differently: 'add(mul(b, b), add(mul(b, a), add(mul(b, a), mul(a, a))))' vs 'add(mul(b, b), mul(a, a))'\n");
 
     // `ext(theory)`: the extensionality tactic, one tactic over two models —
     // reduce an equation to its pointwise obligation via the theory's
@@ -149,7 +149,7 @@ pub fn addTests(
     ctx.ok(&.{ "check", "tests/cases/assoc.bpa" }, "OK: 6 declarations, 3 theorems proven\n");
 
     // sides differ by more than associativity (operands permuted) → error
-    ctx.fail(&.{ "check", "tests/cases/assoc_bad.bpa" }, "tests/cases/assoc_bad.bpa:11:9: error: assoc: sides differ by more than associativity: 'op(assoc, assoc)' vs 'op(assoc, assoc)'\n");
+    ctx.fail(&.{ "check", "tests/cases/assoc_bad.bpa" }, "tests/cases/assoc_bad.bpa:11:9: error: assoc: sides differ by more than associativity: 'op(a, b)' vs 'op(b, a)'\n");
 
     // the required-arg contract: bare `assoc` is an error
     ctx.fail(&.{ "check", "tests/cases/assoc_missing_arg.bpa" }, "tests/cases/assoc_missing_arg.bpa:10:9: error: assoc requires an associativity lemma: assoc(<assocLemma>); got 0 argument(s)\n");
