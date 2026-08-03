@@ -130,7 +130,63 @@ pub fn addTests(
         \\
     ;
 
+    // The synthetic theorem `simplify` produced for the ground `[by simplify
+    // addSuccLeft addZeroLeft]`: context-free (both cited axioms closed as
+    // premises), proof = assume both, then the reflexivity+forall_elim+rewrite
+    // certificate, closed by implies_intro. Fresh legal labels (s*/b*) so the
+    // reprint is valid bpa — it round-trips through `bpa check`.
+    const debug_accelerant_text =
+        \\theorem simplify: (forall a: Nat; forall b: Nat; add(succ(a), b) = succ(add(a, b))) -> (forall b: Nat; add(ZERO, b) = b) -> add(succ(ZERO), succ(ZERO)) = succ(succ(ZERO))
+        \\proof
+        \\  @b2 |
+        \\    assume forall a: Nat; forall b: Nat; add(succ(a), b) = succ(add(a, b)) {
+        \\    @s1 |
+        \\      forall a: Nat; forall b: Nat; add(succ(a), b) = succ(add(a, b))
+        \\      [by hypothesis b2]
+        \\    @b3 |
+        \\      assume forall b: Nat; add(ZERO, b) = b {
+        \\      @s2 |
+        \\        forall b: Nat; add(ZERO, b) = b
+        \\        [by hypothesis b3]
+        \\      @s3 |
+        \\        add(succ(ZERO), succ(ZERO)) = add(succ(ZERO), succ(ZERO))
+        \\        [by reflexivity]
+        \\      @s4 |
+        \\        forall b: Nat; add(succ(ZERO), b) = succ(add(ZERO, b))
+        \\        [by forall_elim(ZERO) s1]
+        \\      @s5 |
+        \\        add(succ(ZERO), succ(ZERO)) = succ(add(ZERO, succ(ZERO)))
+        \\        [by forall_elim(succ(ZERO)) s4]
+        \\      @s6 |
+        \\        add(succ(ZERO), succ(ZERO)) = succ(add(ZERO, succ(ZERO)))
+        \\        [by rewrite s5 s3]
+        \\      @s7 |
+        \\        add(ZERO, succ(ZERO)) = succ(ZERO)
+        \\        [by forall_elim(succ(ZERO)) s2]
+        \\      @s8 |
+        \\        add(succ(ZERO), succ(ZERO)) = succ(succ(ZERO))
+        \\        [by rewrite s7 s6]
+        \\      }
+        \\    @s9 |
+        \\      (forall b: Nat; add(ZERO, b) = b) -> add(succ(ZERO), succ(ZERO)) = succ(succ(ZERO))
+        \\      [by implies_intro b3]
+        \\    }
+        \\  @s10 |
+        \\    (forall a: Nat; forall b: Nat; add(succ(a), b) = succ(add(a, b))) -> (forall b: Nat; add(ZERO, b) = b) -> add(succ(ZERO), succ(ZERO)) = succ(succ(ZERO))
+        \\    [by implies_intro b2]
+        \\qed
+        \\
+    ;
+
     ctx.ok(&.{ "query", "theorem", "std/peano.bpa", "addZeroRight" }, std_theorem_text);
+
+    // `debug accelerant <file> <line>`: reprint, as valid bpa source, the
+    // synthetic theorem the accelerant step on that line produced (statement +
+    // proof). The ground `simplify` on line 15 of the fixture has no
+    // eigenvariables or premises, so its synthetic theorem's statement is the
+    // bare equation; the proof is the reflexivity+rewrite chain simplify built.
+    // (RED: locked to the renderer's real output once GREEN.)
+    ctx.ok(&.{ "debug", "accelerant", "tests/cases/debug_accelerant.bpa", "15" }, debug_accelerant_text);
 
     // an ALIAS (`theorem addZeroRight = peano.addZeroRight` in subtraction)
     // resolves across files to the real proof — identical output.

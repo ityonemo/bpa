@@ -20,6 +20,7 @@ pub fn addTests(
         "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n" ++
             "       bpa fmt [--check] <file.bpa|.md>\n" ++
             "       bpa lint <file.bpa|.md>\n" ++
+            "       bpa debug accelerant <file> <line | theorem step-label>\n" ++
             "       bpa query outline <file.bpa> [theorem]\n" ++
             "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
             "       bpa query whereis <file.bpa> <identifier>\n" ++

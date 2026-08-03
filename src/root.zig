@@ -17,6 +17,7 @@ pub const kernel = @import("kernel.zig");
 pub const fmt = @import("fmt.zig");
 pub const literate = @import("literate.zig");
 pub const lint = @import("lint.zig");
+pub const debug = @import("debug.zig");
 pub const simplify = @import("simplify.zig");
 pub const smt = @import("accelerant/arithmetic/smt.zig");
 pub const presburger = @import("accelerant/arithmetic/presburger.zig");
@@ -194,7 +195,26 @@ const Loader = struct {
 /// are actually verified (default: everything). When `verify.recheck_imports`
 /// is false, imported files contribute their declarations but their proofs are
 /// TRUSTED, not re-checked.
-pub fn checkProject(
+/// The elaborated project state: the shared interner/pool/env after loading the
+/// root file and all its imports (imports resolved, synthetics materialized).
+/// Returned by `loadProject` for tools that must READ the elaboration result
+/// rather than just count it — e.g. `bpa debug accelerant`, which reads a
+/// synthetic theorem (only created during elaboration) out of `environment`, and
+/// needs imports loaded so cited statements resolve (incl. nested/recursive
+/// synthetics like a `model` materialization citing another).
+pub const LoadedProject = struct {
+    interner: *intern.Interner,
+    pool: *term.Pool,
+    environment: *env.Env,
+    sink: *diagnostics.Sink,
+    root_file: env.FileId,
+    files: []const diagnostics.FileSrc,
+    declarations: usize,
+};
+
+/// Run the multi-file loader (imports depth-first, same as `checkProject`) and
+/// hand back the elaborated env. `checkProject` is this + the count/hole summary.
+pub fn loadProject(
     arena: std.mem.Allocator,
     root_path: []const u8,
     root_source: []const u8,
@@ -202,7 +222,7 @@ pub fn checkProject(
     read_fn: ReadFileFn,
     verify: elaborate.Verify,
     std_root: []const u8,
-) !ProjectResult {
+) !LoadedProject {
     const sink = try arena.create(diagnostics.Sink);
     sink.* = .init(arena);
     const interner = try arena.create(intern.Interner);
@@ -224,7 +244,32 @@ pub fn checkProject(
         .std_root = std_root,
     };
     const canonical_root = try std.fs.path.resolve(arena, &.{root_path});
-    _ = try loader.load(canonical_root, root_source, true);
+    const root_file = try loader.load(canonical_root, root_source, true);
+    return .{
+        .interner = interner,
+        .pool = pool,
+        .environment = environment,
+        .sink = sink,
+        .root_file = root_file,
+        .files = loader.files.items,
+        .declarations = loader.declarations,
+    };
+}
+
+pub fn checkProject(
+    arena: std.mem.Allocator,
+    root_path: []const u8,
+    root_source: []const u8,
+    read_ctx: ?*anyopaque,
+    read_fn: ReadFileFn,
+    verify: elaborate.Verify,
+    std_root: []const u8,
+) !ProjectResult {
+    const loaded = try loadProject(arena, root_path, root_source, read_ctx, read_fn, verify, std_root);
+    const sink = loaded.sink;
+    const interner = loaded.interner;
+    const environment = loaded.environment;
+    const loader = struct { files: []const diagnostics.FileSrc, declarations: usize }{ .files = loaded.files, .declarations = loaded.declarations };
 
     var proven: usize = 0;
     var trusted: usize = 0;
@@ -272,20 +317,20 @@ pub fn checkProject(
                 }
             }
         }
-        const src = loader.files.items[@intFromEnum(h.file)].source;
+        const src = loader.files[@intFromEnum(h.file)].source;
         var line: usize = 1;
         for (src[0..@min(h.loc, src.len)]) |ch| {
             if (ch == '\n') line += 1;
         }
         try holes.append(arena, .{
             .name = interner.str(h.name),
-            .path = loader.files.items[@intFromEnum(h.file)].path,
+            .path = loader.files[@intFromEnum(h.file)].path,
             .line = line,
             .dependents = dependents.items,
         });
     }
     return .{
-        .files = loader.files.items,
+        .files = loader.files,
         .sink = sink,
         .declarations = loader.declarations,
         .theorems_proven = proven,
@@ -306,4 +351,5 @@ test {
     std.testing.refAllDecls(query.accelerated);
     std.testing.refAllDecls(literate);
     std.testing.refAllDecls(lint);
+    std.testing.refAllDecls(debug);
 }

@@ -69,6 +69,27 @@ fn lintCommand(arena: std.mem.Allocator, rest: []const [:0]const u8) !u8 {
     return emitQuery(result.text, result.ok);
 }
 
+/// `bpa debug accelerant <file> <line>` | `<file> <theorem> <step-label>`:
+/// reprint the synthetic theorem the named accelerant step produced, as bpa
+/// source. Reads `.md` through the literate extractor.
+fn debugCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:0]const u8) !u8 {
+    const usage = "usage: bpa debug accelerant <file> <line>\n       bpa debug accelerant <file> <theorem> <step-label>\n";
+    if (rest.len < 3 or !std.mem.eql(u8, rest[0], "accelerant")) return fail(usage, .{});
+    const p = rest[1];
+    const selector: bpa.debug.Selector = if (rest.len == 3)
+        (if (std.fmt.parseInt(usize, rest[2], 10)) |ln| .{ .line = ln } else |_| return fail(usage, .{}))
+    else if (rest.len == 4)
+        .{ .step = .{ .theorem = rest[2], .label = rest[3] } }
+    else
+        return fail(usage, .{});
+    const source = readSource(arena, p) catch |e| switch (e) {
+        error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{p}),
+        else => return fail("error: cannot open '{s}': {t}\n", .{ p, e }),
+    };
+    const result = try bpa.debug.accelerant(arena, p, source, selector, null, queryReadFile, std_root);
+    return emitQuery(result.text, result.ok);
+}
+
 const query_usage =
     "usage: bpa query outline <file.bpa> [theorem]\n" ++
     "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
@@ -334,7 +355,10 @@ pub fn main(init: std.process.Init) !u8 {
     if (args.len >= 2 and std.mem.eql(u8, args[1], "lint")) {
         return lintCommand(arena, args[2..]);
     }
-    const usage = "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa lint <file.bpa|.md>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query accelerated <file.bpa> [theorem]\n";
+    if (args.len >= 2 and std.mem.eql(u8, args[1], "debug")) {
+        return debugCommand(arena, std_root, args[2..]);
+    }
+    const usage = "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa lint <file.bpa|.md>\n       bpa debug accelerant <file> <line | theorem step-label>\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n       bpa query accelerated <file.bpa> [theorem]\n";
     if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
         return fail(usage, .{});
     }
