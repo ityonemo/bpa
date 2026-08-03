@@ -1363,8 +1363,11 @@ fn emitFarkasConclusion(
         const from = try farkasNodeId(self, node_ids, cargs[0]);
         const to = try farkasNodeId(self, node_ids, cargs[1]);
         if (try farkas_mod.compose(self.arena, edges, from, to)) |path| {
-            const proof = try emitFarkasFold(self, low, block, loc, transitive_formula, transitive_source, path.chain, hyps);
-            return low.steps.items[@intFromEnum(proof.id)].just;
+            // The fold's final `modus_ponens` PROVES the conclusion directly, and
+            // the caller emits our returned justification as the concluding step
+            // — so emit every step BUT that last one and hand it back, else the
+            // caller re-emits an identical duplicate.
+            return try foldFinalJustification(self, low, block, loc, transitive_formula, transitive_source, path.chain, hyps);
         }
         // no direct chain: fall through to the infeasibility cap (the
         // hypotheses may be contradictory, proving any conclusion).
@@ -1430,6 +1433,39 @@ fn emitFarkasFold(
         acc_hi = next.hi;
     }
     return acc_ref;
+}
+
+/// Like `emitFarkasFold`, but for when the caller emits the CONCLUDING step
+/// itself (the order-composition path): emit every fold step EXCEPT the final
+/// `modus_ponens`, and return THAT as a bare justification. A single-edge chain
+/// emits nothing here and returns the hypothesis as-is (via its own step). This
+/// avoids the duplicate step returning `emitFarkasFold`'s justification would
+/// leave (the fold's last step, plus the caller's identical re-emit).
+fn foldFinalJustification(
+    self: *Elaborator,
+    low: *Lowering,
+    block: kernel.BlockId,
+    loc: u32,
+    transitive_formula: TermId,
+    transitive_source: simplify_mod.Source,
+    chain: []const usize,
+    hyps: []const OrderHyp,
+) ElabError!kernel.Justification {
+    // a single edge: the conclusion IS the lone hypothesis; the caller emits it.
+    if (chain.len == 1) {
+        return low.steps.items[@intFromEnum(hyps[chain[0]].ref.id)].just;
+    }
+    // fold all but the final edge normally, then build (not emit) the last
+    // edge's second modus_ponens.
+    const prefix = try emitFarkasFold(self, low, block, loc, transitive_formula, transitive_source, chain[0 .. chain.len - 1], hyps);
+    const acc_lo = hyps[chain[0]].lo;
+    const acc_hi = hyps[chain[chain.len - 2]].hi;
+    const next = hyps[chain[chain.len - 1]];
+    const rule = try self.strippedRule(transitive_formula, transitive_source);
+    const imp3 = try self.emitInstance(low, block, loc, rule, &.{ acc_lo, acc_hi, next.hi });
+    const inner = self.pool.get(low.steps.items[@intFromEnum(imp3.id)].formula).bin.rhs;
+    const imp2 = try self.emitStep(low, block, loc, inner, .{ .modus_ponens = .{ .implication = imp3, .antecedent = prefix } });
+    return .{ .modus_ponens = .{ .implication = imp2, .antecedent = next.ref } };
 }
 
 /// For a NAMED theory: does the goal/premises use an arithmetic symbol the
