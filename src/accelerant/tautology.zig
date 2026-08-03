@@ -15,31 +15,25 @@ const ElabError = elaborate.ElabError;
 
 const ast = @import("../ast.zig");
 const kernel = @import("../kernel.zig");
+const lexer = @import("../lexer.zig");
 const term = @import("../term.zig");
 const TermId = term.TermId;
 
 const std = @import("std");
 const smt_mod = @import("arithmetic/smt.zig");
+const common = @import("_common.zig");
 
 const TautCert = Elaborator.TautCert;
 
 pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     const loc = c.rule.start;
+    // DECIDE: the SMT engine settles validity (a real, cheap oracle — unlike the
+    // certificate-total accelerants, which decide by building). This runs in every
+    // mode and rejects a non-consequence with a countermodel.
     const premises = try self.resolvePremises(low, block_id, c, "tautology");
     const verdict = smt_mod.tautology(self.arena, self.pool, premises, goal) catch return error.OutOfMemory;
     switch (verdict) {
-        .valid => {
-            // certificate first: replay the truth search as ordinary
-            // kernel steps — kernel-checked, no accelerated step
-            if (try tautologyCertificate(self, low, block_id, goal, c)) |just| {
-                return just;
-            }
-            // over budget: fall back to the accelerated verdict, marking
-            // this use only
-            const accelerated_name = self.interner.intern("tautology") catch return error.OutOfMemory;
-            try self.recordAccelerated(accelerated_name, loc);
-            return .{ .accelerated = accelerated_name };
-        },
+        .valid => {},
         .too_many_atoms => |n| {
             return self.fail(loc, "tautology: {d} distinct atoms exceeds the limit of {d}", .{ n, smt_mod.atom_limit });
         },
@@ -55,53 +49,58 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
             return self.fail(loc, "tautology: not a propositional consequence; countermodel: {s}", .{msg.written()});
         },
     }
+
+    // valid. --fast: decide-only — taint, no certificate (the SMT verdict is
+    // trusted). Skip generate entirely (its oracle already ran, above).
+    if (!self.verify.certify_arithmetic) {
+        const name = self.interner.intern("tautology") catch return error.OutOfMemory;
+        try self.recordAccelerated(name, loc);
+        return .{ .accelerated = name };
+    }
+
+    // strict: GENERATE the context-free synthetic theorem, closing every cited
+    // ref as a premise (tautology routinely cites caller-local hypotheses). The
+    // certificate replay is BUDGETED — a valid goal may still fail to certify
+    // within budget, in which case generate returns null and we fall back to the
+    // accelerated verdict (which, in strict mode, `recordAccelerated` rejects
+    // with a "use --fast" error — the correct outcome for an uncertifiable goal).
+    var body: TautBody = .{ .refs = c.refs, .loc = loc };
+    if (try common.generate(self, low, block_id, loc, "tautology", goal, c.refs, &body)) |just| {
+        return just;
+    }
+    const name = self.interner.intern("tautology") catch return error.OutOfMemory;
+    try self.recordAccelerated(name, loc);
+    return .{ .accelerated = name };
 }
 
-// --- B2: tautology certificates -----------------------------------------
-// Replays the truth search as ordinary kernel steps: each split atom gets
-// an inline excluded-middle (the 9-step or_intro/not_intro/
-// double_negation shape) and an or_elim over the two assumption branches;
-// leaves either derive the goal structurally from the literal
-// assumptions (trueJust/falseJust) or explode a refuted premise with
-// absurd. The kernel checks every step, so this path stays kernel-checked. A
-// step budget bounds the exponential replay; past it the synthesized
-// steps roll back and the caller falls back to the accelerated path.
-
-/// Attempt a certificate for a goal the engine already decided valid.
-/// Returns null (with no steps emitted) when the budget runs out.
-fn tautologyCertificate(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!?kernel.Justification {
-    const loc = c.rule.start;
-    const steps_mark = low.steps.items.len;
-    const blocks_mark = low.blocks.items.len;
-
-    // premise steps: label refs are already steps; statement refs get a
-    // citation step emitted (accessibility and proven-ness were checked
-    // by resolvePremises)
-    const premise_steps = try self.arena.alloc(TautCert.Premise, c.refs.len);
-    for (c.refs, premise_steps) |ref, *out| {
-        const name = try self.internTok(ref);
-        if (low.labels.get(name)) |target| {
-            const sid = target.step; // resolvePremises rejected blocks
+/// The body-emit for tautology's closure: replay the truth search as kernel
+/// steps against the (fresh-eigenvar) goal. The closure has surfaced each cited
+/// premise as a labeled `hypothesis` step in `low`; this resolves those labels
+/// back into the `TautCert.Premise` list the replay consumes. Returns null when
+/// the replay exceeds its step budget (the accelerant then falls back).
+const TautBody = struct {
+    refs: []const lexer.Token,
+    loc: u32,
+    pub fn emit(b: *TautBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!?kernel.Justification {
+        const steps_mark = low.steps.items.len;
+        const blocks_mark = low.blocks.items.len;
+        // each ref now names a surfaced hypothesis step in this fresh Lowering.
+        const premise_steps = try self.arena.alloc(TautCert.Premise, b.refs.len);
+        for (b.refs, premise_steps) |ref, *out| {
+            const name = try self.internTok(ref);
+            const sid = low.labels.get(name).?.step; // surfaced by the closure
             out.* = .{
                 .formula = low.steps.items[@intFromEnum(sid)].formula,
                 .ref = .{ .id = sid, .loc = ref.start },
             };
-        } else {
-            const stmt_id = try self.resolveStatementRef(ref);
-            const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
-            out.* = switch (stmt) {
-                .axiom => |a| .{
-                    .formula = a.formula,
-                    .ref = try self.emitStep(low, block_id, loc, a.formula, .{ .axiom_ref = .{ .stmt = stmt_id, .loc = loc } }),
-                },
-                .theorem => |t| .{
-                    .formula = t.formula,
-                    .ref = try self.emitStep(low, block_id, loc, t.formula, .{ .theorem_ref = .{ .stmt = stmt_id, .loc = loc } }),
-                },
-                .schema => unreachable, // resolvePremises rejected these
-            };
         }
+        return try self.emitTautologyFrom(low, block, body_goal, premise_steps, b.loc, steps_mark, blocks_mark);
     }
+};
 
-    return self.emitTautologyFrom(low, block_id, goal, premise_steps, loc, steps_mark, blocks_mark);
-}
+// The truth-search replay (`emitTautologyFrom`, a `pub` Elaborator method) emits
+// ordinary kernel steps: each split atom gets an inline excluded-middle and an
+// or_elim over the two assumption branches; leaves derive the goal structurally
+// from the literal assumptions or explode a refuted premise with absurd. Every
+// step is kernel-checked. A step budget bounds the exponential replay; past it
+// it returns null and `TautBody.emit` propagates the decline.

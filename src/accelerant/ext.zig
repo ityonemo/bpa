@@ -39,14 +39,14 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
 /// strict mode.
 const EqBody = struct {
     loc: u32,
-    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!?kernel.Justification {
         if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
             const u = try self.peelUniversal(body_goal, "ext");
             const opened = try self.openUniversal(low, block, u);
             const inner = try extEquation(self, low, opened.innermost, u.body, b.loc);
-            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+            return try self.closeUniversal(low, b.loc, u, opened.blocks, inner);
         }
-        return extEquation(self, low, block, body_goal, b.loc);
+        return try extEquation(self, low, block, body_goal, b.loc);
     }
 };
 
@@ -82,7 +82,7 @@ fn extJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId,
     // synthetic theorem, eigenvar-closed (the ext + operator lemmas are globals
     // cited directly inside the certificate).
     var body: EqBody = .{ .loc = loc };
-    return common.generate(self, low, block_id, loc, "ext", goal, &.{}, &body);
+    return (try common.generate(self, low, block_id, loc, "ext", goal, &.{}, &body)).?;
 }
 
 /// Prove a bare `LHS = RHS` by extensionality. Instantiate the ext lemma at

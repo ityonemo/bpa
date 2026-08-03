@@ -40,7 +40,7 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         return acEquation(self, low, block_id, loc, goal, c.args, c.refs);
     }
     var body: EqBody = .{ .args = c.args, .refs = c.refs, .loc = loc };
-    return common.generate(self, low, block_id, loc, "assoc_commut", goal, &.{}, &body);
+    return (try common.generate(self, low, block_id, loc, "assoc_commut", goal, &.{}, &body)).?;
 }
 
 /// `ac` peeling the forall prefix: fix the binders, run the ac core on the
@@ -64,7 +64,7 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
         return self.closeUniversal(low, loc, u, opened.blocks, body_just);
     }
     var body: EqBody = .{ .args = c.args, .refs = c.refs, .loc = loc };
-    return common.generate(self, low, block_id, loc, "assoc_commut", goal, &.{}, &body);
+    return (try common.generate(self, low, block_id, loc, "assoc_commut", goal, &.{}, &body)).?;
 }
 
 /// The body-emit for ac's closure: AC-sort the (fresh-eigenvar) equation. A
@@ -73,14 +73,14 @@ const EqBody = struct {
     args: []const *const ast.Expr,
     refs: []const lexer.Token,
     loc: u32,
-    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!?kernel.Justification {
         if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
             const u = try self.peelUniversal(body_goal, "ac");
             const opened = try self.openUniversal(low, block, u);
             const inner = try acEquation(self, low, opened.innermost, b.loc, u.body, b.args, b.refs);
-            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+            return try self.closeUniversal(low, b.loc, u, opened.blocks, inner);
         }
-        return acEquation(self, low, block, b.loc, body_goal, b.args, b.refs);
+        return try acEquation(self, low, block, b.loc, body_goal, b.args, b.refs);
     }
 };
 

@@ -34,7 +34,8 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         return self.fail(loc, "simplify proves equations; the goal is '{s}'", .{try self.renderTerm(goal)});
     }
     var body: EqBody = .{ .refs = c.refs, .loc = loc };
-    return common.generate(self, low, block_id, loc, "simplify", goal, c.refs, &body);
+    // the equation body-emit never declines, so generate never returns null here.
+    return (try common.generate(self, low, block_id, loc, "simplify", goal, c.refs, &body)).?;
 }
 
 pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
@@ -53,23 +54,24 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
         return self.fail(loc, "simplify_quantified's body is not an equation: '{s}'", .{try self.renderTerm(u.body)});
     }
     var body: EqBody = .{ .refs = c.refs, .loc = loc };
-    return common.generate(self, low, block_id, loc, "simplify", goal, c.refs, &body);
+    return (try common.generate(self, low, block_id, loc, "simplify", goal, c.refs, &body)).?;
 }
 
 /// The body-emit for simplify's closure: prove the (fresh-eigenvar) equation via
 /// the rewrite/join core, citing each premise through the local labels the
 /// closure surfaced. A still-quantified `∀…; s = t` body (from
-/// simplify_quantified) is peeled and closed here.
+/// simplify_quantified) is peeled and closed here. Certificate-total (validity
+/// ⇒ a certificate), so it never declines (never returns null).
 const EqBody = struct {
     refs: []const lexer.Token,
     loc: u32,
-    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!?kernel.Justification {
         if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
             const u = try self.peelUniversal(body_goal, "sq");
             const opened = try self.openUniversal(low, block, u);
             const inner = try self.simplifyEquation(low, opened.innermost, b.loc, b.refs, u.body);
-            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+            return try self.closeUniversal(low, b.loc, u, opened.blocks, inner);
         }
-        return self.simplifyEquation(low, block, b.loc, b.refs, body_goal);
+        return try self.simplifyEquation(low, block, b.loc, b.refs, body_goal);
     }
 };

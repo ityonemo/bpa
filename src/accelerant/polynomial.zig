@@ -42,7 +42,7 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         return polynomialEquation(self, low, block_id, loc, goal);
     }
     var body: EqBody = .{ .loc = loc };
-    return common.generate(self, low, block_id, loc, "polynomial", goal, &.{}, &body);
+    return (try common.generate(self, low, block_id, loc, "polynomial", goal, &.{}, &body)).?;
 }
 
 /// `polynomial` peeling the forall prefix — mirrors ac_quantified.
@@ -68,7 +68,7 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
         return self.closeUniversal(low, loc, u, opened.blocks, body_just);
     }
     var body: EqBody = .{ .loc = loc };
-    return common.generate(self, low, block_id, loc, "polynomial", goal, &.{}, &body);
+    return (try common.generate(self, low, block_id, loc, "polynomial", goal, &.{}, &body)).?;
 }
 
 /// The body-emit for polynomial's closure: prove the (fresh-eigenvar) equation
@@ -76,14 +76,14 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
 /// polynomial_quantified) is peeled and closed here, like simplify's emitBody.
 const EqBody = struct {
     loc: u32,
-    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!?kernel.Justification {
         if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
             const u = try self.peelUniversal(body_goal, "poly");
             const opened = try self.openUniversal(low, block, u);
             const inner = try polynomialEquation(self, low, opened.innermost, b.loc, u.body);
-            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+            return try self.closeUniversal(low, b.loc, u, opened.blocks, inner);
         }
-        return polynomialEquation(self, low, block, b.loc, body_goal);
+        return try polynomialEquation(self, low, block, b.loc, body_goal);
     }
 };
 

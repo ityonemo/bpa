@@ -40,7 +40,7 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         return assocEquation(self, low, block_id, loc, goal, c.args);
     }
     var body: EqBody = .{ .args = c.args, .loc = loc };
-    return common.generate(self, low, block_id, loc, "assoc", goal, &.{}, &body);
+    return (try common.generate(self, low, block_id, loc, "assoc", goal, &.{}, &body)).?;
 }
 
 pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
@@ -62,7 +62,7 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
         return self.closeUniversal(low, loc, u, opened.blocks, body_just);
     }
     var body: EqBody = .{ .args = c.args, .loc = loc };
-    return common.generate(self, low, block_id, loc, "assoc", goal, &.{}, &body);
+    return (try common.generate(self, low, block_id, loc, "assoc", goal, &.{}, &body)).?;
 }
 
 /// The body-emit for assoc's closure: reassociate the (fresh-eigenvar) equation
@@ -70,14 +70,14 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
 const EqBody = struct {
     args: []const *const ast.Expr,
     loc: u32,
-    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!?kernel.Justification {
         if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
             const u = try self.peelUniversal(body_goal, "assoc");
             const opened = try self.openUniversal(low, block, u);
             const inner = try assocEquation(self, low, opened.innermost, b.loc, u.body, b.args);
-            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+            return try self.closeUniversal(low, b.loc, u, opened.blocks, inner);
         }
-        return assocEquation(self, low, block, b.loc, body_goal, b.args);
+        return try assocEquation(self, low, block, b.loc, body_goal, b.args);
     }
 };
 

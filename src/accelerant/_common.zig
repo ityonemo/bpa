@@ -51,7 +51,12 @@ const Premise = struct {
 
 /// Build + cite the context-free synthetic theorem. `body` is any value with a
 /// `pub fn emit(*@This(), *Elaborator, *Lowering, kernel.BlockId, TermId)
-/// ElabError!kernel.Justification` proving the fresh-eigenvar body goal.
+/// ElabError!?kernel.Justification` proving the fresh-eigenvar body goal.
+///
+/// Returns null when the body-emit DECLINES (returns null) — e.g. tautology's
+/// certificate replay runs out of budget. On decline nothing is registered and
+/// the caller's `low` is untouched; the accelerant should fall back to the
+/// accelerated verdict. A body-emit that always succeeds never yields null.
 pub fn generate(
     self: *Elaborator,
     low: *Lowering,
@@ -61,7 +66,7 @@ pub fn generate(
     goal: TermId,
     refs: []const lexer.Token,
     body: anytype,
-) ElabError!kernel.Justification {
+) ElabError!?kernel.Justification {
     // classify every ref (in cite order) — each becomes a premise.
     var premises: std.ArrayList(Premise) = .empty;
     for (refs) |ref| {
@@ -154,7 +159,10 @@ pub fn generate(
     // reference it; when there are none, closeUniversal emits the body itself
     // (from `body_just`) — emitting here too would duplicate.
     var body_mut = body;
-    const cert_just = try body_mut.emit(self, &plow, parent, body_goal);
+    const cert_just = (try body_mut.emit(self, &plow, parent, body_goal)) orelse
+        // the body-emit declined (e.g. tautology's replay ran out of budget) —
+        // nothing was registered, `plow` is discarded, the caller falls back.
+        return null;
 
     // DECIDE vs GENERATE. The body-emit above did the validity work in `plow`
     // (a false goal already failed inside it — with a located error). In --fast
@@ -214,7 +222,7 @@ pub fn generate(
 
     // ---- cite it back in the caller: forall_elim(eigenvars) then a
     // modus_ponens per premise (discharge with the original refs) ----
-    return emitCitation(self, low, block_id, loc, thm, closed, vars.items, premises.items);
+    return try emitCitation(self, low, block_id, loc, thm, closed, vars.items, premises.items);
 }
 
 /// Surface `formula` as a `hypothesis` step in `block` (an assume block) and
