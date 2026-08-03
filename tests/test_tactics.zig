@@ -105,11 +105,12 @@ pub fn addTests(
     // with no closure fact in scope fails with an actionable message (the graceful
     // fallback point for future author-supplied obligations).
     ctx.fail(&.{ "check", "tests/cases/model_guarded_noclose.bpa" }, "tests/cases/model_guarded_noclose.bpa:28:27: error: guarded model: cannot prove 'good(ZED)' — supply a closure fact for it\n");
-    // BOUNDARY fixtures: a guarded transfer of a proof that unpacks an existential
-    // witness is not yet handled (rejects cleanly); a case split now IS handled
-    // (below). (The sources check fine either way.)
+    // BOUNDARY fixtures (all now handled): a guarded transfer of a proof that
+    // unpacks an existential witness surfaces `guard(w)` from the relativized
+    // `∃x; guard(x) and P(x)` conjunct (and re-guards a matching `exists_intro`);
+    // a case split re-emits or_elim + arm hypotheses. (Sources check fine too.)
     ctx.ok(&.{ "check", "tests/cases/model_guarded_witness_source.bpa" }, "OK: 7 declarations, 1 theorems proven\n");
-    ctx.fail(&.{ "check", "tests/cases/model_guarded_witness.bpa" }, "tests/cases/model_guarded_witness.bpa:33:27: error: guarded model materialization does not yet handle an `unpack` (existential witness) in the transferred proof\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_witness.bpa" }, "OK: 17 declarations, 2 theorems proven\n");
     ctx.ok(&.{ "check", "tests/cases/model_guarded_case_source.bpa" }, "OK: 10 declarations, 1 theorems proven\n");
     // case split (or_elim + hypothesis) now materializes guardedly.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_case.bpa" }, "OK: 23 declarations, 2 theorems proven\n");

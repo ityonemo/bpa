@@ -309,11 +309,41 @@ fn reemitChild(self: *Elaborator, plow: *Lowering, parent: kernel.BlockId, ctx: 
             const ref = try self.emitStep(plow, parent, loc, closed, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
             try ctx.step_map.put(self.arena, closing_src, ref);
         },
-        // `unpack` (existential witness) is the known boundary: a relativized
-        // `∃x; guard(x) and P` unpacks a witness whose `guard(w)` is available
-        // from the surfaced conjunct, but wiring that into `guard_hyp` is not yet
-        // done. `root` is unreachable as a child kind.
-        .unpack => return self.fail(loc, "guarded model materialization does not yet handle an `unpack` (existential witness) in the transferred proof", .{}),
+        .unpack => |u| {
+            // the source existential `∃x; body` relativizes to `∃x; guard(x) and
+            // body` (∃ takes `and`), so unpacking the witness w surfaces
+            // `guard(w) and body[w]`. Extract guard(w) (register it for the body's
+            // eigenvariable discharges) and body[w] (map the source's own
+            // hypothesis-of-the-witness to it).
+            const new_sort = ctx.model.remap.sort(u.v.sort);
+            const src_ref = ctx.step_map.get(u.source.id).?;
+            const unp_b = try self.newBlock(plow, try self.freshNamed("gm-unpack"), parent, .{ .unpack = .{
+                .v = .{ .name = u.v.name, .sort = new_sort },
+                .source = src_ref,
+            } });
+            try ctx.block_map.put(self.arena, child, unp_b);
+            const guarded_witness = u.v.sort == guard.carrier;
+            if (guarded_witness) {
+                // surface `guard(w) and body[w]`, split it. The unpack surfaces
+                // the RELATIVIZED existential's opened body — remapFormula (not the
+                // step-level remap) injects the guard as a leading `and` conjunct,
+                // so we read the body off the fully-remapped source formula.
+                const w = try self.pool.add(.{ .fvar = .{ .name = u.v.name, .sort = new_sort } });
+                const src_ex = ctx.proof.steps[@intFromEnum(u.source.id)].formula;
+                const remapped_ex = self.pool.remapFormula(src_ex, ctx.model.remap) catch return error.OutOfMemory; // ∃x; guard(x) and P(x)
+                const ex_node = self.pool.get(remapped_ex);
+                const hyp_formula = try self.pool.open(ex_node.quant.body, w); // guard(w) and P(w)
+                const hyp = try self.emitStep(plow, unp_b, loc, hyp_formula, .{ .hypothesis = .{ .id = unp_b, .loc = loc } });
+                const guard_ref = try self.emitStep(plow, unp_b, loc, try self.pool.addApp(.pred, guard.pred, &.{w}), .{ .and_elim_left = hyp });
+                try ctx.guard_hyp.put(self.arena, u.v.name, guard_ref);
+            }
+            try reemitBlock(self, plow, unp_b, ctx, child);
+            self.closeBlock(plow, unp_b);
+            if (guarded_witness) _ = ctx.guard_hyp.remove(u.v.name);
+            const closed = try remapStepFormula(self, ctx, ctx.proof.steps[@intFromEnum(closing_src)].formula);
+            const ref = try self.emitStep(plow, parent, loc, closed, .{ .exists_elim = .{ .id = unp_b, .loc = loc } });
+            try ctx.step_map.put(self.arena, closing_src, ref);
+        },
         .root => unreachable,
     }
 }
@@ -396,7 +426,26 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
         .or_intro_left => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .or_intro_left = ctx.step_map.get(sr.id).? }),
         .or_intro_right => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .or_intro_right = ctx.step_map.get(sr.id).? }),
         .absurd => |r| return self.emitStep(plow, block, loc, new_formula, .{ .absurd = .{ .s1 = ctx.step_map.get(r.s1.id).?, .s2 = ctx.step_map.get(r.s2.id).? } }),
-        .exists_intro => |r| return self.emitStep(plow, block, loc, new_formula, .{ .exists_intro = .{ .step = ctx.step_map.get(r.step.id).?, .witness = self.pool.remapFormula(r.witness, model.remap) catch return error.OutOfMemory, .witness_loc = loc } }),
+        .exists_intro => |r| {
+            const witness = self.pool.remapFormula(r.witness, model.remap) catch return error.OutOfMemory;
+            const src_node = self.pool.get(s.formula); // source ∃ (pre-remap)
+            const guarded = src_node == .quant and src_node.quant.q == .exists and
+                src_node.quant.sort == model.remap.guard.?.carrier;
+            var body_ref = ctx.step_map.get(r.step.id).?;
+            if (guarded) {
+                // target is `∃x; guard(x) and P(x)`, so exists_intro needs a proof
+                // of `guard(w) and P(w)` — the source only established `P(w)`.
+                // Synthesize `guard(w)` and conjoin.
+                const guard = model.remap.guard.?;
+                const guard_app = try self.pool.addApp(.pred, guard.pred, &.{witness});
+                const p_ref = body_ref;
+                const p_formula = try remapStepFormula(self, ctx, ctx.proof.steps[@intFromEnum(r.step.id)].formula);
+                const guard_ref = try emitGuardProof(self, plow, block, ctx, witness);
+                const conj = try self.pool.add(.{ .bin = .{ .op = .and_op, .lhs = guard_app, .rhs = p_formula } });
+                body_ref = try self.emitStep(plow, block, loc, conj, .{ .and_intro = .{ .left = guard_ref, .right = p_ref } });
+            }
+            return self.emitStep(plow, block, loc, new_formula, .{ .exists_intro = .{ .step = body_ref, .witness = witness, .witness_loc = loc } });
+        },
         // BRef-carrying / hypothesis / case-split forms not yet needed (the group
         // corpus has no case-splits, unpacks, or bare hypotheses in transferable
         // proofs); reject cleanly if one appears.
