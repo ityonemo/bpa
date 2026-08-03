@@ -1,8 +1,9 @@
 # MODEL-DESIGN.md — the `model` mechanism (structure reuse / "X is-a Y")
 
-Branch `isa-structure-reuse`. This supersedes the syntax/mechanism portion of
-`ISA-EXPLORATION.md` (which recorded the *terrain*; this records the *decision*).
-Status: **syntax + trust model SETTLED; not yet fully done — see "Still open".**
+The canonical spec for the shipped `model` accelerant (referenced from GUIDE.md,
+ACCELERATION.md, and the model source). Status: **implemented and in use** — the
+group→ring→ℤ chain and the guarded-model machinery are live; see "Still open" for
+the remaining design questions.
 
 ## What it is
 
