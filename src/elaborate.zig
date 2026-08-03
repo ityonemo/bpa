@@ -26,8 +26,9 @@ const simplify_mod = @import("simplify.zig");
 const smt_mod = @import("accelerant/arithmetic/smt.zig");
 const presburger_mod = @import("accelerant/arithmetic/presburger.zig");
 const farkas_mod = @import("accelerant/arithmetic/farkas.zig");
+const accel_simplify = @import("accelerant/simplify.zig");
 
-const ElabError = error{ Recover, OutOfMemory };
+pub const ElabError = error{ Recover, OutOfMemory };
 
 /// What to actually verify, as independent knobs. Full verification (all true)
 /// is the default; the CLI's `--fast`/`--faster`/`--reckless` flags are
@@ -1192,10 +1193,10 @@ pub const Elaborator = struct {
                 } };
             },
             .simplify => {
-                return self.simplifyJustification(low, block_id, goal, c);
+                return accel_simplify.justify(self, low, block_id, goal, c);
             },
             .simplify_quantified => {
-                return self.simplifyQuantifiedJustification(low, block_id, goal, c);
+                return accel_simplify.justifyQuantified(self, low, block_id, goal, c);
             },
             .ac => {
                 return self.acJustification(low, block_id, goal, c);
@@ -1628,41 +1629,10 @@ pub const Elaborator = struct {
         return prev;
     }
 
-    fn simplifyJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
-        const loc = c.rule.start;
-        const goal_node = self.pool.get(goal);
-        if (goal_node != .eq) {
-            // a forall over an equation is the common mistake — point at the
-            // tactic that handles it
-            if (goal_node == .quant and goal_node.quant.q == .forall) {
-                return self.fail(loc, "simplify proves equations; did you mean simplify_quantified?", .{});
-            }
-            return self.fail(loc, "simplify proves equations; the goal is '{s}'", .{try self.renderTerm(goal)});
-        }
-        return self.simplifyEquation(low, block_id, loc, c.refs, goal);
-    }
-
-    fn simplifyQuantifiedJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
-        const loc = c.rule.start;
-        const goal_node = self.pool.get(goal);
-        if (goal_node != .quant or goal_node.quant.q != .forall) {
-            if (goal_node == .eq) {
-                return self.fail(loc, "simplify_quantified expects a quantified goal; did you mean simplify?", .{});
-            }
-            return self.fail(loc, "simplify_quantified expects a 'forall …; s = t' goal, got '{s}'", .{try self.renderTerm(goal)});
-        }
-        const u = try self.peelUniversal(goal, "sq");
-        if (self.pool.get(u.body) != .eq) {
-            return self.fail(loc, "simplify_quantified's body is not an equation: '{s}'", .{try self.renderTerm(u.body)});
-        }
-        const opened = try self.openUniversal(low, block_id, u);
-        const body_just = try self.simplifyEquation(low, opened.innermost, loc, c.refs, u.body);
-        return self.closeUniversal(low, loc, u, opened.blocks, body_just);
-    }
 
     /// The simplify core on a bare equation goal `eq_goal` in `emit_block`:
     /// resolve cited refs into rules, normalize both sides, emit the join.
-    fn simplifyEquation(self: *Elaborator, low: *Lowering, emit_block: kernel.BlockId, loc: u32, refs: []const lexer.Token, eq_goal: TermId) ElabError!kernel.Justification {
+    pub fn simplifyEquation(self: *Elaborator, low: *Lowering, emit_block: kernel.BlockId, loc: u32, refs: []const lexer.Token, eq_goal: TermId) ElabError!kernel.Justification {
         const goal_node = self.pool.get(eq_goal);
         std.debug.assert(goal_node == .eq);
 
