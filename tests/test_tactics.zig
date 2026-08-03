@@ -100,7 +100,7 @@ pub fn addTests(
     // in-scope `assume guard(a)`; composite → a closure fact + recursion). Fully
     // kernel-checked, no taint.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_source.bpa" }, "OK: 6 declarations, 2 theorems proven\n");
-    ctx.ok(&.{ "check", "tests/cases/model_guarded.bpa" }, "OK: 16 declarations, 3 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded.bpa" }, "OK: 17 declarations, 4 theorems proven\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source

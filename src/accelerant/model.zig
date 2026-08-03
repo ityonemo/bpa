@@ -191,16 +191,14 @@ fn materializeGuardedModelTheorem(self: *Elaborator, model: *Model, source: Stat
         .model = model,
         .proof = proof,
         .step_map = .empty,
+        .guard_hyp = .empty,
         .loc = loc,
     };
 
-    // L1: flat proofs only — every source step lives in the root block. (Block
-    // structure / fix-assume insertion arrives at L2.)
-    for (proof.steps, 0..) |s, i| {
-        const sid: kernel.StepId = @enumFromInt(i);
-        const new_ref = try emitGuardedStep(self, &plow, root, &ctx, s);
-        try ctx.step_map.put(self.arena, sid, new_ref);
-    }
+    // walk the source block tree from the root, re-emitting each block's directly
+    // owned steps and recursing into children (a carrier `fix` becomes
+    // `fix a { assume guard(a) { … } }`). Captures every ref by emission.
+    try reemitBlock(self, &plow, root, &ctx, @enumFromInt(0));
     plow.blocks.items[0].last_step = @intCast(plow.steps.items.len);
 
     const on_fail = try std.fmt.allocPrint(self.arena, "guarded model transfer of '{s}' does not kernel-check under the interpretation", .{self.interner.str(fact.name)});
@@ -214,8 +212,105 @@ const GuardedCtx = struct {
     proof: @import("../env.zig").Statement.LoweredProof,
     /// source StepId -> the captured ref of its (final) re-emitted step
     step_map: std.AutoHashMapUnmanaged(kernel.StepId, kernel.SRef),
+    /// carrier eigenvariable name -> the SRef of its `assume guard(a)` hypothesis
+    /// step (the base case of `emitGuardProof` for a fixed variable).
+    guard_hyp: std.AutoHashMapUnmanaged(StrId, kernel.SRef),
     loc: u32,
 };
+
+/// Re-emit a source block's directly-owned steps into a corresponding target
+/// block, recursing into child blocks. A `fix a` over the carrier sort is
+/// materialized as `fix a { assume guard(a) { <body> } }` — the assume block
+/// surfaces `guard(a)` for eigenvariable discharge, and closes with implies_intro
+/// then the fix closes with forall_intro (reconstructing the relativized ∀).
+fn reemitBlock(self: *Elaborator, plow: *Lowering, target: kernel.BlockId, ctx: *GuardedCtx, src_block: kernel.BlockId) ElabError!void {
+    const sb = ctx.proof.blocks[@intFromEnum(src_block)];
+    var i: u32 = sb.first_step;
+    while (i < sb.last_step) : (i += 1) {
+        const step = ctx.proof.steps[@intFromEnum(@as(kernel.StepId, @enumFromInt(i)))];
+        if (@intFromEnum(step.block) != @intFromEnum(src_block)) continue; // owned by a nested child; emitted there
+        // does this step OPEN a child block? (its justification closes one)
+        if (childBlockOf(step.just)) |child| {
+            try reemitChild(self, plow, target, ctx, child, @enumFromInt(i));
+        } else {
+            const new_ref = try emitGuardedStep(self, plow, target, ctx, step);
+            try ctx.step_map.put(self.arena, @enumFromInt(i), new_ref);
+        }
+    }
+}
+
+/// The child block a block-closing justification refers to (fix→forall_intro,
+/// assume→implies_intro, etc.), else null.
+fn childBlockOf(j: kernel.Justification) ?kernel.BlockId {
+    return switch (j) {
+        .forall_intro, .implies_intro, .exists_elim => |b| b.id,
+        else => null,
+    };
+}
+
+/// Re-emit a child subproof block and its closing step. `closing_src` is the
+/// source step whose justification closes `child` (forall_intro / implies_intro).
+fn reemitChild(self: *Elaborator, plow: *Lowering, parent: kernel.BlockId, ctx: *GuardedCtx, child: kernel.BlockId, closing_src: kernel.StepId) ElabError!void {
+    const cb = ctx.proof.blocks[@intFromEnum(child)];
+    const loc = ctx.loc;
+    const guard = ctx.model.remap.guard.?;
+
+    switch (cb.kind) {
+        .fix => |fv| {
+            const new_sort = ctx.model.remap.sort(fv.sort);
+            const fix_b = try self.newBlock(plow, try self.freshNamed("gm-fix"), parent, .{ .fix = .{ .name = fv.name, .sort = new_sort } });
+            if (fv.sort == guard.carrier) {
+                // carrier fix → insert `assume guard(a)`, surface the hypothesis.
+                const bound = try self.pool.add(.{ .fvar = .{ .name = fv.name, .sort = new_sort } });
+                const guard_a = try self.pool.addApp(.pred, guard.pred, &.{bound});
+                const asm_b = try self.newBlock(plow, try self.freshNamed("gm-guard"), fix_b, .{ .assume = guard_a });
+                const hyp = try self.emitStep(plow, asm_b, loc, guard_a, .{ .hypothesis = .{ .id = asm_b, .loc = loc } });
+                try ctx.guard_hyp.put(self.arena, fv.name, hyp);
+                // re-emit the fix body inside the assume block.
+                try reemitBlock(self, plow, asm_b, ctx, child);
+                // close the assume with implies_intro (→ guard(a) -> <body last>),
+                // emitted in the fix block; then close the fix with forall_intro.
+                const body_last = try remapStepFormula(self, ctx, lastStepFormula(ctx, child));
+                const impl = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_a, .rhs = body_last } });
+                self.closeBlock(plow, asm_b);
+                _ = try self.emitStep(plow, fix_b, loc, impl, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
+                _ = ctx.guard_hyp.remove(fv.name);
+            } else {
+                try reemitBlock(self, plow, fix_b, ctx, child);
+            }
+            self.closeBlock(plow, fix_b);
+            const closed = try remapStepFormula(self, ctx, ctx.proof.steps[@intFromEnum(closing_src)].formula);
+            const ref = try self.emitStep(plow, parent, loc, closed, .{ .forall_intro = .{ .id = fix_b, .loc = loc } });
+            try ctx.step_map.put(self.arena, closing_src, ref);
+        },
+        .assume => |f| {
+            const asm_f = try remapStepFormula(self, ctx, f);
+            const asm_b = try self.newBlock(plow, try self.freshNamed("gm-assume"), parent, .{ .assume = asm_f });
+            try reemitBlock(self, plow, asm_b, ctx, child);
+            self.closeBlock(plow, asm_b);
+            const closed = try remapStepFormula(self, ctx, ctx.proof.steps[@intFromEnum(closing_src)].formula);
+            const ref = try self.emitStep(plow, parent, loc, closed, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
+            try ctx.step_map.put(self.arena, closing_src, ref);
+        },
+        else => return self.fail(loc, "guarded model materialization does not yet handle this block kind", .{}),
+    }
+}
+
+fn remapStepFormula(self: *Elaborator, ctx: *GuardedCtx, f: TermId) ElabError!TermId {
+    return self.pool.remapFormula(f, ctx.model.remap) catch return error.OutOfMemory;
+}
+
+/// The (source) formula of the last step directly owned by `block`.
+fn lastStepFormula(ctx: *GuardedCtx, block: kernel.BlockId) TermId {
+    const b = ctx.proof.blocks[@intFromEnum(block)];
+    var i = b.last_step;
+    while (i > b.first_step) {
+        i -= 1;
+        const s = ctx.proof.steps[@intFromEnum(@as(kernel.StepId, @enumFromInt(i)))];
+        if (@intFromEnum(s.block) == @intFromEnum(block)) return s.formula;
+    }
+    return ctx.proof.steps[@intFromEnum(@as(kernel.StepId, @enumFromInt(b.first_step)))].formula;
+}
 
 /// Re-emit one source step into `plow`; return the ref of its (final) emitted
 /// step. A `forall_elim` over a guarded (carrier-sorted) universal expands to
@@ -254,12 +349,19 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
     }
 }
 
-/// Emit a proof of `guard(t)` and return its ref. (L1: `t` a mapped constant —
-/// cite the model's base closure fact `guard(t)`.) Recurses on `t` at L3.
+/// Emit a proof of `guard(t)` and return its ref, by recursion on `t`:
+///  - a carrier eigenvariable → its in-scope `assume guard(a)` hypothesis (L2);
+///  - a mapped constant → the base closure fact `guard(c)` in scope (L1);
+///  - anything else → a closure fact matched by shape, else a clean error (L3).
 fn emitGuardProof(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, t: TermId) ElabError!kernel.SRef {
     const guard = ctx.model.remap.guard.?;
+    // eigenvariable: cite the guard hypothesis surfaced by its `fix a { assume
+    // guard(a) }` block.
+    if (self.pool.get(t) == .fvar) {
+        if (ctx.guard_hyp.get(self.pool.get(t).fvar.name)) |hyp| return hyp;
+    }
     const want = try self.pool.addApp(.pred, guard.pred, &.{t});
-    // find a proven local fact whose formula is exactly `guard(t)`.
+    // a proven local fact whose formula is exactly `guard(t)` (base closure).
     if (findFactByFormula(self, want)) |id| {
         return self.emitStep(plow, block, ctx.loc, want, citeStatement(self, id, ctx.loc));
     }
