@@ -745,3 +745,42 @@ addZeroRight
   std/peano-parity.bpa:30:  theorem addZeroRight = peano.addZeroRight
   std/peano.bpa:79:  theorem addZeroRight: forall n: Nat; add(n, ZERO) = n  [origin]
 ```
+
+## Lint
+
+`bpa lint <file>` reports **convention** violations that `check` deliberately
+ignores because they don't affect validity — the point is corpus consistency, so
+mechanisms that match on syntactic shape stay frictionless. Today it enforces one
+rule: **canonical binder order** — a leading `forall` must bind its variables in
+first-appearance order (`forall a, b, c; add(add(a, b), c) = …`, never `forall c,
+b, a`). A permuted order is logically identical but fails α-matching, which breaks
+`model`'s axiom discharge (forcing a hand-written reordering adapter). Reads `.md`
+too; naming/casing rules (future) are suspended for literate transliterations,
+which mirror their source's notation. See `CONVENTIONS.md`.
+
+## Debug (inspect an accelerant's output)
+
+`bpa debug accelerant <file> <selector>` reprints the **synthetic theorem** an
+accelerated step produced — statement + proof, as valid bpa. In strict mode every
+`[by <tactic> …]` wraps its certificate into a kernel-checked, count-suppressed
+theorem (`<tactic>$n`, context-free — it cites nothing from the environment; see
+`ACCELERATION.md`); `debug` materializes and prints it. The selector is a **line
+number** or an enclosing **theorem + step-label** pair.
+
+```
+$ bpa debug accelerant tests/cases/farkas.bpa belowBothWaysIsAbsurd conclusion
+theorem arithmetic: forall a: Nat; forall b: Nat; less_than(a, b) -> less_than(b, a) -> less_than(a, a)
+proof
+  ...
+      @s8 |
+        less_than(a, a)
+        [by modus_ponens s7 s2]
+  ...
+qed
+```
+
+The output round-trips: fed back through `bpa check` it re-verifies from scratch.
+It loads through the full multi-file loader, so it works on files with imports
+(and on recursive synthetics like a `model` materialization citing another). The
+kernel-steps → bpa-source renderer underneath is also the IR a mechanical
+Lean/Isabelle/Rocq export would consume.

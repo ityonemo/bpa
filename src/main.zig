@@ -298,6 +298,8 @@ pub fn main(init: std.process.Init) !u8 {
             \\
             \\usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>
             \\       bpa fmt [--check] <file.bpa|.md>
+            \\       bpa lint <file.bpa|.md>
+            \\       bpa debug accelerant <file> <line | theorem step-label>
             \\       bpa query outline <file.bpa> [theorem]
             \\       bpa query theorem <file.bpa> <theorem> [--sig]
             \\       bpa query whereis <file.bpa> <identifier>
@@ -325,6 +327,15 @@ pub fn main(init: std.process.Init) !u8 {
             \\fmt normalizes whitespace and indentation in place; --check
             \\reports instead of rewriting. On a literate `.md` it reformats
             \\only the ```bpa blocks, leaving prose verbatim.
+            \\
+            \\lint reports convention violations check ignores (they don't affect
+            \\validity) — currently canonical binder order (a leading forall
+            \\must bind in first-appearance order). See CONVENTIONS.md.
+            \\
+            \\debug accelerant reprints the synthetic theorem an accelerated step
+            \\produced (statement + proof, as valid bpa that round-trips through
+            \\check). Select the step by line number, or by enclosing theorem +
+            \\step-label.
             \\
             \\query outline prints a proof's structural skeleton: one line per
             \\step (bare label), with a header on steps that open a nesting

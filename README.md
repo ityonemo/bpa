@@ -109,6 +109,8 @@ examples/incorrect.bpa:39:41: error: modus_ponens: expected antecedent 'raining'
 ```
 bpa check [--fast | --faster | --reckless] <file.bpa | file.md>
 bpa fmt [--check] <file.bpa>
+bpa lint <file.bpa | file.md>
+bpa debug accelerant <file> <line | theorem step-label>
 bpa query outline  <file> [theorem]
 bpa query theorem  <file> <name> [--sig]
 bpa query whereis  <file> <identifier>
@@ -120,7 +122,9 @@ everything; the speed flags defer work during development and say so loudly
 (`--fast` accepts accelerated verdicts, `--faster` also trusts imported proofs,
 `--reckless` also trusts imported schemas). Re-run plain `bpa check` to
 finalize. `fmt` normalizes whitespace and indentation in place (`--check`
-reports instead of rewriting).
+reports instead of rewriting). `lint` reports convention violations `check`
+ignores because they don't affect validity — currently canonical binder order
+(a leading `forall` must bind in first-appearance order); see `CONVENTIONS.md`.
 
 ### Literate proofs (`.md`)
 
@@ -170,6 +174,34 @@ across files*, or *finding a lemma by concept* when the name is fuzzy.
   `file:line:col`. A clean report means every step in the file is kernel-checked.
 
 Query may support semantic searching in the future.
+
+### Debug (see what an accelerant proved)
+
+An accelerated tactic like `[by simplify …]` or `[by arithmetic]` stands in for a
+chunk of proof the tactic generates and the kernel checks. In default (strict)
+mode that generated proof is a real, suppressed **synthetic theorem** — nothing is
+trusted, everything is kernel-checked. `bpa debug accelerant` reprints it, as the
+bpa a person would have written:
+
+```
+$ bpa debug accelerant tests/cases/farkas.bpa belowBothWaysIsAbsurd conclusion
+theorem arithmetic: forall a: Nat; forall b: Nat; less_than(a, b) -> less_than(b, a) -> less_than(a, a)
+proof
+  @b2 |
+    fix a: Nat {
+    ...
+      @s8 |
+        less_than(a, a)
+        [by modus_ponens s7 s2]
+    ...
+qed
+```
+
+Point it at a step by line number (`… <file> 23`) or by enclosing theorem + step
+label (`… <file> <theorem> <label>`). The output is valid bpa — fed back through
+`bpa check` it re-verifies from scratch. Useful for reviewing exactly what a
+tactic discharged, and (as the underlying named-theorem chain) the export IR for a
+future Lean/Isabelle/Rocq backend.
 
 ## How it works
 
