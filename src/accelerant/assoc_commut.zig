@@ -22,6 +22,7 @@ const std = @import("std");
 const lexer = @import("../lexer.zig");
 const simplify_mod = @import("../simplify.zig");
 const presburger_mod = @import("arithmetic/presburger.zig");
+const common = @import("_common.zig");
 
 pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     const loc = c.rule.start;
@@ -32,7 +33,14 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         }
         return self.fail(loc, "assoc_commut proves equations; the goal is '{s}'", .{try self.renderTerm(goal)});
     }
-    return acEquation(self, low, block_id, loc, goal, c.args, c.refs);
+    // --fast: acEquation short-circuits to the accelerated verdict (no theorem).
+    // strict: wrap the AC-sort certificate as a synthetic theorem (eigenvar
+    // closure; the AC triple + pre-rules are globals cited directly).
+    if (!self.verify.certify_arithmetic) {
+        return acEquation(self, low, block_id, loc, goal, c.args, c.refs);
+    }
+    var body: EqBody = .{ .args = c.args, .refs = c.refs, .loc = loc };
+    return common.generate(self, low, block_id, loc, "assoc_commut", goal, &.{}, &body);
 }
 
 /// `ac` peeling the forall prefix: fix the binders, run the ac core on the
@@ -50,10 +58,31 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
     if (self.pool.get(u.body) != .eq) {
         return self.fail(loc, "assoc_commut_quantified's body is not an equation: '{s}'", .{try self.renderTerm(u.body)});
     }
-    const opened = try self.openUniversal(low, block_id, u);
-    const body_just = try acEquation(self, low, opened.innermost, loc, u.body, c.args, c.refs);
-    return self.closeUniversal(low, loc, u, opened.blocks, body_just);
+    if (!self.verify.certify_arithmetic) {
+        const opened = try self.openUniversal(low, block_id, u);
+        const body_just = try acEquation(self, low, opened.innermost, loc, u.body, c.args, c.refs);
+        return self.closeUniversal(low, loc, u, opened.blocks, body_just);
+    }
+    var body: EqBody = .{ .args = c.args, .refs = c.refs, .loc = loc };
+    return common.generate(self, low, block_id, loc, "assoc_commut", goal, &.{}, &body);
 }
+
+/// The body-emit for ac's closure: AC-sort the (fresh-eigenvar) equation. A
+/// still-quantified body is peeled/closed here.
+const EqBody = struct {
+    args: []const *const ast.Expr,
+    refs: []const lexer.Token,
+    loc: u32,
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+        if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
+            const u = try self.peelUniversal(body_goal, "ac");
+            const opened = try self.openUniversal(low, block, u);
+            const inner = try acEquation(self, low, opened.innermost, b.loc, u.body, b.args, b.refs);
+            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+        }
+        return acEquation(self, low, block, b.loc, body_goal, b.args, b.refs);
+    }
+};
 
 /// The ac core on a bare equation goal `goal` emitted in `block_id`:
 /// pick the operator, resolve its AC lemma triple, bubble-sort both sides,

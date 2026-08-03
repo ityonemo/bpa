@@ -22,6 +22,7 @@ const TermId = term.TermId;
 
 const std = @import("std");
 const simplify_mod = @import("../simplify.zig");
+const common = @import("_common.zig");
 
 pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     const loc = c.rule.start;
@@ -32,7 +33,14 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         }
         return self.fail(loc, "assoc proves equations; the goal is '{s}'", .{try self.renderTerm(goal)});
     }
-    return assocEquation(self, low, block_id, loc, goal, c.args);
+    // --fast: decide-only (accelerated verdict, no theorem). strict: wrap the
+    // reassociation certificate as a synthetic theorem (eigenvar-closure; the
+    // associativity lemma is a global cited directly).
+    if (!self.verify.certify_arithmetic) {
+        return assocEquation(self, low, block_id, loc, goal, c.args);
+    }
+    var body: EqBody = .{ .args = c.args, .loc = loc };
+    return common.generate(self, low, block_id, loc, "assoc", goal, &.{}, &body);
 }
 
 pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
@@ -48,10 +56,30 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
     if (self.pool.get(u.body) != .eq) {
         return self.fail(loc, "assoc_quantified's body is not an equation: '{s}'", .{try self.renderTerm(u.body)});
     }
-    const opened = try self.openUniversal(low, block_id, u);
-    const body_just = try assocEquation(self, low, opened.innermost, loc, u.body, c.args);
-    return self.closeUniversal(low, loc, u, opened.blocks, body_just);
+    if (!self.verify.certify_arithmetic) {
+        const opened = try self.openUniversal(low, block_id, u);
+        const body_just = try assocEquation(self, low, opened.innermost, loc, u.body, c.args);
+        return self.closeUniversal(low, loc, u, opened.blocks, body_just);
+    }
+    var body: EqBody = .{ .args = c.args, .loc = loc };
+    return common.generate(self, low, block_id, loc, "assoc", goal, &.{}, &body);
 }
+
+/// The body-emit for assoc's closure: reassociate the (fresh-eigenvar) equation
+/// against the associativity lemma. A still-quantified body is peeled/closed.
+const EqBody = struct {
+    args: []const *const ast.Expr,
+    loc: u32,
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+        if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
+            const u = try self.peelUniversal(body_goal, "assoc");
+            const opened = try self.openUniversal(low, block, u);
+            const inner = try assocEquation(self, low, opened.innermost, b.loc, u.body, b.args);
+            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+        }
+        return assocEquation(self, low, block, b.loc, body_goal, b.args);
+    }
+};
 
 fn assocEquation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, loc: u32, goal: TermId, args: []const *const ast.Expr) ElabError!kernel.Justification {
     // REQUIRED: exactly one argument, the associativity lemma.

@@ -22,6 +22,7 @@ const TermId = term.TermId;
 const std = @import("std");
 const simplify_mod = @import("../simplify.zig");
 const presburger_mod = @import("arithmetic/presburger.zig");
+const common = @import("_common.zig");
 
 pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     const loc = c.rule.start;
@@ -35,7 +36,13 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
     const saved_theory = self.theory_file;
     defer self.theory_file = saved_theory;
     try self.enterTheory(c);
-    return polynomialEquation(self, low, block_id, loc, goal);
+    // --fast: decide-only (accelerated verdict, no theorem). strict: wrap the
+    // canonicalization certificate as a context-free synthetic theorem.
+    if (!self.verify.certify_arithmetic) {
+        return polynomialEquation(self, low, block_id, loc, goal);
+    }
+    var body: EqBody = .{ .loc = loc };
+    return common.generate(self, low, block_id, loc, "polynomial", goal, &.{}, &body);
 }
 
 /// `polynomial` peeling the forall prefix — mirrors ac_quantified.
@@ -55,10 +62,30 @@ pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
     if (self.pool.get(u.body) != .eq) {
         return self.fail(loc, "polynomial_quantified's body is not an equation: '{s}'", .{try self.renderTerm(u.body)});
     }
-    const opened = try self.openUniversal(low, block_id, u);
-    const body_just = try polynomialEquation(self, low, opened.innermost, loc, u.body);
-    return self.closeUniversal(low, loc, u, opened.blocks, body_just);
+    if (!self.verify.certify_arithmetic) {
+        const opened = try self.openUniversal(low, block_id, u);
+        const body_just = try polynomialEquation(self, low, opened.innermost, loc, u.body);
+        return self.closeUniversal(low, loc, u, opened.blocks, body_just);
+    }
+    var body: EqBody = .{ .loc = loc };
+    return common.generate(self, low, block_id, loc, "polynomial", goal, &.{}, &body);
 }
+
+/// The body-emit for polynomial's closure: prove the (fresh-eigenvar) equation
+/// via the canonicalization certificate. A `∀…; s = t` body (from
+/// polynomial_quantified) is peeled and closed here, like simplify's emitBody.
+const EqBody = struct {
+    loc: u32,
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+        if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
+            const u = try self.peelUniversal(body_goal, "poly");
+            const opened = try self.openUniversal(low, block, u);
+            const inner = try polynomialEquation(self, low, opened.innermost, b.loc, u.body);
+            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+        }
+        return polynomialEquation(self, low, block, b.loc, body_goal);
+    }
+};
 
 /// The set of well-known rules `polynomial` needs, resolved as one array
 /// with named index ranges. Distribution + identity/zero folding are the

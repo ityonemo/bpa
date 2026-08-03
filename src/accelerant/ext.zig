@@ -21,6 +21,7 @@ const TermId = term.TermId;
 
 const std = @import("std");
 const simplify_mod = @import("../simplify.zig");
+const common = @import("_common.zig");
 
 const Premise = Elaborator.TautCert.Premise;
 
@@ -31,6 +32,23 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
 pub fn justifyQuantified(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     return extJustification(self, low, block_id, goal, c, true);
 }
+
+/// The body-emit for ext's closure: prove the (fresh-eigenvar) equation by
+/// extensionality. A still-quantified body (from ext_quantified) is peeled and
+/// closed here. ext is cert-only (no `--fast` verdict), so this always runs in
+/// strict mode.
+const EqBody = struct {
+    loc: u32,
+    pub fn emit(b: *EqBody, self: *Elaborator, low: *Lowering, block: kernel.BlockId, body_goal: TermId) ElabError!kernel.Justification {
+        if (self.pool.get(body_goal) == .quant and self.pool.get(body_goal).quant.q == .forall) {
+            const u = try self.peelUniversal(body_goal, "ext");
+            const opened = try self.openUniversal(low, block, u);
+            const inner = try extEquation(self, low, opened.innermost, u.body, b.loc);
+            return self.closeUniversal(low, b.loc, u, opened.blocks, inner);
+        }
+        return extEquation(self, low, block, body_goal, b.loc);
+    }
+};
 
 /// A resolved extensionality model: the element sort, the extensionality
 /// lemma, and — read off the lemma's obligation — the characterization
@@ -50,37 +68,21 @@ fn extJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId,
     defer self.theory_file = saved_theory;
     try self.enterTheory(c);
 
-    // peel a forall prefix for the _quantified form.
+    // shape validation up front (precise diagnostics); the closure's body-emit
+    // peels the quantified form itself.
     if (quantified) {
         const gn = self.pool.get(goal);
         if (gn != .quant or gn.quant.q != .forall) {
             return self.fail(loc, "ext_quantified expects a 'forall …; s = t' goal, got '{s}'", .{try self.renderTerm(goal)});
         }
-        const u = try self.peelUniversal(goal, "ext");
-        var blocks: std.ArrayList(kernel.BlockId) = .empty;
-        var parent = block_id;
-        for (u.fix_vars) |fv| {
-            const b = try self.newBlock(low, try self.freshNamed("ext"), parent, .{ .fix = fv });
-            try blocks.append(self.arena, b);
-            parent = b;
-        }
-        const carry = try extEquation(self, low, parent, u.body, loc);
-        if (blocks.items.len == 0) return carry;
-        _ = try self.emitStep(low, blocks.items[blocks.items.len - 1], loc, u.body, carry);
-        var i = blocks.items.len;
-        while (i > 1) {
-            i -= 1;
-            self.closeBlock(low, blocks.items[i]);
-            _ = try self.emitStep(low, blocks.items[i - 1], loc, u.opened[i], .{ .forall_intro = .{ .id = blocks.items[i], .loc = loc } });
-        }
-        self.closeBlock(low, blocks.items[0]);
-        return .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } };
-    }
-
-    if (self.pool.get(goal) != .eq) {
+    } else if (self.pool.get(goal) != .eq) {
         return self.fail(loc, "ext proves equations; the goal is '{s}'", .{try self.renderTerm(goal)});
     }
-    return extEquation(self, low, block_id, goal, loc);
+    // ext is cert-only (always strict). Wrap the extensionality certificate as a
+    // synthetic theorem, eigenvar-closed (the ext + operator lemmas are globals
+    // cited directly inside the certificate).
+    var body: EqBody = .{ .loc = loc };
+    return common.generate(self, low, block_id, loc, "ext", goal, &.{}, &body);
 }
 
 /// Prove a bare `LHS = RHS` by extensionality. Instantiate the ext lemma at
