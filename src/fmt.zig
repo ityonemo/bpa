@@ -173,17 +173,20 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
                 }
             },
             .l_brace => {
-                // every block header (`fix …`, `assume …`, `case … on …`) now
-                // sits on a label-continuation line, one level (+2) past its
-                // label. Its body is one level past THAT, so each open brace
-                // carries an extra indent level, undone at its matching `}`.
+                // in a proof, every block header (`fix …`, `assume …`,
+                // `case … on …`) sits on a label-continuation line, one level (+2)
+                // past its label; its body is one level past THAT, so the brace
+                // carries an extra indent level (undone at its matching `}`). A
+                // top-level `{` (a `model … { … }` declaration body), by contrast,
+                // opens at column 0 — its closing `}` returns to column 0, so it
+                // gets NO extra_depth (only depth, keeping the r_brace math at 0).
                 depth += 1;
-                extra_depth += 1;
+                if (in_proof) extra_depth += 1;
                 try w.writeAll("\n");
                 line_empty = true;
             },
             .r_brace => {
-                extra_depth -= 1;
+                if (in_proof) extra_depth -= 1;
                 depth -= 1;
                 try w.writeAll("\n");
                 line_empty = true;

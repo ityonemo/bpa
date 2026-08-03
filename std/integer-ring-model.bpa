@@ -46,7 +46,7 @@ model IntegerRing = Int {
   ring.mulAssoc: mulIsAssociative
   ring.mulDistributesLeftOverAdd: mulAddDistribLeft
   ring.mulDistributesRightOverAdd: mulAddDistribRight
-  }
+}
 
 // transferred: (-a)·(-b) = a·b for integers — new to ℤ, and the deepest transfer
 // (its ring proof transitively uses the additive-group invInvolution).

@@ -51,7 +51,7 @@ model IntegerDivisibility = Int {
   divisibility.mulOneRight: mulOneRight
   divisibility.mulIsAssociative: mulIsAssociative
   divisibility.mulAddDistribLeft: mulAddDistribLeft
-  }
+}
 
 // -- powers (recursive on the exponent) -------------------------------------
 

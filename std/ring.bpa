@@ -43,7 +43,7 @@ model AdditiveGroup = Ring {
   group.opInverseLeft: addNegLeft
   group.opInverseRight: addNegRight
   group.opCommutative: addCommutative
-  }
+}
 
 // -- elementary properties (Judson, Rings, first proposition) ---------------
 

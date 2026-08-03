@@ -100,7 +100,7 @@ qed
 model SubgroupIsGroup = Grp where inH {
   Grp: Grp
   opIdentityLeft: opIdentityLeft
-  }
+}
 
 // transferred (relativized) theorem: op(E, E) = E holds on H. Materialization
 // weakens opIdentityLeft to inH(a) -> op(E,a)=a and discharges inH(E) from
