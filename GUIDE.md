@@ -71,6 +71,8 @@ The guard appears at each position `H` is used:
   (an uninterpreted function's signature is an assertion, on par with an axiom):
   each application `op(x, y)` makes `inH(op(x, y))` available, so a downstream
   `f(op(x, y))` composes for free — the subgroup-closure pattern.
+- **Constants** — `const E: H` asserts `E ∈ H` (the nullary case of a function
+  result): a reference to `E` makes `inH(E)` available, so `f(E)` composes.
 
 An **anonymous** predicated sort may be written inline anywhere a sort appears,
 without a named `sort` declaration:
