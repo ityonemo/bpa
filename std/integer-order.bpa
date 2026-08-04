@@ -19,10 +19,10 @@ func prev = integer.prev
 func add = integer.add
 func mul = integer.mul
 func neg = integer.neg
-axiom addZeroRight = integer.addZeroRight
-axiom addSuccRight = integer.addSuccRight
-theorem addZeroLeft = ring.addZeroLeft
-theorem addSuccLeft = ring.addSuccLeft
+axiom addZeroLeft = integer.addZeroLeft
+axiom addSuccLeft = integer.addSuccLeft
+theorem addZeroRight = ring.addZeroRight
+theorem addSuccRight = ring.addSuccRight
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
 theorem addNegRight = ring.addNegRight
@@ -92,7 +92,7 @@ proof
             [by theorem addNegRight]
           @add-zero |
             forall x: Int; add(x, ZERO) = x
-            [by axiom addZeroRight]
+            [by theorem addZeroRight]
           // start from add(sub(a,b), b), rewrite sub, associate, cancel.
           @step0 |
             add(sub(a, b), b) = add(add(a, neg(b)), b)

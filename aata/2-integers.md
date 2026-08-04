@@ -32,22 +32,22 @@ func add = integer.add
 func mul = integer.mul
 func neg = integer.neg
 func sub = order.sub
-axiom addZeroRight = integer.addZeroRight
-axiom mulZeroRight = integer.mulZeroRight
-axiom mulSuccRight = integer.mulSuccRight
-axiom addSuccRight = integer.addSuccRight
-axiom addPrevRight = integer.addPrevRight
+theorem addZeroRight = ring.addZeroRight
+theorem mulZeroRight = ring.mulZeroRight
+theorem mulSuccRight = ring.mulSuccRight
+theorem addSuccRight = ring.addSuccRight
+theorem addPrevRight = ring.addPrevRight
 axiom negSucc = integer.negSucc
 axiom negZero = integer.negZero
 axiom oneIsSuccZero = integer.oneIsSuccZero
 axiom succPrev = integer.succPrev
 axiom prevSucc = integer.prevSucc
 axiom subDef = order.subDef
-theorem addZeroLeft = ring.addZeroLeft
+axiom addZeroLeft = integer.addZeroLeft
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
-theorem addSuccLeft = ring.addSuccLeft
-theorem addPrevLeft = ring.addPrevLeft
+axiom addSuccLeft = integer.addSuccLeft
+axiom addPrevLeft = integer.addPrevLeft
 theorem mulOneRight = ring.mulOneRight
 theorem subSelf = order.subSelf
 
@@ -127,7 +127,7 @@ proof
     [by rewrite one-minus-one difference-of-ones]
   @mul-zero-rule |
     forall n: Int; mul(n, ZERO) = ZERO
-    [by axiom mulZeroRight]
+    [by theorem mulZeroRight]
   @three-times-zero |
     mul(THREE, ZERO) = ZERO
     [by forall_elim(THREE) mul-zero-rule]

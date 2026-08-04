@@ -38,12 +38,12 @@ pub fn addTests(
     // the integers ℤ ring algebra (std/integer-ring.bpa): left/right recursion,
     // commutativity, associativity, the additive-inverse law n+(-n)=0, and the
     // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
-    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 59 declarations, 16 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 60 declarations, 17 theorems proven\n");
 
     // ℤ subtraction (total: a-b = a+(-b)) + the strict order, over the ring
     // algebra: subSelf (a-a=0) and subAddCancel ((a-b)+b=a), proven with no
     // induction from the inverse law; order via less_than intro/elim.
-    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 83 declarations, 18 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 84 declarations, 19 theorems proven\n");
 
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
     // and the divides predicate; dividesRefl/dividesMul/dividesAdd proved once,
@@ -53,7 +53,7 @@ pub fn addTests(
     // ℤ divisibility + powers (std/integer-divides.bpa): `divides` intro/elim +
     // pow recursion; the three basic facts (refl/mul/add) TRANSFER from the
     // abstract divisibility theory via `model IntegerDivisibility`.
-    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 103 declarations, 22 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 104 declarations, 23 theorems proven\n");
 
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
     // + LEFT inverse) + an opt-in `opCommutative`; the right-sided laws and the
@@ -92,7 +92,7 @@ pub fn addTests(
     // — no binder-order adapters needed), and negMulNeg ((-a)(-b)=ab, new to ℤ)
     // transfers — its ring proof having itself transferred group.invInvolution
     // through ring's AdditiveGroup model, re-materialized here.
-    ctx.ok(&.{ "check", "std/integer-ring-model.bpa" }, "OK: 119 declarations, 36 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-ring-model.bpa" }, "OK: 120 declarations, 37 theorems proven\n");
 
     // the set theory (std/set.bpa): the membership axioms + extensionality, and
     // the 19 set-algebra identities (idempotence, identity, associativity,

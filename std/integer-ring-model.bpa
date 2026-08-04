@@ -21,7 +21,7 @@ func neg = integer.neg
 // the discharge facts (ℤ's own axioms + integer-ring theorems). ring's RIGHT
 // identity/inverse laws (addZeroRight, addNegRight) are DERIVED theorems, so the
 // IntegerRing model need not discharge them — it maps ring's axioms only.
-theorem addZeroLeft = ring_algebra.addZeroLeft
+axiom addZeroLeft = ring_algebra.addZeroLeft
 theorem addIsAssociative = ring_algebra.addIsAssociative
 theorem addIsCommutative = ring_algebra.addIsCommutative
 theorem addNegLeft = ring_algebra.addNegLeft

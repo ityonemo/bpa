@@ -5,8 +5,8 @@
 // needs negatives — so this is the number domain that chapter rests on.
 //
 // This is a STANDALONE axiomatic theory (a fresh sort `Int`, not built from
-// Peano ℕ): ZERO/ONE, succ/prev (mutual inverses), add/mul/neg, the recursion
-// axioms, and a BIDIRECTIONAL induction schema (reach every integer from 0 by
+// Peano ℕ): ZERO/ONE, succ/prev (mutual inverses), add/mul/neg, the LEFT
+// recursion axioms, and a BIDIRECTIONAL induction schema (reach every integer from 0 by
 // succ and pred). The ring algebra (commutativity, associativity, the additive
 // inverse law `n + (-n) = 0`, ...) is PROVEN from these, not assumed — as with
 // Peano, prefer raw induction for the core lemmas.
@@ -31,11 +31,14 @@ axiom succPrev: forall n: Int; succ(prev(n)) = n
 // ONE is the successor of ZERO.
 axiom oneIsSuccZero: ONE = succ(ZERO)
 
-// -- addition (by recursion on the right, in both directions) ---------------
+// -- addition (by recursion on the LEFT, in both directions) ----------------
+// Left-axiomatic (see CONVENTIONS.md), matching std/peano.bpa: ZERO/succ/prev on
+// the FIRST argument are primitive; the right-recursion mirror equations
+// (addZeroRight, addSuccRight, addPrevRight) are theorems in std/integer-ring.bpa.
 
-axiom addZeroRight: forall a: Int; add(a, ZERO) = a
-axiom addSuccRight: forall a, b: Int; add(a, succ(b)) = succ(add(a, b))
-axiom addPrevRight: forall a, b: Int; add(a, prev(b)) = prev(add(a, b))
+axiom addZeroLeft: forall b: Int; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Int; add(succ(a), b) = succ(add(a, b))
+axiom addPrevLeft: forall a, b: Int; add(prev(a), b) = prev(add(a, b))
 
 // -- negation ---------------------------------------------------------------
 
@@ -43,11 +46,14 @@ axiom negZero: neg(ZERO) = ZERO
 axiom negSucc: forall n: Int; neg(succ(n)) = prev(neg(n))
 axiom negPrev: forall n: Int; neg(prev(n)) = succ(neg(n))
 
-// -- multiplication (by recursion on the right, in both directions) ---------
+// -- multiplication (by recursion on the LEFT, in both directions) ----------
+// As with addition: recursion on the FIRST argument is primitive; the extra
+// summand is the SECOND factor (b / neg(b)). The right-recursion mirrors
+// (mulZeroRight, mulSuccRight, mulPrevRight) are theorems in std/integer-ring.bpa.
 
-axiom mulZeroRight: forall a: Int; mul(a, ZERO) = ZERO
-axiom mulSuccRight: forall a, b: Int; mul(a, succ(b)) = add(mul(a, b), a)
-axiom mulPrevRight: forall a, b: Int; mul(a, prev(b)) = add(mul(a, b), neg(a))
+axiom mulZeroLeft: forall b: Int; mul(ZERO, b) = ZERO
+axiom mulSuccLeft: forall a, b: Int; mul(succ(a), b) = add(mul(a, b), b)
+axiom mulPrevLeft: forall a, b: Int; mul(prev(a), b) = add(mul(a, b), neg(b))
 
 // -- induction (bidirectional) ----------------------------------------------
 

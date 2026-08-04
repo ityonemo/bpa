@@ -61,5 +61,5 @@ pub fn addTests(
     // the base case AND the ∀n≥0 3|(4ⁿ−1) nonneg-induction (its inductive step
     // splits 4^(k+1)−1 = 4(4ᵏ−1)+3 and uses dividesMul/dividesAdd). No hole; the
     // file checks WITHOUT --draft.
-    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 184 declarations, 27 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 185 declarations, 28 theorems proven\n");
 }
