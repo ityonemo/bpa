@@ -1,35 +1,38 @@
-// std/subgroup.bpa — the theory of a SUBGROUP of a group (Judson §3.3).
+// std/subgroup.bpa — the theory of a SUBGROUP (Judson §3.3), as a STANDALONE,
+// reusable component (the dependency INVERSION).
 //
-// A subgroup H ≤ G is a subset of a group's carrier that is itself a group under
-// the restricted operation. We model membership as a predicate `inSubgroup(g)`
-// over the group carrier `Grp`, characterized by the three defining conditions of
-// the subgroup criterion (groups.xml:1103):
-//   1. the identity e is in H;
-//   2. H is closed under the operation;
-//   3. H is closed under inverses.
-// From these we prove the ONE-STEP subgroup test (groups.xml:1155) and that the
-// INTERSECTION of two subgroups is a subgroup (groups.xml:1938, an exercise).
+// A subgroup is a group in its own right — a subset of a group's carrier that is
+// itself a group under the restricted operation. Rather than importing `std/group.bpa`
+// and bolting a membership predicate onto it, this theory is SELF-CONTAINED: it
+// declares its own abstract PARENT GROUP (a subgroup's parent IS a group), the
+// membership predicate `inSubgroup` + the three subgroup-criterion conditions, and
+// the derived theorems — all over that local vocabulary.
 //
-// This is a reusable abstract theory layered on std/group.bpa: it cites the group
-// corpus by name (`cancelRight`, `invInvolution`, `opInverseRight`, …) exactly as
-// the book cites "right-hand cancellation" and the basic inverse laws. Kept
-// accelerated-free — every proof is a direct group-axiom manipulation.
-
-import group <<< "std/group.bpa"
-
-// alias the group vocabulary to shorter local names.
-sort Grp = group.Grp
-const E = group.E
-func op = group.op
-func inverse = group.inverse
-
-// the group corpus facts these proofs cite (the book's "right-hand cancellation"
-// is `cancelRight`; the inverse/identity laws and double-inverse are the basics).
-axiom opIdentityLeft = group.opIdentityLeft
-axiom opInverseRight = group.opInverseRight
-theorem cancelRight = group.cancelRight
-theorem invInvolution = group.invInvolution
-
+// It is authored to PLUG INTO `std/group.bpa`: a concrete subgroup MODELS this theory
+// (mapping its `Grp` to the ambient group, `inSubgroup` to the membership predicate),
+// and `group` then plugs onto that concrete subgroup via a two-layer model stack,
+// TRANSFERRING the whole group corpus onto the subgroup for free (see the Level-1
+// model stack, MODEL-PARAMETERS-DESIGN.md).
+//
+// The five parent-group axioms are `grp*` (a naming concession pending the import-
+// hygiene pass); the like-named THEOREMS `opAssoc`/`opIdentity*`/`opInverse*` prove
+// each law holds ON THE SUBGROUP (over `Sub`) — these are what a group-model projects.
+// `invInvolution` is a parent-group fact stated as an axiom here (the standalone
+// theory does not import group's proofs). Accelerated-free.
+// the abstract PARENT GROUP's axioms (declared locally — the dependency inversion).
+// Named `grp*` internally; the FIVE like-named THEOREMS below (opAssoc, …) prove
+// each law holds ON THE SUBGROUP and are what HGroup @-projects.
+sort Grp
+const E: Grp
+func op(a: Grp, b: Grp): Grp
+func inverse(a: Grp): Grp
+axiom grpAssoc: forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
+axiom grpIdentityLeft: forall a: Grp; op(E, a) = a
+axiom grpIdentityRight: forall a: Grp; op(a, E) = a
+axiom grpInverseLeft: forall a: Grp; op(inverse(a), a) = E
+axiom grpInverseRight: forall a: Grp; op(a, inverse(a)) = E
+// a parent-group fact a subgroup-specific proof cites (an axiom for now).
+axiom invInvolution: forall a: Grp; inverse(inverse(a)) = a
 // The subgroup, as a membership predicate over the group carrier, characterized by
 // the three subgroup-criterion conditions.
 pred inSubgroup(g: Grp)
@@ -45,6 +48,102 @@ axiom subgroupClosedInverse: forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(
 // NOTE: we do NOT give `op`/`inverse` a `Sub` result — closure is PROVEN below, not
 // asserted by a signature. `Sub` is used only for legibility of the statements.
 sort Sub = Grp where inSubgroup
+
+// ── THE FIVE GROUP AXIOMS, PROVEN ON THE SUBGROUP. ───────────────────────────
+// Each states that a group axiom holds over the subgroup carrier `Sub` (the law
+// holds on all of Grp, so it restricts to the subset). These are the five theorems
+// HGroup @-projects to discharge group's axiom obligations onto the subgroup.
+theorem opAssoc: forall a, b, c: Sub; op(op(a, b), c) = op(a, op(b, c))
+proof
+  @grp-law |
+    forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
+    [by axiom grpAssoc]
+  @generalize-a |
+    fix p: Sub {
+      @generalize-b |
+        fix q: Sub {
+          @generalize-c |
+            fix r: Sub {
+              @conclusion-at-pqr |
+                op(op(p, q), r) = op(p, op(q, r))
+                [by forall_elim(p, q, r) grp-law]
+            }
+          @discharge-c |
+            forall c: Sub; op(op(p, q), c) = op(p, op(q, c))
+            [by forall_intro generalize-c]
+        }
+      @discharge-b |
+        forall b, c: Sub; op(op(p, b), c) = op(p, op(b, c))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, c: Sub; op(op(a, b), c) = op(a, op(b, c))
+    [by forall_intro generalize-a]
+qed
+
+theorem opIdentityLeft: forall a: Sub; op(E, a) = a
+proof
+  @grp-law |
+    forall a: Grp; op(E, a) = a
+    [by axiom grpIdentityLeft]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(E, p) = p
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(E, a) = a
+    [by forall_intro generalize-a]
+qed
+
+theorem opIdentityRight: forall a: Sub; op(a, E) = a
+proof
+  @grp-law |
+    forall a: Grp; op(a, E) = a
+    [by axiom grpIdentityRight]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(p, E) = p
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(a, E) = a
+    [by forall_intro generalize-a]
+qed
+
+theorem opInverseLeft: forall a: Sub; op(inverse(a), a) = E
+proof
+  @grp-law |
+    forall a: Grp; op(inverse(a), a) = E
+    [by axiom grpInverseLeft]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(inverse(p), p) = E
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(inverse(a), a) = E
+    [by forall_intro generalize-a]
+qed
+
+theorem opInverseRight: forall a: Sub; op(a, inverse(a)) = E
+proof
+  @grp-law |
+    forall a: Grp; op(a, inverse(a)) = E
+    [by axiom grpInverseRight]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(p, inverse(p)) = E
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(a, inverse(a)) = E
+    [by forall_intro generalize-a]
+qed
 
 // One-step subgroup test, FORWARD (groups.xml:1164): a subgroup is closed under
 // the "divide" operation g·h⁻¹. Since h ∈ H, its inverse h⁻¹ ∈ H (closedInverse);
@@ -128,7 +227,7 @@ proof
         [by modus_ponens self-divide-in-subset-if-member member-in-subset]
       @inverse-law |
         forall a: Grp; op(a, inverse(a)) = E
-        [by axiom opInverseRight]
+        [by axiom grpInverseRight]
       @self-divide-is-identity |
         op(g, inverse(g)) = E
         [by forall_elim(g) inverse-law]
@@ -169,7 +268,7 @@ proof
             [by modus_ponens identity-divide-g-if-g g-in-subset]
           @identity-law |
             forall a: Grp; op(E, a) = a
-            [by axiom opIdentityLeft]
+            [by axiom grpIdentityLeft]
           @identity-divide-g-is-inverse |
             op(E, inverse(g)) = inverse(g)
             [by forall_elim(inverse(g)) identity-law]
@@ -228,7 +327,7 @@ proof
                     [by modus_ponens h1-divide-inverse-h2-if-inverse inverse-h2-in-subset]
                   @double-inverse-law |
                     forall a: Grp; inverse(inverse(a)) = a
-                    [by theorem invInvolution]
+                    [by axiom invInvolution]
                   @double-inverse-h2 |
                     inverse(inverse(h2)) = h2
                     [by forall_elim(h2) double-inverse-law]

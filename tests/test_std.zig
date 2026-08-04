@@ -76,7 +76,7 @@ pub fn addTests(
     // test (both directions: forward subgroupClosedDivide, converse the three
     // conditions from nonempty + divide-closed) and that the intersection of two
     // subgroups is a subgroup. Layered on std/group.bpa; accelerated-free.
-    ctx.ok(&.{ "check", "std/subgroup.bpa" }, "OK: 51 declarations, 18 theorems proven\n");
+    ctx.ok(&.{ "check", "std/subgroup.bpa" }, "OK: 37 declarations, 13 theorems proven\n");
 
     // the ring theory (std/ring.bpa): an additive abelian group + associative,
     // distributing multiplication. Its additive half MODELS std/group.bpa (a
