@@ -38,61 +38,57 @@ axiom subgroupHasIdentity: inSubgroup(E)
 axiom subgroupClosedOp: forall a, b: Grp; inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
 axiom subgroupClosedInverse: forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(a))
 
+// The subgroup carrier as a PREDICATED SORT: `Sub` is `Grp` restricted to members.
+// A statement `∀g: Sub; …` reads as "for every subgroup element" and desugars to
+// `∀g: Grp; inSubgroup(g) -> …` — the same theorem, but the membership hypotheses
+// stay implicit in the binder (surfaced in a proof with `[by predicate <fix>]`).
+// NOTE: we do NOT give `op`/`inverse` a `Sub` result — closure is PROVEN below, not
+// asserted by a signature. `Sub` is used only for legibility of the statements.
+sort Sub = Grp where inSubgroup
+
 // One-step subgroup test, FORWARD (groups.xml:1164): a subgroup is closed under
 // the "divide" operation g·h⁻¹. Since h ∈ H, its inverse h⁻¹ ∈ H (closedInverse);
 // then by closure under the operation, g·h⁻¹ ∈ H (closedOp).
-theorem subgroupClosedDivide: forall g, h: Grp; inSubgroup(g) -> inSubgroup(h) -> inSubgroup(op(g, inverse(h)))
+theorem subgroupClosedDivide: forall g, h: Sub; inSubgroup(op(g, inverse(h)))
 proof
   @generalize-g |
-    fix g: Grp {
+    fix g: Sub {
+      @g-is-a-member |
+        inSubgroup(g)
+        [by predicate generalize-g]
       @generalize-h |
-        fix h: Grp {
-          @given-g-in-H |
-            assume inSubgroup(g) {
-              @given-h-in-H |
-                assume inSubgroup(h) {
-                  @g-is-a-member |
-                    inSubgroup(g)
-                    [by hypothesis given-g-in-H]
-                  @h-is-a-member |
-                    inSubgroup(h)
-                    [by hypothesis given-h-in-H]
-                  @closed-under-inverse |
-                    forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(a))
-                    [by axiom subgroupClosedInverse]
-                  @inverse-in-H-if-h |
-                    inSubgroup(h) -> inSubgroup(inverse(h))
-                    [by forall_elim(h) closed-under-inverse]
-                  @inverse-of-h-in-H |
-                    inSubgroup(inverse(h))
-                    [by modus_ponens inverse-in-H-if-h h-is-a-member]
-                  @closed-under-op |
-                    forall a, b: Grp; inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
-                    [by axiom subgroupClosedOp]
-                  @product-in-H-if-both |
-                    inSubgroup(g) -> inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
-                    [by forall_elim(g, inverse(h)) closed-under-op]
-                  @product-in-H-if-inverse |
-                    inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
-                    [by modus_ponens product-in-H-if-both g-is-a-member]
-                  @divide-is-a-member |
-                    inSubgroup(op(g, inverse(h)))
-                    [by modus_ponens product-in-H-if-inverse inverse-of-h-in-H]
-                }
-              @h-in-H-implies-divide |
-                inSubgroup(h) -> inSubgroup(op(g, inverse(h)))
-                [by implies_intro given-h-in-H]
-            }
-          @g-in-H-implies-rest |
-            inSubgroup(g) -> inSubgroup(h) -> inSubgroup(op(g, inverse(h)))
-            [by implies_intro given-g-in-H]
+        fix h: Sub {
+          @h-is-a-member |
+            inSubgroup(h)
+            [by predicate generalize-h]
+          @closed-under-inverse |
+            forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(a))
+            [by axiom subgroupClosedInverse]
+          @inverse-in-H-if-h |
+            inSubgroup(h) -> inSubgroup(inverse(h))
+            [by forall_elim(h) closed-under-inverse]
+          @inverse-of-h-in-H |
+            inSubgroup(inverse(h))
+            [by modus_ponens inverse-in-H-if-h h-is-a-member]
+          @closed-under-op |
+            forall a, b: Grp; inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
+            [by axiom subgroupClosedOp]
+          @product-in-H-if-both |
+            inSubgroup(g) -> inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
+            [by forall_elim(g, inverse(h)) closed-under-op]
+          @product-in-H-if-inverse |
+            inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
+            [by modus_ponens product-in-H-if-both g-is-a-member]
+          @divide-is-a-member |
+            inSubgroup(op(g, inverse(h)))
+            [by modus_ponens product-in-H-if-inverse inverse-of-h-in-H]
         }
       @discharge-h |
-        forall h: Grp; inSubgroup(g) -> inSubgroup(h) -> inSubgroup(op(g, inverse(h)))
+        forall h: Sub; inSubgroup(op(g, inverse(h)))
         [by forall_intro generalize-h]
     }
   @conclusion |
-    forall g, h: Grp; inSubgroup(g) -> inSubgroup(h) -> inSubgroup(op(g, inverse(h)))
+    forall g, h: Sub; inSubgroup(op(g, inverse(h)))
     [by forall_intro generalize-g]
 qed
 
@@ -402,4 +398,35 @@ proof
   @conclusion |
     forall a: Grp; (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(inverse(a)) and inSubgroup2(inverse(a)))
     [by forall_intro generalize-a]
+qed
+
+// ── CANARY (do NOT cite) ─────────────────────────────────────────────────────
+// A liveness check for the PREDICATED-SORT machinery on the real `Sub` sort. It
+// declares Sub-RESULT operations (which ASSERT closure by their signature — the
+// opposite of the proofs above, which PROVE it) and shows a downstream use composes
+// through the result-postcondition surfacing: `subCombine(g, h)` lands in `Sub`, so
+// the `Sub`-argument `subConsume` accepts it with no explicit closure step. If
+// predicated sorts ever regress, this canary breaks first. It is NOT part of the
+// subgroup theory — nothing cites it, and it may be deleted/rewritten freely
+// (tectonic shifts to this file are expected).
+func subCombine(a: Sub, b: Sub): Sub // asserts: Sub is closed under this op
+func subConsume(x: Sub): Grp // needs a Sub argument
+
+theorem canaryClosureComposes: forall g, h: Sub; subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+proof
+  @generalize-g |
+    fix g: Sub {
+      @generalize-h |
+        fix h: Sub {
+          @reflexive |
+            subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+            [by reflexivity]
+        }
+      @discharge-h |
+        forall h: Sub; subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+        [by forall_intro generalize-h]
+    }
+  @conclusion |
+    forall g, h: Sub; subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+    [by forall_intro generalize-g]
 qed

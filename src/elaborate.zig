@@ -1470,11 +1470,18 @@ pub const Elaborator = struct {
             if (self.pool.alphaEq(known, f)) return true;
         }
         const l = low orelse return false;
-        // hypotheses on the ancestor chain
+        // hypotheses on the ancestor chain: an `assume` block's assumption, and a
+        // PREDICATED `fix h: H` block's guard `inH(h)` (surfaced by the sort).
         var cur: ?kernel.BlockId = block_id;
         while (cur) |c| {
             const b = l.blocks.items[@intFromEnum(c)];
-            if (b.kind == .assume and self.pool.alphaEq(b.kind.assume, f)) return true;
+            switch (b.kind) {
+                .assume => |a| if (self.pool.alphaEq(a, f)) return true,
+                .fix => |fx| if (fx.guard) |g| {
+                    if (self.pool.alphaEq(g, f)) return true;
+                },
+                else => {},
+            }
             cur = b.parent;
         }
         // accessible prior steps
