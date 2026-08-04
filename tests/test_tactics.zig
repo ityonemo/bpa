@@ -51,7 +51,7 @@ pub fn addTests(
     // (propositional residue → tautology); emits kernel steps.
     ctx.ok(&.{ "check", "tests/cases/ext_set.bpa" }, "OK: 47 declarations, 21 theorems proven\n");
     // FUNCTION model (equational residue → rewrite join) — same `ext` tactic.
-    ctx.ok(&.{ "check", "tests/cases/ext_function.bpa" }, "OK: 29 declarations, 3 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/ext_function.bpa" }, "OK: 30 declarations, 3 theorems proven\n");
     // a FALSE set identity: the pointwise residue has a countermodel, so ext
     // declines with a located error (exit 1) — never accepts a false equation.
     ctx.fail(&.{ "check", "tests/cases/ext_bad.bpa" }, "tests/cases/ext_bad.bpa:18:9: error: ext: could not close the pointwise obligation propositionally (is the identity true?)\n");

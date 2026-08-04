@@ -32,9 +32,12 @@ pub fn addTests(
     ctx.ok(&.{ "check", "aata/1.2.1-sets.md" }, "OK: 69 declarations, 19 theorems proven\n");
 
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
-    // (composition associativity/preservation + invertible⇒bijective
-    // forward), verified (proven; no accelerated tactic). The backward direction is a marked wall.
-    ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 46 declarations, 11 theorems proven\n");
+    // (composition associativity/preservation + invertible⟺bijective, BOTH
+    // directions). The backward direction (bijective ⇒ invertible) constructs the
+    // inverse by definite description (the `functionFromGraph` axiom-schema — the
+    // total+unique preimage graph realized as a function). Verified; the one
+    // theorem resting on that disclosed axiom.
+    ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 49 declarations, 12 theorems proven\n");
 
     // AATA relations: the FOL-tractable part of Chapter 1 §1.2.3 — the three
     // equivalence-projections + the "reflexivity is redundant" exercise. The

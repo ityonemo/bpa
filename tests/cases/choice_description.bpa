@@ -1,0 +1,95 @@
+// DEFINITE DESCRIPTION (the tame ι, guarded by uniqueness) as an axiom-schema over
+// a RELATIONAL schema param. `functionFromGraph(spec)`: IF `spec` is total and
+// single-valued (for each y exactly one x), THEN there is a function g realizing it
+// (apply(g, y) is the unique x with spec(y, x)). This is definite description, not
+// choice — it fires only under a proven uniqueness hypothesis, so it is conservative.
+//
+// A `func` cannot take a `-> Prop` parameter, so the operator is an axiom-SCHEMA
+// yielding `exists g` (which is exactly what a "construct the inverse" obligation
+// needs), rather than a named `theFn` term.
+
+sort Element
+sort Fn
+func apply(f: Fn, x: Element): Element
+
+axiom functionFromGraph(spec: Element -> Element -> Prop):
+  (forall y: Element; exists x: Element;
+  spec(y, x) and (forall x2: Element; spec(y, x2) -> x = x2))
+  -> (exists g: Fn; forall y: Element; spec(y, apply(g, y)))
+
+// smoke test: instantiate at a concrete total+unique relation and pull out the
+// realizing function. `graph(y, x)` here is `x = c` (constantly c) — total and
+// unique — so a constant function exists.
+const C: Element
+pred graph(y: Element, x: Element)
+axiom graphDef: forall y, x: Element;
+  (graph(y, x) -> x = C) and (x = C -> graph(y, x))
+
+theorem constantFunctionExists: exists g: Fn; forall y: Element; graph(y, apply(g, y))
+proof
+  // discharge total+unique for `graph`: the unique x per y is C.
+  @total-unique-proof |
+    fix y: Element {
+      @graph-def |
+        forall a, b: Element; (graph(a, b) -> b = C) and (b = C -> graph(a, b))
+        [by axiom graphDef]
+      @graph-y-c-iff |
+        (graph(y, C) -> C = C) and (C = C -> graph(y, C))
+        [by forall_elim(y, C) graph-def]
+      @c-eq-c |
+        C = C
+        [by reflexivity]
+      @c-to-graph |
+        C = C -> graph(y, C)
+        [by and_elim_right graph-y-c-iff]
+      @graph-y-c |
+        graph(y, C)
+        [by modus_ponens c-to-graph c-eq-c]
+      // uniqueness: any x2 with graph(y, x2) equals C.
+      @unique |
+        fix x2: Element {
+          @given-graph-y-x2 |
+            assume graph(y, x2) {
+              @graph-y-x2-iff |
+                (graph(y, x2) -> x2 = C) and (x2 = C -> graph(y, x2))
+                [by forall_elim(y, x2) graph-def]
+              @x2-to-c |
+                graph(y, x2) -> x2 = C
+                [by and_elim_left graph-y-x2-iff]
+              @graph-y-x2-hyp |
+                graph(y, x2)
+                [by hypothesis given-graph-y-x2]
+              @x2-is-c |
+                x2 = C
+                [by modus_ponens x2-to-c graph-y-x2-hyp]
+              @c-is-x2 |
+                C = x2
+                [by symmetry x2-is-c]
+            }
+          @x2-implies-c |
+            graph(y, x2) -> C = x2
+            [by implies_intro given-graph-y-x2]
+        }
+      @all-x2-c |
+        forall x2: Element; graph(y, x2) -> C = x2
+        [by forall_intro unique]
+      @graph-and-unique |
+        graph(y, C) and (forall x2: Element; graph(y, x2) -> C = x2)
+        [by and_intro graph-y-c all-x2-c]
+      @exists-x |
+        exists x: Element; graph(y, x) and (forall x2: Element; graph(y, x2) -> x = x2)
+        [by exists_intro(C) graph-and-unique]
+    }
+  @total-unique |
+    forall y: Element; exists x: Element;
+      graph(y, x) and (forall x2: Element; graph(y, x2) -> x = x2)
+    [by forall_intro total-unique-proof]
+  @description |
+    (forall y: Element; exists x: Element;
+      graph(y, x) and (forall x2: Element; graph(y, x2) -> x = x2))
+      -> (exists g: Fn; forall y: Element; graph(y, apply(g, y)))
+    [by instantiate functionFromGraph(graph)]
+  @conclusion |
+    exists g: Fn; forall y: Element; graph(y, apply(g, y))
+    [by modus_ponens description total-unique]
+qed
