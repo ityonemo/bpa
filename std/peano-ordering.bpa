@@ -1964,3 +1964,147 @@ proof
     forall c, a, b: Nat; c != ZERO -> mul(c, a) = mul(c, b) -> a = b
     [by forall_intro generalize-c]
 qed
+
+// -- the Principle of Well-Ordering ---------------------------------------
+
+// Principle of Well-Ordering (over ℕ): every nonempty subset — a nonempty
+// membership predicate `prop` — has a least element.
+//
+// Proof by strong induction on the negation. Let Q(n) := not prop(n). Show the
+// strong step: if every m < n fails prop, then n fails prop too — for if prop(n)
+// held, n would BE a least element (any m with prop(m): by trichotomy n < m or
+// n = m give n ≤ m, and m < n is impossible since the IH says prop(m) fails),
+// contradicting the standing "no least element" assumption. Strong induction then
+// makes prop empty, contradicting nonemptiness.
+theorem wellOrdering(prop: Nat -> Prop):
+  (exists n: Nat; prop(n))
+  -> exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
+proof
+  @given-inhabited |
+    assume exists n: Nat; prop(n) {
+      @some-element-satisfies |
+        exists n: Nat; prop(n)
+        [by hypothesis given-inhabited]
+      // suppose, for contradiction, there is NO least element.
+      @given-no-least |
+        assume not (exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))) {
+          @no-least |
+            not (exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m)))
+            [by hypothesis given-no-least]
+          // strong step: (forall m < n; not prop(m)) -> (not prop(n)).
+          @strong-step |
+            fix n: Nat {
+              @given-all-below-fail |
+                assume forall m: Nat; less_than(m, n) -> (not prop(m)) {
+                  @all-below-fail |
+                    forall m: Nat; less_than(m, n) -> (not prop(m))
+                    [by hypothesis given-all-below-fail]
+                  @given-n-satisfies |
+                    assume prop(n) {
+                      @n-satisfies |
+                        prop(n)
+                        [by hypothesis given-n-satisfies]
+                      // n is a lower bound for prop: for any m with prop(m), n ≤ m.
+                      @n-is-lower-bound |
+                        fix m: Nat {
+                          @given-m-satisfies |
+                            assume prop(m) {
+                              @m-satisfies |
+                                prop(m)
+                                [by hypothesis given-m-satisfies]
+                              @trichotomy-n-m |
+                                less_than(n, m) or n = m or less_than(m, n)
+                                [by forall_elim(n, m) trichotomy]
+                              @when-n-below-m |
+                                assume less_than(n, m) {
+                                  @n-below-m |
+                                    less_than(n, m)
+                                    [by hypothesis when-n-below-m]
+                                  @n-le-m |
+                                    less_or_equal(n, m)
+                                    [by forall_elim(n, m) lessThanToLessOrEqual]
+                                  @conclusion-n-le-m |
+                                    less_or_equal(n, m)
+                                    [by modus_ponens n-le-m n-below-m]
+                                }
+                              @when-n-equals-m |
+                                assume n = m {
+                                  @n-equals-m |
+                                    n = m
+                                    [by hypothesis when-n-equals-m]
+                                  @n-le-n |
+                                    less_or_equal(n, n)
+                                    [by forall_elim(n) lessOrEqualRefl]
+                                  @conclusion-n-le-m |
+                                    less_or_equal(n, m)
+                                    [by rewrite n-equals-m n-le-n]
+                                }
+                              @when-m-below-n |
+                                assume less_than(m, n) {
+                                  @m-below-n |
+                                    less_than(m, n)
+                                    [by hypothesis when-m-below-n]
+                                  @m-below-n-fails |
+                                    less_than(m, n) -> (not prop(m))
+                                    [by forall_elim(m) all-below-fail]
+                                  @m-fails |
+                                    not prop(m)
+                                    [by modus_ponens m-below-n-fails m-below-n]
+                                  @conclusion-n-le-m |
+                                    less_or_equal(n, m)
+                                    [by absurd m-satisfies m-fails]
+                                }
+                              @n-le-m-in-all-cases |
+                                less_or_equal(n, m)
+                                [by or_elim trichotomy-n-m when-n-below-m when-n-equals-m when-m-below-n]
+                            }
+                          @m-satisfies-implies-n-le-m |
+                            prop(m) -> less_or_equal(n, m)
+                            [by implies_intro given-m-satisfies]
+                        }
+                      @n-is-lower-bound-forall |
+                        forall m: Nat; prop(m) -> less_or_equal(n, m)
+                        [by forall_intro n-is-lower-bound]
+                      @n-is-least |
+                        prop(n) and (forall m: Nat; prop(m) -> less_or_equal(n, m))
+                        [by and_intro n-satisfies n-is-lower-bound-forall]
+                      @least-exists |
+                        exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
+                        [by exists_intro(n) n-is-least]
+                      @contradiction-from-n |
+                        not prop(n)
+                        [by absurd least-exists no-least]
+                    }
+                  // discharge: prop(n) leads to a least element, which contradicts
+                  // no-least; so not prop(n).
+                  @n-satisfies-implies-not-prop |
+                    prop(n) -> (not prop(n))
+                    [by implies_intro given-n-satisfies]
+                  @not-prop-n |
+                    not prop(n)
+                    [by tautology n-satisfies-implies-not-prop]
+                }
+              @all-below-fail-implies-n-fails |
+                (forall m: Nat; less_than(m, n) -> (not prop(m))) -> (not prop(n))
+                [by implies_intro given-all-below-fail]
+            }
+          @strong-step-forall |
+            forall n: Nat; (forall m: Nat; less_than(m, n) -> (not prop(m))) -> (not prop(n))
+            [by forall_intro strong-step]
+          @nothing-satisfies |
+            forall n: Nat; not prop(n)
+            [by instantiate strongInduction((fun k: Nat => not prop(k))) strong-step-forall]
+          // but something DOES satisfy prop — contradiction.
+          @contradiction |
+            forall least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
+            [by absurd some-element-satisfies nothing-satisfies]
+        }
+      @least-exists-by-contradiction |
+        exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
+        [by double_negation given-no-least]
+    }
+  @conclusion |
+    (exists n: Nat; prop(n))
+      -> exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
+    [by implies_intro given-inhabited]
+qed

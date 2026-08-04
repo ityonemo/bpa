@@ -256,3 +256,55 @@ proof
     [by instantiate nonnegInduction((fun m: Int => does_divide(THREE, sub(pow(FOUR, m), ONE)))) base-case induction-step-for-all-k]
 qed
 ```
+
+### The Second Principle and Well-Ordering
+
+> **Second Principle of Mathematical Induction.** Let $S(n)$ be a statement about
+> integers for $n \in \mathbb N$ and suppose $S(n_0)$ is true for some integer
+> $n_0$. If $S(n_0), S(n_0+1), \ldots, S(k)$ imply $S(k+1)$ for $k \ge n_0$, then
+> $S(n)$ is true for all integers $n \ge n_0$.
+
+The second principle — *strong* (course-of-values) induction — and the Principle
+of Well-Ordering are properties of the natural numbers $\mathbb N$, and Judson
+notes they are *equivalent* to the first principle. In `bpa` that equivalence is
+discharged: both are **proved from ordinary induction** over $\mathbb N$ in
+`std/peano-ordering.bpa` (`strongInduction`, then `wellOrdering` from it). The
+naturals there are their own carrier `Nat`; we bring in that layer and its two
+principles, keeping `Nat` visibly distinct from the ambient `Int`.
+
+```bpa
+import naturals <<< "std/peano-ordering.bpa"
+
+sort Nat = naturals.Nat
+pred below = naturals.less_than
+pred at_most = naturals.less_or_equal
+theorem strongInduction = naturals.strongInduction
+theorem wellOrdering = naturals.wellOrdering
+```
+
+> A nonempty subset $S$ of $\mathbb Z$ is **well-ordered** if $S$ contains a least
+> element. The integers are not well-ordered — they have no smallest element — but
+> the natural numbers are.
+>
+> **Principle of Well-Ordering.** Every nonempty subset of the natural numbers
+> contains a least element.
+
+A subset of $\mathbb N$ is named by its membership predicate `member`; "nonempty"
+is $\exists n; \operatorname{member}(n)$, and a least element is a member below-or-
+equal to every member. `wellOrdering` delivers exactly that, and its proof runs
+the equivalence in the useful direction: assume the subset has *no* least element,
+run strong induction on $\lnot\operatorname{member}$ to conclude the subset is
+empty, and contradict nonemptiness. We restate it here at a concrete subset — the
+even naturals — to exhibit the shape the division algorithm will use.
+
+```bpa
+theorem nonemptyNaturalSetHasLeast(member: Nat -> Prop):
+  (exists n: Nat; member(n))
+  -> exists least: Nat; member(least) and (forall m: Nat; member(m) -> at_most(least, m))
+proof
+  @least-element-exists |
+    (exists n: Nat; member(n))
+      -> exists least: Nat; member(least) and (forall m: Nat; member(m) -> at_most(least, m))
+    [by theorem wellOrdering]
+qed
+```

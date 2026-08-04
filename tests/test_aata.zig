@@ -54,7 +54,9 @@ pub fn addTests(
 
     // AATA Chapter 2 "The Integers": §2.1 Mathematical Induction, fully proven —
     // the base case AND the ∀n≥0 3|(4ⁿ−1) nonneg-induction (its inductive step
-    // splits 4^(k+1)−1 = 4(4ᵏ−1)+3 and uses dividesMul/dividesAdd). No hole; the
-    // file checks WITHOUT --draft.
-    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 185 declarations, 28 theorems proven\n");
+    // splits 4^(k+1)−1 = 4(4ᵏ−1)+3 and uses dividesMul/dividesAdd), plus the
+    // Second Principle (strong induction) and the Principle of Well-Ordering,
+    // both aliased from std/peano-ordering.bpa (proved there from ordinary
+    // induction). No hole; the file checks WITHOUT --draft.
+    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 310 declarations, 66 theorems proven\n");
 }
