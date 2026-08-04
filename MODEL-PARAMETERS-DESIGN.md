@@ -8,103 +8,139 @@ along the way, so the *why* isn't lost.
 
 ---
 
-# Part I — the architecture we worked through
+# Part I — the architecture, in three progressive levels
 
-## Starting pain: the awkward intersection model block
+The design arrived in THREE LEVELS of the same evolving idea (not competing
+options). Each is a draft the user wrote; each surfaced the insight that motivated
+the next. Captured verbatim below.
 
-To prove "Z2 ∩ Z3 is a subgroup" today, the caller writes one giant model block
-(see `z2z3-intersection.bpa`): it maps BOTH abstract subgroup predicates
-(`inSubgroup`, `inSubgroup2`) onto the two concrete ones AND discharges six criteria
-AND re-plumbs the whole group signature onto itself. Three stacked pains:
-1. **identity re-plumbing** — `subgroup.Grp: Grp`, `subgroup.op: op`, … map symbols
-   to themselves (noise);
-2. **the `inSubgroup2` clone** — `std/subgroup.bpa` models a "second subgroup" as a
-   hand-duplicated predicate + axioms, so the intersection is stated against two
-   cloned copies the caller must both map;
-3. **per-predicate criteria** — each predicate drags its three criteria mappings.
+## Background: a `model` is a MAPPER, inert until REIFIED
 
-## The central mental model: a `model` is a MAPPER, inert until REIFIED
-
-The crux the user landed on: **a `model` is just a theorem/axiom mapper** — a
-correspondence (this sort/symbol/axiom ↦ that one) that DOES NOTHING until the
+The crux underlying all three levels: **a `model` is just a theorem/axiom mapper** —
+a correspondence (this sort/symbol/axiom ↦ that one) that DOES NOTHING until the
 `model` command REIFIES it (materializes the remapped source proofs into
 kernel-checked synthetic theorems in your file). Before reification: a
-correspondence. After: actual proven theorems. A model is NOT a first-class value in
-the FOL, NOT an object that persists and carries state; it is a reification event.
-Every later idea is understood through this lens: "binding the parent," "composing
-subgroups," "taking models" are all questions about *what reification produces* and
-*whether one reification can consume another's output*, not about models-as-values.
+correspondence. After: proven theorems. A model is NOT a first-class value in the
+FOL; it is a reification event. "Binding the parent," "composing subgroups," "taking
+models" are all questions about *what reification produces* and *whether one
+reification can consume another's output*.
 
-## Idea: a subgroup is a model that BINDS ITS PARENT group
+Also settled along the way:
+- **Guarded binders** `forall x: G, inH(x); P` are sugar for `forall x: G; inH(x) -> P`.
+- A true SUBSET SORT `sort H = G where inH` is **infeasible** — it needs kernel
+  subtyping (SortIds are atomic; the kernel knows only sort equality). That
+  atomicity underwrites `tautology`/finite-model soundness. The guarded model is the
+  substrate; `sort H` is at most sugar over it, never a real sort.
+- **`parent:` binds just the carrier sort** — so the parent slot is essentially a
+  sort mapping, ~free.
 
-Wanted: a subgroup expressed as a model bound to its ambient group —
-`model HsgG = Subgroup { parent: G, ... }`, with `H` the subgroup and `parent: G`
-naming the group it lives in. Two subgroups of the same `G` share `parent: G`, which
-is what lets an intersection combinator recognize "same parent." Resolved detail:
-**`parent:` binds just the CARRIER SORT** — so the "parent slot" is just a sort
-mapping (`subgroup.parent: G` ≈ today's `subgroup.Grp: Grp`), essentially free, no
-new machinery.
+## LEVEL 1 — two-layer stack: subgroup, then group (TRANSPARENT, preferred)
 
-## Rejected (infeasible): `sort H = G where inH` — a true SUBSET SORT
+Two stacked models. `HSubGroup` reifies the subgroup criteria; `HGroup` reifies
+group-ness, DISCHARGING its closure obligations by transferring THROUGH `HSubGroup`
+via a `model(...)` value in the mapping. Then a group theorem transfers through
+`HGroup`, relativized to `inH`. Preferred BECAUSE every discharge is a named,
+walkable mapping — no hidden steps (the user rejected the opaque one-layer
+alternative for exactly this: it would silently pull in the criteria, un-walkable).
 
-The cleanest surface would be `sort H = G where inH(G)` — `H` IS `G` restricted to
-the `inH` elements, a real sort usable anywhere. VERDICT: **infeasible without adding
-SUBTYPING to the kernel.** A `SortId` is an atomic tag; the kernel knows only sort
-*equality*. A subset sort needs `H <: G` subsumption, coercion at application,
-auto-injection of `inH(h)` at binders and auto-discharge at instantiation — i.e. a
-different type system. That atomicity is deliberate (it underwrites `tautology` /
-finite-model soundness). The guarded model ALREADY provides the same expressive
-power: `∀h: H; P` and `∀g: G; inH(g) -> P` are the SAME proposition — the guarded
-model writes the relativization explicitly instead of hiding it in the sort. So the
-realistic version of `sort H` is at most SUGAR desugaring to the guarded form (a
-guarded binder `∀x: G, inH(x); …` → `∀x: G; inH(x) -> …`), never a real sort. User:
-"maybe it's fine" — acceptable, possibly dressed up later.
+```
+sort G;
+import group <<< ...
+// whatever axioms/theorems G needs to be a group
+pred inH;
 
-## The duplication trap, and its resolution
+model HSubGroup = G where inH {
+  subgroup.parent: G
+  subgroup.op: ...
+}
 
-Making `H` its own group (own sort/ops/axioms) would force RE-PROVING the group
-corpus on `H` (`cancelRightH`, `invInvolutionH`, all 10) inside `subgroup.bpa` —
-exactly what `model` exists to avoid. Resolution: a parent-binding is only sensible
-COMBINED with `model` — `H`'s group-ness comes from MODELING `H` onto `group.bpa`
-(transport the corpus, no re-proof), not from restating theorems. Binding names the
-parent; the model kills the duplication.
+model HGroup = G where inH {
+  group.opAssoc: model(HSubGroup) subgroup.opAssoc   // <-- discharge THROUGH another model
+}
 
-## The two-layer TRANSPARENT stack (preferred), vs. the opaque one-layer form
+// K < H < G  (the iterated-subgroup wrinkle — OPEN, see below)
+model KSubGroup = G where inH where inK? {
+  subgroup.parent: G where inH?
+  subgroup.op: ...
+}
 
-Two ways to get "H is a group":
-- **One-layer (REJECTED — opaque):** a single subgroup model that, when you cite a
-  *group* theorem through it, SILENTLY pulls in the criteria to discharge closure.
-  Fewer keystrokes, but the discharge steps are HIDDEN — you can't walk the
-  dependency chain from the citation. User rejected this precisely for the hidden
-  steps (violates the walkability the dump test / `query uses` / taint model rely on).
-- **Two-layer (PREFERRED — transparent):**
-  ```
-  model HSubGroup = G where inH { subgroup.parent: G, subgroup.op: ... }   // reifies the criteria
-  model HGroup    = G where inH { group.opAssoc: <HSubGroup discharge>, ... } // reifies group-ness
-  theorem hIdentityUnique: ...  [by model(HGroup) group.identityUnique]       // transfer, relativized to inH
-  ```
-  Every discharge is a NAMED, walkable mapping: "how is H a group? → HGroup →
-  discharges closure via HSubGroup → proves criteria via these axioms." Fully
-  transparent. This transparency is a hard USER REQUIREMENT (see the Transparency
-  section in Part II) — prefer explicit named instances over any implicit
-  auto-discharge, everywhere.
-  Note: the group LAWS (assoc/identity/inverse) hold on all of G, so their
-  relativized obligations AUTO-WEAKEN for free (already implemented, incl. the
-  multi-binder `opAssoc`); `HGroup` genuinely needs `HSubGroup` only for the CLOSURE
-  obligations (`inH(E)`, `inH(op(a,b))`, `inH(inverse(a))`) = the three criteria.
+// asserting H is a group, one property at a time (here identityUnique):
+theorem hIdentityUnique: forall x: Grp, inH(x); (forall g: Grp, inH(g); op(x, g) = g) -> x = E
+proof
+  @one-step |
+    forall x: Grp, inH(x); (forall g: Grp, inH(g); op(x, g) = g) -> x = E
+    [by model(HGroup) group.identityUnique]
+qed
+```
 
-## Iterated subgroups K < H < G (OPEN — two readings, not reconciled)
+The KEY NEW CAPABILITY Level 1 needs: **`model(HSubGroup) subgroup.opAssoc` as a
+MAPPING VALUE** — a model obligation discharged by a citation through another model.
+This does NOT parse today (a mapping RHS must be a plain identifier) — it is P0 in
+the pieces list, the prerequisite for everything, and proves nested-model
+materialization composes.
 
-`model KSubGroup = ... where inK ... { parent: <H?> }` exposed a fork:
-- **Flatten to G** — K is a subset of the BASE group guarded by `inH and inK` (a
-  conjunction guard). Composes trivially on existing machinery, but LOSES the
-  hierarchy (K only exists as a subset of G, not "as a subgroup of H").
-- **True nesting** — K's parent is H itself. This is the real math, but needs "H" to
-  be a thing the `parent` slot can point at — a first-class model/guarded-sort, not a
-  bare sort. This is the `sort H` problem again.
-  DEFERRED. (This is why the user reached for `sort H`: with a real subset sort,
-  K < H < G is just `parent: H`, `parent: G` — clean nesting. Because H isn't a sort,
-  the hierarchy must be flattened-onto-G or encoded via a model-valued parent.)
+The `?`-marked lines (`KSubGroup = ... where inH where inK?`, `parent: G where inH?`)
+are the ITERATED-SUBGROUP wrinkle K < H < G, left OPEN: two readings —
+- **flatten to G**: K guarded by `inH and inK`, a conjunction over the base group;
+  composes on existing machinery but loses the hierarchy;
+- **true nesting**: K's parent is H itself — needs "H" to be a thing the `parent`
+  slot can point at (a first-class model/guarded-sort). This is the `sort H` problem.
+Not reconciled.
+
+## LEVEL 2 — theorems PARAMETERIZED ON MODELS (the intersection generalization)
+
+Level 1 discharges obligations for ONE subgroup. Intersection needs a result proved
+GENERICALLY over TWO subgroups. So a theorem takes MODELS as parameters, its
+statement/body PROJECT through them (`Model1.subgroup.filter`, `model(Model1) ...`),
+and the use site APPLIES it to concrete models. This removes the `inSubgroup2` clone
+entirely — the "second subgroup" is just a second model parameter.
+
+```
+sort G;
+import group <<< ...
+pred inH
+model HSubGroup = G where inH {
+  subgroup.parent: G
+  subgroup.op: ...
+  subgroup.filter: ...
+}
+
+// note: K NOT (necessarily) < H — two independent subgroups of the same G
+pred inK
+model KSubGroup = G where inK {
+  subgroup.parent
+  subgroup.op
+  subgroup.filter: ...
+}
+
+// in std/subgroup.bpa — proved ONCE, generic over two subgroup-models:
+theorem intersectionHasIdentity(Model1, Model2): Model1.subgroup.filter(E) and Model2.subgroup.filter(E) {
+    @identity-in-first |
+      pred1(E)
+      [by model(Model1) subgroup.hasIdentity]
+    @identity-in-second |
+      pred2(E)
+      [by model(Model2) subgroup.hasIdentity]
+}
+theorem intersectionAssoc(Model1, Model2): ...
+
+// usage — the intersection target is a CONJUNCTION-guarded model whose obligations
+// are discharged by APPLYING the parameterized theorems to the two models:
+model HKGroup = G where inH and inK {
+  opAssoc: subgroup.intersectionAssoc(Model1, Model2)
+  opIdentityLeft: subgroup.identityLeft(Model1, Model2)
+}
+```
+
+New capabilities Level 2 needs (beyond Level 1's P0): model PARAMETERS on a theorem,
+`Model.component` PROJECTION, model APPLICATION `thm(M1, M2)`, and the CONJUNCTION
+GUARD `where inH and inK` for the intersection target. Mechanism analysis in Part II.
+
+## LEVEL 3 — (K < H < G iterated subgroups)
+
+The genuine subgroup-of-a-subgroup hierarchy, flagged by the `?`s in Level 1 and
+deferred. Left OPEN (flatten-to-G vs. true-nesting, as above). Not yet drafted in
+full; noted here as the third level so it is not forgotten.
 
 ---
 
