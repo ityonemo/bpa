@@ -263,11 +263,18 @@ pub const Parser = struct {
     }
 
     /// `<kind> name = target` — an alias declaration, if `=` follows the name.
+    /// A SORT alias may add `where <pred>` — a predicated sort
+    /// (`sort H = G where inH`).
     fn maybeAlias(self: *Parser, kind: ast.AliasKind, name: Token) ParseError!?ast.Decl {
         if (self.tok.tag != .equal) return null;
         _ = self.advance();
         const target = try self.expect(.identifier);
-        return .{ .alias = .{ .kind = kind, .name = name, .target = target } };
+        var guard: ?Token = null;
+        if (kind == .sort and self.tok.tag == .keyword_where) {
+            _ = self.advance();
+            guard = try self.expect(.identifier);
+        }
+        return .{ .alias = .{ .kind = kind, .name = name, .target = target, .guard = guard } };
     }
 
     /// `( ident: sort, ... )` — absent or `()` means ZERO-ary.

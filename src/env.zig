@@ -110,9 +110,23 @@ pub const FileScope = struct {
     namespaces: std.AutoHashMapUnmanaged(StrId, FileId) = .empty,
 };
 
+/// A sort entity. METADATA (name, loc) is always present — root or refined.
+/// `refinement` is an OPTIONAL component (ECS-style): null for a base/root sort
+/// (`sort G`), present for a PREDICATED sort (`sort H = G where inH`), naming the
+/// parent it refines and the guard qualifier(s). A refined SortId is an
+/// elaborator-level bookkeeping id; it LOWERS to its carrier (root) sort before any
+/// kernel term (see `carrierOf`/`qualifiersOf`).
+pub const Sort = struct {
+    name: StrId,
+    loc: u32,
+    refinement: ?Refinement = null,
+
+    pub const Refinement = struct { parent: SortId, qualifiers: []const SymId };
+};
+
 pub const Env = struct {
     arena: Allocator,
-    sorts: std.ArrayList(struct { name: StrId, loc: u32 }) = .empty,
+    sorts: std.ArrayList(Sort) = .empty,
     syms: std.ArrayList(Symbol) = .empty,
     statements: std.ArrayList(Statement) = .empty,
     scopes: std.ArrayList(FileScope) = .empty,
@@ -154,6 +168,41 @@ pub const Env = struct {
         try self.sorts.append(self.arena, .{ .name = name, .loc = loc });
         try self.scope(file).sort_names.put(self.arena, name, id);
         return id;
+    }
+
+    /// A PREDICATED sort `sort H = G where inH`: a NEW SortId with a refinement
+    /// component (parent + guard qualifiers). Its own id is elaborator-level; it
+    /// lowers to `carrierOf(id)` before any kernel term.
+    pub fn addRefinedSort(self: *Env, file: FileId, name: StrId, loc: u32, parent: SortId, qualifiers: []const SymId) !SortId {
+        const id: SortId = @enumFromInt(self.sorts.items.len);
+        try self.sorts.append(self.arena, .{ .name = name, .loc = loc, .refinement = .{ .parent = parent, .qualifiers = qualifiers } });
+        try self.scope(file).sort_names.put(self.arena, name, id);
+        return id;
+    }
+
+    /// The KERNEL sort a (possibly refined) SortId lowers to: walk `parent` to the
+    /// root (a sort with no refinement). A base sort is its own carrier.
+    pub fn carrierOf(self: *const Env, id: SortId) SortId {
+        var cur = id;
+        while (self.sorts.items[@intFromEnum(cur)].refinement) |r| cur = r.parent;
+        return cur;
+    }
+
+    /// The guard qualifiers accumulated along the refinement chain of a SortId
+    /// (empty for a base sort). Outermost-refinement qualifiers first.
+    pub fn qualifiersOf(self: *const Env, arena: Allocator, id: SortId) ![]const SymId {
+        var acc: std.ArrayList(SymId) = .empty;
+        var cur = id;
+        while (self.sorts.items[@intFromEnum(cur)].refinement) |r| {
+            try acc.appendSlice(arena, r.qualifiers);
+            cur = r.parent;
+        }
+        return acc.toOwnedSlice(arena);
+    }
+
+    /// Whether a SortId is refined (a predicated sort) — has a guard.
+    pub fn isRefined(self: *const Env, id: SortId) bool {
+        return self.sorts.items[@intFromEnum(id)].refinement != null;
     }
 
     pub fn addSym(self: *Env, file: FileId, symbol: Symbol) !SymId {

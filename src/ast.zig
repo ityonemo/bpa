@@ -93,8 +93,12 @@ pub const Decl = union(enum) {
     /// `forward name` — a manifest entry: promises `name` is defined later in
     /// this file as a theorem (checked at end of file; nothing else)
     forward: struct { name: Token },
-    /// `sort Nat = peano.Nat` etc — a local name for an imported entity
-    alias: struct { kind: AliasKind, name: Token, target: Token },
+    /// `sort Nat = peano.Nat` etc — a local name for an imported entity.
+    /// A SORT alias may carry `where <pred>` — a PREDICATED SORT
+    /// (`sort H = G where inH`): H resolves to G's sort but every use injects the
+    /// guard `inH` (hypothesis at binders, obligation at applications). `guard` is
+    /// null for a plain alias and for non-sort alias kinds.
+    alias: struct { kind: AliasKind, name: Token, target: Token, guard: ?Token = null },
     sort: struct { name: Token },
     constant: struct { name: Token, sort: Token },
     /// `define NAME = expr` — a transparent abbreviation: every use expands

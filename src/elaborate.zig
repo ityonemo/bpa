@@ -152,6 +152,13 @@ pub const Elaborator = struct {
     /// looks the model up here and remaps `thm`'s formula through its `Remap`.
     models: std.AutoHashMapUnmanaged(StrId, Model) = .empty,
 
+    /// PREDICATED `fix`/`unpack` blocks: `fix h: H { … }` (H a predicated sort)
+    /// lowers to `fix h: G { assume inH(h) { … } }`. This maps the OUTER fix/unpack
+    /// block to the injected guard-`assume` block, so `[by predicate <fixlabel>]`
+    /// can surface `inH(h)` as that assume's hypothesis. Per-lowering (cleared with
+    /// the proof); a fix without a predicated sort is absent from the map.
+    fix_guard_block: std.AutoHashMapUnmanaged(kernel.BlockId, kernel.BlockId) = .empty,
+
     const Tcc = struct { formula: TermId, loc: u32 };
 
     /// A resolved `model` declaration: the interpretation (`remap`) plus the
@@ -284,7 +291,23 @@ pub const Elaborator = struct {
                     .sort => {
                         const id = self.env.findSort(target.file, target.base) orelse
                             return self.fail(d.target.start, "'{s}' is not a sort", .{self.text(d.target)});
-                        try self.env.registerSort(self.file, name, id);
+                        if (d.guard) |g| {
+                            // predicated sort `sort H = G where inH`: a NEW SortId
+                            // refining `id` (= G, itself possibly refined) by the
+                            // guard `inH`. The pred must be unary over the target sort.
+                            const gname = try self.internTok(g);
+                            const gsym = self.env.findSym(self.file, gname) orelse
+                                return self.fail(g.start, "predicated-sort guard '{s}' is not a predicate in scope", .{self.text(g)});
+                            const sym = self.env.sym(gsym);
+                            if (sym.kind != .pred or sym.arg_sorts.len != 1 or sym.arg_sorts[0] != id) {
+                                return self.fail(g.start, "predicated-sort guard '{s}' must be a unary predicate over '{s}'", .{ self.text(g), self.text(d.target) });
+                            }
+                            const quals = try self.arena.dupe(term.SymId, &.{gsym});
+                            _ = try self.env.addRefinedSort(self.file, name, d.name.start, id, quals);
+                        } else {
+                            // plain alias `sort H = G` — same SortId, no refinement.
+                            try self.env.registerSort(self.file, name, id);
+                        }
                     },
                     .constant, .func, .pred => {
                         const id = self.env.findSym(target.file, target.base) orelse
@@ -327,7 +350,10 @@ pub const Elaborator = struct {
             .constant => |d| {
                 const name = try self.internTok(d.name);
                 try self.checkFreshName(name, d.name);
-                const sort = try self.resolveSort(d.sort);
+                // a const may have a predicated sort (`const E: H`); the stored
+                // (kernel) result sort is its carrier. (The `inH(E)` postcondition
+                // obligation is wired in Stage 3.)
+                const sort = self.env.carrierOf(try self.resolveSort(d.sort));
                 _ = try self.env.addSym(self.file, .{
                     .name = name,
                     .kind = .app,
@@ -361,7 +387,10 @@ pub const Elaborator = struct {
                 const name = try self.internTok(d.name);
                 try self.checkFreshName(name, d.name);
                 const arg_sorts, const param_names = try self.resolveParams(d.params);
-                const result = try self.resolveSort(d.result);
+                // a func result may be a predicated sort (`func op(...): H`); the
+                // stored (kernel) result sort is its carrier. (The closure
+                // postcondition `inH(op(...))` is wired in Stage 3.)
+                const result = self.env.carrierOf(try self.resolveSort(d.result));
                 if (result == .prop) {
                     return self.fail(d.result.start, "a func cannot return 'Prop'; declare a pred instead", .{});
                 }
@@ -948,7 +977,10 @@ pub const Elaborator = struct {
         if (self.env.findSym(self.file, name) != null) {
             return self.fail(name_tok.start, "'{s}' shadows a declaration; choose a fresh name", .{self.text(name_tok)});
         }
-        const sort = try self.resolveSort(sort_tok);
+        // the eigenvariable's KERNEL sort is the carrier (a predicated fix/unpack
+        // sort `H` lowers to `G`); the guard is applied separately by the fix/unpack
+        // lowering (which re-resolves the sort token to get H's qualifiers).
+        const sort = self.env.carrierOf(try self.resolveSort(sort_tok));
         const fvar = try self.freshNamed(self.text(name_tok));
         try self.scope.append(self.arena, .{ .name = name, .sort = sort, .fvar = fvar });
         return .{ .name = fvar, .sort = sort };
@@ -2852,6 +2884,13 @@ pub const Elaborator = struct {
             self.fail(tok.start, "unknown sort '{s}'", .{self.text(tok)});
     }
 
+    /// The guard qualifiers of a (possibly refined) sort — the predicates that a
+    /// value of this sort satisfies. Empty for a base sort. Used to inject guards
+    /// at binders and obligations at applications.
+    fn sortQualifiers(self: *Elaborator, id: SortId) ElabError![]const term.SymId {
+        return self.env.qualifiersOf(self.arena, id) catch return error.OutOfMemory;
+    }
+
     const Target = struct { file: FileId, base: StrId };
 
     /// The elaboration context that must follow an AST across files: which
@@ -2888,7 +2927,9 @@ pub const Elaborator = struct {
         const sorts = try self.arena.alloc(SortId, params.len);
         const names = try self.arena.alloc(StrId, params.len);
         for (params, sorts, names, 0..) |p, *s, *n, i| {
-            s.* = try self.resolveSort(p.sort);
+            // a param may be a predicated sort; the stored (kernel) arg sort is its
+            // carrier. (Obligations from H-typed args are wired in Stage 2.)
+            s.* = self.env.carrierOf(try self.resolveSort(p.sort));
             n.* = try self.internTok(p.name);
             try self.checkNoShadow(n.*, p.name);
             for (names[0..i]) |prev| {
@@ -3015,8 +3056,13 @@ pub const Elaborator = struct {
             .quant => |q| {
                 // binders become fresh fvars so every intermediate term stays
                 // locally closed (capture-proof schema substitution depends on
-                // this); the fvars are closed into de Bruijn form right here
-                const sort = try self.resolveSort(q.binders[0].sort);
+                // this); the fvars are closed into de Bruijn form right here.
+                // The binder sort may be a PREDICATED sort `H = G where inH`: the
+                // KERNEL sort is its carrier (`G`), and its qualifiers become guards
+                // injected into the body — `∀h; inH(h) -> …`, `∃h; inH(h) and …`.
+                const refined = try self.resolveSort(q.binders[0].sort);
+                const sort = self.env.carrierOf(refined);
+                const quals = try self.sortQualifiers(refined);
                 const fresh = try self.arena.alloc(StrId, q.binders.len);
                 for (q.binders, fresh) |b, *fr| {
                     const bname = try self.internTok(b.name);
@@ -3036,6 +3082,13 @@ pub const Elaborator = struct {
                 while (i > 0) {
                     i -= 1;
                     id = try self.pool.close(id, fresh[i]);
+                    // inject each qualifier guard on bvar0 (inside this quant).
+                    for (quals) |qpred| {
+                        const bound = try self.pool.add(.{ .bvar = 0 });
+                        const guard_app = try self.pool.addApp(.pred, qpred, &.{bound});
+                        const connective: term.BinOp = if (q.q == .forall) .implies else .and_op;
+                        id = try self.pool.add(.{ .bin = .{ .op = connective, .lhs = guard_app, .rhs = id } });
+                    }
                     id = try self.pool.add(.{ .quant = .{
                         .q = if (q.q == .forall) .forall else .exists,
                         .sort = sort,
