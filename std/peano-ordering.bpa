@@ -532,26 +532,17 @@ proof
           @upper-gap-exists |
             exists w: Nat; add(n, succ(w)) = ONE
             [by modus_ponens upper-gap-exists-if-below n-below-one]
-          @add-zero-left-in |
-            forall m: Nat; add(ZERO, m) = m
-            [by axiom addZeroLeft]
           @with-lower-gap-u |
             unpack u: Nat from lower-gap-exists {
               @lower-gap-witnesses-n |
                 add(ZERO, succ(u)) = n
                 [by hypothesis with-lower-gap-u]
-              @lower-gap-is-succ-u |
-                add(ZERO, succ(u)) = succ(u)
-                [by forall_elim(succ(u)) add-zero-left-in]
-              @lower-gap-refl |
-                add(ZERO, succ(u)) = add(ZERO, succ(u))
-                [by reflexivity]
               @n-is-lower-gap |
                 n = add(ZERO, succ(u))
-                [by rewrite lower-gap-witnesses-n lower-gap-refl]
+                [by symmetry lower-gap-witnesses-n]
               @n-is-succ-u |
                 n = succ(u)
-                [by rewrite lower-gap-is-succ-u n-is-lower-gap]
+                [by simplify n-is-lower-gap addZeroLeft]
               @with-upper-gap-v |
                 unpack v: Nat from upper-gap-exists {
                   @upper-gap-witnesses-one |
@@ -566,18 +557,12 @@ proof
                   @combined-gap-is-succ-zero |
                     add(succ(u), succ(v)) = succ(ZERO)
                     [by rewrite one-def-in combined-gap-is-one]
-                  @add-succ-left |
-                    forall m, e: Nat; add(succ(m), e) = succ(add(m, e))
-                    [by axiom addSuccLeft]
                   @combined-gap-unfolds |
                     add(succ(u), succ(v)) = succ(add(u, succ(v)))
-                    [by forall_elim(u, succ(v)) add-succ-left]
-                  @combined-gap-refl |
-                    add(succ(u), succ(v)) = add(succ(u), succ(v))
-                    [by reflexivity]
+                    [by simplify addSuccLeft]
                   @succ-of-inner-gap-is-combined |
                     succ(add(u, succ(v))) = add(succ(u), succ(v))
-                    [by rewrite combined-gap-unfolds combined-gap-refl]
+                    [by symmetry combined-gap-unfolds]
                   @succ-of-inner-gap-is-succ-zero |
                     succ(add(u, succ(v))) = succ(ZERO)
                     [by rewrite combined-gap-is-succ-zero succ-of-inner-gap-is-combined]
@@ -590,18 +575,12 @@ proof
                   @inner-gap-is-zero |
                     add(u, succ(v)) = ZERO
                     [by modus_ponens inner-gap-is-zero-if-succ-equal succ-of-inner-gap-is-succ-zero]
-                  @add-succ-right |
-                    forall m, e: Nat; add(m, succ(e)) = succ(add(m, e))
-                    [by theorem addSuccRight]
                   @inner-gap-unfolds |
                     add(u, succ(v)) = succ(add(u, v))
-                    [by forall_elim(u, v) add-succ-right]
-                  @inner-gap-refl |
-                    add(u, succ(v)) = add(u, succ(v))
-                    [by reflexivity]
+                    [by simplify addSuccRight]
                   @succ-of-sum-is-inner-gap |
                     succ(add(u, v)) = add(u, succ(v))
-                    [by rewrite inner-gap-unfolds inner-gap-refl]
+                    [by symmetry inner-gap-unfolds]
                   @succ-of-sum-is-zero |
                     succ(add(u, v)) = ZERO
                     [by rewrite inner-gap-is-zero succ-of-sum-is-inner-gap]
@@ -656,12 +635,9 @@ proof
           @b-is-zero |
             bb = ZERO
             [by hypothesis when-b-is-zero]
-          @b-refl |
-            bb = bb
-            [by reflexivity]
           @zero-equals-b |
             ZERO = bb
-            [by rewrite b-is-zero b-refl]
+            [by symmetry b-is-zero]
           @below-or-equal |
             less_than(ZERO, bb) or ZERO = bb
             [by or_intro_right zero-equals-b]
@@ -691,12 +667,9 @@ proof
               @zero-below-succ-m |
                 less_than(ZERO, succ(m0))
                 [by modus_ponens zero-below-succ-m-if-gap zero-gap-reaches-succ-m]
-              @b-refl |
-                bb = bb
-                [by reflexivity]
               @succ-m-equals-b |
                 succ(m0) = bb
-                [by rewrite b-is-succ-m b-refl]
+                [by symmetry b-is-succ-m]
               @zero-below-b |
                 less_than(ZERO, bb)
                 [by rewrite succ-m-equals-b zero-below-succ-m]
@@ -749,12 +722,9 @@ proof
                   @b-is-zero |
                     b2 = ZERO
                     [by hypothesis when-b-is-zero]
-                  @b-refl |
-                    b2 = b2
-                    [by reflexivity]
                   @zero-equals-b |
                     ZERO = b2
-                    [by rewrite b-is-zero b-refl]
+                    [by symmetry b-is-zero]
                   @b-below-succ-k |
                     less_than(b2, succ(k))
                     [by rewrite zero-equals-b zero-below-succ-k]
@@ -797,12 +767,9 @@ proof
                               @succ-k-below-succ-m |
                                 less_than(succ(k), succ(m1))
                                 [by modus_ponens succ-k-below-succ-m-if-below k-below-m]
-                              @b-refl |
-                                b2 = b2
-                                [by reflexivity]
                               @succ-m-equals-b |
                                 succ(m1) = b2
-                                [by rewrite b-is-succ-m b-refl]
+                                [by symmetry b-is-succ-m]
                               @succ-k-below-b |
                                 less_than(succ(k), b2)
                                 [by rewrite succ-m-equals-b succ-k-below-succ-m]
@@ -818,18 +785,12 @@ proof
                               @k-equals-m |
                                 k = m1
                                 [by hypothesis when-k-equals-m]
-                              @succ-k-refl |
-                                succ(k) = succ(k)
-                                [by reflexivity]
                               @succ-k-equals-succ-m |
                                 succ(k) = succ(m1)
-                                [by rewrite k-equals-m succ-k-refl]
-                              @b-refl |
-                                b2 = b2
-                                [by reflexivity]
+                                [by simplify k-equals-m]
                               @succ-m-equals-b |
                                 succ(m1) = b2
-                                [by rewrite b-is-succ-m b-refl]
+                                [by symmetry b-is-succ-m]
                               @succ-k-equals-b |
                                 succ(k) = b2
                                 [by rewrite succ-m-equals-b succ-k-equals-succ-m]
@@ -858,12 +819,9 @@ proof
                           @succ-m-below-succ-k |
                             less_than(succ(m1), succ(k))
                             [by modus_ponens succ-m-below-succ-k-if-below m-below-k]
-                          @b-refl |
-                            b2 = b2
-                            [by reflexivity]
                           @succ-m-equals-b |
                             succ(m1) = b2
-                            [by rewrite b-is-succ-m b-refl]
+                            [by symmetry b-is-succ-m]
                           @b-below-succ-k |
                             less_than(b2, succ(k))
                             [by rewrite succ-m-equals-b succ-m-below-succ-k]
