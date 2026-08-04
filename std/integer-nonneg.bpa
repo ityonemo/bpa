@@ -24,9 +24,68 @@ pred nonneg(n: Int)
 axiom nonnegZero: nonneg(ZERO)
 axiom nonnegSucc: forall n: Int; nonneg(n) -> nonneg(succ(n))
 
+// DISTINCTNESS. std/integer.bpa carries NO nontriviality axiom — ZERO = ONE (the
+// trivial ring) is consistent with it, and succ is a bijection (succ(prev(ZERO)) =
+// ZERO), so `succ(n) != ZERO` is FALSE for a general integer n. But on the ℕ part
+// it holds: the successor of a NONNEGATIVE is never zero — Peano's `succNotZero`
+// transported to the nonneg subclass. This is what makes the ℤ order strict (it
+// gives irreflexivity: the order's gap witness is nonneg, and a nonneg gap can't
+// bridge n back to n).
+axiom nonnegSuccNotZero: forall n: Int; nonneg(n) -> succ(n) != ZERO
+
 // upward induction from 0 (the first principle, at n0 = 0): a property that
 // holds at 0 and is preserved by succ on the nonnegatives holds on all of ℕ.
 axiom nonnegInduction(prop: Int -> Prop):
   prop(ZERO)
   -> (forall k: Int; nonneg(k) -> prop(k) -> prop(succ(k)))
   -> forall n: Int; nonneg(n) -> prop(n)
+
+// INVERSION (the smallest-class property, eliminable form): a nonnegative integer
+// is either 0 or the successor of a nonnegative. Proved by nonneg-induction — the
+// step case exhibits succ(k) as the successor of the nonneg k.
+theorem nonnegCases: forall n: Int; nonneg(n) -> (n = ZERO or (exists m: Int; nonneg(m) and n = succ(m)))
+proof
+  @base-zero |
+    ZERO = ZERO
+    [by reflexivity]
+  @base-case |
+    ZERO = ZERO or (exists m: Int; nonneg(m) and ZERO = succ(m))
+    [by or_intro_left base-zero]
+  @induction-step |
+    fix k: Int {
+      @given-k-nonneg |
+        assume nonneg(k) {
+          @k-nonneg |
+            nonneg(k)
+            [by hypothesis given-k-nonneg]
+          @given-cases-k |
+            assume k = ZERO or (exists m: Int; nonneg(m) and k = succ(m)) {
+              // succ(k) is the successor of the nonneg k — take the right disjunct.
+              @succ-k-refl |
+                succ(k) = succ(k)
+                [by reflexivity]
+              @k-witnesses-successor |
+                nonneg(k) and succ(k) = succ(k)
+                [by and_intro k-nonneg succ-k-refl]
+              @succ-k-is-a-successor |
+                exists m: Int; nonneg(m) and succ(k) = succ(m)
+                [by exists_intro(k) k-witnesses-successor]
+              @conclusion-cases-succ-k |
+                succ(k) = ZERO or (exists m: Int; nonneg(m) and succ(k) = succ(m))
+                [by or_intro_right succ-k-is-a-successor]
+            }
+          @cases-k-implies-cases-succ-k |
+            (k = ZERO or (exists m: Int; nonneg(m) and k = succ(m))) -> (succ(k) = ZERO or (exists m: Int; nonneg(m) and succ(k) = succ(m)))
+            [by implies_intro given-cases-k]
+        }
+      @induction-step-at-k |
+        nonneg(k) -> (k = ZERO or (exists m: Int; nonneg(m) and k = succ(m))) -> (succ(k) = ZERO or (exists m: Int; nonneg(m) and succ(k) = succ(m)))
+        [by implies_intro given-k-nonneg]
+    }
+  @induction-step-for-all-k |
+    forall k: Int; nonneg(k) -> (k = ZERO or (exists m: Int; nonneg(m) and k = succ(m))) -> (succ(k) = ZERO or (exists m: Int; nonneg(m) and succ(k) = succ(m)))
+    [by forall_intro induction-step]
+  @conclusion |
+    forall n: Int; nonneg(n) -> (n = ZERO or (exists m: Int; nonneg(m) and n = succ(m)))
+    [by instantiate nonnegInduction((fun n: Int => n = ZERO or (exists m: Int; nonneg(m) and n = succ(m)))) base-case induction-step-for-all-k]
+qed

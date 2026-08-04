@@ -40,10 +40,15 @@ pub fn addTests(
     // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
     ctx.ok(&.{ "check", "std/integer-ring.bpa" }, "OK: 60 declarations, 17 theorems proven\n");
 
-    // ℤ subtraction (total: a-b = a+(-b)) + the strict order, over the ring
-    // algebra: subSelf (a-a=0) and subAddCancel ((a-b)+b=a), proven with no
-    // induction from the inverse law; order via less_than intro/elim.
-    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 84 declarations, 19 theorems proven\n");
+    // ℤ subtraction (total: a-b = a+(-b)) + the strict/non-strict order, over
+    // the ring algebra. The order's gap witness is pinned NONNEGATIVE (an
+    // unconstrained ℤ gap would make less_than the total relation — the naive
+    // Peano port was a latent bug); irreflexivity rests on nonnegSuccNotZero (ℤ's
+    // distinctness axiom, on the nonneg subclass). Full order corpus proven:
+    // irreflexivity/transitivity/trichotomy (bidirectional induction on the
+    // difference), addition preserves/cancels order, less_or_equal refl/trans/
+    // split/antisymmetric. subSelf/subAddCancel from the inverse law, no induction.
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 125 declarations, 38 theorems proven\n");
 
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
     // and the divides predicate; dividesRefl/dividesMul/dividesAdd proved once,
