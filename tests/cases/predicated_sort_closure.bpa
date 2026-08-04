@@ -1,4 +1,4 @@
-// PREDICATED SORT — func RESULT positions (Stage 3): `func op2(a: H, b: H): H`
+// PREDICATED SORT — RESULT positions (Stage 3), func AND const: `func op2(a: H, b: H): H`
 // asserts op2 is closed on H (like an uninterpreted func's signature IS an axiom).
 // At each use `op2(x,y)`, `inH(op2(x,y))` is surfaced as an available fact, so a
 // downstream `f(op2(x,y))` (f needs an H arg) composes — the subgroup-closure
@@ -21,4 +21,15 @@ proof
   @conclusion |
     forall h: H; f(op2(h, h)) = f(op2(h, h))
     [by axiom useful]
+qed
+
+// A predicated-result CONST is the nullary case of the SAME mechanism: `const E: H`
+// asserts E ∈ H, surfacing inH(E), so f(E) composes.
+const E: H
+axiom usefulE: f(E) = f(E)
+theorem constComposes: f(E) = f(E)
+proof
+  @conclusion |
+    f(E) = f(E)
+    [by axiom usefulE]
 qed

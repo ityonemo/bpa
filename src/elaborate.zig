@@ -363,14 +363,17 @@ pub const Elaborator = struct {
                 const name = try self.internTok(d.name);
                 try self.checkFreshName(name, d.name);
                 // a const may have a predicated sort (`const E: H`); the stored
-                // (kernel) result sort is its carrier. (The `inH(E)` postcondition
-                // obligation is wired in Stage 3.)
-                const sort = self.env.carrierOf(try self.resolveSort(d.sort));
+                // (kernel) result sort is its carrier, but result_refined keeps the
+                // refined sort so a reference to `E` surfaces `inH(E)` — asserting
+                // E ∈ H by the const's signature (like a func result, nullary).
+                const sort_refined = try self.resolveSort(d.sort);
+                const sort = self.env.carrierOf(sort_refined);
                 _ = try self.env.addSym(self.file, .{
                     .name = name,
                     .kind = .app,
                     .arg_sorts = &.{},
                     .result = sort,
+                    .result_refined = sort_refined,
                     .guard = null,
                     .param_names = &.{},
                     .loc = d.name.start,
@@ -3296,9 +3299,23 @@ pub const Elaborator = struct {
                 return .{ .id = def, .sort = sym.result };
             }
             const id = try self.pool.addApp(if (sym.kind == .pred) .pred else .app, sym_id, &.{});
+            // a predicated-result CONST (`const E: H`) surfaces `inH(E)` — asserting
+            // E ∈ H by its signature, so `f(E)` (f needs an H arg) composes.
+            try self.surfaceResultFact(sym, id);
             return .{ .id = id, .sort = sym.result };
         }
         return self.fail(tok.start, "unknown identifier '{s}'", .{self.text(tok)});
+    }
+
+    /// If `sym`'s result sort is PREDICATED (`… : H`), surface `inH(sym(args))` as
+    /// an available fact — the signature asserts the result is in H. Shared by
+    /// 0-ary references (const) and applications (func).
+    fn surfaceResultFact(self: *Elaborator, sym: Symbol, term_id: TermId) ElabError!void {
+        if (sym.result_refined == sym.result) return;
+        for (try self.sortQualifiers(sym.result_refined)) |qpred| {
+            const fact = try self.pool.addApp(.pred, qpred, &.{term_id});
+            try self.result_facts.append(self.arena, fact);
+        }
     }
 
     fn elaborateCall(self: *Elaborator, c: ast.Expr.Call) ElabError!Typed {
@@ -3363,16 +3380,9 @@ pub const Elaborator = struct {
             try self.pending_tccs.append(self.arena, .{ .formula = g, .loc = c.callee.start });
         }
         const id = try self.pool.addApp(if (sym.kind == .pred) .pred else .app, sym_id, arg_ids);
-        // PREDICATED RESULT (`func op(...): H`): op's signature asserts its result is
-        // in H, so surface `inH(op(args))` as an available fact for TCC discharge.
-        // (Sound as the signature assertion; the args' own guards, if any, are owed
-        // separately above.)
-        if (sym.result_refined != sym.result) {
-            for (try self.sortQualifiers(sym.result_refined)) |qpred| {
-                const fact = try self.pool.addApp(.pred, qpred, &.{id});
-                try self.result_facts.append(self.arena, fact);
-            }
-        }
+        // a predicated-result func (`op(...): H`) surfaces `inH(op(args))` — the same
+        // mechanism as a predicated-result const, via the shared helper.
+        try self.surfaceResultFact(sym, id);
         return .{ .id = id, .sort = sym.result };
     }
 };

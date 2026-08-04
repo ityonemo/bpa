@@ -143,7 +143,7 @@ pub fn addTests(
     // surfaces `inH(op2(x,y))` at each use, so `f(op2(h,h))` composes (the
     // subgroup-closure pattern). Gated by the arg-obligations; equivalent to an
     // explicit closure axiom. Kernel-checked.
-    ctx.ok(&.{ "check", "tests/cases/predicated_sort_closure.bpa" }, "OK: 7 declarations, 1 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/predicated_sort_closure.bpa" }, "OK: 10 declarations, 2 theorems proven\n");
     // PREDICATED SORT chain: C = B where inC over B = A where inB — carrierOf walks
     // to the root A, qualifiers accumulate, so ∀c: C desugars to
     // ∀c: A; inB(c) -> inC(c) -> …. (Also a Zig unit test in env.zig.)
