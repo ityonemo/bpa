@@ -193,7 +193,8 @@ const Renderer = struct {
         const pad = try indent(self.arena, depth);
         const header_label = self.block_labels[@intFromEnum(bid)];
         switch (b.kind) {
-            .fix => |fv| {
+            .fix => |f| {
+                const fv = f.v;
                 const nm = displayName(self.arena, self.interner.str(fv.name));
                 const sort = self.env.sortName(self.interner, fv.sort);
                 w.print("{s}@{s} |\n{s}  fix {s}: {s} {{\n", .{ pad, header_label, pad, nm, sort }) catch return error.OutOfMemory;

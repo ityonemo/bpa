@@ -134,6 +134,12 @@ pub fn addTests(
     // inH(E) proved by contradiction from the definitional subgroup axioms.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_subgroup.bpa" }, "OK: 14 declarations, 3 theorems proven\n");
 
+    // PREDICATED SORT `sort H = G where inH` — binder positions (Stage 1): ∀/∃
+    // inject the guard (implies/and), `fix h: H` carries it on the block (surfaced
+    // by `[by predicate <lbl>]`, made the forall_intro antecedent), `unpack h: H`
+    // gets it from the ∃'s conjunct. Pure sugar over the carrier; kernel-checked.
+    ctx.ok(&.{ "check", "tests/cases/predicated_sort_binders.bpa" }, "OK: 9 declarations, 3 theorems proven\n");
+
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source
     // theorem doesn't say).

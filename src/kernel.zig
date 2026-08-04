@@ -49,7 +49,10 @@ pub const Block = struct {
     pub const Kind = union(enum) {
         root,
         assume: TermId,
-        fix: term.Node.Fvar,
+        /// `fix h` (∀-intro subproof). A PREDICATED fix (`fix h: H`, H = G where inH)
+        /// carries `guard = inH(h)` — available as the block's hypothesis, and made
+        /// the antecedent of the `forall_intro` conclusion (`∀h; inH(h) -> body`).
+        fix: struct { v: term.Node.Fvar, guard: ?TermId = null },
         unpack: struct { v: term.Node.Fvar, source: SRef },
     };
 };
@@ -250,7 +253,13 @@ pub const Kernel = struct {
                 const v = try self.pool.add(.{ .fvar = u.v });
                 return self.pool.open(node.quant.body, v);
             },
-            .root, .fix => return self.fail(loc, "subproof '{s}' has no hypothesis", .{self.str(b.label)}),
+            .fix => |f| {
+                // a PREDICATED fix surfaces its guard `inH(h)` as the hypothesis;
+                // a plain fix has none.
+                if (f.guard) |g| return g;
+                return self.fail(loc, "subproof '{s}' has no hypothesis", .{self.str(b.label)});
+            },
+            .root => return self.fail(loc, "subproof '{s}' has no hypothesis", .{self.str(b.label)}),
         }
     }
 
@@ -374,9 +383,16 @@ pub const Kernel = struct {
                 if (b.kind != .fix) {
                     return self.fail(r.loc, "forall_intro requires a fix subproof", .{});
                 }
-                const v = b.kind.fix;
+                const v = b.kind.fix.v;
                 try self.checkEigen(proof, r.id, v.name, i, r.loc);
-                const body = try self.pool.close(try self.requireLastFormula(proof, b, r.loc), v.name);
+                // a PREDICATED fix concludes `∀h; guard(h) -> last` — the guard
+                // becomes the antecedent (over the same eigenvariable). A plain fix
+                // concludes `∀h; last`.
+                var inner = try self.requireLastFormula(proof, b, r.loc);
+                if (b.kind.fix.guard) |g| {
+                    inner = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = g, .rhs = inner } });
+                }
+                const body = try self.pool.close(inner, v.name);
                 const derived = try self.pool.add(.{ .quant = .{
                     .q = .forall,
                     .sort = v.sort,
@@ -741,7 +757,7 @@ test "forged proof: eigenvariable leak is rejected" {
     const fixb = try rig.interner.intern("fixb");
     const blocks = [_]Block{
         .{ .parent = null, .label = s0, .kind = .root, .first_step = 0, .last_step = 3 },
-        .{ .parent = @enumFromInt(0), .label = fixb, .kind = .{ .fix = .{ .name = x_name, .sort = rig.nat } }, .first_step = 1, .last_step = 2 },
+        .{ .parent = @enumFromInt(0), .label = fixb, .kind = .{ .fix = .{ .v = .{ .name = x_name, .sort = rig.nat } } }, .first_step = 1, .last_step = 2 },
     };
     const steps = [_]Step{
         // d(x) cited in the ROOT — x is pinned outside the subproof

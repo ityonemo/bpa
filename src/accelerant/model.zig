@@ -138,7 +138,10 @@ fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId
         out.kind = switch (b.kind) {
             .root => .root,
             .assume => |f| .{ .assume = self.pool.remapFormula(f, model.remap) catch return error.OutOfMemory },
-            .fix => |v| .{ .fix = .{ .name = v.name, .sort = model.remap.sort(v.sort) } },
+            .fix => |f| .{ .fix = .{
+                .v = .{ .name = f.v.name, .sort = model.remap.sort(f.v.sort) },
+                .guard = if (f.guard) |g| self.pool.remapFormula(g, model.remap) catch return error.OutOfMemory else null,
+            } },
             .unpack => |u| .{ .unpack = .{
                 .v = .{ .name = u.v.name, .sort = model.remap.sort(u.v.sort) },
                 .source = u.source,
@@ -272,9 +275,10 @@ fn reemitChild(self: *Elaborator, plow: *Lowering, parent: kernel.BlockId, ctx: 
     const guard = ctx.model.remap.guard.?;
 
     switch (cb.kind) {
-        .fix => |fv| {
+        .fix => |fb| {
+            const fv = fb.v;
             const new_sort = ctx.model.remap.sort(fv.sort);
-            const fix_b = try self.newBlock(plow, try self.freshNamed("gm-fix"), parent, .{ .fix = .{ .name = fv.name, .sort = new_sort } });
+            const fix_b = try self.newBlock(plow, try self.freshNamed("gm-fix"), parent, .{ .fix = .{ .v = .{ .name = fv.name, .sort = new_sort } } });
             if (fv.sort == guard.carrier) {
                 // carrier fix → insert `assume guard(a)`, surface the hypothesis.
                 const bound = try self.pool.add(.{ .fvar = .{ .name = fv.name, .sort = new_sort } });
@@ -543,7 +547,7 @@ fn emitWeakenLayer(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
     }
 
     const hint = hints[0];
-    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-fix"), block, .{ .fix = .{ .name = hint, .sort = guard.carrier } });
+    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-fix"), block, .{ .fix = .{ .v = .{ .name = hint, .sort = guard.carrier } } });
     const x = try self.pool.add(.{ .fvar = .{ .name = hint, .sort = guard.carrier } });
     const guard_x = try self.pool.addApp(.pred, guard.pred, &.{x});
     const asm_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-guard"), fix_b, .{ .assume = guard_x });

@@ -1,0 +1,76 @@
+// PREDICATED SORT `sort H = G where inH` — binder positions (Stage 1).
+// H desugars to G; every binder over H injects the guard inH:
+//   ∀h: H; P    ==>  ∀h: G; inH(h) -> P        (hypothesis)
+//   ∃h: H; P    ==>  ∃h: G; inH(h) and P        (conjunct)
+//   fix h: H    ==>  the fix block carries guard inH(h); `[by predicate <lbl>]`
+//                    surfaces it, and forall_intro concludes ∀h; inH(h) -> …
+//   unpack h: H ==>  no special guard — the ∃ it unpacks already carries inH(h)
+//                    (extract via and_elim). Kernel-checked, no accelerated taint.
+sort G
+pred inH(g: G)
+pred P(g: G)
+sort H = G where inH
+
+axiom pAll: forall h: G; inH(h) -> P(h)
+axiom someHP: exists h: H; P(h)
+
+// ∀h: H — the goal desugars to ∀h: G; inH(h) -> P(h), matching pAll verbatim.
+theorem forallOverH: forall h: H; P(h)
+proof
+  @conclusion |
+    forall h: H; P(h)
+    [by axiom pAll]
+qed
+
+// fix h: H — the guard inH(h) is available via `predicate`, and forall_intro
+// concludes the relativized ∀h; inH(h) -> P(h).
+theorem forallOverHByFix: forall h: H; P(h)
+proof
+  @generalize-h |
+    fix h: H {
+      @h-in-subset |
+        inH(h)
+        [by predicate generalize-h]
+      @identity-law |
+        forall a: G; inH(a) -> P(a)
+        [by axiom pAll]
+      @p-if-in-subset |
+        inH(h) -> P(h)
+        [by forall_elim(h) identity-law]
+      @conclusion-p |
+        P(h)
+        [by modus_ponens p-if-in-subset h-in-subset]
+    }
+  @conclusion |
+    forall h: H; P(h)
+    [by forall_intro generalize-h]
+qed
+
+// unpack h: H — the guard rides in the unpacked existential (inH(h) and P(h)).
+theorem existsOverH: exists x: H; P(x)
+proof
+  @some-h |
+    exists h: H; P(h)
+    [by axiom someHP]
+  @with-h |
+    unpack h: H from some-h {
+      @h-guard-and-p |
+        inH(h) and P(h)
+        [by hypothesis with-h]
+      @p-of-h |
+        P(h)
+        [by and_elim_right h-guard-and-p]
+      @h-in-subset |
+        inH(h)
+        [by and_elim_left h-guard-and-p]
+      @repacked |
+        inH(h) and P(h)
+        [by and_intro h-in-subset p-of-h]
+      @exists-out |
+        exists x: H; P(x)
+        [by exists_intro(h) repacked]
+    }
+  @conclusion |
+    exists x: H; P(x)
+    [by exists_elim with-h]
+qed

@@ -268,7 +268,7 @@ pub fn arithCertCore(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId
     var blocks: std.ArrayList(kernel.BlockId) = .empty;
     var parent = block_id;
     for (fix_vars) |fv| {
-        const b = try self.newBlock(low, try self.freshNamed("arithmetic"), parent, .{ .fix = fv });
+        const b = try self.newBlock(low, try self.freshNamed("arithmetic"), parent, .{ .fix = .{ .v = fv } });
         try blocks.append(self.arena, b);
         parent = b;
     }
@@ -439,7 +439,7 @@ fn arithMixedCertificate(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
     var blocks: std.ArrayList(kernel.BlockId) = .empty;
     var parent = block_id;
     for (fix_vars) |fv| {
-        const b = try self.newBlock(low, try self.freshNamed("arithmetic"), parent, .{ .fix = fv });
+        const b = try self.newBlock(low, try self.freshNamed("arithmetic"), parent, .{ .fix = .{ .v = fv } });
         try blocks.append(self.arena, b);
         parent = b;
     }
@@ -588,7 +588,7 @@ fn farkasCertificate(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId
         const name = try self.freshNamed(self.interner.str(node.quant.hint));
         const fv: term.Node.Fvar = .{ .name = name, .sort = nat };
         const fvt = try self.pool.add(.{ .fvar = fv });
-        const b = try self.newBlock(low, try self.freshNamed("arithmetic"), parent, .{ .fix = fv });
+        const b = try self.newBlock(low, try self.freshNamed("arithmetic"), parent, .{ .fix = .{ .v = fv } });
         try blocks.append(self.arena, b);
         parent = b;
         body = try self.pool.open(node.quant.body, fvt);
@@ -916,7 +916,7 @@ fn emitExistsWitnessInFix(
     var blocks: std.ArrayList(kernel.BlockId) = .empty;
     var parent = block_id;
     for (u.fix_vars) |fv| {
-        const b = try self.newBlock(low, try self.freshNamed("cooper"), parent, .{ .fix = fv });
+        const b = try self.newBlock(low, try self.freshNamed("cooper"), parent, .{ .fix = .{ .v = fv } });
         try blocks.append(self.arena, b);
         parent = b;
     }
@@ -998,7 +998,7 @@ fn cooperInduction(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, 
     const step_impl_open = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = p_k, .rhs = p_succ_k } });
     const step_forall = try closeForall(self, step_impl_open, k, nat);
 
-    const fix_k = try self.newBlock(low, try self.freshNamed("induction-step"), block_id, .{ .fix = k });
+    const fix_k = try self.newBlock(low, try self.freshNamed("induction-step"), block_id, .{ .fix = .{ .v = k } });
     const assume_pk = try self.newBlock(low, try self.freshNamed("given-inductive-hypothesis"), fix_k, .{ .assume = p_k });
     const ih_ref = try self.emitStep(low, assume_pk, loc, p_k, .{ .hypothesis = .{ .id = assume_pk, .loc = loc } });
 

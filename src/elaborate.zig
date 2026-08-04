@@ -831,7 +831,11 @@ pub const Elaborator = struct {
                 },
                 .fix => |blk| {
                     const v = try self.bindProofVar(blk.name, blk.sort);
-                    const b = try self.newBlock(low, label, block_id, .{ .fix = v });
+                    // a PREDICATED fix (`fix h: H`) carries the guard `inH(h)` on the
+                    // block: it becomes the block's hypothesis (`[by predicate <lbl>]`)
+                    // and the antecedent of the `forall_intro` conclusion.
+                    const guard = try self.fixGuard(blk.sort, v);
+                    const b = try self.newBlock(low, label, block_id, .{ .fix = .{ .v = v, .guard = guard } });
                     low.labels.put(self.arena, label, .{ .block = b }) catch return error.OutOfMemory;
                     try self.lowerSteps(low, blk.steps, b);
                     self.closeBlock(low, b);
@@ -1079,6 +1083,7 @@ pub const Elaborator = struct {
         axiom,
         theorem,
         hypothesis,
+        predicate,
         modus_ponens,
         implies_intro,
         forall_intro,
@@ -1117,6 +1122,7 @@ pub const Elaborator = struct {
         .{ "axiom", .axiom },
         .{ "theorem", .theorem },
         .{ "hypothesis", .hypothesis },
+        .{ "predicate", .predicate },
         .{ "modus_ponens", .modus_ponens },
         .{ "implies_intro", .implies_intro },
         .{ "forall_intro", .forall_intro },
@@ -1203,6 +1209,14 @@ pub const Elaborator = struct {
                 return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = c.refs[0].start } };
             },
             .hypothesis => {
+                try self.wantRefs(c, 1);
+                return .{ .hypothesis = try self.resolveBlockRef(low, c.refs[0]) };
+            },
+            // `predicate <fix-label>` surfaces the GUARD of a predicated fix/unpack
+            // binder (`fix h: H` gives `inH(h)`). Kernel-identical to `hypothesis`
+            // (the kernel's hypothesisOf returns a guarded fix's guard); a distinct
+            // keyword so the source reads as "the sort's predicate", not an assume.
+            .predicate => {
                 try self.wantRefs(c, 1);
                 return .{ .hypothesis = try self.resolveBlockRef(low, c.refs[0]) };
             },
@@ -1686,7 +1700,7 @@ pub const Elaborator = struct {
         var blocks: std.ArrayList(kernel.BlockId) = .empty;
         var parent = block_id;
         for (u.fix_vars) |fv| {
-            const b = try self.newBlock(low, try self.freshNamed("forall"), parent, .{ .fix = fv });
+            const b = try self.newBlock(low, try self.freshNamed("forall"), parent, .{ .fix = .{ .v = fv } });
             try blocks.append(self.arena, b);
             parent = b;
         }
@@ -2889,6 +2903,21 @@ pub const Elaborator = struct {
     /// at binders and obligations at applications.
     fn sortQualifiers(self: *Elaborator, id: SortId) ElabError![]const term.SymId {
         return self.env.qualifiersOf(self.arena, id) catch return error.OutOfMemory;
+    }
+
+    /// The guard formula for a predicated fix/unpack eigenvariable `v` of sort
+    /// `sort_tok`: the conjunction of `qual(v)` over the sort's qualifiers, or null
+    /// if the sort is unrefined. (`v.sort` is already the carrier.)
+    fn fixGuard(self: *Elaborator, sort_tok: lexer.Token, v: term.Node.Fvar) ElabError!?TermId {
+        const quals = try self.sortQualifiers(try self.resolveSort(sort_tok));
+        if (quals.len == 0) return null;
+        const fv = try self.pool.add(.{ .fvar = v });
+        var g: ?TermId = null;
+        for (quals) |qpred| {
+            const app = try self.pool.addApp(.pred, qpred, &.{fv});
+            g = if (g) |prev| try self.pool.add(.{ .bin = .{ .op = .and_op, .lhs = prev, .rhs = app } }) else app;
+        }
+        return g;
     }
 
     const Target = struct { file: FileId, base: StrId };

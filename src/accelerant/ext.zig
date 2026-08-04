@@ -139,7 +139,7 @@ fn extObligation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, ob
     const x: term.Node.Fvar = .{ .name = try self.freshNamed("x"), .sort = model.universe };
     const x_id = try self.pool.add(.{ .fvar = x });
     const body = try self.pool.open(q.body, x_id);
-    const fix_b = try self.newBlock(low, try self.freshNamed("ext-element"), block_id, .{ .fix = x });
+    const fix_b = try self.newBlock(low, try self.freshNamed("ext-element"), block_id, .{ .fix = .{ .v = x } });
 
     // close the residue, dispatching on its shape:
     //   equation  `apply(f,x) = apply(g,x)`  — FUNCTION model: rewrite by the
