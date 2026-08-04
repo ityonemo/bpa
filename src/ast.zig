@@ -6,7 +6,10 @@
 const std = @import("std");
 const Token = @import("lexer.zig").Token;
 
-pub const Binder = struct { name: Token, sort: Token };
+/// A binder `x: S` or an INLINE-REFINED binder `x: S where inH` — the optional
+/// `guard` predicate-NAME mints an anonymous refined sort (`S` narrowed by inH,
+/// applied to the binder variable). Bare pred name; conjunctions use a `define`d pred.
+pub const Binder = struct { name: Token, sort: Token, guard: ?Token = null };
 
 /// Schema parameter, e.g. `P: nat -> prop`. arg_sorts empty = plain value param.
 pub const SchemaParam = struct { name: Token, arg_sorts: []const Token, result: Token };

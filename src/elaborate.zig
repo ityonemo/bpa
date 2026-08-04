@@ -414,9 +414,10 @@ pub const Elaborator = struct {
                 // formula (over the param fvars), reusing the requires/TCC machinery —
                 // the obligation is emitted at each application (elaborateCall).
                 for (d.params, param_names) |p, pn| {
-                    const quals = try self.sortQualifiers(try self.resolveSort(p.sort));
+                    const refined = try self.resolveBinderSort(p);
+                    const quals = try self.sortQualifiers(refined);
                     if (quals.len == 0) continue;
-                    const carrier = self.env.carrierOf(try self.resolveSort(p.sort));
+                    const carrier = self.env.carrierOf(refined);
                     const pfv = try self.pool.add(.{ .fvar = .{ .name = pn, .sort = carrier } });
                     for (quals) |qpred| {
                         const app = try self.pool.addApp(.pred, qpred, &.{pfv});
@@ -2919,6 +2920,30 @@ pub const Elaborator = struct {
         return self.env.qualifiersOf(self.arena, id) catch return error.OutOfMemory;
     }
 
+    /// Resolve a binder's sort, minting an ANONYMOUS refined sort when the binder
+    /// carries an inline `where inH` (`x: G where inH`). The anonymous sort refines
+    /// the base sort by the guard predicate (validated unary over the base); it is
+    /// unnamed (no scope binding) but carries the same ECS refinement component as a
+    /// named `sort H = G where inH`, so all downstream (carrierOf/qualifiersOf) works.
+    fn resolveBinderSort(self: *Elaborator, b: ast.Binder) ElabError!SortId {
+        const base = try self.resolveSort(b.sort);
+        const g = b.guard orelse return base;
+        const gname = try self.internTok(g);
+        const gsym = self.env.findSym(self.file, gname) orelse
+            return self.fail(g.start, "sort refinement '{s}' is not a predicate in scope", .{self.text(g)});
+        const sym = self.env.sym(gsym);
+        if (sym.kind != .pred or sym.arg_sorts.len != 1 or sym.arg_sorts[0] != base) {
+            return self.fail(g.start, "sort refinement '{s}' must be a unary predicate over '{s}'", .{ self.text(g), self.text(b.sort) });
+        }
+        const quals = try self.arena.dupe(term.SymId, &.{gsym});
+        // anonymous: name it by its literal surface syntax (`G where inH`) — spaces
+        // make it collision-proof, and if it ever surfaces in a diagnostic it reads
+        // exactly as the source. No scope binding.
+        const label = std.fmt.allocPrint(self.arena, "{s} where {s}", .{ self.text(b.sort), self.text(g) }) catch return error.OutOfMemory;
+        const nm = self.interner.intern(label) catch return error.OutOfMemory;
+        return self.env.addAnonymousRefinedSort(nm, b.sort.start, base, quals) catch return error.OutOfMemory;
+    }
+
     /// The guard formula for a predicated fix/unpack eigenvariable `v` of sort
     /// `sort_tok`: the conjunction of `qual(v)` over the sort's qualifiers, or null
     /// if the sort is unrefined. (`v.sort` is already the carrier.)
@@ -2970,9 +2995,10 @@ pub const Elaborator = struct {
         const sorts = try self.arena.alloc(SortId, params.len);
         const names = try self.arena.alloc(StrId, params.len);
         for (params, sorts, names, 0..) |p, *s, *n, i| {
-            // a param may be a predicated sort; the stored (kernel) arg sort is its
-            // carrier. (Obligations from H-typed args are wired in Stage 2.)
-            s.* = self.env.carrierOf(try self.resolveSort(p.sort));
+            // a param may be a predicated sort (named `H` or inline `G where inH`);
+            // the stored (kernel) arg sort is its carrier. (Obligations from
+            // H-typed args are folded into the func guard in the func decl.)
+            s.* = self.env.carrierOf(try self.resolveBinderSort(p));
             n.* = try self.internTok(p.name);
             try self.checkNoShadow(n.*, p.name);
             for (names[0..i]) |prev| {
@@ -3103,7 +3129,7 @@ pub const Elaborator = struct {
                 // The binder sort may be a PREDICATED sort `H = G where inH`: the
                 // KERNEL sort is its carrier (`G`), and its qualifiers become guards
                 // injected into the body — `∀h; inH(h) -> …`, `∃h; inH(h) and …`.
-                const refined = try self.resolveSort(q.binders[0].sort);
+                const refined = try self.resolveBinderSort(q.binders[0]);
                 const sort = self.env.carrierOf(refined);
                 const quals = try self.sortQualifiers(refined);
                 const fresh = try self.arena.alloc(StrId, q.binders.len);

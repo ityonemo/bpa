@@ -286,7 +286,12 @@ pub const Parser = struct {
             const name = try self.expect(.identifier);
             _ = try self.expect(.colon);
             const sort = try self.expect(.identifier);
-            try params.append(self.arena, .{ .name = name, .sort = sort });
+            var guard: ?Token = null;
+            if (self.tok.tag == .keyword_where) {
+                _ = self.advance();
+                guard = try self.expect(.identifier);
+            }
+            try params.append(self.arena, .{ .name = name, .sort = sort, .guard = guard });
             if (self.tok.tag != .comma) break;
             _ = self.advance();
         }
@@ -506,8 +511,15 @@ pub const Parser = struct {
         }
         _ = try self.expect(.colon);
         const sort = try self.expect(.identifier);
+        // inline refinement `x: S where inH` — an anonymous refined sort (bare
+        // predicate name, applied to the binder variable).
+        var guard: ?Token = null;
+        if (self.tok.tag == .keyword_where) {
+            _ = self.advance();
+            guard = try self.expect(.identifier);
+        }
         const binders = try self.arena.alloc(ast.Binder, names.items.len);
-        for (names.items, binders) |name, *b| b.* = .{ .name = name, .sort = sort };
+        for (names.items, binders) |name, *b| b.* = .{ .name = name, .sort = sort, .guard = guard };
         return binders;
     }
 

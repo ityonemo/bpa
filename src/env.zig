@@ -171,12 +171,20 @@ pub const Env = struct {
     }
 
     /// A PREDICATED sort `sort H = G where inH`: a NEW SortId with a refinement
-    /// component (parent + guard qualifiers). Its own id is elaborator-level; it
-    /// lowers to `carrierOf(id)` before any kernel term.
+    /// component (parent + guard qualifiers), BOUND under `name`. Its own id is
+    /// elaborator-level; it lowers to `carrierOf(id)` before any kernel term.
     pub fn addRefinedSort(self: *Env, file: FileId, name: StrId, loc: u32, parent: SortId, qualifiers: []const SymId) !SortId {
+        const id = try self.addAnonymousRefinedSort(name, loc, parent, qualifiers);
+        try self.scope(file).sort_names.put(self.arena, name, id);
+        return id;
+    }
+
+    /// An ANONYMOUS refined sort (inline `x: G where inH`): a NEW refined SortId
+    /// NOT bound to any name (so it never clobbers the base sort's name binding).
+    /// `name` is display-only (typically the base sort's name).
+    pub fn addAnonymousRefinedSort(self: *Env, name: StrId, loc: u32, parent: SortId, qualifiers: []const SymId) !SortId {
         const id: SortId = @enumFromInt(self.sorts.items.len);
         try self.sorts.append(self.arena, .{ .name = name, .loc = loc, .refinement = .{ .parent = parent, .qualifiers = qualifiers } });
-        try self.scope(file).sort_names.put(self.arena, name, id);
         return id;
     }
 
