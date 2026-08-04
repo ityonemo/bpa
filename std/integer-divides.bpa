@@ -1,6 +1,6 @@
 // std/integer-divides.bpa — divisibility and (nonneg-exponent) powers on ℤ,
-// over std/integer.bpa + its ring algebra. Supports the §2.1 induction examples
-// and the §2.2/§2.3 divisibility content of Chapter 2.
+// over std/integer.bpa + its ring algebra. The foundation for the ℤ induction
+// examples and the divisibility number theory.
 //
 // `divides(d, n)` = "d divides n" = ∃k; n = d·k, with the same intro/elim shape
 // as Peano's. `pow(base, e)` = base^e, recursive on the exponent e (pow(b,0)=1,

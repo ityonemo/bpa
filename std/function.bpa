@@ -1,9 +1,8 @@
-// std/function.bpa — the theory of MAPPINGS between sets, per Chapter 1 of
-// Judson's *Abstract Algebra* (vendor/aata/src/sets.xml, §1.2.2 "Cartesian
-// Products and Mappings"): functions as objects with application, composition,
-// an identity map, and the injective / surjective / invertible properties.
+// std/function.bpa — the theory of MAPPINGS between sets: functions as objects
+// with application, composition, an identity map, and the injective /
+// surjective / invertible properties.
 //
-// A reusable abstract theory (like std/group, std/set), imported by the AATA
+// A reusable abstract theory (like std/group, std/set), imported by the
 // literate translation aata/functions.md. Every function here maps a fixed
 // element domain `Element` to itself (f : Element -> Element); that single
 // sort is enough for composition-associativity and the invertible/bijective

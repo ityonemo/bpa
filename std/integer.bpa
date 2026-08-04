@@ -1,8 +1,7 @@
 // std/integer.bpa — the integers ℤ, axiomatized in the style of std/peano.bpa
 // but with a PREDECESSOR: every integer has both a successor and a predecessor,
-// which is what distinguishes ℤ from ℕ. Chapter 2 of Judson's *Abstract Algebra*
-// ("The Integers") is stated over ℤ — Bézout's `gcd(a,b) = ar + bs` genuinely
-// needs negatives — so this is the number domain that chapter rests on.
+// which is what distinguishes ℤ from ℕ. This is the number domain the ℤ number
+// theory rests on — Bézout's `gcd(a,b) = ar + bs` genuinely needs negatives.
 //
 // This is a STANDALONE axiomatic theory (a fresh sort `Int`, not built from
 // Peano ℕ): ZERO/ONE, succ/prev (mutual inverses), add/mul/neg, the LEFT

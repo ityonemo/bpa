@@ -1,4 +1,4 @@
-// std/subgroup.bpa — the theory of a SUBGROUP (Judson §3.3), as a STANDALONE,
+// std/subgroup.bpa — the theory of a SUBGROUP, as a STANDALONE,
 // reusable component (the dependency INVERSION).
 //
 // A subgroup is a group in its own right — a subset of a group's carrier that is
@@ -361,7 +361,7 @@ proof
     [by forall_intro generalize-a]
 qed
 
-// One-step subgroup test, FORWARD (groups.xml:1164): a subgroup is closed under
+// One-step subgroup test, FORWARD: a subgroup is closed under
 // the "divide" operation g·h⁻¹. Since h ∈ H, its inverse h⁻¹ ∈ H (closedInverse);
 // then by closure under the operation, g·h⁻¹ ∈ H (closedOp).
 theorem subgroupClosedDivide: forall g, h: Sub; inSubgroup(op(g, inverse(h)))
@@ -407,7 +407,7 @@ proof
     [by forall_intro generalize-g]
 qed
 
-// ── One-step test, CONVERSE (groups.xml:1171) ────────────────────────────────
+// ── One-step test, CONVERSE ──────────────────────────────────────────────────
 // The other half of the test: a NONEMPTY subset closed under g·h⁻¹ satisfies the
 // three subgroup conditions, hence is a subgroup. Since bpa cannot quantify over
 // predicates, we express "an arbitrary subset with those two properties" as a
@@ -568,7 +568,7 @@ proof
     [by forall_intro generalize-h1]
 qed
 
-// ── Intersection of subgroups (groups.xml:1938, an exercise) ─────────────────
+// ── Intersection of subgroups ────────────────────────────────────────────────
 // The intersection H ∩ K of two subgroups is a subgroup. We model a SECOND
 // subgroup with its own membership predicate `inSubgroup2` (same three axioms),
 // define intersection membership as the conjunction, and prove the three subgroup

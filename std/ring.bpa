@@ -99,9 +99,9 @@ proof
     [by forall_intro generalize-a]
 qed
 
-// -- elementary properties (Judson, Rings, first proposition) ---------------
+// -- elementary properties ---------------------------------------------------
 
-// a·0 = 0. Judson: a·0 = a·(0+0) = a·0 + a·0, then additive-cancel a·0.
+// a·0 = 0, by a·0 = a·(0+0) = a·0 + a·0, then additive-cancel a·0.
 // The cancellation is the transferred additive-group `cancelLeft`.
 theorem mulZeroRight: forall a: Ring; mul(a, ZERO) = ZERO
 proof
@@ -215,7 +215,7 @@ proof
     [by forall_intro generalize-a]
 qed
 
-// a·(-b) = -(a·b). Judson: a·b + a·(-b) = a·(b + -b) = a·0 = 0, so a·(-b) is
+// a·(-b) = -(a·b), by a·b + a·(-b) = a·(b + -b) = a·0 = 0, so a·(-b) is
 // THE additive inverse of a·b, hence = -(a·b) by the transferred `inverseUnique`
 // (a right inverse in the additive group is exactly neg).
 theorem mulNegRight: forall a, b: Ring; mul(a, neg(b)) = neg(mul(a, b))
@@ -332,7 +332,7 @@ proof
     [by forall_intro generalize-a]
 qed
 
-// (-a)·(-b) = a·b. Judson: (-a)(-b) = -((-a)·b)... use mulNegRight on (-a)·(-b)
+// (-a)·(-b) = a·b, via (-a)(-b) = -((-a)·b): use mulNegRight on (-a)·(-b)
 // to get -((-a)·b), then mulNegLeft gives (-a)·b = -(a·b), and the transferred
 // additive invInvolution collapses the double negation.
 theorem negMulNeg: forall a, b: Ring; mul(neg(a), neg(b)) = mul(a, b)

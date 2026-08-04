@@ -1,5 +1,5 @@
-// std/equivalence.bpa — the bridge between relations and sets for Chapter 1
-// §1.2.3: the equivalence CLASS of an element as a Set.
+// std/equivalence.bpa — the bridge between relations and sets: the equivalence
+// CLASS of an element as a Set.
 //
 // Sets (std/set.bpa) and relations (std/relation.bpa) both range over the SAME
 // shared element carrier (std/element.bpa) — so they COMPOSE, and this file

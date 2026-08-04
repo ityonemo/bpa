@@ -1,6 +1,5 @@
 // std/relation.bpa — binary relations and equivalence relations over the shared
-// element carrier (std/element.bpa), per Chapter 1 §1.2.3 of Judson's *Abstract
-// Algebra* (vendor/aata/src/sets.xml).
+// element carrier (std/element.bpa).
 //
 // A relation on X is modeled as a binary predicate `related(x, y)` over the
 // shared `Element` sort (the analogue of `member` for sets / `apply` for
@@ -13,7 +12,7 @@
 // that shares that carrier — e.g. sets in std/set.bpa — compose with relations
 // and REUSE these theorems directly (see std/equivalence.bpa).
 //
-// This is the FOL-tractable layer of §1.2.3. What it does NOT model:
+// This is the FOL-tractable layer of relations. What it does NOT model:
 // equivalence CLASSES `[a]` and PARTITIONS (a set X = ⋃[x] of classes) — those
 // need a quotient / sets-of-sets structure, deferred to a later theory. Every
 // theorem here is about the relation itself, membershipwise-free.

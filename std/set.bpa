@@ -1,9 +1,8 @@
-// std/set.bpa — a set algebra over a fixed universe, per Chapter 1 of Judson's
-// *Abstract Algebra* (vendor/aata/src/sets.xml): sets of elements drawn from a
-// universe, with union, intersection, difference, complement, and the empty
-// set, characterized entirely by MEMBERSHIP.
+// std/set.bpa — a set algebra over a fixed universe: sets of elements drawn
+// from a universe, with union, intersection, difference, complement, and the
+// empty set, characterized entirely by MEMBERSHIP.
 //
-// A reusable abstract theory (like std/peano, std/group), imported by the AATA
+// A reusable abstract theory (like std/peano, std/group), imported by the
 // literate translation aata/sets.md, which drives it by these membership
 // axioms: every set identity `S = T` is proved by extensionality — fix an
 // element x, unfold `member(x, ·)` on both sides via the operator axioms, and

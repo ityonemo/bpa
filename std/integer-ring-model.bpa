@@ -1,8 +1,8 @@
 // std/integer-ring-model.bpa — ℤ as a thin model of the abstract ring theory.
 //
 // The integers are a ring: `model IntegerRing = Int` discharges std/ring.bpa's
-// nine axioms from ℤ's own facts, and the ring corpus (the negation results of
-// Judson's first proposition) TRANSFERS to ℤ instead of being re-derived. This
+// nine axioms from ℤ's own facts, and the ring corpus (the elementary negation
+// results) TRANSFERS to ℤ instead of being re-derived. This
 // exercises the THREE-LEVEL model chain ℤ → ring → group: ring's proofs
 // themselves transfer group theorems (invInvolution, inverseUnique) through ring's
 // AdditiveGroup model, and those materialize again into ℤ here.
