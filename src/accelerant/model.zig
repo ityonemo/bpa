@@ -519,13 +519,20 @@ fn emitWeakenedAxiom(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, 
         .schema => return null,
     };
 
+    // the guard keys on the SOURCE carrier sort, but `new_formula` (the relativized
+    // claim) and the mapped target are over the LOWERED target sort — e.g. mapping
+    // `group.Grp` to `Fn where invertible` gives carrier `Fn`, not `Grp`. Compare
+    // binder sorts against the remapped carrier so the cross-sort case (source sort ≠
+    // target base sort) is recognized, not just the same-sort subgroup case.
+    const lowered_carrier = model.remap.sort(guard.carrier);
+
     // peel the claim's alternating `∀xᵢ:carrier; guard(xᵢ) -> …` layers, collecting
     // the binder hints; the residual (after n layers) is the guard-free body P.
     var hints: std.ArrayList(StrId) = .empty;
     var residual = new_formula;
     while (true) {
         const q = self.pool.get(residual);
-        if (q != .quant or q.quant.q != .forall or q.quant.sort != guard.carrier) break;
+        if (q != .quant or q.quant.q != .forall or q.quant.sort != lowered_carrier) break;
         const b = self.pool.get(q.quant.body);
         if (b != .bin or b.bin.op != .implies) break;
         // the antecedent must be exactly `guard(bvar0)` for this to be a weakening layer.
@@ -544,7 +551,7 @@ fn emitWeakenedAxiom(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, 
     var i: usize = hints.items.len;
     while (i > 0) {
         i -= 1;
-        unguarded = try self.pool.add(.{ .quant = .{ .q = .forall, .sort = guard.carrier, .hint = hints.items[i], .body = unguarded } });
+        unguarded = try self.pool.add(.{ .quant = .{ .q = .forall, .sort = lowered_carrier, .hint = hints.items[i], .body = unguarded } });
     }
     if (!self.pool.alphaEq(tgt_formula, unguarded)) return null;
 
@@ -574,9 +581,12 @@ fn emitWeakenLayer(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
         return step_ref;
     }
 
+    // the materialized `fix`/fvar are over the LOWERED carrier (the target base
+    // sort), not the source `guard.carrier` — see emitWeakenedAxiom.
+    const lowered_carrier = ctx.model.remap.sort(guard.carrier);
     const hint = hints[0];
-    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-fix"), block, .{ .fix = .{ .v = .{ .name = hint, .sort = guard.carrier } } });
-    const x = try self.pool.add(.{ .fvar = .{ .name = hint, .sort = guard.carrier } });
+    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-fix"), block, .{ .fix = .{ .v = .{ .name = hint, .sort = lowered_carrier } } });
+    const x = try self.pool.add(.{ .fvar = .{ .name = hint, .sort = lowered_carrier } });
     const guard_x = try self.pool.addApp(.pred, guard.pred, &.{x});
     const asm_b = try self.newBlock(plow, try self.freshNamed("gm-weaken-guard"), fix_b, .{ .assume = guard_x });
     _ = try self.emitStep(plow, asm_b, loc, guard_x, .{ .hypothesis = .{ .id = asm_b, .loc = loc } });
