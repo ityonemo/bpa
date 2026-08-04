@@ -170,7 +170,12 @@ pub fn addTests(
         \\tests/cases/model_accel_assoc_commut.bpa:51:26: error: guarded model transfer of 'assoc_commut$61' does not kernel-check under the interpretation
         \\
     );
-    ctx.fail(&.{ "check", "tests/cases/model_accel_tautology.bpa" }, "tests/cases/model_accel_tautology.bpa:69:26: error: guarded model materialization does not yet handle this proof shape\n");
+    // tautology transfers GREEN: its synthetic theorem is context-free (its
+    // citation's `forall_elim` binds only the arm-local eigenvariable), so no
+    // eigenvariable escapes. Its distinct blocker was `not_intro` (proof-by-
+    // contradiction) — unhandled by the guarded re-emitter until we taught
+    // reemitBlock to re-emit the not_intro assume arm like an or_elim arm.
+    ctx.ok(&.{ "check", "tests/cases/model_accel_tautology.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
     ctx.fail(&.{ "check", "tests/cases/model_accel_polynomial.bpa" },
         \\tests/cases/model_accel_polynomial.bpa:100:26: error: eigenvariable 'b' occurs free in step 'simplify#151' outside the subproof; rename it
         \\tests/cases/model_accel_polynomial.bpa:100:26: error: guarded model transfer of 'polynomial$97' does not kernel-check under the interpretation

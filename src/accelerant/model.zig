@@ -277,6 +277,21 @@ fn reemitBlock(self: *Elaborator, plow: *Lowering, target: kernel.BlockId, ctx: 
                 .right = .{ .id = ctx.block_map.get(r.right.id).?, .loc = ctx.loc },
             } });
             try ctx.step_map.put(self.arena, @enumFromInt(i), ref);
+        } else if (step.just == .not_intro) {
+            // proof-by-contradiction: re-emit the assume arm (deriving the
+            // contradiction), then the not_intro step citing the mapped block and
+            // the two contradicting steps (resolved from step_map, now populated by
+            // the arm re-emission). Like or_elim, the arm has no closing step of
+            // its own — not_intro closes it.
+            const r = step.just.not_intro;
+            try reemitArm(self, plow, target, ctx, r.block.id);
+            const new_formula = try remapStepFormula(self, ctx, step.formula);
+            const ref = try self.emitStep(plow, target, ctx.loc, new_formula, .{ .not_intro = .{
+                .block = .{ .id = ctx.block_map.get(r.block.id).?, .loc = ctx.loc },
+                .s1 = ctx.step_map.get(r.s1.id).?,
+                .s2 = ctx.step_map.get(r.s2.id).?,
+            } });
+            try ctx.step_map.put(self.arena, @enumFromInt(i), ref);
         } else if (childBlockOf(step.just)) |child| {
             try reemitChild(self, plow, target, ctx, child, @enumFromInt(i));
         } else {
