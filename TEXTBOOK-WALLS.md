@@ -1,5 +1,17 @@
 # Textbook walls — sketches for the two blocking gaps
 
+> **STATUS (both gaps CLOSED).**
+> - **Gap 1 (collections)** — resolved via nested models: `std/collection.bpa` is a
+>   Collection modeling `std/set.bpa` one level up (the set algebra transfers) plus a
+>   cross-level `bigUnion`/`universe`/partition layer. `aata/1.2.3-partitions.md` now
+>   proves the equivalence classes FORM A PARTITION (no holes). Sketch A below is the
+>   record of the approach taken.
+> - **Gap 2 (choice / definite description)** — resolved: N-ary schema params landed,
+>   then `functionFromGraph` (the tame ι) in `std/function.bpa`; the backward half of
+>   invertible⟺bijective is proved. Sketch below is the record.
+> The pair-set PAYOFF PLAN (bottom) remains FUTURE WORK. This doc is kept as the
+> design record.
+
 Building the AATA Chapter 1 transliterations (`aata/1.2.*.md`), the proofs stayed
 mechanical *within the expressible fragment* — the 13 set identities all fell out
 of one `extensionality → fix x → unfold → tautology` template, composition-assoc
