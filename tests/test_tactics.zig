@@ -133,13 +133,16 @@ pub fn addTests(
     // same-file guarded model + auto-weakening (opIdentityLeft mapped to itself) +
     // inH(E) proved by contradiction from the definitional subgroup axioms.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_subgroup.bpa" }, "OK: 15 declarations, 3 theorems proven\n");
-    // ITERATED SUBGROUPS K < H < G (Level 2): a subgroup of a subgroup. Two model
-    // stacks (HSubGroup→HGroup, KSubGroup→KGroup) over std/group + std/subgroup, then
-    // three group theorems transfer onto the sub-subgroup K. Composes on existing
-    // machinery (flattened single-guard K = Grp where inK, inK ⊆ inH); exercises the
-    // DIRECT-MAPPED-axiom transfer (group.opAssoc discharged via a `@`-projection
-    // mapping value → cite the mapped discharge, not materialize an axiom's proof).
-    ctx.ok(&.{ "check", "tests/cases/model_iterated_subgroup.bpa" }, "OK: 82 declarations, 32 theorems proven\n");
+    // THE MODEL STACK end to end over std/group + std/subgroup:
+    //  - a subgroup inH of a group; the 8-theorem group corpus transfers onto H
+    //    through HSubGroup→HGroup (each `group.X` discharged via a `@`-projection
+    //    mapping value `HSubGroup@subgroup.X`).
+    //  - K < H < G: a subgroup inK OF the subgroup H; the same stack (KSubGroup→
+    //    KGroup) transfers three group theorems onto the sub-subgroup K. Composes
+    //    on existing machinery (flattened single-guard K = Grp where inK, inK ⊆ inH).
+    // Exercises the DIRECT-MAPPED-axiom transfer (group.opAssoc, an axiom, discharged
+    // through a `@`-projection → cite the mapped discharge, not materialize a proof).
+    ctx.ok(&.{ "check", "tests/cases/model_subgroup_transfer.bpa" }, "OK: 90 declarations, 40 theorems proven\n");
 
     // PREDICATED SORT `sort H = G where inH` — binder positions (Stage 1): ∀/∃
     // inject the guard (implies/and), `fix h: H` carries it on the block (surfaced

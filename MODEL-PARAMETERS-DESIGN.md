@@ -154,9 +154,9 @@ The ONE mechanism gap it surfaced (now fixed): transferring a DIRECTLY-MAPPED AX
 AXIOM (no proof to materialize). The materializer now consults the model's
 `stmt_map` FIRST (in `justify` and at the top of `materializeModelTheorem`) and
 cites the mapped discharge directly — exactly as `remapCitation` already did for a
-fact reached transitively inside a proof. Fixture: `tests/cases/model_iterated_subgroup.bpa`
-(two model stacks, three group theorems transferred onto the sub-subgroup K,
-kernel-checked, untainted).
+fact reached transitively inside a proof. Fixture: `tests/cases/model_subgroup_transfer.bpa`
+(BOTH levels — the 8-theorem group corpus onto H, then three theorems onto the
+sub-subgroup K — kernel-checked, untainted).
 
 ---
 
