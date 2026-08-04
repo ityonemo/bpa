@@ -17,8 +17,8 @@
 // The five parent-group axioms are `grp*` (a naming concession pending the import-
 // hygiene pass); the like-named THEOREMS `opAssoc`/`opIdentity*`/`opInverse*` prove
 // each law holds ON THE SUBGROUP (over `Sub`) — these are what a group-model projects.
-// `invInvolution` is a parent-group fact stated as an axiom here (the standalone
-// theory does not import group's proofs). Accelerated-free.
+// `inverseUnique` and `invInvolution` are parent-group theorems, PROVEN from grp*.
+// Accelerated-free.
 // the abstract PARENT GROUP's axioms (declared locally — the dependency inversion).
 // Named `grp*` internally; the FIVE like-named THEOREMS below (opAssoc, …) prove
 // each law holds ON THE SUBGROUP and are what HGroup @-projects.
@@ -31,8 +31,104 @@ axiom grpIdentityLeft: forall a: Grp; op(E, a) = a
 axiom grpIdentityRight: forall a: Grp; op(a, E) = a
 axiom grpInverseLeft: forall a: Grp; op(inverse(a), a) = E
 axiom grpInverseRight: forall a: Grp; op(a, inverse(a)) = E
-// a parent-group fact a subgroup-specific proof cites (an axiom for now).
-axiom invInvolution: forall a: Grp; inverse(inverse(a)) = a
+
+// Two parent-group THEOREMS a subgroup-specific proof cites, proved from the grp*
+// axioms (not postulated). `inverseUnique` → `invInvolution` (the double-inverse law).
+theorem inverseUnique: forall a, b: Grp; op(a, b) = E -> b = inverse(a)
+proof
+  @generalize-a |
+    fix a: Grp {
+      @generalize-b |
+        fix b: Grp {
+          @given-b-is-right-inverse-of-a |
+            assume op(a, b) = E {
+              @ab-is-E |
+                op(a, b) = E
+                [by hypothesis given-b-is-right-inverse-of-a]
+              @id-left |
+                forall g: Grp; op(E, g) = g
+                [by axiom grpIdentityLeft]
+              @b-eq |
+                op(E, b) = b
+                [by forall_elim(b) id-left]
+              @b-is-eb |
+                b = op(E, b)
+                [by symmetry b-eq]
+              @inv-left |
+                forall g: Grp; op(inverse(g), g) = E
+                [by axiom grpInverseLeft]
+              @inva-a-is-E |
+                op(inverse(a), a) = E
+                [by forall_elim(a) inv-left]
+              @E-is-inva-a |
+                E = op(inverse(a), a)
+                [by symmetry inva-a-is-E]
+              @b-is-inva-a-b |
+                b = op(op(inverse(a), a), b)
+                [by rewrite E-is-inva-a b-is-eb]
+              @assoc-law |
+                forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
+                [by axiom grpAssoc]
+              @assoc-step |
+                op(op(inverse(a), a), b) = op(inverse(a), op(a, b))
+                [by forall_elim(inverse(a), a, b) assoc-law]
+              @b-is-inva-ab |
+                b = op(inverse(a), op(a, b))
+                [by rewrite assoc-step b-is-inva-a-b]
+              @b-is-inva-E |
+                b = op(inverse(a), E)
+                [by rewrite ab-is-E b-is-inva-ab]
+              @id-right |
+                forall g: Grp; op(g, E) = g
+                [by axiom grpIdentityRight]
+              @inva-E-is-inva |
+                op(inverse(a), E) = inverse(a)
+                [by forall_elim(inverse(a)) id-right]
+              @b-is-inva |
+                b = inverse(a)
+                [by rewrite inva-E-is-inva b-is-inva-E]
+            }
+          @discharge |
+            op(a, b) = E -> b = inverse(a)
+            [by implies_intro given-b-is-right-inverse-of-a]
+        }
+      @discharge-b |
+        forall b: Grp; op(a, b) = E -> b = inverse(a)
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Grp; op(a, b) = E -> b = inverse(a)
+    [by forall_intro generalize-a]
+qed
+
+theorem invInvolution: forall a: Grp; inverse(inverse(a)) = a
+proof
+  @generalize-a |
+    fix a: Grp {
+      @inv-left |
+        forall g: Grp; op(inverse(g), g) = E
+        [by axiom grpInverseLeft]
+      @inva-a-is-E |
+        op(inverse(a), a) = E
+        [by forall_elim(a) inv-left]
+      @inv-unique |
+        forall x, y: Grp; op(x, y) = E -> y = inverse(x)
+        [by theorem inverseUnique]
+      @inverse-unique-at-inva-a |
+        op(inverse(a), a) = E -> a = inverse(inverse(a))
+        [by forall_elim(inverse(a), a) inv-unique]
+      @a-is-invinva |
+        a = inverse(inverse(a))
+        [by modus_ponens inverse-unique-at-inva-a inva-a-is-E]
+      @invinva-is-a |
+        inverse(inverse(a)) = a
+        [by symmetry a-is-invinva]
+    }
+  @conclusion |
+    forall a: Grp; inverse(inverse(a)) = a
+    [by forall_intro generalize-a]
+qed
+
 // The subgroup, as a membership predicate over the group carrier, characterized by
 // the three subgroup-criterion conditions.
 pred inSubgroup(g: Grp)
@@ -327,7 +423,7 @@ proof
                     [by modus_ponens h1-divide-inverse-h2-if-inverse inverse-h2-in-subset]
                   @double-inverse-law |
                     forall a: Grp; inverse(inverse(a)) = a
-                    [by axiom invInvolution]
+                    [by theorem invInvolution]
                   @double-inverse-h2 |
                     inverse(inverse(h2)) = h2
                     [by forall_elim(h2) double-inverse-law]
