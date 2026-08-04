@@ -18,12 +18,14 @@ func add(a: Ring, b: Ring): Ring
 func mul(a: Ring, b: Ring): Ring
 func neg(a: Ring): Ring
 
-// additive abelian group axioms (discharge the group model below).
+// additive abelian group axioms (discharge the group model below). By the
+// left-axiomatic convention, only the LEFT identity/inverse laws are primitive;
+// the RIGHT laws (addZeroRight, addNegRight) are theorems below, proved from the
+// left laws and commutativity — exactly as group.bpa derives opIdentityRight /
+// opInverseRight, so the AdditiveGroup model need not map them.
 axiom addAssoc: forall a, b, c: Ring; add(add(a, b), c) = add(a, add(b, c))
 axiom addZeroLeft: forall a: Ring; add(ZERO, a) = a
-axiom addZeroRight: forall a: Ring; add(a, ZERO) = a
 axiom addNegLeft: forall a: Ring; add(neg(a), a) = ZERO
-axiom addNegRight: forall a: Ring; add(a, neg(a)) = ZERO
 axiom addCommutative: forall a, b: Ring; add(a, b) = add(b, a)
 
 // multiplicative + distributive axioms.
@@ -39,11 +41,63 @@ model AdditiveGroup {
   group.inverse: neg
   group.opAssoc: addAssoc
   group.opIdentityLeft: addZeroLeft
-  group.opIdentityRight: addZeroRight
   group.opInverseLeft: addNegLeft
-  group.opInverseRight: addNegRight
   group.opCommutative: addCommutative
 }
+
+// -- right identity / inverse (derived from the left laws + commutativity) ---
+
+// a + 0 = a. Commute to 0 + a, then apply the left identity.
+theorem addZeroRight: forall a: Ring; add(a, ZERO) = a
+proof
+  @generalize-a |
+    fix a: Ring {
+      @commute |
+        forall x, y: Ring; add(x, y) = add(y, x)
+        [by axiom addCommutative]
+      @swap-to-left |
+        add(a, ZERO) = add(ZERO, a)
+        [by forall_elim(a, ZERO) commute]
+      @left-identity |
+        forall x: Ring; add(ZERO, x) = x
+        [by axiom addZeroLeft]
+      @left-is-a |
+        add(ZERO, a) = a
+        [by forall_elim(a) left-identity]
+      @conclusion-a-plus-zero |
+        add(a, ZERO) = a
+        [by rewrite left-is-a swap-to-left]
+    }
+  @conclusion |
+    forall a: Ring; add(a, ZERO) = a
+    [by forall_intro generalize-a]
+qed
+
+// a + (-a) = 0. Commute to (-a) + a, then apply the left inverse law.
+theorem addNegRight: forall a: Ring; add(a, neg(a)) = ZERO
+proof
+  @generalize-a |
+    fix a: Ring {
+      @commute |
+        forall x, y: Ring; add(x, y) = add(y, x)
+        [by axiom addCommutative]
+      @swap-to-left |
+        add(a, neg(a)) = add(neg(a), a)
+        [by forall_elim(a, neg(a)) commute]
+      @left-inverse |
+        forall x: Ring; add(neg(x), x) = ZERO
+        [by axiom addNegLeft]
+      @left-is-zero |
+        add(neg(a), a) = ZERO
+        [by forall_elim(a) left-inverse]
+      @conclusion-a-plus-neg |
+        add(a, neg(a)) = ZERO
+        [by rewrite left-is-zero swap-to-left]
+    }
+  @conclusion |
+    forall a: Ring; add(a, neg(a)) = ZERO
+    [by forall_intro generalize-a]
+qed
 
 // -- elementary properties (Judson, Rings, first proposition) ---------------
 
@@ -178,7 +232,7 @@ proof
             [by forall_elim(a, b, neg(b)) distribute]
           @b-plus-negb |
             forall x: Ring; add(x, neg(x)) = ZERO
-            [by axiom addNegRight]
+            [by theorem addNegRight]
           @b-plus-negb-is-zero |
             add(b, neg(b)) = ZERO
             [by forall_elim(b) b-plus-negb]
@@ -237,7 +291,7 @@ proof
             [by forall_elim(a, neg(a), b) distribute]
           @a-plus-nega |
             forall x: Ring; add(x, neg(x)) = ZERO
-            [by axiom addNegRight]
+            [by theorem addNegRight]
           @a-plus-nega-is-zero |
             add(a, neg(a)) = ZERO
             [by forall_elim(a) a-plus-nega]

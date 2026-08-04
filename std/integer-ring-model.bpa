@@ -18,12 +18,12 @@ func add = integer.add
 func mul = integer.mul
 func neg = integer.neg
 
-// the discharge facts (ℤ's own axioms + integer-ring theorems).
-axiom addZeroRight = integer.addZeroRight
+// the discharge facts (ℤ's own axioms + integer-ring theorems). ring's RIGHT
+// identity/inverse laws (addZeroRight, addNegRight) are DERIVED theorems, so the
+// IntegerRing model need not discharge them — it maps ring's axioms only.
 theorem addZeroLeft = ring_algebra.addZeroLeft
 theorem addIsAssociative = ring_algebra.addIsAssociative
 theorem addIsCommutative = ring_algebra.addIsCommutative
-theorem addNegRight = ring_algebra.addNegRight
 theorem addNegLeft = ring_algebra.addNegLeft
 theorem mulIsAssociative = ring_algebra.mulIsAssociative
 theorem mulAddDistribLeft = ring_algebra.mulAddDistribLeft
@@ -39,9 +39,7 @@ model IntegerRing {
   ring.neg: neg
   ring.addAssoc: addIsAssociative
   ring.addZeroLeft: addZeroLeft
-  ring.addZeroRight: addZeroRight
   ring.addNegLeft: addNegLeft
-  ring.addNegRight: addNegRight
   ring.addCommutative: addIsCommutative
   ring.mulAssoc: mulIsAssociative
   ring.mulDistributesLeftOverAdd: mulAddDistribLeft
