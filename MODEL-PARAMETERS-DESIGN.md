@@ -136,11 +136,27 @@ New capabilities Level 2 needs (beyond Level 1's P0): model PARAMETERS on a theo
 `Model.component` PROJECTION, model APPLICATION `thm(M1, M2)`, and the CONJUNCTION
 GUARD `where inH and inK` for the intersection target. Mechanism analysis in Part II.
 
-## LEVEL 3 — (K < H < G iterated subgroups)
+## LEVEL 3 — (K < H < G iterated subgroups) — RESOLVED via FLATTEN (2026-08-04)
 
-The genuine subgroup-of-a-subgroup hierarchy, flagged by the `?`s in Level 1 and
-deferred. Left OPEN (flatten-to-G vs. true-nesting, as above). Not yet drafted in
-full; noted here as the third level so it is not forgotten.
+The genuine subgroup-of-a-subgroup hierarchy, flagged by the `?`s in Level 1. The
+two readings were flatten-to-G vs. true-nesting. **SETTLED: flatten.** K's
+membership `inK` is a SINGLE predicate over the base group `Grp`, `K = Grp where
+inK` a single-guard sort, and `inK(g) -> inH(g)` records K ⊆ H. This keeps every
+guard single-predicate, so the guarded-transfer engine works UNCHANGED — the
+iterated hierarchy composes on existing machinery. (True nesting would need the
+guarded-materialization engine — assume/discharge/weaken in accelerant/model.zig —
+generalized from one guard predicate to a LIST, a bounded but real change; deferred
+in favor of the flatten, which the user chose.)
+
+The ONE mechanism gap it surfaced (now fixed): transferring a DIRECTLY-MAPPED AXIOM.
+`[by model(HGroup) group.opAssoc]` and the `@`-projection value
+`group.opAssoc: HSubGroup@subgroup.opAssoc` both cite `group.opAssoc`, which is an
+AXIOM (no proof to materialize). The materializer now consults the model's
+`stmt_map` FIRST (in `justify` and at the top of `materializeModelTheorem`) and
+cites the mapped discharge directly — exactly as `remapCitation` already did for a
+fact reached transitively inside a proof. Fixture: `tests/cases/model_iterated_subgroup.bpa`
+(two model stacks, three group theorems transferred onto the sub-subgroup K,
+kernel-checked, untainted).
 
 ---
 

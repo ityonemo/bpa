@@ -70,6 +70,16 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         return .{ .accelerated = name };
     }
 
+    // DIRECT-MAPPED source: if the cited fact is itself in the model's mapping
+    // (`group.opAssoc: <discharge>`), its discharge IS the mapped target — cite it
+    // directly, exactly as remapCitation does when the fact is reached transitively
+    // inside a proof. This is the ONLY way to transfer a mapped AXIOM (which has no
+    // proof to materialize) — e.g. `[by model(HGroup) group.opAssoc]` in the K<H<G
+    // stack. The kernel then checks the discharge's formula α-matches the goal.
+    for (model.stmt_map) |p| {
+        if (p.from == stmt_id) return citeStatement(self, p.to, loc);
+    }
+
     // strict: materialize the remapped source proof and cite it. Inherit the
     // materialized theorem's provenance (if the source proof leaned on an
     // accelerated tactic or a hole, the transfer discloses it transitively),
@@ -97,6 +107,16 @@ pub fn materializeThrough(self: *Elaborator, model: *Model, source: StatementId,
 /// discharging local facts; an unmapped axiom is an undischarged obligation.
 fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId, loc: u32) ElabError!StatementId {
     if (model.materialized.get(source)) |existing| return existing;
+
+    // DIRECT-MAPPED source: the model explicitly maps this fact to a discharge —
+    // its `stmt_map` target IS the materialization. This is the ONLY route for a
+    // mapped AXIOM (no proof to remap), and it is what lets a `@`-projection value
+    // `subgroup.grpAssoc: HGroup@group.opAssoc` resolve `group.opAssoc` (an axiom)
+    // through HGroup to its H-relativized discharge. Reached transitively inside a
+    // proof, remapCitation already does this; here we honor it at the entry too.
+    for (model.stmt_map) |p| {
+        if (p.from == source) return p.to;
+    }
 
     // A guarded model (`where <pred>`) relativizes every carrier ∀ to
     // `guard(x) -> …`, which the strict 1:1 remap below cannot honor in the proof

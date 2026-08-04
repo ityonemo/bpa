@@ -133,6 +133,13 @@ pub fn addTests(
     // same-file guarded model + auto-weakening (opIdentityLeft mapped to itself) +
     // inH(E) proved by contradiction from the definitional subgroup axioms.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_subgroup.bpa" }, "OK: 15 declarations, 3 theorems proven\n");
+    // ITERATED SUBGROUPS K < H < G (Level 2): a subgroup of a subgroup. Two model
+    // stacks (HSubGroup→HGroup, KSubGroup→KGroup) over std/group + std/subgroup, then
+    // three group theorems transfer onto the sub-subgroup K. Composes on existing
+    // machinery (flattened single-guard K = Grp where inK, inK ⊆ inH); exercises the
+    // DIRECT-MAPPED-axiom transfer (group.opAssoc discharged via a `@`-projection
+    // mapping value → cite the mapped discharge, not materialize an axiom's proof).
+    ctx.ok(&.{ "check", "tests/cases/model_iterated_subgroup.bpa" }, "OK: 82 declarations, 32 theorems proven\n");
 
     // PREDICATED SORT `sort H = G where inH` — binder positions (Stage 1): ∀/∃
     // inject the guard (implies/and), `fix h: H` carries it on the block (surfaced
