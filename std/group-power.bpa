@@ -18,7 +18,7 @@ const E = group.E
 func op = group.op
 func inverse = group.inverse
 axiom opAssoc = group.opAssoc
-axiom opIdentityRight = group.opIdentityRight
+theorem opIdentityRight = group.opIdentityRight
 
 // -- the natural-number exponents -------------------------------------------
 
@@ -74,7 +74,7 @@ proof
             [by rewrite pow-g-zero-is-identity right-factor-refl]
           @op-identity-on-the-right |
             forall a: Grp; op(a, E) = a
-            [by axiom opIdentityRight]
+            [by theorem opIdentityRight]
           @op-with-identity |
             op(pow(g, m), E) = pow(g, m)
             [by forall_elim(pow(g, m)) op-identity-on-the-right]

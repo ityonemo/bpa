@@ -14,12 +14,12 @@ const E: Grp
 func op(a: Grp, b: Grp): Grp
 func inverse(a: Grp): Grp
 
-// A group's three axioms (the identity and inverse laws are two-sided).
+// A group's THREE axioms: associativity, a LEFT identity, a LEFT inverse. The
+// right-sided laws (`opIdentityRight`, `opInverseRight`) are THEOREMS, proved from
+// these below — the classic "one-sided axioms suffice" derivation.
 axiom opAssoc: forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
 axiom opIdentityLeft: forall a: Grp; op(E, a) = a
-axiom opIdentityRight: forall a: Grp; op(a, E) = a
 axiom opInverseLeft: forall a: Grp; op(inverse(a), a) = E
-axiom opInverseRight: forall a: Grp; op(a, inverse(a)) = E
 
 // Commutativity is OPT-IN, not a group axiom: a theorem is "abelian" precisely
 // when its proof CITES `opCommutative` — its mere presence taints nothing, since
@@ -29,6 +29,145 @@ axiom opInverseRight: forall a: Grp; op(a, inverse(a)) = E
 // structure (e.g. Int under +) aliases/discharges `opCommutative` too; a
 // non-abelian one simply never touches it.
 axiom opCommutative: forall a, b: Grp; op(a, b) = op(b, a)
+
+// -- the right-sided laws, derived from the LEFT axioms --------------------
+// The classic proof that one-sided identity + one-sided inverse suffice.
+
+// op(a, inverse(a)) = E, from left-inverse + left-identity + associativity.
+// Writing i = inverse(a): op(a,i) = op(inverse(i), op(op(i,a), i)) and op(i,a) = E.
+theorem opInverseRight: forall a: Grp; op(a, inverse(a)) = E
+proof
+  @generalize-a |
+    fix a: Grp {
+      @inv-left |
+        forall g: Grp; op(inverse(g), g) = E
+        [by axiom opInverseLeft]
+      @id-left |
+        forall g: Grp; op(E, g) = g
+        [by axiom opIdentityLeft]
+      @assoc-law |
+        forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
+        [by axiom opAssoc]
+      // i·a = E  (i = inverse(a), by left-inverse at a)
+      @ia-is-E |
+        op(inverse(a), a) = E
+        [by forall_elim(a) inv-left]
+      // start from the target's RHS built up: op(a,i) = op(E, op(a,i))
+      @ai-eq-e-ai |
+        op(a, inverse(a)) = op(E, op(a, inverse(a)))
+        [by symmetry idAtai]
+      @idAtai |
+        op(E, op(a, inverse(a))) = op(a, inverse(a))
+        [by forall_elim(op(a, inverse(a))) id-left]
+      // E = inverse(i)·i, so op(E, op(a,i)) = op(op(inverse(i),i), op(a,i))
+      @invi-i-is-E |
+        op(inverse(inverse(a)), inverse(a)) = E
+        [by forall_elim(inverse(a)) inv-left]
+      @E-is-invi-i |
+        E = op(inverse(inverse(a)), inverse(a))
+        [by symmetry invi-i-is-E]
+      @ai-eq-grouped |
+        op(a, inverse(a)) = op(op(inverse(inverse(a)), inverse(a)), op(a, inverse(a)))
+        [by rewrite E-is-invi-i ai-eq-e-ai]
+      // reassociate: op(op(inv i, i), op(a,i)) = op(inv i, op(i, op(a,i)))
+      @assoc1 |
+        op(op(inverse(inverse(a)), inverse(a)), op(a, inverse(a))) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
+        [by forall_elim(inverse(inverse(a)), inverse(a), op(a, inverse(a))) assoc-law]
+      @ai-eq-1 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
+        [by rewrite assoc1 ai-eq-grouped]
+      // inner: op(i, op(a,i)) = op(op(i,a), i)  (assoc backwards)
+      @assoc2 |
+        op(op(inverse(a), a), inverse(a)) = op(inverse(a), op(a, inverse(a)))
+        [by forall_elim(inverse(a), a, inverse(a)) assoc-law]
+      @inner-flip |
+        op(inverse(a), op(a, inverse(a))) = op(op(inverse(a), a), inverse(a))
+        [by symmetry assoc2]
+      @ai-eq-2 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), op(op(inverse(a), a), inverse(a)))
+        [by rewrite inner-flip ai-eq-1]
+      // op(i,a) = E, so op(op(i,a), i) = op(E, i)
+      @ai-eq-3 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), op(E, inverse(a)))
+        [by rewrite ia-is-E ai-eq-2]
+      // op(E, i) = i
+      @Ei-is-i |
+        op(E, inverse(a)) = inverse(a)
+        [by forall_elim(inverse(a)) id-left]
+      @ai-eq-4 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), inverse(a))
+        [by rewrite Ei-is-i ai-eq-3]
+      // op(inverse(i), i) = E
+      @conclusion-ai |
+        op(a, inverse(a)) = E
+        [by rewrite invi-i-is-E ai-eq-4]
+    }
+  @conclusion |
+    forall a: Grp; op(a, inverse(a)) = E
+    [by forall_intro generalize-a]
+qed
+
+// op(a, E) = a, from right-inverse (above) + left-inverse + associativity:
+// op(a, E) = op(a, op(inverse(a), a)) = op(op(a, inverse(a)), a) = op(E, a) = a.
+theorem opIdentityRight: forall a: Grp; op(a, E) = a
+proof
+  @generalize-a |
+    fix a: Grp {
+      @inv-left |
+        forall g: Grp; op(inverse(g), g) = E
+        [by axiom opInverseLeft]
+      @inv-right |
+        forall g: Grp; op(g, inverse(g)) = E
+        [by theorem opInverseRight]
+      @id-left |
+        forall g: Grp; op(E, g) = g
+        [by axiom opIdentityLeft]
+      @assoc-law |
+        forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
+        [by axiom opAssoc]
+      // E = op(inverse(a), a)  (left-inverse)
+      @ia-is-E |
+        op(inverse(a), a) = E
+        [by forall_elim(a) inv-left]
+      @E-is-ia |
+        E = op(inverse(a), a)
+        [by symmetry ia-is-E]
+      // op(a, E) = op(a, op(inverse(a), a))
+      @aE-eq-1 |
+        op(a, E) = op(a, op(inverse(a), a))
+        [by rewrite E-is-ia reflAE]
+      @reflAE |
+        op(a, E) = op(a, E)
+        [by reflexivity]
+      // reassociate: op(a, op(inverse(a), a)) = op(op(a, inverse(a)), a)  (backwards)
+      @assoc1 |
+        op(op(a, inverse(a)), a) = op(a, op(inverse(a), a))
+        [by forall_elim(a, inverse(a), a) assoc-law]
+      @flip1 |
+        op(a, op(inverse(a), a)) = op(op(a, inverse(a)), a)
+        [by symmetry assoc1]
+      @aE-eq-2 |
+        op(a, E) = op(op(a, inverse(a)), a)
+        [by rewrite flip1 aE-eq-1]
+      // op(a, inverse(a)) = E
+      @aInv-is-E |
+        op(a, inverse(a)) = E
+        [by forall_elim(a) inv-right]
+      @aE-eq-3 |
+        op(a, E) = op(E, a)
+        [by rewrite aInv-is-E aE-eq-2]
+      // op(E, a) = a
+      @Ea-is-a |
+        op(E, a) = a
+        [by forall_elim(a) id-left]
+      @conclusion-aE |
+        op(a, E) = a
+        [by rewrite Ea-is-a aE-eq-3]
+    }
+  @conclusion |
+    forall a: Grp; op(a, E) = a
+    [by forall_intro generalize-a]
+qed
 
 // -- basic properties -----------------------------------------------------
 // The elementary group theorems proved from the axioms above.
@@ -47,7 +186,7 @@ proof
             [by forall_elim(E) x-left-id]
           @id-right |
             forall a: Grp; op(a, E) = a
-            [by axiom opIdentityRight]
+            [by theorem opIdentityRight]
           @x-times-E-is-x |
             op(x, E) = x
             [by forall_elim(x) id-right]
@@ -106,7 +245,7 @@ proof
                 [by rewrite ab-is-E b-is-inva-ab]
               @id-right |
                 forall g: Grp; op(g, E) = g
-                [by axiom opIdentityRight]
+                [by theorem opIdentityRight]
               @inva-E-is-inva |
                 op(inverse(a), E) = inverse(a)
                 [by forall_elim(inverse(a)) id-right]
@@ -137,7 +276,7 @@ proof
             [by assoc(opAssoc)]
           @b-invb |
             forall g: Grp; op(g, inverse(g)) = E
-            [by axiom opInverseRight]
+            [by theorem opInverseRight]
           @b-invb-is-E |
             op(b, inverse(b)) = E
             [by forall_elim(b) b-invb]
@@ -227,7 +366,7 @@ proof
             [by rewrite inva-a assoc-step]
           @id-right |
             forall g: Grp; op(g, E) = g
-            [by axiom opIdentityRight]
+            [by theorem opIdentityRight]
           @b-times-identity-is-b |
             op(b, E) = b
             [by forall_elim(b) id-right]
@@ -284,7 +423,7 @@ proof
                             [by assoc(opAssoc)]
                           @a-inva |
                             forall g: Grp; op(g, inverse(g)) = E
-                            [by axiom opInverseRight]
+                            [by theorem opInverseRight]
                           @a-inva-is-E |
                             op(a, inverse(a)) = E
                             [by forall_elim(a) a-inva]
@@ -293,7 +432,7 @@ proof
                             [by rewrite a-inva-is-E assoc-x]
                           @id-right |
                             forall g: Grp; op(g, E) = g
-                            [by axiom opIdentityRight]
+                            [by theorem opIdentityRight]
                           @x-E-is-x |
                             op(x, E) = x
                             [by forall_elim(x) id-right]
@@ -370,7 +509,7 @@ proof
                     [by assoc(opAssoc)]
                   @a-inva |
                     forall g: Grp; op(g, inverse(g)) = E
-                    [by axiom opInverseRight]
+                    [by theorem opInverseRight]
                   @a-inva-is-E |
                     op(a, inverse(a)) = E
                     [by forall_elim(a) a-inva]
@@ -379,7 +518,7 @@ proof
                     [by rewrite a-inva-is-E reassociate-around-b]
                   @id-right |
                     forall g: Grp; op(g, E) = g
-                    [by axiom opIdentityRight]
+                    [by theorem opIdentityRight]
                   @b-E-is-b |
                     op(b, E) = b
                     [by forall_elim(b) id-right]

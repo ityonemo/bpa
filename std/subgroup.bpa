@@ -14,23 +14,143 @@
 // TRANSFERRING the whole group corpus onto the subgroup for free (see the Level-1
 // model stack, MODEL-PARAMETERS-DESIGN.md).
 //
-// The five parent-group axioms are `grp*` (a naming concession pending the import-
-// hygiene pass); the like-named THEOREMS `opAssoc`/`opIdentity*`/`opInverse*` prove
-// each law holds ON THE SUBGROUP (over `Sub`) — these are what a group-model projects.
-// `inverseUnique` and `invInvolution` are parent-group theorems, PROVEN from grp*.
-// Accelerated-free.
-// the abstract PARENT GROUP's axioms (declared locally — the dependency inversion).
-// Named `grp*` internally; the FIVE like-named THEOREMS below (opAssoc, …) prove
-// each law holds ON THE SUBGROUP and are what HGroup @-projects.
+// The parent-group vocabulary is `grp*` (a naming concession pending the import-
+// hygiene pass): THREE axioms (grpAssoc/grpIdentityLeft/grpInverseLeft) with the
+// right-sided laws + inverseUnique/invInvolution PROVEN from them. The like-named
+// THEOREMS `opAssoc`/`opIdentity*`/`opInverse*` prove each law holds ON THE SUBGROUP
+// (over `Sub`) — these are what a group-model @-projects.
+// the abstract PARENT GROUP's THREE axioms (declared locally — the dependency
+// inversion): associativity + LEFT identity + LEFT inverse. The right-sided laws
+// (grpIdentityRight/grpInverseRight) are THEOREMS, proved below (one-sided suffices).
+// Named `grp*`; the FIVE like-named THEOREMS further down (opAssoc, …) prove each law
+// holds ON THE SUBGROUP and are what HGroup @-projects.
 sort Grp
 const E: Grp
 func op(a: Grp, b: Grp): Grp
 func inverse(a: Grp): Grp
 axiom grpAssoc: forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
 axiom grpIdentityLeft: forall a: Grp; op(E, a) = a
-axiom grpIdentityRight: forall a: Grp; op(a, E) = a
 axiom grpInverseLeft: forall a: Grp; op(inverse(a), a) = E
-axiom grpInverseRight: forall a: Grp; op(a, inverse(a)) = E
+
+// right-sided laws, derived from the left axioms (one-sided suffices).
+theorem grpInverseRight: forall a: Grp; op(a, inverse(a)) = E
+proof
+  @generalize-a |
+    fix a: Grp {
+      @inv-left |
+        forall g: Grp; op(inverse(g), g) = E
+        [by axiom grpInverseLeft]
+      @id-left |
+        forall g: Grp; op(E, g) = g
+        [by axiom grpIdentityLeft]
+      @assoc-law |
+        forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
+        [by axiom grpAssoc]
+      @ia-is-E |
+        op(inverse(a), a) = E
+        [by forall_elim(a) inv-left]
+      @idAtai |
+        op(E, op(a, inverse(a))) = op(a, inverse(a))
+        [by forall_elim(op(a, inverse(a))) id-left]
+      @ai-eq-e-ai |
+        op(a, inverse(a)) = op(E, op(a, inverse(a)))
+        [by symmetry idAtai]
+      @invi-i-is-E |
+        op(inverse(inverse(a)), inverse(a)) = E
+        [by forall_elim(inverse(a)) inv-left]
+      @E-is-invi-i |
+        E = op(inverse(inverse(a)), inverse(a))
+        [by symmetry invi-i-is-E]
+      @ai-eq-grouped |
+        op(a, inverse(a)) = op(op(inverse(inverse(a)), inverse(a)), op(a, inverse(a)))
+        [by rewrite E-is-invi-i ai-eq-e-ai]
+      @assoc1 |
+        op(op(inverse(inverse(a)), inverse(a)), op(a, inverse(a))) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
+        [by forall_elim(inverse(inverse(a)), inverse(a), op(a, inverse(a))) assoc-law]
+      @ai-eq-1 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
+        [by rewrite assoc1 ai-eq-grouped]
+      @assoc2 |
+        op(op(inverse(a), a), inverse(a)) = op(inverse(a), op(a, inverse(a)))
+        [by forall_elim(inverse(a), a, inverse(a)) assoc-law]
+      @inner-flip |
+        op(inverse(a), op(a, inverse(a))) = op(op(inverse(a), a), inverse(a))
+        [by symmetry assoc2]
+      @ai-eq-2 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), op(op(inverse(a), a), inverse(a)))
+        [by rewrite inner-flip ai-eq-1]
+      @ai-eq-3 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), op(E, inverse(a)))
+        [by rewrite ia-is-E ai-eq-2]
+      @Ei-is-i |
+        op(E, inverse(a)) = inverse(a)
+        [by forall_elim(inverse(a)) id-left]
+      @ai-eq-4 |
+        op(a, inverse(a)) = op(inverse(inverse(a)), inverse(a))
+        [by rewrite Ei-is-i ai-eq-3]
+      @conclusion-ai |
+        op(a, inverse(a)) = E
+        [by rewrite invi-i-is-E ai-eq-4]
+    }
+  @conclusion |
+    forall a: Grp; op(a, inverse(a)) = E
+    [by forall_intro generalize-a]
+qed
+
+theorem grpIdentityRight: forall a: Grp; op(a, E) = a
+proof
+  @generalize-a |
+    fix a: Grp {
+      @inv-left |
+        forall g: Grp; op(inverse(g), g) = E
+        [by axiom grpInverseLeft]
+      @inv-right |
+        forall g: Grp; op(g, inverse(g)) = E
+        [by theorem grpInverseRight]
+      @id-left |
+        forall g: Grp; op(E, g) = g
+        [by axiom grpIdentityLeft]
+      @assoc-law |
+        forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
+        [by axiom grpAssoc]
+      @ia-is-E |
+        op(inverse(a), a) = E
+        [by forall_elim(a) inv-left]
+      @E-is-ia |
+        E = op(inverse(a), a)
+        [by symmetry ia-is-E]
+      @reflAE |
+        op(a, E) = op(a, E)
+        [by reflexivity]
+      @aE-eq-1 |
+        op(a, E) = op(a, op(inverse(a), a))
+        [by rewrite E-is-ia reflAE]
+      @assoc1 |
+        op(op(a, inverse(a)), a) = op(a, op(inverse(a), a))
+        [by forall_elim(a, inverse(a), a) assoc-law]
+      @flip1 |
+        op(a, op(inverse(a), a)) = op(op(a, inverse(a)), a)
+        [by symmetry assoc1]
+      @aE-eq-2 |
+        op(a, E) = op(op(a, inverse(a)), a)
+        [by rewrite flip1 aE-eq-1]
+      @aInv-is-E |
+        op(a, inverse(a)) = E
+        [by forall_elim(a) inv-right]
+      @aE-eq-3 |
+        op(a, E) = op(E, a)
+        [by rewrite aInv-is-E aE-eq-2]
+      @Ea-is-a |
+        op(E, a) = a
+        [by forall_elim(a) id-left]
+      @conclusion-aE |
+        op(a, E) = a
+        [by rewrite Ea-is-a aE-eq-3]
+    }
+  @conclusion |
+    forall a: Grp; op(a, E) = a
+    [by forall_intro generalize-a]
+qed
 
 // Two parent-group THEOREMS a subgroup-specific proof cites, proved from the grp*
 // axioms (not postulated). `inverseUnique` → `invInvolution` (the double-inverse law).
@@ -80,7 +200,7 @@ proof
                 [by rewrite ab-is-E b-is-inva-ab]
               @id-right |
                 forall g: Grp; op(g, E) = g
-                [by axiom grpIdentityRight]
+                [by theorem grpIdentityRight]
               @inva-E-is-inva |
                 op(inverse(a), E) = inverse(a)
                 [by forall_elim(inverse(a)) id-right]
@@ -197,7 +317,7 @@ theorem opIdentityRight: forall a: Sub; op(a, E) = a
 proof
   @grp-law |
     forall a: Grp; op(a, E) = a
-    [by axiom grpIdentityRight]
+    [by theorem grpIdentityRight]
   @generalize-a |
     fix p: Sub {
       @conclusion-at-p |
@@ -229,7 +349,7 @@ theorem opInverseRight: forall a: Sub; op(a, inverse(a)) = E
 proof
   @grp-law |
     forall a: Grp; op(a, inverse(a)) = E
-    [by axiom grpInverseRight]
+    [by theorem grpInverseRight]
   @generalize-a |
     fix p: Sub {
       @conclusion-at-p |
@@ -323,7 +443,7 @@ proof
         [by modus_ponens self-divide-in-subset-if-member member-in-subset]
       @inverse-law |
         forall a: Grp; op(a, inverse(a)) = E
-        [by axiom grpInverseRight]
+        [by theorem grpInverseRight]
       @self-divide-is-identity |
         op(g, inverse(g)) = E
         [by forall_elim(g) inverse-law]

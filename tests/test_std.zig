@@ -16,9 +16,6 @@ pub fn addTests(
     // the standard library must check
     ctx.ok(&.{ "check", "std/peano.bpa" }, "OK: 48 declarations, 17 theorems proven\n");
 
-    // the standard library is accelerated-free, forever
-    ctx.ok(&.{ "check", "std/peano.bpa" }, "OK: 48 declarations, 17 theorems proven\n");
-
     // the order theory + strong induction, split into its own layer; proven,
     // and --recursive re-verifies the imported peano proofs too
     ctx.ok(&.{ "check", "std/peano-ordering.bpa" }, "OK: 117 declarations, 38 theorems proven\n");
@@ -58,25 +55,23 @@ pub fn addTests(
     // abstract divisibility theory via `model IntegerDivisibility`.
     ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 103 declarations, 22 theorems proven\n");
 
-    // the group theory (std/group.bpa): the 5 group axioms + an opt-in
-    // `opCommutative`, and the 10 basic-property theorems (identityUnique,
-    // inverseUnique, invProduct, cancelLeft, …) proved from the axioms alone.
-    // The AATA transcription (aata/3.2-groups.md) aliases these under book
-    // notation; the checked proofs live here.
-    ctx.ok(&.{ "check", "std/group.bpa" }, "OK: 20 declarations, 10 theorems proven\n");
+    // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
+    // + LEFT inverse) + an opt-in `opCommutative`; the right-sided laws and the
+    // basic-property theorems (identityUnique, inverseUnique, invProduct, cancelLeft,
+    // …) are proved from those axioms alone. aata/3.2-groups.md aliases these.
+    ctx.ok(&.{ "check", "std/group.bpa" }, "OK: 20 declarations, 12 theorems proven\n");
 
     // group powers (std/group-power.bpa): g^n over a Nat exponent, layered over
     // std/group.bpa + std/peano.bpa (keeping the core group theory import-free).
     // Defines pow(g,n) recursively and proves the exponent-addition law
     // powAdd: pow(g, m+n) = op(pow(g,m), pow(g,n)) by induction on n.
-    ctx.ok(&.{ "check", "std/group-power.bpa" }, "OK: 87 declarations, 28 theorems proven\n");
+    ctx.ok(&.{ "check", "std/group-power.bpa" }, "OK: 87 declarations, 30 theorems proven\n");
 
-    // subgroups (std/subgroup.bpa, Judson §3.3): membership predicate inSubgroup
-    // characterized by the three subgroup-criterion conditions; proves the one-step
-    // test (both directions: forward subgroupClosedDivide, converse the three
-    // conditions from nonempty + divide-closed) and that the intersection of two
-    // subgroups is a subgroup. Layered on std/group.bpa; accelerated-free.
-    ctx.ok(&.{ "check", "std/subgroup.bpa" }, "OK: 38 declarations, 15 theorems proven\n");
+    // subgroups (std/subgroup.bpa, Judson §3.3): a STANDALONE theory (declares its own
+    // parent group) — the subgroup criteria, the one-step test (both directions), the
+    // intersection, and the five group axioms proven on the subgroup (what a group-
+    // model @-projects). Authored to plug into std/group.bpa via a model stack.
+    ctx.ok(&.{ "check", "std/subgroup.bpa" }, "OK: 38 declarations, 17 theorems proven\n");
 
     // the ring theory (std/ring.bpa): an additive abelian group + associative,
     // distributing multiplication. Its additive half MODELS std/group.bpa (a
@@ -86,7 +81,7 @@ pub fn addTests(
     // through the AdditiveGroup model rather than re-deriving them. (15 = the
     // imported group corpus (10) + ring's 5 elementary theorems; the synthetic
     // materialized theorems are suppressed.)
-    ctx.ok(&.{ "check", "std/ring.bpa" }, "OK: 42 declarations, 15 theorems proven\n");
+    ctx.ok(&.{ "check", "std/ring.bpa" }, "OK: 42 declarations, 17 theorems proven\n");
 
     // ℤ as a thin model of the ring theory (std/integer-ring-model.bpa): the
     // THREE-LEVEL chain ℤ → ring → group. `model IntegerRing = Int` discharges
@@ -95,7 +90,7 @@ pub fn addTests(
     // — no binder-order adapters needed), and negMulNeg ((-a)(-b)=ab, new to ℤ)
     // transfers — its ring proof having itself transferred group.invInvolution
     // through ring's AdditiveGroup model, re-materialized here.
-    ctx.ok(&.{ "check", "std/integer-ring-model.bpa" }, "OK: 121 declarations, 32 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-ring-model.bpa" }, "OK: 121 declarations, 34 theorems proven\n");
 
     // the set theory (std/set.bpa): the membership axioms + extensionality, and
     // the 19 set-algebra identities (idempotence, identity, associativity,
