@@ -147,6 +147,46 @@ pub fn addTests(
     // through a `@`-projection → cite the mapped discharge, not materialize a proof).
     ctx.ok(&.{ "check", "tests/cases/model_subgroup_transfer.bpa" }, "OK: 90 declarations, 40 theorems proven\n");
 
+    // ACCELERANT-THROUGH-GUARDED-MODEL boundary (RED characterization, one per
+    // accelerant). Transferring a source theorem whose proof USES an accelerant
+    // through a GUARDED model currently fails: the accelerant builds its synthetic
+    // theorem at elaboration in the SOURCE space, blind to the model, so guarded
+    // re-emission (which inserts `assume guard(a)` blocks) escapes an eigenvariable
+    // from the synthetic theorem's citation. These pin the current failure; each
+    // flips to a passing check once accelerants emit model-mangled synthetics.
+    // (Counters #NN/$NN are stable per-file elaboration-order IDs.)
+    ctx.fail(&.{ "check", "tests/cases/model_accel_simplify.bpa" },
+        \\tests/cases/model_accel_simplify.bpa:80:26: error: eigenvariable 'b' occurs free in step 'simplify#56' outside the subproof; rename it
+        \\tests/cases/model_accel_simplify.bpa:80:26: error: guarded model transfer of 'plusZeroRight' does not kernel-check under the interpretation
+        \\
+    );
+    ctx.fail(&.{ "check", "tests/cases/model_accel_assoc.bpa" },
+        \\tests/cases/model_accel_assoc.bpa:45:26: error: eigenvariable 'c' occurs free in step 'simplify#82' outside the subproof; rename it
+        \\tests/cases/model_accel_assoc.bpa:45:26: error: guarded model transfer of 'assoc$47' does not kernel-check under the interpretation
+        \\
+    );
+    ctx.fail(&.{ "check", "tests/cases/model_accel_assoc_commut.bpa" },
+        \\tests/cases/model_accel_assoc_commut.bpa:51:26: error: eigenvariable 'c' occurs free in step 'simplify#101' outside the subproof; rename it
+        \\tests/cases/model_accel_assoc_commut.bpa:51:26: error: guarded model transfer of 'assoc_commut$61' does not kernel-check under the interpretation
+        \\
+    );
+    ctx.fail(&.{ "check", "tests/cases/model_accel_tautology.bpa" }, "tests/cases/model_accel_tautology.bpa:69:26: error: guarded model materialization does not yet handle this proof shape\n");
+    ctx.fail(&.{ "check", "tests/cases/model_accel_polynomial.bpa" },
+        \\tests/cases/model_accel_polynomial.bpa:100:26: error: eigenvariable 'b' occurs free in step 'simplify#151' outside the subproof; rename it
+        \\tests/cases/model_accel_polynomial.bpa:100:26: error: guarded model transfer of 'polynomial$97' does not kernel-check under the interpretation
+        \\
+    );
+    ctx.fail(&.{ "check", "tests/cases/model_accel_arithmetic.bpa" },
+        \\tests/cases/model_accel_arithmetic.bpa:62:26: error: eigenvariable 'b' occurs free in step 'simplify#32' outside the subproof; rename it
+        \\tests/cases/model_accel_arithmetic.bpa:62:26: error: guarded model transfer of 'arithmetic$19' does not kernel-check under the interpretation
+        \\
+    );
+    ctx.fail(&.{ "check", "tests/cases/model_accel_ext.bpa" },
+        \\tests/cases/model_accel_ext.bpa:62:26: error: eigenvariable 'f' occurs free in step 'simplify#90' outside the subproof; rename it
+        \\tests/cases/model_accel_ext.bpa:62:26: error: guarded model transfer of 'ext$64' does not kernel-check under the interpretation
+        \\
+    );
+
     // PREDICATED SORT `sort H = G where inH` — binder positions: ∀/∃
     // inject the guard (implies/and), `fix h: H` carries it on the block (surfaced
     // by `[by predicate <lbl>]`, made the forall_intro antecedent), `unpack h: H`

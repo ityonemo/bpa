@@ -1,0 +1,70 @@
+// MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `tautology` (GUARDED model).
+//
+// A source theorem proved with `tautology` (a propositional consequence over
+// source predicates) is transferred through a GUARDED model (carrier restricted
+// to `good`). The transfer must materialize a MODEL-MANGLED, relativized
+// synthetic propositional certificate for the step — but today the accelerant
+// builds its synthetic theorem at elaboration in the SOURCE space, blind to the
+// model, so the guarded re-emission escapes an eigenvariable.
+//
+// RED: this is the characterization test for making accelerants model-aware.
+
+sort Src
+pred red(x: Src)
+pred blue(x: Src)
+axiom redImpliesBlue: forall x: Src; red(x) -> blue(x)
+
+// proved with `tautology` — a per-element propositional consequence. Fixing x,
+// tautology discharges `red(x) -> blue(x)` given the specialized premise; the
+// quantified form drives it under a fix-block.
+theorem redsAreBlue: forall x: Src; red(x) -> blue(x)
+proof
+  @generalize-x |
+    fix x: Src {
+      @reds-are-blue |
+        forall y: Src; red(y) -> blue(y)
+        [by axiom redImpliesBlue]
+      @red-implies-blue-at-x |
+        red(x) -> blue(x)
+        [by forall_elim(x) reds-are-blue]
+      @given-x-is-red |
+        assume red(x) {
+          @x-is-red |
+            red(x)
+            [by hypothesis given-x-is-red]
+          @x-is-blue |
+            blue(x)
+            [by tautology red-implies-blue-at-x x-is-red]
+        }
+      @x-red-implies-x-blue |
+        red(x) -> blue(x)
+        [by implies_intro given-x-is-red]
+    }
+  @conclusion |
+    forall x: Src; red(x) -> blue(x)
+    [by forall_intro generalize-x]
+qed
+
+// a concrete carrier with a membership guard `good`.
+sort Tgt
+pred good(x: Tgt)
+pred tred(x: Tgt)
+pred tblue(x: Tgt)
+sort GoodTgt = Tgt where good
+// closure of the guard is vacuous here (no constructors), so the ONLY remaining
+// transfer failure is the accelerant.
+axiom tredImpliesTblue: forall x: Tgt; tred(x) -> tblue(x)
+
+model SrcIsGood {
+  Src: GoodTgt
+  red: tred
+  blue: tblue
+  redImpliesBlue: tredImpliesTblue
+}
+
+theorem transferred: forall x: GoodTgt; tred(x) -> tblue(x)
+proof
+  @conclusion |
+    forall x: GoodTgt; tred(x) -> tblue(x)
+    [by model(SrcIsGood) redsAreBlue]
+qed

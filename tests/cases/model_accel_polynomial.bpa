@@ -1,0 +1,101 @@
+// MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `polynomial` (GUARDED model).
+//
+// A source theorem proved with `polynomial` (a commutative-semiring identity) is
+// transferred through a GUARDED model (carrier restricted to `good`). The
+// transfer must materialize a MODEL-MANGLED, relativized synthetic ring-rewrite
+// certificate for the step — but today the accelerant builds its synthetic
+// theorem at elaboration in the SOURCE space, blind to the model, so the guarded
+// re-emission escapes an eigenvariable.
+//
+// The source is a self-contained semiring: `polynomial` resolves add/mul and the
+// ring lemmas (distribution, identities, assoc/comm/swap) by their well-known
+// names from local scope, no theory arg needed.
+//
+// RED: this is the characterization test for making accelerants model-aware.
+
+sort Src
+const ZERO: Src
+const ONE: Src
+func add(a: Src, b: Src): Src
+func mul(a: Src, b: Src): Src
+axiom addIsAssociative: forall a, b, c: Src; add(add(a, b), c) = add(a, add(b, c))
+axiom addIsCommutative: forall a, b: Src; add(a, b) = add(b, a)
+axiom addLeftSwap: forall x, y, r: Src; add(x, add(y, r)) = add(y, add(x, r))
+axiom mulIsAssociative: forall a, b, c: Src; mul(mul(a, b), c) = mul(a, mul(b, c))
+axiom mulIsCommutative: forall a, b: Src; mul(a, b) = mul(b, a)
+axiom mulLeftSwap: forall x, y, r: Src; mul(x, mul(y, r)) = mul(y, mul(x, r))
+axiom mulAddDistribLeft: forall a, b, c: Src; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
+axiom mulAddDistribRight: forall a, b, c: Src; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
+axiom addZeroLeft: forall b: Src; add(ZERO, b) = b
+axiom addZeroRight: forall n: Src; add(n, ZERO) = n
+axiom mulZeroLeft: forall b: Src; mul(ZERO, b) = ZERO
+axiom mulZeroRight: forall n: Src; mul(n, ZERO) = ZERO
+axiom mulOneLeft: forall n: Src; mul(ONE, n) = n
+axiom mulOneRight: forall n: Src; mul(n, ONE) = n
+
+// proved with `polynomial` — distribute one product over a sum and reorder.
+theorem distributeAndReorder: forall a, b, c: Src;
+  mul(a, add(b, c)) = add(mul(c, a), mul(b, a))
+proof
+  @conclusion |
+    forall a, b, c: Src; mul(a, add(b, c)) = add(mul(c, a), mul(b, a))
+    [by polynomial_quantified]
+qed
+
+// a concrete carrier with a membership guard `good`.
+sort Tgt
+const TZERO: Tgt
+const TONE: Tgt
+func tadd(a: Tgt, b: Tgt): Tgt
+func tmul(a: Tgt, b: Tgt): Tgt
+pred good(x: Tgt)
+sort GoodTgt = Tgt where good
+// closure of the guard, so the ONLY remaining transfer failure is the accelerant.
+axiom goodZero: good(TZERO)
+axiom goodOne: good(TONE)
+axiom goodAddClosed: forall a, b: Tgt; good(a) -> good(b) -> good(tadd(a, b))
+axiom goodMulClosed: forall a, b: Tgt; good(a) -> good(b) -> good(tmul(a, b))
+axiom taddIsAssociative: forall a, b, c: Tgt; tadd(tadd(a, b), c) = tadd(a, tadd(b, c))
+axiom taddIsCommutative: forall a, b: Tgt; tadd(a, b) = tadd(b, a)
+axiom taddLeftSwap: forall x, y, r: Tgt; tadd(x, tadd(y, r)) = tadd(y, tadd(x, r))
+axiom tmulIsAssociative: forall a, b, c: Tgt; tmul(tmul(a, b), c) = tmul(a, tmul(b, c))
+axiom tmulIsCommutative: forall a, b: Tgt; tmul(a, b) = tmul(b, a)
+axiom tmulLeftSwap: forall x, y, r: Tgt; tmul(x, tmul(y, r)) = tmul(y, tmul(x, r))
+axiom tmulAddDistribLeft: forall a, b, c: Tgt; tmul(a, tadd(b, c)) = tadd(tmul(a, b), tmul(a, c))
+axiom tmulAddDistribRight: forall a, b, c: Tgt; tmul(tadd(a, b), c) = tadd(tmul(a, c), tmul(b, c))
+axiom taddZeroLeft: forall b: Tgt; tadd(TZERO, b) = b
+axiom taddZeroRight: forall n: Tgt; tadd(n, TZERO) = n
+axiom tmulZeroLeft: forall b: Tgt; tmul(TZERO, b) = TZERO
+axiom tmulZeroRight: forall n: Tgt; tmul(n, TZERO) = TZERO
+axiom tmulOneLeft: forall n: Tgt; tmul(TONE, n) = n
+axiom tmulOneRight: forall n: Tgt; tmul(n, TONE) = n
+
+model SrcIsGood {
+  Src: GoodTgt
+  ZERO: TZERO
+  ONE: TONE
+  add: tadd
+  mul: tmul
+  addIsAssociative: taddIsAssociative
+  addIsCommutative: taddIsCommutative
+  addLeftSwap: taddLeftSwap
+  mulIsAssociative: tmulIsAssociative
+  mulIsCommutative: tmulIsCommutative
+  mulLeftSwap: tmulLeftSwap
+  mulAddDistribLeft: tmulAddDistribLeft
+  mulAddDistribRight: tmulAddDistribRight
+  addZeroLeft: taddZeroLeft
+  addZeroRight: taddZeroRight
+  mulZeroLeft: tmulZeroLeft
+  mulZeroRight: tmulZeroRight
+  mulOneLeft: tmulOneLeft
+  mulOneRight: tmulOneRight
+}
+
+theorem transferred: forall a, b, c: GoodTgt;
+  tmul(a, tadd(b, c)) = tadd(tmul(c, a), tmul(b, a))
+proof
+  @conclusion |
+    forall a, b, c: GoodTgt; tmul(a, tadd(b, c)) = tadd(tmul(c, a), tmul(b, a))
+    [by model(SrcIsGood) distributeAndReorder]
+qed

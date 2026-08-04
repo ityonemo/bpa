@@ -1,0 +1,63 @@
+// MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `arithmetic` (GUARDED model).
+//
+// A source theorem proved with `arithmetic` (a concrete linear computation,
+// certified strictly by the equation certifier replaying the recursion facts) is
+// transferred through a GUARDED model (carrier restricted to `good`). The
+// transfer must materialize a MODEL-MANGLED, relativized synthetic certificate
+// for the step — but today the accelerant builds its synthetic theorem at
+// elaboration in the SOURCE space, blind to the model, so the guarded re-emission
+// escapes an eigenvariable.
+//
+// The source is a self-contained Peano fragment: `arithmetic` recognizes
+// ZERO/succ/add by name and certifies the ground equation via the recursion
+// axioms in scope.
+//
+// RED: this is the characterization test for making accelerants model-aware.
+
+sort Src
+const ZERO: Src
+func succ(n: Src): Src
+func add(a: Src, b: Src): Src
+axiom addZeroLeft: forall b: Src; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Src; add(succ(a), b) = succ(add(a, b))
+
+// proved with `arithmetic` — a concrete ground sum, certified by the equation
+// certifier replaying the recursion facts (the certifiable fragment).
+theorem twoPlusThree:
+  add(succ(succ(ZERO)), succ(succ(succ(ZERO)))) = succ(succ(succ(succ(succ(ZERO)))))
+proof
+  @conclusion |
+    add(succ(succ(ZERO)), succ(succ(succ(ZERO)))) = succ(succ(succ(succ(succ(ZERO)))))
+    [by arithmetic]
+qed
+
+// a concrete carrier with a membership guard `good`.
+sort Tgt
+const TZERO: Tgt
+func tsucc(n: Tgt): Tgt
+func tadd(a: Tgt, b: Tgt): Tgt
+pred good(x: Tgt)
+sort GoodTgt = Tgt where good
+// closure of the guard, so the ONLY remaining transfer failure is the accelerant.
+axiom goodZero: good(TZERO)
+axiom goodSucc: forall n: Tgt; good(n) -> good(tsucc(n))
+axiom goodAddClosed: forall a, b: Tgt; good(a) -> good(b) -> good(tadd(a, b))
+axiom taddZeroLeft: forall b: Tgt; tadd(TZERO, b) = b
+axiom taddSuccLeft: forall a, b: Tgt; tadd(tsucc(a), b) = tsucc(tadd(a, b))
+
+model SrcIsGood {
+  Src: GoodTgt
+  ZERO: TZERO
+  succ: tsucc
+  add: tadd
+  addZeroLeft: taddZeroLeft
+  addSuccLeft: taddSuccLeft
+}
+
+theorem transferred:
+  tadd(tsucc(tsucc(TZERO)), tsucc(tsucc(tsucc(TZERO)))) = tsucc(tsucc(tsucc(tsucc(tsucc(TZERO)))))
+proof
+  @conclusion |
+    tadd(tsucc(tsucc(TZERO)), tsucc(tsucc(tsucc(TZERO)))) = tsucc(tsucc(tsucc(tsucc(tsucc(TZERO)))))
+    [by model(SrcIsGood) twoPlusThree]
+qed

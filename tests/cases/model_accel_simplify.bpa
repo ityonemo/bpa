@@ -1,0 +1,81 @@
+// MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `simplify` (GUARDED model).
+//
+// A source theorem proved with `simplify` is transferred through a GUARDED model
+// (carrier restricted to `good`). The transfer must materialize a MODEL-MANGLED,
+// relativized synthetic theorem for the `simplify` step — but today the accelerant
+// builds its synthetic theorem at elaboration in the SOURCE space, blind to the
+// model, so the guarded re-emission escapes an eigenvariable.
+//
+// RED: this is the characterization test for making accelerants model-aware. When
+// the accelerant emits a model-mangled synthetic under a model materialization, this
+// flips to a passing check.
+
+sort Src
+const Z: Src
+func s(n: Src): Src
+func plus(a: Src, b: Src): Src
+axiom plusZeroLeft: forall b: Src; plus(Z, b) = b
+axiom plusSuccLeft: forall a, b: Src; plus(s(a), b) = s(plus(a, b))
+axiom srcInduction(prop: Src -> Prop):
+  prop(Z) -> (forall k: Src; prop(k) -> prop(s(k))) -> forall n: Src; prop(n)
+
+// proved with `simplify` in the inductive step.
+theorem plusZeroRight: forall n: Src; plus(n, Z) = n
+proof
+  @base |
+    plus(Z, Z) = Z
+    [by simplify plusZeroLeft]
+  @step |
+    fix k: Src {
+      @given |
+        assume plus(k, Z) = k {
+          @ih |
+            plus(k, Z) = k
+            [by hypothesis given]
+          @sc |
+            plus(s(k), Z) = s(k)
+            [by simplify plusSuccLeft ih]
+        }
+      @d |
+        plus(k, Z) = k -> plus(s(k), Z) = s(k)
+        [by implies_intro given]
+    }
+  @stepall |
+    forall k: Src; plus(k, Z) = k -> plus(s(k), Z) = s(k)
+    [by forall_intro step]
+  @conclusion |
+    forall n: Src; plus(n, Z) = n
+    [by instantiate srcInduction((fun k: Src => plus(k, Z) = k)) base stepall]
+qed
+
+// a concrete carrier with a membership guard `good`.
+sort Tgt
+const TZ: Tgt
+func ts(n: Tgt): Tgt
+func tplus(a: Tgt, b: Tgt): Tgt
+pred good(x: Tgt)
+sort GoodTgt = Tgt where good
+// closure of the guard, so the ONLY remaining transfer failure is the accelerant.
+axiom goodZero: good(TZ)
+axiom goodSucc: forall n: Tgt; good(n) -> good(ts(n))
+axiom tplusZeroLeft: forall b: Tgt; tplus(TZ, b) = b
+axiom tplusSuccLeft: forall a, b: Tgt; tplus(ts(a), b) = ts(tplus(a, b))
+axiom goodInduction(prop: Tgt -> Prop):
+  prop(TZ) -> (forall k: Tgt; good(k) -> prop(k) -> prop(ts(k))) -> forall n: Tgt; good(n) -> prop(n)
+
+model SrcIsGood {
+  Src: GoodTgt
+  Z: TZ
+  s: ts
+  plus: tplus
+  plusZeroLeft: tplusZeroLeft
+  plusSuccLeft: tplusSuccLeft
+  srcInduction: goodInduction
+}
+
+theorem transferred: forall n: GoodTgt; tplus(n, TZ) = n
+proof
+  @conclusion |
+    forall n: GoodTgt; tplus(n, TZ) = n
+    [by model(SrcIsGood) plusZeroRight]
+qed
