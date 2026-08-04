@@ -44,21 +44,13 @@ pub fn addTests(
     // equivalence⇔partition correspondence is deferred (needs sets-of-sets).
     ctx.ok(&.{ "check", "aata/1.2.3-relations.md" }, "OK: 27 declarations, 4 theorems proven\n");
 
-    // AATA equivalence classes/partitions: the tractable heart of §1.2.3 —
-    // classes are nonempty, [x]=[y] iff x~y, and any two are equal-or-disjoint
-    // (3 theorems). The "form a partition" packaging (a set of sets) stays a
-    // `hole`, so the file needs --draft; default mode rejects it, naming the
-    // one remaining hole.
-    ctx.ok(&.{ "check", "--draft", "aata/1.2.3-partitions.md" },
-        \\OK: 95 declarations, 22 theorems proven
-        \\  — DRAFT — 1 hole(s) unfilled (aspirational; the result is conditional on them): classesCoverUniverse; re-run `bpa check` (no --draft) once filled.
-        \\
-    );
-    ctx.fail(&.{ "check", "aata/1.2.3-partitions.md" },
-        \\error: 1 hole(s) remain (default mode rejects holes; use --draft while filling them):
-        \\  - classesCoverUniverse  (aata/1.2.3-partitions.md:596)
-        \\
-    );
+    // AATA equivalence classes/partitions (§1.2.3): classes are nonempty, [x]=[y]
+    // iff x~y, any two are equal-or-disjoint, AND the classes FORM A PARTITION —
+    // covers the universe (⋃[x] = universe) and are pairwise-disjoint, discharging
+    // isPartition. The partition packaging (a set of sets) is now stateable via
+    // std/collection.bpa (a Collection = a set of Sets, modeling std/set.bpa one
+    // level up). Fully proven, no holes.
+    ctx.ok(&.{ "check", "aata/1.2.3-partitions.md" }, "OK: 145 declarations, 28 theorems proven\n");
 
     // AATA Chapter 2 "The Integers": §2.1 Mathematical Induction, fully proven —
     // the base case AND the ∀n≥0 3|(4ⁿ−1) nonneg-induction (its inductive step

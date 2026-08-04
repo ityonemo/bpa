@@ -101,6 +101,14 @@ pub fn addTests(
     // `model` and inherit. The AATA transcription (aata/1.2.1-sets.md) aliases these.
     ctx.ok(&.{ "check", "std/set.bpa" }, "OK: 35 declarations, 19 theorems proven\n");
 
+    // collections (std/collection.bpa): sets of sets, one level up. A Collection MODELS
+    // std/set.bpa with set.Element -> Set, set.Set -> Collection, so the whole set
+    // algebra transfers onto collections for free (contains = member one level up).
+    // Plus the CROSS-LEVEL operations set.bpa lacks — bigUnion/bigIntersection
+    // (collapse a collection to a set), a universe, and the partition apparatus
+    // (covers / pairwiseDisjoint / isPartition) a quotient needs.
+    ctx.ok(&.{ "check", "std/collection.bpa" }, "OK: 68 declarations, 22 theorems proven\n");
+
     // the function theory (std/function.bpa): axioms only, no theorems — a
     // direct check materializes nothing and exits nonzero with a warning.
     ctx.okCode(&.{ "check", "std/function.bpa" },
