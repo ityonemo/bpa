@@ -50,6 +50,14 @@ pub fn addTests(
     // split/antisymmetric. subSelf/subAddCancel from the inverse law, no induction.
     ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 125 declarations, 38 theorems proven\n");
 
+    // strong induction + the Principle of Well-Ordering over the NONNEGATIVE
+    // integers (std/integer-wellordering.bpa), layered above the ℤ order (it can't
+    // live in integer-nonneg, which sits below the order in the import DAG).
+    // nonnegStrongInduction (course-of-values) and nonnegWellOrdering (every
+    // nonempty nonneg subset has a least element) — nonneg-guarded ports of the
+    // peano-ordering proofs; the Division Algorithm's existence half runs on these.
+    ctx.ok(&.{ "check", "std/integer-wellordering.bpa" }, "OK: 156 declarations, 42 theorems proven\n");
+
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
     // and the divides predicate; dividesRefl/dividesMul/dividesAdd proved once,
     // over the abstract carrier. ℕ and ℤ `model` this to inherit them.
