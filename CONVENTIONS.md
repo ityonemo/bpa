@@ -145,6 +145,40 @@ directly, with no binder-reordering adapter theorem in between.
 b, c'`). Run it on new `.bpa`; it also reads `.md` (only source-agnostic rules
 like this one apply to a literate transliteration — its naming mirrors the book).
 
+## Left-axiomatic — pick the LEFT law as the primitive
+
+When a two-sided/symmetric operation has a **Left/Right pair** of laws and one
+side is **derivable from the other**, make the **LEFT** law the axiom and prove
+the RIGHT law as a theorem. This is the convention across `std`:
+
+- **Identity / inverse** (`op(E, a) = a` vs `op(a, E) = a`): `group.bpa`,
+  `subgroup.bpa`, `ring.bpa` axiomatize `opIdentityLeft` / `addZeroLeft` /
+  `addNegLeft` and *prove* the `…Right` versions (via associativity +
+  commutativity). Matches conventional algebra: `ea = a`, `a⁻¹a = e`.
+- **Recursion** (which argument a recursive `func` recurses on): `peano.bpa` and
+  `integer.bpa` recurse on the **first** argument — `add(ZERO, b) = b`,
+  `add(succ(a), b) = succ(add(a, b))` are the axioms; `addZeroRight` /
+  `addSuccRight` are theorems proved by induction. For a recursive definition,
+  "left-axiomatic" means the recursion equations themselves are left-recursive:
+  ZERO/`succ`/`prev` sit in the first slot, and the RIGHT-recursion mirrors are
+  bootstrapped from them. (For `mul`, note the extra summand flips with the
+  side: left `mul(succ(a), b) = add(mul(a, b), b)` adds the *second* factor,
+  where the right mirror `mul(a, succ(b)) = add(mul(a, b), a)` adds the first.)
+
+Why LEFT: it is the foundational choice (`peano.bpa` sets it, everything above
+inherits), it matches the textbook statements, and one primitive side keeps the
+axiom set minimal — a `model` that discharges the theory then supplies only the
+LEFT laws and the RIGHT laws materialize for free (see `ring.bpa`'s
+`AdditiveGroup`, which maps `opIdentityLeft`/`opInverseLeft` only).
+
+**Exception — genuinely independent sides.** The rule applies only when one side
+is *derivable*. When the Left and Right laws are **independent facts**, both stay
+axioms: `function.bpa`'s `inverseLeft`/`inverseRight` (a map can have a
+one-sided inverse without the other) and `peano-subtraction.bpa`'s
+`subZeroLeft`/`subZeroRight` (`sub(ZERO, a) = ZERO` vs `sub(a, ZERO) = a`, not
+mirror images since truncated subtraction is not commutative) are correctly
+two-axiom pairs. Don't collapse a pair you cannot actually derive.
+
 ## Labels
 
 **The dump test.** The label column IS the proof outline: stripping every
