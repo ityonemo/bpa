@@ -251,7 +251,7 @@ theory proves becomes citable at your sort.
 ```bpa
 import group <<< "std/group.bpa"
 
-model AdditiveGroup = Rat {
+model AdditiveGroup {
   group.Grp:      Rat               // carrier sort
   group.E:        ZERO              // primitives: source symbol : local symbol
   group.op:       add
@@ -261,10 +261,17 @@ model AdditiveGroup = Rat {
 }
 ```
 
-Read every line **`source : target`** — the abstract theory's entity on the
-left, the local thing that plays it on the right. Primitive lines map symbols;
-axiom lines discharge an obligation by naming a local axiom or theorem whose
-formula, seen through the mapping, *is* that axiom.
+There is **no carrier/guard header** — a `model` is just its mappings. Read every
+line **`source : target`** — the abstract theory's entity on the left, the local
+thing that plays it on the right. Primitive lines map symbols; axiom lines discharge
+an obligation by naming a local axiom or theorem whose formula, seen through the
+mapping, *is* that axiom.
+
+A model is **GUARDED** (relativized to a subset) exactly when a sort-mapping's
+target is a **predicated sort** — e.g. `group.Grp: GrpH` where
+`sort GrpH = Grp where inH`. That mapping supplies the guard: the transferred
+theorems gain an `inH(x) ->` at each carrier binder, and each closure obligation is
+discharged from the mapped facts.
 
 A model **may leave some axioms unmapped** — at the prover's risk. In default
 (strict) mode, citing a transferred theorem whose proof depends on an unmapped

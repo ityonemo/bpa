@@ -81,6 +81,14 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
     return .{ .theorem_ref = .{ .stmt = mat_id, .loc = loc } };
 }
 
+/// Public entry for a `<model>@<projected>` MAPPING VALUE (Level 1): materialize
+/// `source` (a theorem in `model`'s source theory) transferred through `model`, and
+/// return the synthetic statement — the obligation's discharge. Thin wrapper over
+/// materializeModelTheorem so the elaborator (decl-side) can reach it.
+pub fn materializeThrough(self: *Elaborator, model: *Model, source: StatementId, loc: u32) ElabError!StatementId {
+    return materializeModelTheorem(self, model, source, loc);
+}
+
 /// Materialize a source theorem's proof, remapped through `model`, as a
 /// synthetic kernel-checked theorem `Model$thm` in the current file — then
 /// return its StatementId. Recursively materializes any source theorem the

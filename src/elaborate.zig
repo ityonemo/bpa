@@ -566,26 +566,8 @@ pub const Elaborator = struct {
     fn elaborateModel(self: *Elaborator, d: anytype) ElabError!void {
         const name = try self.internTok(d.name);
         try self.checkFreshName(name, d.name);
-
-        // carrier: a local sort.
-        const carrier = self.env.findSort(self.file, try self.internTok(d.carrier)) orelse
-            return self.fail(d.carrier.start, "model carrier '{s}' is not a sort in scope", .{self.text(d.carrier)});
-
-        // optional guard: a local UNARY predicate over the (target) carrier. Its
-        // Guard.carrier must be the SOURCE carrier sort (remapFormula keys the
-        // relativization on the pre-remap binder sort — term.zig), which we only
-        // know once the sort mapping is built, so capture the pred id here and
-        // assemble the Guard after the mappings below.
-        var guard_pred: ?term.SymId = null;
-        if (d.guard) |g| {
-            const gsym_id = self.env.findSym(self.file, try self.internTok(g)) orelse
-                return self.fail(g.start, "model guard '{s}' is not a predicate in scope", .{self.text(g)});
-            const gsym = self.env.sym(gsym_id);
-            if (gsym.kind != .pred or gsym.arg_sorts.len != 1 or gsym.arg_sorts[0] != carrier) {
-                return self.fail(g.start, "model guard '{s}' must be a unary predicate over the carrier sort", .{self.text(g)});
-            }
-            guard_pred = gsym_id;
-        }
+        // No carrier/guard header — both are inferred from the mappings after they
+        // are built (the guard from a predicated TARGET sort, below).
 
         var sort_map: std.ArrayList(term.Pool.Remap.SortPair) = .empty;
         var sym_map: std.ArrayList(term.Pool.Remap.SymPair) = .empty;
@@ -614,11 +596,15 @@ pub const Elaborator = struct {
                     return self.fail(m.target.start, "'{s}' is not a function/predicate", .{self.text(m.target)});
                 try sym_map.append(self.arena, .{ .from = from_sym, .to = to_sym });
             } else if (self.env.findStatementId(src.file, src.base)) |from_stmt| {
-                // axiom obligation: the local fact `to_stmt` discharges the
-                // source axiom `from_stmt`. Strict materialization repoints an
-                // `axiom_ref` to the source axiom through this map.
-                const to_stmt = self.env.findStatementId(tgt.file, tgt.base) orelse
-                    return self.fail(m.target.start, "'{s}' is not an axiom/theorem", .{self.text(m.target)});
+                // axiom obligation: the local fact `to_stmt` discharges the source
+                // axiom `from_stmt`. `<model>@<projected>` (the projection form)
+                // discharges it by transferring `projected` THROUGH the named model
+                // and binding that materialized statement; otherwise a plain local fact.
+                const to_stmt = if (m.projection) |proj|
+                    try self.resolveModelProjection(m.target, proj)
+                else
+                    self.env.findStatementId(tgt.file, tgt.base) orelse
+                        return self.fail(m.target.start, "'{s}' is not an axiom/theorem", .{self.text(m.target)});
                 try stmt_map.append(self.arena, .{ .from = from_stmt, .to = to_stmt });
             } else {
                 return self.fail(m.source.start, "unknown model mapping source '{s}'", .{self.text(m.source)});
@@ -627,19 +613,20 @@ pub const Elaborator = struct {
 
         const sorts = try sort_map.toOwnedSlice(self.arena);
 
-        // assemble the guard now that the sort mapping is known: Guard.carrier is
-        // the SOURCE sort that maps to the target carrier (relativization keys on
-        // the pre-remap binder sort), while Guard.pred is the target predicate.
+        // INFER the guard from the mappings: the model is guarded exactly when a
+        // sort-mapping's TARGET is a PREDICATED sort (`group.Grp: H`, `H = Grp where
+        // inH`). That mapping supplies both `Guard.carrier` (the SOURCE sort — the
+        // relativization keys on the pre-remap binder sort) and `Guard.pred` (the
+        // target sort's qualifier). At most one such mapping is expected.
         var guard: ?term.Pool.Remap.Guard = null;
-        if (guard_pred) |gp| {
-            var source_carrier: ?SortId = null;
-            for (sorts) |p| {
-                if (p.to == carrier) source_carrier = p.from;
-            }
-            const sc = source_carrier orelse
-                return self.fail(d.guard.?.start, "guarded model must map the source theory's carrier sort to '{s}'", .{self.text(d.carrier)});
-            guard = .{ .pred = gp, .carrier = sc };
+        for (sorts) |p| {
+            if (!self.env.isRefined(p.to)) continue;
+            const quals = self.env.qualifiersOf(self.arena, p.to) catch return error.OutOfMemory;
+            guard = .{ .pred = quals[0], .carrier = p.from };
         }
+        // the sort-map must lower predicated targets to their CARRIER for the kernel
+        // remap (H -> Grp), since the guard now carries the relativization.
+        for (sorts) |*p| p.to = self.env.carrierOf(p.to);
 
         const remap: term.Pool.Remap = .{
             .sorts = sorts,
@@ -653,6 +640,22 @@ pub const Elaborator = struct {
             .name = name,
             .stmt_map = try stmt_map.toOwnedSlice(self.arena),
         });
+    }
+
+    /// A `<model>@<projected>` mapping value: discharge an obligation by transferring
+    /// the `projected` theorem THROUGH the model named `model_tok`. Resolves the
+    /// declared model, resolves `projected` (a theorem in that model's source), and
+    /// materializes the transfer into a synthetic statement — returning its id (the
+    /// discharging `to_stmt`). This is nested-model materialization: the outer model
+    /// discharges via the inner model's reified output.
+    fn resolveModelProjection(self: *Elaborator, model_tok: lexer.Token, projected: lexer.Token) ElabError!StatementId {
+        const mname = try self.internTok(model_tok);
+        const model = self.models.getPtr(mname) orelse
+            return self.fail(model_tok.start, "'{s}' is not a declared model", .{self.text(model_tok)});
+        const proj = try self.resolveTarget(projected);
+        const source_stmt = self.env.findStatementId(proj.file, proj.base) orelse
+            return self.fail(projected.start, "'{s}' is not an axiom/theorem", .{self.text(projected)});
+        return accel_model.materializeThrough(self, model, source_stmt, projected.start);
     }
 
     // --- proof lowering: surface Fitch tree -> kernel steps + blocks ---

@@ -32,8 +32,10 @@ axiom hasIdentity: inH(E)                                       // base closure
 axiom identityLeftOnH: forall a: Grp; inH(a) -> op(E, a) = a    // relativized axiom
 
 // --- the guarded model, over the SAME carrier -------------------------------
-model SubgroupIsGroup = Grp where inH {
-  Grp: Grp
+sort GrpH = Grp where inH
+
+model SubgroupIsGroup {
+  Grp: GrpH
   opIdentityLeft: identityLeftOnH
   }
 

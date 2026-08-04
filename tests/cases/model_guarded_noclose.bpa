@@ -14,8 +14,10 @@ pred good(x: Thing)
 axiom combineZedLeftGuarded: forall a: Thing; good(a) -> combine(ZED, a) = a
 // NOTE: no `good(WOT)` fact — so discharging good(WOT) must fail cleanly.
 
-model ThingModel = Thing where good {
-  source.Carrier: Thing
+sort ThingGood = Thing where good
+
+model ThingModel {
+  source.Carrier: ThingGood
   source.UNIT: ZED
   source.op: combine
   source.opUnitLeft: combineZedLeftGuarded

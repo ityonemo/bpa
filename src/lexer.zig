@@ -240,7 +240,11 @@ pub const Lexer = struct {
                 while (self.index < src.len) : (self.index += 1) {
                     switch (src[self.index]) {
                         'a'...'z', 'A'...'Z', '0'...'9', '_' => {},
-                        '-' => {
+                        '-', '.' => {
+                            // a hyphen joins a kebab name; a '.' joins a qualified
+                            // projection tail (`@subgroup.opAssoc` — a model
+                            // projection as a mapping value). Both only before a
+                            // letter/underscore.
                             if (self.index + 1 >= src.len) break;
                             switch (src[self.index + 1]) {
                                 'a'...'z', 'A'...'Z', '0'...'9', '_' => {},

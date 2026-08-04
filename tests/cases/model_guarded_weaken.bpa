@@ -17,8 +17,10 @@ pred inH(g: Grp)
 // closure obligation for the constant E, discharged from a base membership fact.
 axiom identityInH: inH(E)
 
-model SubgroupIsGroup = Grp where inH {
-  source.Grp: Grp
+sort GrpH = Grp where inH
+
+model SubgroupIsGroup {
+  source.Grp: GrpH
   source.absorbs: source.absorbs
   }
 

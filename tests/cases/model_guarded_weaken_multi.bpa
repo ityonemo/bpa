@@ -11,8 +11,10 @@ pred inH(g: Grp)
 
 axiom identityInH: inH(E)
 
-model M = Grp where inH {
-  source.Grp: Grp
+sort GrpH = Grp where inH
+
+model M {
+  source.Grp: GrpH
   source.opSwapsToE: source.opSwapsToE
   }
 

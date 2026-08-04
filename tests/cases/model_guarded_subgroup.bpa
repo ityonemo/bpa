@@ -97,8 +97,10 @@ proof
 qed
 
 // --- the guarded model: opIdentityLeft mapped to ITSELF (auto-weakened) -------
-model SubgroupIsGroup = Grp where inH {
-  Grp: Grp
+sort GrpH = Grp where inH
+
+model SubgroupIsGroup {
+  Grp: GrpH
   opIdentityLeft: opIdentityLeft
 }
 

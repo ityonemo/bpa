@@ -1,0 +1,524 @@
+// ASPIRATIONAL std/subgroup.bpa — NORTH STAR for Level 1 (model-parameters branch).
+//
+// DEPENDENCY INVERSION: this theory is STANDALONE — it does NOT import group. It
+// DECLARES its own abstract PARENT GROUP (the parent of a subgroup IS a group), then
+// the membership predicate + criteria + derived theorems over it. A concrete
+// subgroup MODELS this theory (mapping subgroup.Grp -> its actual group,
+// subgroup.inSubgroup -> its predicate); `group` then plugs onto that concrete
+// subgroup via the HGroup model stack. Same theorems as std/subgroup.bpa, just with
+// the parent group's vocabulary declared here rather than imported.
+//
+// (cancelRight/invInvolution are declared as axioms here — true of any group — since
+// the standalone theory can't import group's proofs; a real version would resolve
+// their provenance. This is a north star to build the @-machinery against.)
+
+// the abstract PARENT GROUP's axioms (declared locally — the dependency inversion).
+// Named `grp*` internally; the FIVE like-named THEOREMS below (opAssoc, …) prove
+// each law holds ON THE SUBGROUP and are what HGroup @-projects.
+sort Grp
+const E: Grp
+func op(a: Grp, b: Grp): Grp
+func inverse(a: Grp): Grp
+axiom grpAssoc: forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
+axiom grpIdentityLeft: forall a: Grp; op(E, a) = a
+axiom grpIdentityRight: forall a: Grp; op(a, E) = a
+axiom grpInverseLeft: forall a: Grp; op(inverse(a), a) = E
+axiom grpInverseRight: forall a: Grp; op(a, inverse(a)) = E
+// a parent-group fact a subgroup-specific proof cites (an axiom for now).
+axiom invInvolution: forall a: Grp; inverse(inverse(a)) = a
+// The subgroup, as a membership predicate over the group carrier, characterized by
+// the three subgroup-criterion conditions.
+pred inSubgroup(g: Grp)
+
+axiom subgroupHasIdentity: inSubgroup(E)
+axiom subgroupClosedOp: forall a, b: Grp; inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
+axiom subgroupClosedInverse: forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(a))
+
+// The subgroup carrier as a PREDICATED SORT: `Sub` is `Grp` restricted to members.
+// A statement `∀g: Sub; …` reads as "for every subgroup element" and desugars to
+// `∀g: Grp; inSubgroup(g) -> …` — the same theorem, but the membership hypotheses
+// stay implicit in the binder (surfaced in a proof with `[by predicate <fix>]`).
+// NOTE: we do NOT give `op`/`inverse` a `Sub` result — closure is PROVEN below, not
+// asserted by a signature. `Sub` is used only for legibility of the statements.
+sort Sub = Grp where inSubgroup
+
+// ── THE FIVE GROUP AXIOMS, PROVEN ON THE SUBGROUP. ───────────────────────────
+// Each states that a group axiom holds over the subgroup carrier `Sub` (the law
+// holds on all of Grp, so it restricts to the subset). These are the five theorems
+// HGroup @-projects to discharge group's axiom obligations onto the subgroup.
+theorem opAssoc: forall a, b, c: Sub; op(op(a, b), c) = op(a, op(b, c))
+proof
+  @grp-law |
+    forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
+    [by axiom grpAssoc]
+  @generalize-a |
+    fix p: Sub {
+      @generalize-b |
+        fix q: Sub {
+          @generalize-c |
+            fix r: Sub {
+              @conclusion-at-pqr |
+                op(op(p, q), r) = op(p, op(q, r))
+                [by forall_elim(p, q, r) grp-law]
+            }
+          @discharge-c |
+            forall c: Sub; op(op(p, q), c) = op(p, op(q, c))
+            [by forall_intro generalize-c]
+        }
+      @discharge-b |
+        forall b, c: Sub; op(op(p, b), c) = op(p, op(b, c))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, c: Sub; op(op(a, b), c) = op(a, op(b, c))
+    [by forall_intro generalize-a]
+qed
+
+theorem opIdentityLeft: forall a: Sub; op(E, a) = a
+proof
+  @grp-law |
+    forall a: Grp; op(E, a) = a
+    [by axiom grpIdentityLeft]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(E, p) = p
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(E, a) = a
+    [by forall_intro generalize-a]
+qed
+
+theorem opIdentityRight: forall a: Sub; op(a, E) = a
+proof
+  @grp-law |
+    forall a: Grp; op(a, E) = a
+    [by axiom grpIdentityRight]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(p, E) = p
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(a, E) = a
+    [by forall_intro generalize-a]
+qed
+
+theorem opInverseLeft: forall a: Sub; op(inverse(a), a) = E
+proof
+  @grp-law |
+    forall a: Grp; op(inverse(a), a) = E
+    [by axiom grpInverseLeft]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(inverse(p), p) = E
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(inverse(a), a) = E
+    [by forall_intro generalize-a]
+qed
+
+theorem opInverseRight: forall a: Sub; op(a, inverse(a)) = E
+proof
+  @grp-law |
+    forall a: Grp; op(a, inverse(a)) = E
+    [by axiom grpInverseRight]
+  @generalize-a |
+    fix p: Sub {
+      @conclusion-at-p |
+        op(p, inverse(p)) = E
+        [by forall_elim(p) grp-law]
+    }
+  @conclusion |
+    forall a: Sub; op(a, inverse(a)) = E
+    [by forall_intro generalize-a]
+qed
+
+// One-step subgroup test, FORWARD (groups.xml:1164): a subgroup is closed under
+// the "divide" operation g·h⁻¹. Since h ∈ H, its inverse h⁻¹ ∈ H (closedInverse);
+// then by closure under the operation, g·h⁻¹ ∈ H (closedOp).
+theorem subgroupClosedDivide: forall g, h: Sub; inSubgroup(op(g, inverse(h)))
+proof
+  @generalize-g |
+    fix g: Sub {
+      @g-is-a-member |
+        inSubgroup(g)
+        [by predicate generalize-g]
+      @generalize-h |
+        fix h: Sub {
+          @h-is-a-member |
+            inSubgroup(h)
+            [by predicate generalize-h]
+          @closed-under-inverse |
+            forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(a))
+            [by axiom subgroupClosedInverse]
+          @inverse-in-H-if-h |
+            inSubgroup(h) -> inSubgroup(inverse(h))
+            [by forall_elim(h) closed-under-inverse]
+          @inverse-of-h-in-H |
+            inSubgroup(inverse(h))
+            [by modus_ponens inverse-in-H-if-h h-is-a-member]
+          @closed-under-op |
+            forall a, b: Grp; inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
+            [by axiom subgroupClosedOp]
+          @product-in-H-if-both |
+            inSubgroup(g) -> inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
+            [by forall_elim(g, inverse(h)) closed-under-op]
+          @product-in-H-if-inverse |
+            inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
+            [by modus_ponens product-in-H-if-both g-is-a-member]
+          @divide-is-a-member |
+            inSubgroup(op(g, inverse(h)))
+            [by modus_ponens product-in-H-if-inverse inverse-of-h-in-H]
+        }
+      @discharge-h |
+        forall h: Sub; inSubgroup(op(g, inverse(h)))
+        [by forall_intro generalize-h]
+    }
+  @conclusion |
+    forall g, h: Sub; inSubgroup(op(g, inverse(h)))
+    [by forall_intro generalize-g]
+qed
+
+// ── One-step test, CONVERSE (groups.xml:1171) ────────────────────────────────
+// The other half of the test: a NONEMPTY subset closed under g·h⁻¹ satisfies the
+// three subgroup conditions, hence is a subgroup. Since bpa cannot quantify over
+// predicates, we express "an arbitrary subset with those two properties" as a
+// second membership predicate `oneStepSubset` constrained by exactly the one-step
+// hypotheses, and derive the three conditions as theorems.
+pred oneStepSubset(g: Grp)
+
+axiom oneStepInhabited: exists g: Grp; oneStepSubset(g)
+axiom oneStepClosedDivide: forall a, b: Grp; oneStepSubset(a) -> oneStepSubset(b) -> oneStepSubset(op(a, inverse(b)))
+
+// Condition 1 (identity): pick any member g; then g·g⁻¹ = e is in the subset.
+theorem oneStepHasIdentity: oneStepSubset(E)
+proof
+  @some-member-exists |
+    exists g: Grp; oneStepSubset(g)
+    [by axiom oneStepInhabited]
+  @with-member |
+    unpack g: Grp from some-member-exists {
+      @member-in-subset |
+        oneStepSubset(g)
+        [by hypothesis with-member]
+      @closed-divide |
+        forall a, b: Grp; oneStepSubset(a) -> oneStepSubset(b) -> oneStepSubset(op(a, inverse(b)))
+        [by axiom oneStepClosedDivide]
+      @self-divide-in-subset-if-both |
+        oneStepSubset(g) -> oneStepSubset(g) -> oneStepSubset(op(g, inverse(g)))
+        [by forall_elim(g, g) closed-divide]
+      @self-divide-in-subset-if-member |
+        oneStepSubset(g) -> oneStepSubset(op(g, inverse(g)))
+        [by modus_ponens self-divide-in-subset-if-both member-in-subset]
+      @self-divide-in-subset |
+        oneStepSubset(op(g, inverse(g)))
+        [by modus_ponens self-divide-in-subset-if-member member-in-subset]
+      @inverse-law |
+        forall a: Grp; op(a, inverse(a)) = E
+        [by axiom grpInverseRight]
+      @self-divide-is-identity |
+        op(g, inverse(g)) = E
+        [by forall_elim(g) inverse-law]
+      @conclusion-identity-in-subset |
+        oneStepSubset(E)
+        [by rewrite self-divide-is-identity self-divide-in-subset]
+    }
+  @conclusion |
+    oneStepSubset(E)
+    [by exists_elim with-member]
+qed
+
+// Condition 3 (inverses): for any member g, dividing the identity by g gives
+// e·g⁻¹ = g⁻¹, which is in the subset. (Uses condition 1: e is in the subset.)
+theorem oneStepClosedInverse: forall g: Grp; oneStepSubset(g) -> oneStepSubset(inverse(g))
+proof
+  @generalize-g |
+    fix g: Grp {
+      @given-g-in-subset |
+        assume oneStepSubset(g) {
+          @g-in-subset |
+            oneStepSubset(g)
+            [by hypothesis given-g-in-subset]
+          @identity-in-subset |
+            oneStepSubset(E)
+            [by theorem oneStepHasIdentity]
+          @closed-divide |
+            forall a, b: Grp; oneStepSubset(a) -> oneStepSubset(b) -> oneStepSubset(op(a, inverse(b)))
+            [by axiom oneStepClosedDivide]
+          @identity-divide-g-if-both |
+            oneStepSubset(E) -> oneStepSubset(g) -> oneStepSubset(op(E, inverse(g)))
+            [by forall_elim(E, g) closed-divide]
+          @identity-divide-g-if-g |
+            oneStepSubset(g) -> oneStepSubset(op(E, inverse(g)))
+            [by modus_ponens identity-divide-g-if-both identity-in-subset]
+          @identity-divide-g-in-subset |
+            oneStepSubset(op(E, inverse(g)))
+            [by modus_ponens identity-divide-g-if-g g-in-subset]
+          @identity-law |
+            forall a: Grp; op(E, a) = a
+            [by axiom grpIdentityLeft]
+          @identity-divide-g-is-inverse |
+            op(E, inverse(g)) = inverse(g)
+            [by forall_elim(inverse(g)) identity-law]
+          @conclusion-inverse-in-subset |
+            oneStepSubset(inverse(g))
+            [by rewrite identity-divide-g-is-inverse identity-divide-g-in-subset]
+        }
+      @g-in-subset-implies-inverse |
+        oneStepSubset(g) -> oneStepSubset(inverse(g))
+        [by implies_intro given-g-in-subset]
+    }
+  @conclusion |
+    forall g: Grp; oneStepSubset(g) -> oneStepSubset(inverse(g))
+    [by forall_intro generalize-g]
+qed
+
+// Condition 2 (products): given h1, h2 in the subset, h2⁻¹ is in it (condition 3),
+// so dividing h1 by h2⁻¹ gives h1·(h2⁻¹)⁻¹ = h1·h2, which is in the subset. The
+// double inverse (h2⁻¹)⁻¹ = h2 is `invInvolution`.
+theorem oneStepClosedOp: forall h1, h2: Grp; oneStepSubset(h1) -> oneStepSubset(h2) -> oneStepSubset(op(h1, h2))
+proof
+  @generalize-h1 |
+    fix h1: Grp {
+      @generalize-h2 |
+        fix h2: Grp {
+          @given-h1-in-subset |
+            assume oneStepSubset(h1) {
+              @given-h2-in-subset |
+                assume oneStepSubset(h2) {
+                  @h1-in-subset |
+                    oneStepSubset(h1)
+                    [by hypothesis given-h1-in-subset]
+                  @h2-in-subset |
+                    oneStepSubset(h2)
+                    [by hypothesis given-h2-in-subset]
+                  @closed-inverse |
+                    forall g: Grp; oneStepSubset(g) -> oneStepSubset(inverse(g))
+                    [by theorem oneStepClosedInverse]
+                  @inverse-h2-in-subset-if-h2 |
+                    oneStepSubset(h2) -> oneStepSubset(inverse(h2))
+                    [by forall_elim(h2) closed-inverse]
+                  @inverse-h2-in-subset |
+                    oneStepSubset(inverse(h2))
+                    [by modus_ponens inverse-h2-in-subset-if-h2 h2-in-subset]
+                  @closed-divide |
+                    forall a, b: Grp; oneStepSubset(a) -> oneStepSubset(b) -> oneStepSubset(op(a, inverse(b)))
+                    [by axiom oneStepClosedDivide]
+                  @h1-divide-inverse-h2-if-both |
+                    oneStepSubset(h1) -> oneStepSubset(inverse(h2)) -> oneStepSubset(op(h1, inverse(inverse(h2))))
+                    [by forall_elim(h1, inverse(h2)) closed-divide]
+                  @h1-divide-inverse-h2-if-inverse |
+                    oneStepSubset(inverse(h2)) -> oneStepSubset(op(h1, inverse(inverse(h2))))
+                    [by modus_ponens h1-divide-inverse-h2-if-both h1-in-subset]
+                  @h1-divide-inverse-h2-in-subset |
+                    oneStepSubset(op(h1, inverse(inverse(h2))))
+                    [by modus_ponens h1-divide-inverse-h2-if-inverse inverse-h2-in-subset]
+                  @double-inverse-law |
+                    forall a: Grp; inverse(inverse(a)) = a
+                    [by axiom invInvolution]
+                  @double-inverse-h2 |
+                    inverse(inverse(h2)) = h2
+                    [by forall_elim(h2) double-inverse-law]
+                  @conclusion-product-in-subset |
+                    oneStepSubset(op(h1, h2))
+                    [by rewrite double-inverse-h2 h1-divide-inverse-h2-in-subset]
+                }
+              @h2-in-subset-implies-product |
+                oneStepSubset(h2) -> oneStepSubset(op(h1, h2))
+                [by implies_intro given-h2-in-subset]
+            }
+          @h1-in-subset-implies-rest |
+            oneStepSubset(h1) -> oneStepSubset(h2) -> oneStepSubset(op(h1, h2))
+            [by implies_intro given-h1-in-subset]
+        }
+      @discharge-h2 |
+        forall h2: Grp; oneStepSubset(h1) -> oneStepSubset(h2) -> oneStepSubset(op(h1, h2))
+        [by forall_intro generalize-h2]
+    }
+  @conclusion |
+    forall h1, h2: Grp; oneStepSubset(h1) -> oneStepSubset(h2) -> oneStepSubset(op(h1, h2))
+    [by forall_intro generalize-h1]
+qed
+
+// ── Intersection of subgroups (groups.xml:1938, an exercise) ─────────────────
+// The intersection H ∩ K of two subgroups is a subgroup. We model a SECOND
+// subgroup with its own membership predicate `inSubgroup2` (same three axioms),
+// define intersection membership as the conjunction, and prove the three subgroup
+// conditions for the conjunction — each follows by applying the corresponding
+// condition in H and in K.
+pred inSubgroup2(g: Grp)
+
+axiom subgroup2HasIdentity: inSubgroup2(E)
+axiom subgroup2ClosedOp: forall a, b: Grp; inSubgroup2(a) -> inSubgroup2(b) -> inSubgroup2(op(a, b))
+axiom subgroup2ClosedInverse: forall a: Grp; inSubgroup2(a) -> inSubgroup2(inverse(a))
+
+// Intersection, condition 1: e is in both, hence in the intersection.
+theorem intersectionHasIdentity: inSubgroup(E) and inSubgroup2(E)
+proof
+  @identity-in-first |
+    inSubgroup(E)
+    [by axiom subgroupHasIdentity]
+  @identity-in-second |
+    inSubgroup2(E)
+    [by axiom subgroup2HasIdentity]
+  @conclusion |
+    inSubgroup(E) and inSubgroup2(E)
+    [by and_intro identity-in-first identity-in-second]
+qed
+
+// Intersection, condition 2: if a and b are in both, their product is in both.
+theorem intersectionClosedOp: forall a, b: Grp; (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(b) and inSubgroup2(b)) -> (inSubgroup(op(a, b)) and inSubgroup2(op(a, b)))
+proof
+  @generalize-a |
+    fix a: Grp {
+      @generalize-b |
+        fix b: Grp {
+          @given-a-in-both |
+            assume inSubgroup(a) and inSubgroup2(a) {
+              @given-b-in-both |
+                assume inSubgroup(b) and inSubgroup2(b) {
+                  @a-in-both |
+                    inSubgroup(a) and inSubgroup2(a)
+                    [by hypothesis given-a-in-both]
+                  @b-in-both |
+                    inSubgroup(b) and inSubgroup2(b)
+                    [by hypothesis given-b-in-both]
+                  @a-in-first |
+                    inSubgroup(a)
+                    [by and_elim_left a-in-both]
+                  @a-in-second |
+                    inSubgroup2(a)
+                    [by and_elim_right a-in-both]
+                  @b-in-first |
+                    inSubgroup(b)
+                    [by and_elim_left b-in-both]
+                  @b-in-second |
+                    inSubgroup2(b)
+                    [by and_elim_right b-in-both]
+                  @closed-op-first |
+                    forall p, q: Grp; inSubgroup(p) -> inSubgroup(q) -> inSubgroup(op(p, q))
+                    [by axiom subgroupClosedOp]
+                  @product-in-first-if-both |
+                    inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
+                    [by forall_elim(a, b) closed-op-first]
+                  @product-in-first-if-b |
+                    inSubgroup(b) -> inSubgroup(op(a, b))
+                    [by modus_ponens product-in-first-if-both a-in-first]
+                  @product-in-first |
+                    inSubgroup(op(a, b))
+                    [by modus_ponens product-in-first-if-b b-in-first]
+                  @closed-op-second |
+                    forall p, q: Grp; inSubgroup2(p) -> inSubgroup2(q) -> inSubgroup2(op(p, q))
+                    [by axiom subgroup2ClosedOp]
+                  @product-in-second-if-both |
+                    inSubgroup2(a) -> inSubgroup2(b) -> inSubgroup2(op(a, b))
+                    [by forall_elim(a, b) closed-op-second]
+                  @product-in-second-if-b |
+                    inSubgroup2(b) -> inSubgroup2(op(a, b))
+                    [by modus_ponens product-in-second-if-both a-in-second]
+                  @product-in-second |
+                    inSubgroup2(op(a, b))
+                    [by modus_ponens product-in-second-if-b b-in-second]
+                  @conclusion-product-in-both |
+                    inSubgroup(op(a, b)) and inSubgroup2(op(a, b))
+                    [by and_intro product-in-first product-in-second]
+                }
+              @b-in-both-implies-product |
+                (inSubgroup(b) and inSubgroup2(b)) -> (inSubgroup(op(a, b)) and inSubgroup2(op(a, b)))
+                [by implies_intro given-b-in-both]
+            }
+          @a-in-both-implies-rest |
+            (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(b) and inSubgroup2(b)) -> (inSubgroup(op(a, b)) and inSubgroup2(op(a, b)))
+            [by implies_intro given-a-in-both]
+        }
+      @discharge-b |
+        forall b: Grp; (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(b) and inSubgroup2(b)) -> (inSubgroup(op(a, b)) and inSubgroup2(op(a, b)))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Grp; (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(b) and inSubgroup2(b)) -> (inSubgroup(op(a, b)) and inSubgroup2(op(a, b)))
+    [by forall_intro generalize-a]
+qed
+
+// Intersection, condition 3: if a is in both, its inverse is in both.
+theorem intersectionClosedInverse: forall a: Grp; (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(inverse(a)) and inSubgroup2(inverse(a)))
+proof
+  @generalize-a |
+    fix a: Grp {
+      @given-a-in-both |
+        assume inSubgroup(a) and inSubgroup2(a) {
+          @a-in-both |
+            inSubgroup(a) and inSubgroup2(a)
+            [by hypothesis given-a-in-both]
+          @a-in-first |
+            inSubgroup(a)
+            [by and_elim_left a-in-both]
+          @a-in-second |
+            inSubgroup2(a)
+            [by and_elim_right a-in-both]
+          @closed-inverse-first |
+            forall p: Grp; inSubgroup(p) -> inSubgroup(inverse(p))
+            [by axiom subgroupClosedInverse]
+          @inverse-in-first-if-a |
+            inSubgroup(a) -> inSubgroup(inverse(a))
+            [by forall_elim(a) closed-inverse-first]
+          @inverse-in-first |
+            inSubgroup(inverse(a))
+            [by modus_ponens inverse-in-first-if-a a-in-first]
+          @closed-inverse-second |
+            forall p: Grp; inSubgroup2(p) -> inSubgroup2(inverse(p))
+            [by axiom subgroup2ClosedInverse]
+          @inverse-in-second-if-a |
+            inSubgroup2(a) -> inSubgroup2(inverse(a))
+            [by forall_elim(a) closed-inverse-second]
+          @inverse-in-second |
+            inSubgroup2(inverse(a))
+            [by modus_ponens inverse-in-second-if-a a-in-second]
+          @conclusion-inverse-in-both |
+            inSubgroup(inverse(a)) and inSubgroup2(inverse(a))
+            [by and_intro inverse-in-first inverse-in-second]
+        }
+      @a-in-both-implies-inverse |
+        (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(inverse(a)) and inSubgroup2(inverse(a)))
+        [by implies_intro given-a-in-both]
+    }
+  @conclusion |
+    forall a: Grp; (inSubgroup(a) and inSubgroup2(a)) -> (inSubgroup(inverse(a)) and inSubgroup2(inverse(a)))
+    [by forall_intro generalize-a]
+qed
+
+// ── CANARY (do NOT cite) ─────────────────────────────────────────────────────
+// A liveness check for the PREDICATED-SORT machinery on the real `Sub` sort. It
+// declares Sub-RESULT operations (which ASSERT closure by their signature — the
+// opposite of the proofs above, which PROVE it) and shows a downstream use composes
+// through the result-postcondition surfacing: `subCombine(g, h)` lands in `Sub`, so
+// the `Sub`-argument `subConsume` accepts it with no explicit closure step. If
+// predicated sorts ever regress, this canary breaks first. It is NOT part of the
+// subgroup theory — nothing cites it, and it may be deleted/rewritten freely
+// (tectonic shifts to this file are expected).
+func subCombine(a: Sub, b: Sub): Sub // asserts: Sub is closed under this op
+func subConsume(x: Sub): Grp // needs a Sub argument
+
+theorem canaryClosureComposes: forall g, h: Sub; subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+proof
+  @generalize-g |
+    fix g: Sub {
+      @generalize-h |
+        fix h: Sub {
+          @reflexive |
+            subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+            [by reflexivity]
+        }
+      @discharge-h |
+        forall h: Sub; subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+        [by forall_intro generalize-h]
+    }
+  @conclusion |
+    forall g, h: Sub; subConsume(subCombine(g, h)) = subConsume(subCombine(g, h))
+    [by forall_intro generalize-g]
+qed

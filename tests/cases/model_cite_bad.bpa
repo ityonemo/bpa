@@ -18,7 +18,7 @@ proof
 qed
 
 // opUnitRight deliberately NOT mapped — the forbidden gap.
-model ThingModel = Thing {
+model ThingModel {
   cite.Carrier: Thing
   cite.UNIT: NEUTRAL
   cite.op: combine

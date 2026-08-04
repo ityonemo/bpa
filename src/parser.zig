@@ -231,17 +231,11 @@ pub const Parser = struct {
             .keyword_model => {
                 _ = self.advance();
                 const name = try self.expect(.identifier);
-                // head is alias-SHAPED (`Name = carrier`) but carries a block,
-                // so parse it directly rather than via maybeAlias.
-                _ = try self.expect(.equal);
-                const carrier = try self.expect(.identifier);
-                var guard: ?Token = null;
-                if (self.tok.tag == .keyword_where) {
-                    _ = self.advance();
-                    guard = try self.expect(.identifier);
-                }
+                // no `= carrier [where guard]` header: the carrier is whatever the
+                // source carrier maps to, and the guard is inferred from a predicated
+                // target sort in the mappings.
                 const mappings = try self.parseModelMappings();
-                return .{ .model = .{ .name = name, .carrier = carrier, .guard = guard, .mappings = mappings } };
+                return .{ .model = .{ .name = name, .mappings = mappings } };
             },
             else => return self.fail("expected a declaration, got '{s}'", .{self.describe()}),
         }
@@ -256,7 +250,14 @@ pub const Parser = struct {
             const source = try self.expect(.identifier);
             _ = try self.expect(.colon);
             const target = try self.expect(.identifier);
-            try mappings.append(self.arena, .{ .source = source, .target = target });
+            // `<target>@<projected>` — a model-projection value. The lexer emits the
+            // `@projected` tail as one `at_label` token; strip the `@`.
+            var projection: ?Token = null;
+            if (self.tok.tag == .at_label) {
+                const at = self.advance();
+                projection = .{ .tag = .identifier, .start = at.start + 1, .end = at.end };
+            }
+            try mappings.append(self.arena, .{ .source = source, .target = target, .projection = projection });
         }
         _ = try self.expect(.r_brace);
         return mappings.toOwnedSlice(self.arena);

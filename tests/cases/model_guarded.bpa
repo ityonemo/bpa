@@ -21,8 +21,10 @@ axiom combineZedLeftGuarded: forall a: Thing; good(a) -> combine(ZED, a) = a
 axiom goodZed: good(ZED)                                             // base
 axiom goodCombineZed: forall a: Thing; good(a) -> good(combine(ZED, a)) // composite
 
-model ThingModel = Thing where good {
-  source.Carrier: Thing
+sort ThingGood = Thing where good
+
+model ThingModel {
+  source.Carrier: ThingGood
   source.UNIT: ZED
   source.op: combine
   source.opUnitLeft: combineZedLeftGuarded

@@ -10,7 +10,7 @@ func combine(a: Thing, b: Thing): Thing
 
 // Thing's own left-identity fact — discharges the source's opUnitLeft obligation.
 axiom combineZedLeft: forall a: Thing; combine(ZED, a) = a
-model ThingModel = Thing {
+model ThingModel {
   source.Carrier: Thing
   source.UNIT: ZED
   source.op: combine

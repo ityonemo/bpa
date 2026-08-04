@@ -32,7 +32,7 @@ axiom mulDistributesLeftOverAdd: forall a, b, c: Ring; mul(a, add(b, c)) = add(m
 axiom mulDistributesRightOverAdd: forall a, b, c: Ring; mul(add(a, b), c) = add(mul(a, c), mul(b, c))
 
 // the additive structure is an abelian group.
-model AdditiveGroup = Ring {
+model AdditiveGroup {
   group.Grp: Ring
   group.E: ZERO
   group.op: add

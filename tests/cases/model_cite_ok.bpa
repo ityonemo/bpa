@@ -23,7 +23,7 @@ axiom combineNeutralRight: forall a: Thing; combine(a, NEUTRAL) = a
 
 // `Untouched`, `POINT`, `marks`, `pointMarked`, `pointStays` are NOT mapped —
 // they are substitution-invariant, so the materialized proof cites them as-is.
-model ThingModel = Thing {
+model ThingModel {
   cite.Carrier: Thing
   cite.UNIT: NEUTRAL
   cite.op: combine

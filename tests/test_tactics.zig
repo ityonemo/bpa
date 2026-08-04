@@ -100,39 +100,39 @@ pub fn addTests(
     // in-scope `assume guard(a)`; composite → a closure fact + recursion). Fully
     // kernel-checked, no taint.
     ctx.ok(&.{ "check", "tests/cases/model_guarded_source.bpa" }, "OK: 8 declarations, 4 theorems proven\n");
-    ctx.ok(&.{ "check", "tests/cases/model_guarded.bpa" }, "OK: 21 declarations, 8 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded.bpa" }, "OK: 22 declarations, 8 theorems proven\n");
     // clean-error boundary: a guarded transfer whose proof instantiates at a term
     // with no closure fact in scope fails with an actionable message (the graceful
     // fallback point for future author-supplied obligations).
-    ctx.fail(&.{ "check", "tests/cases/model_guarded_noclose.bpa" }, "tests/cases/model_guarded_noclose.bpa:29:27: error: guarded model: cannot prove 'good(ZED)' — supply an axiom or theorem establishing it\n");
+    ctx.fail(&.{ "check", "tests/cases/model_guarded_noclose.bpa" }, "tests/cases/model_guarded_noclose.bpa:31:27: error: guarded model: cannot prove 'good(ZED)' — supply an axiom or theorem establishing it\n");
     // BOUNDARY fixtures (all now handled): a guarded transfer of a proof that
     // unpacks an existential witness surfaces `guard(w)` from the relativized
     // `∃x; guard(x) and P(x)` conjunct (and re-guards a matching `exists_intro`);
     // a case split re-emits or_elim + arm hypotheses. (Sources check fine too.)
     ctx.ok(&.{ "check", "tests/cases/model_guarded_witness_source.bpa" }, "OK: 7 declarations, 1 theorems proven\n");
-    ctx.ok(&.{ "check", "tests/cases/model_guarded_witness.bpa" }, "OK: 17 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_witness.bpa" }, "OK: 18 declarations, 2 theorems proven\n");
     ctx.ok(&.{ "check", "tests/cases/model_guarded_case_source.bpa" }, "OK: 10 declarations, 1 theorems proven\n");
     // case split (or_elim + hypothesis) now materializes guardedly.
-    ctx.ok(&.{ "check", "tests/cases/model_guarded_case.bpa" }, "OK: 23 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_case.bpa" }, "OK: 24 declarations, 2 theorems proven\n");
     // SAME-FILE guarded model: the source theory and the model share one file (the
     // paradigm subgroup case — H ⊆ G on one carrier). Mapping sources are bare
     // (unqualified) names resolved locally; no import/two-file split required.
-    ctx.ok(&.{ "check", "tests/cases/model_guarded_samefile.bpa" }, "OK: 10 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_samefile.bpa" }, "OK: 11 declarations, 2 theorems proven\n");
     // AUTO-WEAKENING: a source axiom that holds unconditionally on the carrier,
     // mapped to ITSELF, has its relativized obligation (`inH(a) -> P(a)`)
     // synthesized by the materializer as a free weakening — no hand-written
     // relativized copy. (∀a;P(a) ⊢ ∀a; guard(a)->P(a).)
     ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
-    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken.bpa" }, "OK: 14 declarations, 2 theorems proven\n");
     // MULTI-BINDER auto-weakening: an unconditional axiom over N carrier binders
     // (here 2), mapped to itself, weakened by nested fix/assume with one chained
     // forall_elim at the core. Needed for group axioms like opAssoc (3 binders).
     ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_multi_source.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
-    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_multi.bpa" }, "OK: 13 declarations, 2 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_weaken_multi.bpa" }, "OK: 14 declarations, 2 theorems proven\n");
     // the paradigm case end to end: a SUBGROUP modeling its own group's carrier —
     // same-file guarded model + auto-weakening (opIdentityLeft mapped to itself) +
     // inH(E) proved by contradiction from the definitional subgroup axioms.
-    ctx.ok(&.{ "check", "tests/cases/model_guarded_subgroup.bpa" }, "OK: 14 declarations, 3 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/model_guarded_subgroup.bpa" }, "OK: 15 declarations, 3 theorems proven\n");
 
     // PREDICATED SORT `sort H = G where inH` — binder positions (Stage 1): ∀/∃
     // inject the guard (implies/and), `fix h: H` carries it on the block (surfaced

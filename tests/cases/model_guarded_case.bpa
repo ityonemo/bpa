@@ -17,8 +17,10 @@ axiom ppOrQq: forall a: Thing; good(a) -> (pp(a) or qq(a))
 axiom ppGives: forall a: Thing; good(a) -> pp(a) -> combine(ZED, a) = a
 axiom qqGives: forall a: Thing; good(a) -> qq(a) -> combine(ZED, a) = a
 
-model ThingModel = Thing where good {
-  source.Carrier: Thing
+sort ThingGood = Thing where good
+
+model ThingModel {
+  source.Carrier: ThingGood
   source.UNIT: ZED
   source.op: combine
   source.p: pp

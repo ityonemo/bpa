@@ -121,21 +121,25 @@ pub const Decl = union(enum) {
         steps: ?[]const Step,
     },
     theorem: struct { name: Token, formula: *const Expr, steps: []const Step },
-    /// `model <Name> = <carrier> [where <guard>] { <src>: <tgt> ... }` — declares
-    /// the carrier sort a model of an imported theory. Each `Mapping` binds a
-    /// source-theory entity (`group.op`, `group.opAssoc` — a qualified token) to
-    /// the local symbol/fact that plays it. `guard` is an optional unary pred
-    /// (carrier relativization). See MODEL-DESIGN.md.
+    /// `model <Name> { <src>: <tgt> ... }` — declares that some local structure is a
+    /// model of an imported theory. Each `Mapping` binds a source-theory entity
+    /// (`group.op`, `group.opAssoc` — a qualified token) to the local symbol/fact
+    /// that plays it. There is NO carrier/guard header: the target carrier is
+    /// whatever the source carrier maps to, and the model is GUARDED exactly when a
+    /// sort-mapping's TARGET is a predicated sort (`group.Grp: H`, `H = Grp where inH`)
+    /// — that mapping supplies the guard. See MODEL-DESIGN.md.
     model: struct {
         name: Token,
-        carrier: Token,
-        guard: ?Token,
         mappings: []const Mapping,
     },
 };
 
-/// One `<source>: <target>` line in a `model` block.
-pub const Mapping = struct { source: Token, target: Token };
+/// One `<source>: <target>` line in a `model` block. `<target>@<projected>`
+/// (`group.opAssoc: HSubGroup@subgroup.opAssoc`) is a MODEL-PROJECTION value —
+/// discharge this obligation by transferring the `projected` theorem THROUGH the
+/// model named `target`. `projection` is the qualified projected name (the `@`-tail,
+/// sans `@`); null for a plain target.
+pub const Mapping = struct { source: Token, target: Token, projection: ?Token = null };
 
 pub const File = struct { decls: []const Decl };
 

@@ -30,7 +30,7 @@ theorem mulAddDistribLeft = ring_algebra.mulAddDistribLeft
 theorem mulAddDistribRight = ring_algebra.mulAddDistribRight
 
 // ℤ is a ring: discharge ring's nine axioms.
-model IntegerRing = Int {
+model IntegerRing {
   ring.Ring: Int
   ring.ZERO: ZERO
   ring.ONE: ONE

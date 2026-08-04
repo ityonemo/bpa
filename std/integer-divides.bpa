@@ -40,7 +40,7 @@ axiom dividesElim: forall d, n: Int; divides(d, n) -> exists k: Int; n = mul(d, 
 // ℤ is a model of the abstract divisibility theory: its mul is associative with
 // right identity ONE and left-distributes over add, so the basic divisibility
 // facts (refl, mul, add) transfer instead of being re-proved.
-model IntegerDivisibility = Int {
+model IntegerDivisibility {
   divisibility.Dividable: Int
   divisibility.ONE: ONE
   divisibility.mul: mul

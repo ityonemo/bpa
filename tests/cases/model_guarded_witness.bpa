@@ -19,8 +19,10 @@ axiom combineZedLeftGuarded: forall a: Thing; good(a) -> combine(ZED, a) = a
 // `and`): there is a `good` thing that is flagged.
 axiom somethingThing: exists x: Thing; good(x) and flagged(x)
 
-model ThingModel = Thing where good {
-  source.Carrier: Thing
+sort ThingGood = Thing where good
+
+model ThingModel {
+  source.Carrier: ThingGood
   source.UNIT: ZED
   source.op: combine
   source.marked: flagged
