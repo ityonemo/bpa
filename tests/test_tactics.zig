@@ -139,6 +139,11 @@ pub fn addTests(
     // by `[by predicate <lbl>]`, made the forall_intro antecedent), `unpack h: H`
     // gets it from the ∃'s conjunct. Pure sugar over the carrier; kernel-checked.
     ctx.ok(&.{ "check", "tests/cases/predicated_sort_binders.bpa" }, "OK: 9 declarations, 3 theorems proven\n");
+    // PREDICATED SORT — func RESULT closure (Stage 3): `func op2(a: H, b: H): H`
+    // surfaces `inH(op2(x,y))` at each use, so `f(op2(h,h))` composes (the
+    // subgroup-closure pattern). Gated by the arg-obligations; equivalent to an
+    // explicit closure axiom. Kernel-checked.
+    ctx.ok(&.{ "check", "tests/cases/predicated_sort_closure.bpa" }, "OK: 7 declarations, 1 theorems proven\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source

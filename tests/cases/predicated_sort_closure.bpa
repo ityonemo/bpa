@@ -1,0 +1,24 @@
+// PREDICATED SORT — func RESULT positions (Stage 3): `func op2(a: H, b: H): H`
+// asserts op2 is closed on H (like an uninterpreted func's signature IS an axiom).
+// At each use `op2(x,y)`, `inH(op2(x,y))` is surfaced as an available fact, so a
+// downstream `f(op2(x,y))` (f needs an H arg) composes — the subgroup-closure
+// pattern, for free. Sound: the arg-obligations GATE it (op2's args must be in H),
+// and it is exactly equivalent to op on G + an explicit closure axiom cited by
+// hand. Kernel-checked, no accelerated taint.
+sort G
+pred inH(g: G)
+sort H = G where inH
+
+func op2(a: H, b: H): H
+func f(z: H): G
+
+axiom useful: forall h: H; f(op2(h, h)) = f(op2(h, h))
+
+// THE decisive corner case: f(op2(h,h)) type-checks — op2(h,h) is in H (surfaced),
+// so f accepts it; op2's own args discharge from the binder guard inH(h).
+theorem closureComposes: forall h: H; f(op2(h, h)) = f(op2(h, h))
+proof
+  @conclusion |
+    forall h: H; f(op2(h, h)) = f(op2(h, h))
+    [by axiom useful]
+qed

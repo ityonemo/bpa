@@ -22,8 +22,13 @@ pub const Symbol = struct {
     name: StrId,
     kind: term.AppKind, // .app: func/const; .pred: predicate
     arg_sorts: []const SortId,
-    /// result sort; for predicates always .prop
+    /// result sort (the KERNEL/carrier sort); for predicates always .prop
     result: SortId,
+    /// the result sort AS WRITTEN — a predicated result (`func op(...): H`) keeps
+    /// its refined SortId here (while `result` is the carrier), so an application
+    /// can surface the result postcondition `inH(op(...))`. Equals `result` for an
+    /// unrefined result.
+    result_refined: SortId = @enumFromInt(0),
     /// `requires` clause, elaborated with params as fvars (by param name)
     guard: ?TermId,
     /// `define`d symbols: the term every use transparently expands to

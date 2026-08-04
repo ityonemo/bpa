@@ -147,6 +147,13 @@ pub const Elaborator = struct {
     /// left conjuncts) as elaboration returns upward. Discharged at the
     /// enclosing statement/step; an undischarged obligation fails the check.
     pending_tccs: std.ArrayList(Tcc) = .empty,
+    /// RESULT POSTCONDITIONS surfaced by predicated-result funcs: when an
+    /// application `op(x,y)` has a refined result (`func op(...): H`), `inH(op(x,y))`
+    /// is asserted true by op's signature and pushed here — available for TCC
+    /// discharge (so `f(op(x,y))` composes). Sound as the signature's assertion (an
+    /// uninterpreted func's result-type is an axiom, like any). Accumulated during a
+    /// statement/step's elaboration; the discharge consults it, then it is cleared.
+    result_facts: std.ArrayList(TermId) = .empty,
 
     /// declared `model`s, keyed by instance name. A cite `[by model(Name) thm]`
     /// looks the model up here and remaps `thm`'s formula through its `Remap`.
@@ -388,9 +395,11 @@ pub const Elaborator = struct {
                 try self.checkFreshName(name, d.name);
                 const arg_sorts, const param_names = try self.resolveParams(d.params);
                 // a func result may be a predicated sort (`func op(...): H`); the
-                // stored (kernel) result sort is its carrier. (The closure
-                // postcondition `inH(op(...))` is wired in Stage 3.)
-                const result = self.env.carrierOf(try self.resolveSort(d.result));
+                // stored (kernel) result sort is its carrier, but the REFINED result
+                // is kept (result_refined) so an application surfaces the result
+                // postcondition `inH(op(...))` — sound as the signature's assertion.
+                const result_refined = try self.resolveSort(d.result);
+                const result = self.env.carrierOf(result_refined);
                 if (result == .prop) {
                     return self.fail(d.result.start, "a func cannot return 'Prop'; declare a pred instead", .{});
                 }
@@ -429,6 +438,7 @@ pub const Elaborator = struct {
                     .kind = .app,
                     .arg_sorts = arg_sorts,
                     .result = result,
+                    .result_refined = result_refined,
                     .guard = guard,
                     .param_names = param_names,
                     .loc = d.name.start,
@@ -1390,6 +1400,11 @@ pub const Elaborator = struct {
             }
         }
         self.pending_tccs.shrinkRetainingCapacity(start);
+        // surfaced result postconditions are valid within the enclosing statement;
+        // clear them at the statement boundary (start == 0). Within a statement they
+        // accumulate and remain matchable (they are TRUE facts about in-scope terms;
+        // α-match requires the exact same term, so lingering is sound).
+        if (start == 0) self.result_facts.clearRetainingCapacity();
         if (any_failed) return error.Recover;
     }
 
@@ -1402,6 +1417,10 @@ pub const Elaborator = struct {
     /// anything substantive still requires an explicit lemma or step.
     fn tccDischarged(self: *Elaborator, low: ?*const Lowering, block_id: kernel.BlockId, formula: TermId) ElabError!bool {
         var hyps: std.ArrayList(TermId) = .empty;
+        return self.tccDischargedHyps(low, block_id, formula, &hyps);
+    }
+
+    fn tccDischargedHyps(self: *Elaborator, low: ?*const Lowering, block_id: kernel.BlockId, formula: TermId, hyps: *std.ArrayList(TermId)) ElabError!bool {
         var f = formula;
         while (true) {
             for (hyps.items) |h| {
@@ -1414,6 +1433,13 @@ pub const Elaborator = struct {
                 f = node.bin.rhs;
                 continue;
             }
+            // a conjunction obligation is discharged by discharging BOTH conjuncts
+            // (and-intro), each under the accumulated hypotheses. Needed for a
+            // predicated func's multi-arg guard `inH(a) and inH(b)`.
+            if (node == .bin and node.bin.op == .and_op) {
+                return (try self.tccDischargedHyps(low, block_id, node.bin.lhs, hyps)) and
+                    (try self.tccDischargedHyps(low, block_id, node.bin.rhs, hyps));
+            }
             if (node == .quant and node.quant.q == .forall) {
                 const fresh = try self.freshName();
                 const fv = try self.pool.add(.{ .fvar = .{ .name = fresh, .sort = node.quant.sort } });
@@ -1425,6 +1451,11 @@ pub const Elaborator = struct {
     }
 
     fn tccMatches(self: *Elaborator, low: ?*const Lowering, block_id: kernel.BlockId, f: TermId) bool {
+        // result postconditions surfaced by predicated-result funcs (`op(x,y): H`
+        // asserts inH(op(x,y))).
+        for (self.result_facts.items) |fact| {
+            if (self.pool.alphaEq(fact, f)) return true;
+        }
         for (self.env.statements.items) |stmt| {
             const known: TermId = switch (stmt) {
                 .axiom => |a| a.formula,
@@ -3144,6 +3175,7 @@ pub const Elaborator = struct {
                     });
                 }
                 const tcc_start = self.pending_tccs.items.len;
+                const rf_start = self.result_facts.items.len;
                 const body = try self.requireProp(try self.elaborateExpr(q.body), q.body);
                 // close innermost binder first
                 var id = body.id;
@@ -3177,6 +3209,24 @@ pub const Elaborator = struct {
                         }
                         const closed = try self.pool.close(f, fresh[i]);
                         t.formula = try self.pool.add(.{ .quant = .{
+                            .q = .forall,
+                            .sort = sort,
+                            .hint = try self.internTok(q.binders[i].name),
+                            .body = closed,
+                        } });
+                    }
+                    // surfaced result-facts under a predicated binder are closed the
+                    // SAME way (`∀h; inH(h) -> <fact>`), so they α-match the
+                    // identically-shaped obligations after the binder closes them.
+                    for (self.result_facts.items[rf_start..]) |*rf| {
+                        var f = rf.*;
+                        for (quals) |qpred| {
+                            const bound = try self.pool.add(.{ .fvar = .{ .name = fresh[i], .sort = sort } });
+                            const guard_app = try self.pool.addApp(.pred, qpred, &.{bound});
+                            f = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_app, .rhs = f } });
+                        }
+                        const closed = try self.pool.close(f, fresh[i]);
+                        rf.* = try self.pool.add(.{ .quant = .{
                             .q = .forall,
                             .sort = sort,
                             .hint = try self.internTok(q.binders[i].name),
@@ -3299,6 +3349,16 @@ pub const Elaborator = struct {
             try self.pending_tccs.append(self.arena, .{ .formula = g, .loc = c.callee.start });
         }
         const id = try self.pool.addApp(if (sym.kind == .pred) .pred else .app, sym_id, arg_ids);
+        // PREDICATED RESULT (`func op(...): H`): op's signature asserts its result is
+        // in H, so surface `inH(op(args))` as an available fact for TCC discharge.
+        // (Sound as the signature assertion; the args' own guards, if any, are owed
+        // separately above.)
+        if (sym.result_refined != sym.result) {
+            for (try self.sortQualifiers(sym.result_refined)) |qpred| {
+                const fact = try self.pool.addApp(.pred, qpred, &.{id});
+                try self.result_facts.append(self.arena, fact);
+            }
+        }
         return .{ .id = id, .sort = sym.result };
     }
 };
