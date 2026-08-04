@@ -1,0 +1,15 @@
+// Source theory for model_maps_theorem_bad.bpa: a carrier with a left-unit AXIOM
+// and a left-unit THEOREM (trivially derived from the axiom). A model may map the
+// axiom but not the theorem.
+sort Carrier
+const UNIT: Carrier
+func op(a: Carrier, b: Carrier): Carrier
+
+axiom leftUnitAxiom: forall a: Carrier; op(UNIT, a) = a
+
+theorem leftUnit: forall a: Carrier; op(UNIT, a) = a
+proof
+  @conclusion |
+    forall a: Carrier; op(UNIT, a) = a
+    [by axiom leftUnitAxiom]
+qed

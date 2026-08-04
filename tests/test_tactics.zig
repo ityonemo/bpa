@@ -92,6 +92,9 @@ pub fn addTests(
     // BAD leaves an affected axiom (opUnitRight, cited by the transferred proof)
     // unmapped → rejected, naming it.
     ctx.fail(&.{ "check", "tests/cases/model_cite_bad.bpa" }, "tests/cases/model_cite_bad.bpa:33:27: error: model materialization cites axiom 'opUnitRight', which the substitution affects but the model does not map; add a mapping for it\n");
+    // a model maps only the source theory's AXIOMS; mapping a source THEOREM (which
+    // materializes through the mapped axioms) is misuse and rejected at that mapping.
+    ctx.fail(&.{ "check", "tests/cases/model_maps_theorem_bad.bpa" }, "tests/cases/model_maps_theorem_bad.bpa:19:3: error: model maps only axioms; 'src.leftUnit' is a theorem — it materializes through the mapped axioms, so drop this mapping\n");
 
     // GUARDED model (`model … where <pred>`): the transfer is RELATIVIZED — every
     // carrier ∀ gains `guard(x) ->` — and strict materialization discharges the

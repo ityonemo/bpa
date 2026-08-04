@@ -596,6 +596,16 @@ pub const Elaborator = struct {
                     return self.fail(m.target.start, "'{s}' is not a function/predicate", .{self.text(m.target)});
                 try sym_map.append(self.arena, .{ .from = from_sym, .to = to_sym });
             } else if (self.env.findStatementId(src.file, src.base)) |from_stmt| {
+                // a model discharges the source theory's AXIOM obligations only. A
+                // source THEOREM is derived, so it materializes automatically through
+                // the mapped axioms — mapping it explicitly is misusing `model`
+                // (redundant at best, a silent override at worst). Reject it. This
+                // holds for BOTH the plain and `@`-projection forms — if a guarded
+                // transfer fails to auto-materialize a theorem, the fix is to make the
+                // materializer emit it, never to re-permit a theorem mapping.
+                if (self.env.statements.items[@intFromEnum(from_stmt)] == .theorem) {
+                    return self.fail(m.source.start, "model maps only axioms; '{s}' is a theorem — it materializes through the mapped axioms, so drop this mapping", .{self.text(m.source)});
+                }
                 // axiom obligation: the local fact `to_stmt` discharges the source
                 // axiom `from_stmt`. `<model>@<projected>` (the projection form)
                 // discharges it by transferring `projected` THROUGH the named model

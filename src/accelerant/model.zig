@@ -628,7 +628,7 @@ fn emitGuardProof(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx
 /// closure fact matches (the caller then errors cleanly).
 fn emitCompositeGuard(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, t: TermId, want: TermId) ElabError!?kernel.SRef {
     const guard = ctx.model.remap.guard.?;
-    for (self.env.statements.items, 0..) |st, si| {
+    candidates: for (self.env.statements.items, 0..) |st, si| {
         const fact_formula: TermId, const is_axiom: bool = switch (st) {
             .axiom => |a| .{ a.formula, true },
             .theorem => |th| if (th.proven) .{ th.formula, false } else continue,
@@ -659,10 +659,15 @@ fn emitCompositeGuard(self: *Elaborator, plow: *Lowering, block: kernel.BlockId,
         const binding = try self.arena.alloc(?TermId, binder_sorts.items.len);
         @memset(binding, null);
         if (!matchBvarPattern(self.pool, concl_arg, t, binding)) continue;
-        // every binder must be solved (no unused-binder guessing).
-        for (binding) |b| if (b == null) continue;
+        // every binder must be solved (no unused-binder guessing); else this fact
+        // is not a usable closure for `t` — try the next candidate.
+        for (binding) |b| if (b == null) continue :candidates;
+        // `binding[i]` is the solution for the bvar of de Bruijn INDEX i (0 =
+        // innermost). `open`/`forall_elim` strips the OUTERMOST binder first (highest
+        // index), so the elim chain below must instantiate in outer→inner order:
+        // fill `args` reversed so args[0] is the outermost binder's solution.
         const args = try self.arena.alloc(TermId, binding.len);
-        for (binding, args) |b, *out| out.* = b orelse continue;
+        for (binding, 0..) |b, i| args[binding.len - 1 - i] = b.?;
 
         // cite the closure fact, forall_elim at the solved args, then MP each
         // (recursively-proved) antecedent.

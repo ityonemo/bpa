@@ -8,9 +8,10 @@
 // The stack:
 //  1. HSubGroup models the standalone subgroup theory (std/subgroup.bpa) onto inH —
 //     reifying its group-shaped vocabulary + criteria onto the membership predicate.
-//  2. HGroup says "inH is a group" by routing each `group.X` obligation THROUGH
+//  2. HGroup says "inH is a group" by routing each group AXIOM obligation THROUGH
 //     HSubGroup via the `@`-projection mapping value `group.X: HSubGroup@subgroup.X`
-//     — the inverted dependency, made explicit and walkable.
+//     — the inverted dependency, made explicit and walkable. (Only the axioms are
+//     mapped; the derived right-sided laws materialize through them.)
 //  3. Every group theorem then transfers onto the subgroup through HGroup,
 //     relativized to H. Kernel-checked, no accelerated tactics.
 
@@ -45,12 +46,13 @@ model HSubGroup {
   subgroup.subgroupHasIdentity: hHasIdentity
   subgroup.subgroupClosedOp: hClosedOp
   subgroup.subgroupClosedInverse: hClosedInverse
-  // the subgroup theory's abstract PARENT group IS the real group:
+  // the subgroup theory's abstract PARENT group IS the real group. A model maps
+  // only AXIOMS: grpAssoc/grpIdentityLeft/grpInverseLeft are the parent's axioms;
+  // its Right laws are theorems that materialize through these, so they are NOT
+  // mapped (mapping a theorem is a hard error).
     subgroup.grpAssoc: group.opAssoc
     subgroup.grpIdentityLeft: group.opIdentityLeft
-    subgroup.grpIdentityRight: group.opIdentityRight
     subgroup.grpInverseLeft: group.opInverseLeft
-    subgroup.grpInverseRight: group.opInverseRight
 }
 
 // ── LAYER 2: HGroup — inH IS a group, routing each group.X THROUGH HSubGroup. ─
@@ -61,9 +63,7 @@ model HGroup {
   group.E: E
   group.opAssoc: HSubGroup @subgroup.opAssoc
   group.opIdentityLeft: HSubGroup @subgroup.opIdentityLeft
-  group.opIdentityRight: HSubGroup @subgroup.opIdentityRight
   group.opInverseLeft: HSubGroup @subgroup.opInverseLeft
-  group.opInverseRight: HSubGroup @subgroup.opInverseRight
 }
 
 // ── the payoff: EVERY group theorem transferred onto the subgroup through HGroup,
@@ -162,12 +162,10 @@ model KSubGroup {
   subgroup.subgroupClosedInverse: kClosedInverse
   subgroup.grpAssoc: group.opAssoc
   subgroup.grpIdentityLeft: group.opIdentityLeft
-  subgroup.grpIdentityRight: group.opIdentityRight
   subgroup.grpInverseLeft: group.opInverseLeft
-  subgroup.grpInverseRight: group.opInverseRight
 }
 
-// KGroup: inK IS a group, routing each group.X through KSubGroup.
+// KGroup: inK IS a group, routing each group axiom through KSubGroup.
 model KGroup {
   group.Grp: K
   group.op: op
@@ -175,9 +173,7 @@ model KGroup {
   group.E: E
   group.opAssoc: KSubGroup @subgroup.opAssoc
   group.opIdentityLeft: KSubGroup @subgroup.opIdentityLeft
-  group.opIdentityRight: KSubGroup @subgroup.opIdentityRight
   group.opInverseLeft: KSubGroup @subgroup.opInverseLeft
-  group.opInverseRight: KSubGroup @subgroup.opInverseRight
 }
 
 // three group theorems transferred onto the SUB-subgroup K.
