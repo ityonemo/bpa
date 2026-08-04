@@ -468,51 +468,9 @@ qed
 // the inductive hypothesis.
 theorem addNegRight: forall n: Int; add(n, neg(n)) = ZERO
 proof
-  @neg-zero |
-    neg(ZERO) = ZERO
-    [by axiom negZero]
-  @add-zero |
-    forall x: Int; add(x, ZERO) = x
-    [by theorem addZeroRight]
-  @add-at-zero |
-    add(ZERO, ZERO) = ZERO
-    [by forall_elim(ZERO) add-zero]
-  @base-refl |
-    add(ZERO, neg(ZERO)) = add(ZERO, neg(ZERO))
-    [by reflexivity]
-  @open-inner-neg |
-    add(ZERO, ZERO) = add(ZERO, neg(ZERO))
-    [by rewrite neg-zero base-refl]
-  @collapse-inner |
-    ZERO = add(ZERO, neg(ZERO))
-    [by rewrite add-at-zero open-inner-neg]
   @base |
     add(ZERO, neg(ZERO)) = ZERO
-    [by symmetry collapse-inner]
-  @add-succ-right |
-    forall x, y: Int; add(x, succ(y)) = succ(add(x, y))
-    [by theorem addSuccRight]
-  @add-prev-right |
-    forall x, y: Int; add(x, prev(y)) = prev(add(x, y))
-    [by theorem addPrevRight]
-  @add-succ-left |
-    forall x, y: Int; add(succ(x), y) = succ(add(x, y))
-    [by axiom addSuccLeft]
-  @add-prev-left |
-    forall x, y: Int; add(prev(x), y) = prev(add(x, y))
-    [by axiom addPrevLeft]
-  @neg-succ |
-    forall n: Int; neg(succ(n)) = prev(neg(n))
-    [by axiom negSucc]
-  @neg-prev |
-    forall n: Int; neg(prev(n)) = succ(neg(n))
-    [by axiom negPrev]
-  @prev-succ |
-    forall n: Int; prev(succ(n)) = n
-    [by axiom prevSucc]
-  @succ-prev |
-    forall n: Int; succ(prev(n)) = n
-    [by axiom succPrev]
+    [by simplify negZero addZeroRight]
   @generalize-succ |
     fix k: Int {
       @given-inductive-hypothesis |
@@ -520,42 +478,10 @@ proof
           @inductive-hypothesis |
             add(k, neg(k)) = ZERO
             [by hypothesis given-inductive-hypothesis]
-          @open-neg |
-            neg(succ(k)) = prev(neg(k))
-            [by forall_elim(k) neg-succ]
-          @lhs-refl |
-            add(succ(k), neg(succ(k))) = add(succ(k), neg(succ(k)))
-            [by reflexivity]
-          @lhs-with-neg |
-            add(succ(k), neg(succ(k))) = add(succ(k), prev(neg(k)))
-            [by rewrite open-neg lhs-refl]
-          @pull-prev-out |
-            add(succ(k), prev(neg(k))) = prev(add(succ(k), neg(k)))
-            [by forall_elim(succ(k), neg(k)) add-prev-right]
-          @lhs-prev-out |
-            add(succ(k), neg(succ(k))) = prev(add(succ(k), neg(k)))
-            [by rewrite pull-prev-out lhs-with-neg]
-          @pull-succ-out |
-            add(succ(k), neg(k)) = succ(add(k, neg(k)))
-            [by forall_elim(k, neg(k)) add-succ-left]
-          @prev-of-succ-refl |
-            prev(add(succ(k), neg(k))) = prev(add(succ(k), neg(k)))
-            [by reflexivity]
-          @prev-of-succ |
-            prev(add(succ(k), neg(k))) = prev(succ(add(k, neg(k))))
-            [by rewrite pull-succ-out prev-of-succ-refl]
-          @lhs-collapsible |
-            add(succ(k), neg(succ(k))) = prev(succ(add(k, neg(k))))
-            [by rewrite prev-of-succ lhs-prev-out]
-          @cancel-prev-succ |
-            prev(succ(add(k, neg(k)))) = add(k, neg(k))
-            [by forall_elim(add(k, neg(k))) prev-succ]
-          @lhs-cancelled |
-            add(succ(k), neg(succ(k))) = add(k, neg(k))
-            [by rewrite cancel-prev-succ lhs-collapsible]
+          // open neg(succ k), pull the recursion out both sides, cancel prev/succ.
           @succ-case |
             add(succ(k), neg(succ(k))) = ZERO
-            [by rewrite inductive-hypothesis lhs-cancelled]
+            [by simplify negSucc addPrevRight addSuccLeft prevSucc inductive-hypothesis]
         }
       @discharge-succ |
         add(k, neg(k)) = ZERO -> add(succ(k), neg(succ(k))) = ZERO
@@ -571,42 +497,9 @@ proof
           @inductive-hypothesis |
             add(k, neg(k)) = ZERO
             [by hypothesis given-inductive-hypothesis]
-          @open-neg |
-            neg(prev(k)) = succ(neg(k))
-            [by forall_elim(k) neg-prev]
-          @lhs-refl |
-            add(prev(k), neg(prev(k))) = add(prev(k), neg(prev(k)))
-            [by reflexivity]
-          @lhs-with-neg |
-            add(prev(k), neg(prev(k))) = add(prev(k), succ(neg(k)))
-            [by rewrite open-neg lhs-refl]
-          @pull-succ-out |
-            add(prev(k), succ(neg(k))) = succ(add(prev(k), neg(k)))
-            [by forall_elim(prev(k), neg(k)) add-succ-right]
-          @lhs-succ-out |
-            add(prev(k), neg(prev(k))) = succ(add(prev(k), neg(k)))
-            [by rewrite pull-succ-out lhs-with-neg]
-          @pull-prev-out |
-            add(prev(k), neg(k)) = prev(add(k, neg(k)))
-            [by forall_elim(k, neg(k)) add-prev-left]
-          @succ-of-prev-refl |
-            succ(add(prev(k), neg(k))) = succ(add(prev(k), neg(k)))
-            [by reflexivity]
-          @succ-of-prev |
-            succ(add(prev(k), neg(k))) = succ(prev(add(k, neg(k))))
-            [by rewrite pull-prev-out succ-of-prev-refl]
-          @lhs-collapsible |
-            add(prev(k), neg(prev(k))) = succ(prev(add(k, neg(k))))
-            [by rewrite succ-of-prev lhs-succ-out]
-          @cancel-succ-prev |
-            succ(prev(add(k, neg(k)))) = add(k, neg(k))
-            [by forall_elim(add(k, neg(k))) succ-prev]
-          @lhs-cancelled |
-            add(prev(k), neg(prev(k))) = add(k, neg(k))
-            [by rewrite cancel-succ-prev lhs-collapsible]
           @prev-case |
             add(prev(k), neg(prev(k))) = ZERO
-            [by rewrite inductive-hypothesis lhs-cancelled]
+            [by simplify negPrev addSuccRight addPrevLeft succPrev inductive-hypothesis]
         }
       @discharge-prev |
         add(k, neg(k)) = ZERO -> add(prev(k), neg(prev(k))) = ZERO
@@ -1221,47 +1114,14 @@ qed
 
 // mul(n, ONE) = n — the right-identity law. No induction: unfold ONE to
 // succ(ZERO), apply the mulSuccRight recursion once, and clean up with the two
-// zero laws.
+// zero laws — the whole chain is a `simplify` normalization.
 theorem mulOneRight: forall n: Int; mul(n, ONE) = n
 proof
   @generalize-n |
     fix n: Int {
-      @one-is-succ-zero |
-        ONE = succ(ZERO)
-        [by axiom oneIsSuccZero]
-      @lhs-refl |
-        mul(n, ONE) = mul(n, ONE)
-        [by reflexivity]
-      @unfold-one |
-        mul(n, ONE) = mul(n, succ(ZERO))
-        [by rewrite one-is-succ-zero lhs-refl]
-      @mul-succ-right |
-        forall x, y: Int; mul(x, succ(y)) = add(mul(x, y), x)
-        [by theorem mulSuccRight]
-      @apply-mul-succ |
-        mul(n, succ(ZERO)) = add(mul(n, ZERO), n)
-        [by forall_elim(n, ZERO) mul-succ-right]
-      @with-recursion |
-        mul(n, ONE) = add(mul(n, ZERO), n)
-        [by rewrite apply-mul-succ unfold-one]
-      @mul-zero-right |
-        forall x: Int; mul(x, ZERO) = ZERO
-        [by theorem mulZeroRight]
-      @inner-is-zero |
-        mul(n, ZERO) = ZERO
-        [by forall_elim(n) mul-zero-right]
-      @with-inner-zero |
-        mul(n, ONE) = add(ZERO, n)
-        [by rewrite inner-is-zero with-recursion]
-      @add-zero-left |
-        forall m: Int; add(ZERO, m) = m
-        [by axiom addZeroLeft]
-      @collapse-add |
-        add(ZERO, n) = n
-        [by forall_elim(n) add-zero-left]
       @conclusion-for-n |
         mul(n, ONE) = n
-        [by rewrite collapse-add with-inner-zero]
+        [by simplify oneIsSuccZero mulSuccRight mulZeroRight addZeroLeft]
     }
   @conclusion |
     forall n: Int; mul(n, ONE) = n
