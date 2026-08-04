@@ -42,6 +42,47 @@ following declares "Natural Numbers":
 sort Nat
 ```
 
+#### Predicated sorts (`sort H = G where inH`)
+
+A **predicated sort** names `G` restricted to the elements satisfying a unary
+predicate `inH` — the natural way to write a subset carrier (a subgroup, the
+nonnegatives, …). It introduces no new kernel sort: `H` *is* `G`, and every use of
+`H` desugars to `G` with the guard `inH` injected — as a hypothesis, an obligation,
+or a postcondition, depending on position. Pure sugar; everything stays
+kernel-checked.
+
+```bpa
+pred inH(g: G)
+sort H = G where inH          // H is "G where inH holds"
+```
+
+The guard appears at each position `H` is used:
+
+- **Quantifier binders** — `forall h: H; P` means `forall h: G; inH(h) -> P`;
+  `exists h: H; P` means `exists h: G; inH(h) and P` (an existential over `H`
+  *asserts* membership).
+- **`fix h: H`** — the fix block carries `inH(h)` as its guard: surface it with
+  `[by predicate <fix-label>]`, and `forall_intro` concludes the relativized
+  `forall h; inH(h) -> …`. `unpack h: H` needs nothing special — the existential
+  it opens already carries `inH(h)` as a conjunct (project it with `and_elim_left`).
+- **Function arguments** — `func f(x: H): R` makes every call owe `inH(t)` for the
+  actual argument `t` (an undischarged obligation is an error), like a `requires`.
+- **Function results** — `func op(a: H, b: H): H` asserts `op` is *closed* on `H`
+  (an uninterpreted function's signature is an assertion, on par with an axiom):
+  each application `op(x, y)` makes `inH(op(x, y))` available, so a downstream
+  `f(op(x, y))` composes for free — the subgroup-closure pattern.
+
+An **anonymous** predicated sort may be written inline anywhere a sort appears,
+without a named `sort` declaration:
+
+```bpa
+func f(x: G where inH): R              // inline-refined argument
+theorem t: forall h: G where inH; P(h) // inline-refined binder
+```
+
+The `where` clause is a bare predicate name (applied to the bound variable); for a
+conjunction of conditions, `define` a predicate for it and refine by that name.
+
 ### `const`
 
 Declares an uninterpreted constant of a sort.
@@ -429,6 +470,7 @@ names for citations). Rules taking a term argument write it in parens:
 | `axiom NAME` | cite an axiom verbatim |
 | `theorem NAME` | cite a proven theorem verbatim |
 | `hypothesis BLOCK` | restate an enclosing block's assumption (or unpacked witness fact) |
+| `predicate FIXBLOCK` | surface the guard of a predicated `fix h: H` binder — the fact `inH(h)` its refined sort provides |
 | `modus_ponens IMP ANT` | from `P -> Q` and `P`, conclude `Q` |
 | `implies_intro BLOCK` | discharge an assume block as an implication |
 | `forall_intro BLOCK` | discharge a fix block as a universal |
