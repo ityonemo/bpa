@@ -108,4 +108,12 @@ pub fn addTests(
         \\  — WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).
         \\
     , 1);
+
+    // invertible functions form a GROUP (std/function-invertible.bpa): the bijections
+    // of a set under composition. A GUARDED model of std/group.bpa (guard = invertible)
+    // — the group axioms proved on invertible functions (assoc/identities from funcExt;
+    // inverse laws + closure under compose/inverse), then the group corpus (identity/
+    // inverse uniqueness, involution, cancellation) transfers onto them for free.
+    // Exercises cross-sort guarded weakening (group.Grp -> Fn where invertible).
+    ctx.ok(&.{ "check", "std/function-invertible.bpa" }, "OK: 66 declarations, 23 theorems proven\n");
 }
