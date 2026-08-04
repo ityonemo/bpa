@@ -63,10 +63,67 @@ model HGroup {
   group.opInverseRight: HSubGroup@subgroup.opInverseRight
 }
 
-// ── the payoff: a GROUP theorem transferred onto the subgroup through HGroup. ─
+// ── the payoff: EVERY group theorem transferred onto the subgroup through HGroup,
+//    relativized to H. Each is one line — the group corpus, for free on the subgroup.
 theorem hIdentityUnique: forall x: H; (forall g: H; op(x, g) = g) -> x = E
 proof
   @conclusion |
     forall x: H; (forall g: H; op(x, g) = g) -> x = E
     [by model(HGroup) group.identityUnique]
+qed
+
+theorem hInverseUnique: forall a, b: H; op(a, b) = E -> b = inverse(a)
+proof
+  @conclusion |
+    forall a, b: H; op(a, b) = E -> b = inverse(a)
+    [by model(HGroup) group.inverseUnique]
+qed
+
+// NOTE: group.invProduct (and group.squareIdImpliesAbelian, which cites it) use the
+// `assoc` ACCELERATED tactic in their proofs — transferring an accelerated-tactic
+// proof through a GUARDED model is a known separate boundary (the tactic's
+// synthesized steps don't re-emit under the interpretation). Omitted here; the other
+// eight transfer cleanly. (Fixing accelerated-tactic-through-guarded-transfer is
+// tracked separately.)
+
+theorem hInvInvolution: forall a: H; inverse(inverse(a)) = a
+proof
+  @conclusion |
+    forall a: H; inverse(inverse(a)) = a
+    [by model(HGroup) group.invInvolution]
+qed
+
+theorem hSolutionExists: forall b, a: H; op(op(b, inverse(a)), a) = b
+proof
+  @conclusion |
+    forall b, a: H; op(op(b, inverse(a)), a) = b
+    [by model(HGroup) group.solutionExists]
+qed
+
+theorem hSolutionUnique: forall x, a, b, y: H; op(x, a) = b -> op(y, a) = b -> x = y
+proof
+  @conclusion |
+    forall x, a, b, y: H; op(x, a) = b -> op(y, a) = b -> x = y
+    [by model(HGroup) group.solutionUnique]
+qed
+
+theorem hCancelRight: forall b, a, c: H; op(b, a) = op(c, a) -> b = c
+proof
+  @conclusion |
+    forall b, a, c: H; op(b, a) = op(c, a) -> b = c
+    [by model(HGroup) group.cancelRight]
+qed
+
+theorem hCancelLeft: forall a, b, c: H; op(a, b) = op(a, c) -> b = c
+proof
+  @conclusion |
+    forall a, b, c: H; op(a, b) = op(a, c) -> b = c
+    [by model(HGroup) group.cancelLeft]
+qed
+
+theorem hSelfInverse: (forall a: H; op(a, a) = E) -> forall a: H; inverse(a) = a
+proof
+  @conclusion |
+    (forall a: H; op(a, a) = E) -> forall a: H; inverse(a) = a
+    [by model(HGroup) group.selfInverse]
 qed

@@ -618,9 +618,16 @@ pub const Elaborator = struct {
         // inH`). That mapping supplies both `Guard.carrier` (the SOURCE sort — the
         // relativization keys on the pre-remap binder sort) and `Guard.pred` (the
         // target sort's qualifier). At most one such mapping is expected.
+        // A guard is INTRODUCED only when a NON-predicated source sort maps to a
+        // PREDICATED target (`group.Grp: H` — group's plain carrier becomes the inH
+        // subset). When the SOURCE is already predicated (`subgroup.Sub: H`,
+        // Sub itself `= Grp where inSubgroup`), the source theorem is ALREADY
+        // relativized; the mapping just CARRIES the guard across (the source's
+        // qualifier pred remaps via sym_map) — no new relativization.
         var guard: ?term.Pool.Remap.Guard = null;
         for (sorts) |p| {
             if (!self.env.isRefined(p.to)) continue;
+            if (self.env.isRefined(p.from)) continue;
             const quals = self.env.qualifiersOf(self.arena, p.to) catch return error.OutOfMemory;
             guard = .{ .pred = quals[0], .carrier = p.from };
         }
