@@ -1,4 +1,4 @@
-// PREDICATED SORT `sort H = G where inH` — binder positions (Stage 1).
+// PREDICATED SORT `sort H = G where inH` — binder positions.
 // H desugars to G; every binder over H injects the guard inH:
 //   ∀h: H; P    ==>  ∀h: G; inH(h) -> P        (hypothesis)
 //   ∃h: H; P    ==>  ∃h: G; inH(h) and P        (conjunct)

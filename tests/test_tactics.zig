@@ -58,7 +58,7 @@ pub fn addTests(
 
     // `model`: structure reuse. The source theory (a carrier + op + left-unit +
     // one proven theorem) is modeled by a concrete sort, and its theorem
-    // transfers, remapped through the model. See MODEL-DESIGN.md.
+    // transfers, remapped through the model.
     ctx.ok(&.{ "check", "tests/cases/model_source.bpa" }, "OK: 6 declarations, 2 theorems proven\n");
 
     // --fast trusts the transfer wholesale (remap the source theorem, α-match the
@@ -147,12 +147,12 @@ pub fn addTests(
     // through a `@`-projection → cite the mapped discharge, not materialize a proof).
     ctx.ok(&.{ "check", "tests/cases/model_subgroup_transfer.bpa" }, "OK: 90 declarations, 40 theorems proven\n");
 
-    // PREDICATED SORT `sort H = G where inH` — binder positions (Stage 1): ∀/∃
+    // PREDICATED SORT `sort H = G where inH` — binder positions: ∀/∃
     // inject the guard (implies/and), `fix h: H` carries it on the block (surfaced
     // by `[by predicate <lbl>]`, made the forall_intro antecedent), `unpack h: H`
     // gets it from the ∃'s conjunct. Pure sugar over the carrier; kernel-checked.
     ctx.ok(&.{ "check", "tests/cases/predicated_sort_binders.bpa" }, "OK: 9 declarations, 3 theorems proven\n");
-    // PREDICATED SORT — func RESULT closure (Stage 3): `func op2(a: H, b: H): H`
+    // PREDICATED SORT — func RESULT closure: `func op2(a: H, b: H): H`
     // surfaces `inH(op2(x,y))` at each use, so `f(op2(h,h))` composes (the
     // subgroup-closure pattern). Gated by the arg-obligations; equivalent to an
     // explicit closure axiom. Kernel-checked.
@@ -293,11 +293,11 @@ pub fn addTests(
     // arbitrary conclusion via lessThanIrreflexive + absurd).
     ctx.ok(&.{ "check", "tests/cases/farkas_ext.bpa" }, "OK: 124 declarations, 41 theorems proven\n");
 
-    // Farkas coefficient scaling (stage 1): a hypothesis scaled by a literal
+    // Farkas coefficient scaling: a hypothesis scaled by a literal
     // via multiplicationPreservesOrder before the infeasibility fold.
     ctx.ok(&.{ "check", "tests/cases/farkas_scale.bpa" }, "OK: 125 declarations, 39 theorems proven\n");
 
-    // Farkas sum path (stage 2): sum two order hypotheses over distinct
+    // Farkas sum path: sum two order hypotheses over distinct
     // variables via additionPreservesOrder + commutativity + transitivity.
     ctx.ok(&.{ "check", "tests/cases/farkas_sum.bpa" }, "OK: 122 declarations, 39 theorems proven\n");
 

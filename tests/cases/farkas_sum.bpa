@@ -1,4 +1,4 @@
-// Farkas sum path (stage 2): sum two order hypotheses over DISTINCT variables
+// Farkas sum path: sum two order hypotheses over DISTINCT variables
 // into a combined bound. a<b and c<d give add(a,c) < add(b,d) — each
 // hypothesis lifted by additionPreservesOrder, commuted to align, and chained
 // by transitivity. Needs addIsCommutative in the theory scope.

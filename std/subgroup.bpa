@@ -11,8 +11,8 @@
 // It is authored to PLUG INTO `std/group.bpa`: a concrete subgroup MODELS this theory
 // (mapping its `Grp` to the ambient group, `inSubgroup` to the membership predicate),
 // and `group` then plugs onto that concrete subgroup via a two-layer model stack,
-// TRANSFERRING the whole group corpus onto the subgroup for free (see the Level-1
-// model stack, MODEL-PARAMETERS-DESIGN.md).
+// TRANSFERRING the whole group corpus onto the subgroup for free
+// (tests/cases/model_subgroup_transfer.bpa demonstrates the stack end to end).
 //
 // The parent-group vocabulary is `grp*` (a naming concession pending the import-
 // hygiene pass): THREE axioms (grpAssoc/grpIdentityLeft/grpInverseLeft) with the

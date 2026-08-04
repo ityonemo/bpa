@@ -1,4 +1,4 @@
-// PREDICATED SORT — RESULT positions (Stage 3), func AND const: `func op2(a: H, b: H): H`
+// PREDICATED SORT — RESULT positions, func AND const: `func op2(a: H, b: H): H`
 // asserts op2 is closed on H (like an uninterpreted func's signature IS an axiom).
 // At each use `op2(x,y)`, `inH(op2(x,y))` is surfaced as an available fact, so a
 // downstream `f(op2(x,y))` (f needs an H arg) composes — the subgroup-closure

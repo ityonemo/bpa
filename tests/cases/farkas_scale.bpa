@@ -1,4 +1,4 @@
-// Farkas coefficient scaling (stage 1): a hypothesis is multiplied by a
+// Farkas coefficient scaling: a hypothesis is multiplied by a
 // literal (via multiplicationPreservesOrder) before combining. Here a<b scaled
 // by THREE gives 3a<3b, which with 3b<3a (a second hypothesis) contradicts —
 // the scaled edge feeds the same transitivity/irreflexivity fold as the
