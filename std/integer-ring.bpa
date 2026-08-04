@@ -37,15 +37,13 @@ axiom induction = integer.induction
 // recursion equation is proved by bidirectional induction on the recursing
 // (second) argument, using the left axioms.
 
-// add(n, ZERO) = n, by bidirectional induction on n.
+// add(n, ZERO) = n, by bidirectional induction on n. Each case unfolds the
+// left recursion and folds the inductive hypothesis — a job for `simplify`.
 theorem addZeroRight: forall n: Int; add(n, ZERO) = n
 proof
-  @add-zero |
-    forall a: Int; add(ZERO, a) = a
-    [by axiom addZeroLeft]
   @base |
     add(ZERO, ZERO) = ZERO
-    [by forall_elim(ZERO) add-zero]
+    [by simplify addZeroLeft]
   @generalize-succ |
     fix k: Int {
       @given-inductive-hypothesis |
@@ -53,15 +51,9 @@ proof
           @inductive-hypothesis |
             add(k, ZERO) = k
             [by hypothesis given-inductive-hypothesis]
-          @add-succ |
-            forall a, b: Int; add(succ(a), b) = succ(add(a, b))
-            [by axiom addSuccLeft]
-          @unfold |
-            add(succ(k), ZERO) = succ(add(k, ZERO))
-            [by forall_elim(k, ZERO) add-succ]
           @succ-case |
             add(succ(k), ZERO) = succ(k)
-            [by rewrite inductive-hypothesis unfold]
+            [by simplify addSuccLeft inductive-hypothesis]
         }
       @discharge-succ |
         add(k, ZERO) = k -> add(succ(k), ZERO) = succ(k)
@@ -77,15 +69,9 @@ proof
           @inductive-hypothesis |
             add(k, ZERO) = k
             [by hypothesis given-inductive-hypothesis]
-          @add-prev |
-            forall a, b: Int; add(prev(a), b) = prev(add(a, b))
-            [by axiom addPrevLeft]
-          @unfold |
-            add(prev(k), ZERO) = prev(add(k, ZERO))
-            [by forall_elim(k, ZERO) add-prev]
           @prev-case |
             add(prev(k), ZERO) = prev(k)
-            [by rewrite inductive-hypothesis unfold]
+            [by simplify addPrevLeft inductive-hypothesis]
         }
       @discharge-prev |
         add(k, ZERO) = k -> add(prev(k), ZERO) = prev(k)
@@ -106,27 +92,9 @@ theorem addSuccRight: forall a, b: Int; add(a, succ(b)) = succ(add(a, b))
 proof
   @generalize-b |
     fix b: Int {
-      @add-zero |
-        forall x: Int; add(ZERO, x) = x
-        [by axiom addZeroLeft]
-      @add-succ |
-        forall x, y: Int; add(succ(x), y) = succ(add(x, y))
-        [by axiom addSuccLeft]
-      @add-prev |
-        forall x, y: Int; add(prev(x), y) = prev(add(x, y))
-        [by axiom addPrevLeft]
-      @lhs-at-zero |
-        add(ZERO, succ(b)) = succ(b)
-        [by forall_elim(succ(b)) add-zero]
-      @rhs-at-zero |
-        add(ZERO, b) = b
-        [by forall_elim(b) add-zero]
-      @rhs-at-zero-flipped |
-        b = add(ZERO, b)
-        [by symmetry rhs-at-zero]
       @base |
         add(ZERO, succ(b)) = succ(add(ZERO, b))
-        [by rewrite rhs-at-zero-flipped lhs-at-zero]
+        [by simplify addZeroLeft]
       @generalize-succ |
         fix a: Int {
           @given-inductive-hypothesis |
@@ -134,27 +102,9 @@ proof
               @inductive-hypothesis |
                 add(a, succ(b)) = succ(add(a, b))
                 [by hypothesis given-inductive-hypothesis]
-              @lhs-unfold |
-                add(succ(a), succ(b)) = succ(add(a, succ(b)))
-                [by forall_elim(a, succ(b)) add-succ]
-              @lhs-with-ih |
-                add(succ(a), succ(b)) = succ(succ(add(a, b)))
-                [by rewrite inductive-hypothesis lhs-unfold]
-              @rhs-unfold |
-                add(succ(a), b) = succ(add(a, b))
-                [by forall_elim(a, b) add-succ]
-              @rhs-refl |
-                succ(add(succ(a), b)) = succ(add(succ(a), b))
-                [by reflexivity]
-              @rhs-with-unfold |
-                succ(add(succ(a), b)) = succ(succ(add(a, b)))
-                [by rewrite rhs-unfold rhs-refl]
-              @rhs-with-unfold-flipped |
-                succ(succ(add(a, b))) = succ(add(succ(a), b))
-                [by symmetry rhs-with-unfold]
               @succ-case |
                 add(succ(a), succ(b)) = succ(add(succ(a), b))
-                [by rewrite rhs-with-unfold-flipped lhs-with-ih]
+                [by simplify addSuccLeft inductive-hypothesis]
             }
           @discharge-succ |
             add(a, succ(b)) = succ(add(a, b)) -> add(succ(a), succ(b)) = succ(add(succ(a), b))
@@ -170,45 +120,9 @@ proof
               @inductive-hypothesis |
                 add(a, succ(b)) = succ(add(a, b))
                 [by hypothesis given-inductive-hypothesis]
-              @lhs-unfold |
-                add(prev(a), succ(b)) = prev(add(a, succ(b)))
-                [by forall_elim(a, succ(b)) add-prev]
-              @lhs-with-ih |
-                add(prev(a), succ(b)) = prev(succ(add(a, b)))
-                [by rewrite inductive-hypothesis lhs-unfold]
-              @prev-succ |
-                forall n: Int; prev(succ(n)) = n
-                [by axiom prevSucc]
-              @collapse-lhs |
-                prev(succ(add(a, b))) = add(a, b)
-                [by forall_elim(add(a, b)) prev-succ]
-              @lhs-is |
-                add(prev(a), succ(b)) = add(a, b)
-                [by rewrite collapse-lhs lhs-with-ih]
-              @rhs-unfold |
-                add(prev(a), b) = prev(add(a, b))
-                [by forall_elim(a, b) add-prev]
-              @rhs-refl |
-                succ(add(prev(a), b)) = succ(add(prev(a), b))
-                [by reflexivity]
-              @rhs-with-unfold |
-                succ(add(prev(a), b)) = succ(prev(add(a, b)))
-                [by rewrite rhs-unfold rhs-refl]
-              @succ-prev |
-                forall n: Int; succ(prev(n)) = n
-                [by axiom succPrev]
-              @collapse-rhs |
-                succ(prev(add(a, b))) = add(a, b)
-                [by forall_elim(add(a, b)) succ-prev]
-              @rhs-is |
-                succ(add(prev(a), b)) = add(a, b)
-                [by rewrite collapse-rhs rhs-with-unfold]
-              @rhs-is-flipped |
-                add(a, b) = succ(add(prev(a), b))
-                [by symmetry rhs-is]
               @prev-case |
                 add(prev(a), succ(b)) = succ(add(prev(a), b))
-                [by rewrite rhs-is-flipped lhs-is]
+                [by simplify addPrevLeft inductive-hypothesis prevSucc succPrev]
             }
           @discharge-prev |
             add(a, succ(b)) = succ(add(a, b)) -> add(prev(a), succ(b)) = succ(add(prev(a), b))
@@ -248,27 +162,9 @@ theorem addPrevRight: forall a, b: Int; add(a, prev(b)) = prev(add(a, b))
 proof
   @generalize-b |
     fix b: Int {
-      @add-zero |
-        forall x: Int; add(ZERO, x) = x
-        [by axiom addZeroLeft]
-      @add-succ |
-        forall x, y: Int; add(succ(x), y) = succ(add(x, y))
-        [by axiom addSuccLeft]
-      @add-prev |
-        forall x, y: Int; add(prev(x), y) = prev(add(x, y))
-        [by axiom addPrevLeft]
-      @lhs-at-zero |
-        add(ZERO, prev(b)) = prev(b)
-        [by forall_elim(prev(b)) add-zero]
-      @rhs-at-zero |
-        add(ZERO, b) = b
-        [by forall_elim(b) add-zero]
-      @rhs-at-zero-flipped |
-        b = add(ZERO, b)
-        [by symmetry rhs-at-zero]
       @base |
         add(ZERO, prev(b)) = prev(add(ZERO, b))
-        [by rewrite rhs-at-zero-flipped lhs-at-zero]
+        [by simplify addZeroLeft]
       @generalize-succ |
         fix a: Int {
           @given-inductive-hypothesis |
@@ -276,45 +172,9 @@ proof
               @inductive-hypothesis |
                 add(a, prev(b)) = prev(add(a, b))
                 [by hypothesis given-inductive-hypothesis]
-              @lhs-unfold |
-                add(succ(a), prev(b)) = succ(add(a, prev(b)))
-                [by forall_elim(a, prev(b)) add-succ]
-              @lhs-with-ih |
-                add(succ(a), prev(b)) = succ(prev(add(a, b)))
-                [by rewrite inductive-hypothesis lhs-unfold]
-              @succ-prev |
-                forall n: Int; succ(prev(n)) = n
-                [by axiom succPrev]
-              @collapse-lhs |
-                succ(prev(add(a, b))) = add(a, b)
-                [by forall_elim(add(a, b)) succ-prev]
-              @lhs-is |
-                add(succ(a), prev(b)) = add(a, b)
-                [by rewrite collapse-lhs lhs-with-ih]
-              @rhs-unfold |
-                add(succ(a), b) = succ(add(a, b))
-                [by forall_elim(a, b) add-succ]
-              @rhs-refl |
-                prev(add(succ(a), b)) = prev(add(succ(a), b))
-                [by reflexivity]
-              @rhs-with-unfold |
-                prev(add(succ(a), b)) = prev(succ(add(a, b)))
-                [by rewrite rhs-unfold rhs-refl]
-              @prev-succ |
-                forall n: Int; prev(succ(n)) = n
-                [by axiom prevSucc]
-              @collapse-rhs |
-                prev(succ(add(a, b))) = add(a, b)
-                [by forall_elim(add(a, b)) prev-succ]
-              @rhs-is |
-                prev(add(succ(a), b)) = add(a, b)
-                [by rewrite collapse-rhs rhs-with-unfold]
-              @rhs-is-flipped |
-                add(a, b) = prev(add(succ(a), b))
-                [by symmetry rhs-is]
               @succ-case |
                 add(succ(a), prev(b)) = prev(add(succ(a), b))
-                [by rewrite rhs-is-flipped lhs-is]
+                [by simplify addSuccLeft inductive-hypothesis succPrev prevSucc]
             }
           @discharge-succ |
             add(a, prev(b)) = prev(add(a, b)) -> add(succ(a), prev(b)) = prev(add(succ(a), b))
@@ -330,27 +190,9 @@ proof
               @inductive-hypothesis |
                 add(a, prev(b)) = prev(add(a, b))
                 [by hypothesis given-inductive-hypothesis]
-              @lhs-unfold |
-                add(prev(a), prev(b)) = prev(add(a, prev(b)))
-                [by forall_elim(a, prev(b)) add-prev]
-              @lhs-with-ih |
-                add(prev(a), prev(b)) = prev(prev(add(a, b)))
-                [by rewrite inductive-hypothesis lhs-unfold]
-              @rhs-unfold |
-                add(prev(a), b) = prev(add(a, b))
-                [by forall_elim(a, b) add-prev]
-              @rhs-refl |
-                prev(add(prev(a), b)) = prev(add(prev(a), b))
-                [by reflexivity]
-              @rhs-with-unfold |
-                prev(add(prev(a), b)) = prev(prev(add(a, b)))
-                [by rewrite rhs-unfold rhs-refl]
-              @rhs-with-unfold-flipped |
-                prev(prev(add(a, b))) = prev(add(prev(a), b))
-                [by symmetry rhs-with-unfold]
               @prev-case |
                 add(prev(a), prev(b)) = prev(add(prev(a), b))
-                [by rewrite rhs-with-unfold-flipped lhs-with-ih]
+                [by simplify addPrevLeft inductive-hypothesis]
             }
           @discharge-prev |
             add(a, prev(b)) = prev(add(a, b)) -> add(prev(a), prev(b)) = prev(add(prev(a), b))
@@ -783,24 +625,9 @@ qed
 // mirror of the mulZeroLeft axiom).
 theorem mulZeroRight: forall n: Int; mul(n, ZERO) = ZERO
 proof
-  @mul-zero-left |
-    forall x: Int; mul(ZERO, x) = ZERO
-    [by axiom mulZeroLeft]
-  @add-zero |
-    forall x: Int; add(ZERO, x) = x
-    [by axiom addZeroLeft]
-  @neg-zero |
-    neg(ZERO) = ZERO
-    [by axiom negZero]
-  @mul-succ-left |
-    forall x, y: Int; mul(succ(x), y) = add(mul(x, y), y)
-    [by axiom mulSuccLeft]
-  @mul-prev-left |
-    forall x, y: Int; mul(prev(x), y) = add(mul(x, y), neg(y))
-    [by axiom mulPrevLeft]
   @base |
     mul(ZERO, ZERO) = ZERO
-    [by forall_elim(ZERO) mul-zero-left]
+    [by simplify mulZeroLeft]
   @generalize-succ |
     fix k: Int {
       @given-inductive-hypothesis |
@@ -808,18 +635,9 @@ proof
           @inductive-hypothesis |
             mul(k, ZERO) = ZERO
             [by hypothesis given-inductive-hypothesis]
-          @unfold |
-            mul(succ(k), ZERO) = add(mul(k, ZERO), ZERO)
-            [by forall_elim(k, ZERO) mul-succ-left]
-          @with-ih |
-            mul(succ(k), ZERO) = add(ZERO, ZERO)
-            [by rewrite inductive-hypothesis unfold]
-          @collapse-add |
-            add(ZERO, ZERO) = ZERO
-            [by forall_elim(ZERO) add-zero]
           @succ-case |
             mul(succ(k), ZERO) = ZERO
-            [by rewrite collapse-add with-ih]
+            [by simplify mulSuccLeft inductive-hypothesis addZeroLeft]
         }
       @discharge-succ |
         mul(k, ZERO) = ZERO -> mul(succ(k), ZERO) = ZERO
@@ -835,21 +653,9 @@ proof
           @inductive-hypothesis |
             mul(k, ZERO) = ZERO
             [by hypothesis given-inductive-hypothesis]
-          @unfold |
-            mul(prev(k), ZERO) = add(mul(k, ZERO), neg(ZERO))
-            [by forall_elim(k, ZERO) mul-prev-left]
-          @with-ih |
-            mul(prev(k), ZERO) = add(ZERO, neg(ZERO))
-            [by rewrite inductive-hypothesis unfold]
-          @with-neg-zero |
-            mul(prev(k), ZERO) = add(ZERO, ZERO)
-            [by rewrite neg-zero with-ih]
-          @collapse-add |
-            add(ZERO, ZERO) = ZERO
-            [by forall_elim(ZERO) add-zero]
           @prev-case |
             mul(prev(k), ZERO) = ZERO
-            [by rewrite collapse-add with-neg-zero]
+            [by simplify mulPrevLeft inductive-hypothesis negZero addZeroLeft]
         }
       @discharge-prev |
         mul(k, ZERO) = ZERO -> mul(prev(k), ZERO) = ZERO
