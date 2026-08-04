@@ -1,0 +1,36 @@
+// N-ARY SCHEMA PARAMETERS: a schema (axiom) may take a param that is a
+// RELATIONAL (2-argument) Prop-valued generator `spec: Element -> Element -> Prop`,
+// not just a unary `Element -> Prop`. Instantiated at a concrete binary predicate
+// (via a 2-binder lambda, and via bare-predicate eta-sugar), then applied to two
+// arguments inside the schema body — each application beta-reduces both binders.
+//
+// This is the prerequisite for a uniqueness-guarded definite-description operator
+// (the ι that builds a witness function/element from a "for each x a unique y"
+// spec): that spec is inherently a binary relation.
+
+sort Element
+const A: Element
+const B: Element
+
+pred related(x: Element, y: Element)
+
+// a schema with a BINARY relational Prop-valued parameter. The body applies the
+// parameter to two arguments — beta-reduces both.
+axiom pairApplies(spec: Element -> Element -> Prop):
+  spec(A, B) -> spec(A, B)
+
+// instantiate at the bare predicate `related` (2-argument eta-sugar):
+theorem viaEta: related(A, B) -> related(A, B)
+proof
+  @conclusion |
+    related(A, B) -> related(A, B)
+    [by instantiate pairApplies(related)]
+qed
+
+// instantiate at an explicit 2-binder lambda:
+theorem viaLambda: related(A, B) -> related(A, B)
+proof
+  @conclusion |
+    related(A, B) -> related(A, B)
+    [by instantiate pairApplies((fun x, y: Element => related(x, y)))]
+qed

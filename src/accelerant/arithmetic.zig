@@ -1096,8 +1096,14 @@ fn instantiateInduction(self: *Elaborator, induction_id: StatementId, schema: *c
     _ = loc;
     if (schema.params.len != 1) return null;
     const pname = try self.internTok(schema.params[0].name);
+    // the schema-arg representation holds the binder as a FREE fvar (substituted at
+    // application); `p_closed` is closed over the induction variable, so open it at
+    // a fresh fvar and record that name as the parameter.
+    const pvar = try self.freshNamed("p");
+    const pfvar = try self.pool.add(.{ .fvar = .{ .name = pvar, .sort = nat } });
+    const p_open = try self.pool.open(p_closed, pfvar);
     var args_map: SchemaArgs = .empty;
-    args_map.put(self.arena, pname, .{ .lambda = .{ .body = p_closed, .arg_sort = nat, .result_sort = .prop } }) catch return error.OutOfMemory;
+    args_map.put(self.arena, pname, .{ .lambda = .{ .body = p_open, .params = &.{pvar}, .arg_sorts = &.{nat}, .result_sort = .prop } }) catch return error.OutOfMemory;
     const schema_ctx: Ctx = .{ .source = schema.source, .file = schema.file, .diag = @intFromEnum(schema.file) };
     return self.instantiateSchemaCore(induction_id, schema, schema_ctx, &args_map);
 }

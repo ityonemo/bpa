@@ -200,8 +200,12 @@ pub const Elaborator = struct {
     pub const SchemaArgs = std.AutoHashMapUnmanaged(StrId, SchemaArg);
     pub const SchemaArg = union(enum) {
         value: Typed,
-        /// single-argument generator: body has one loose bvar
-        lambda: struct { body: TermId, arg_sort: SortId, result_sort: SortId },
+        /// N-argument generator. `body` holds the N binders as FREE fvars named
+        /// `params[i]` (of sort `arg_sorts[i]`); application substitutes each via
+        /// capture-free `substFvar` (no de Bruijn multi-binder bookkeeping — the
+        /// kernel has no lambda node, and `open`/`close` assume a wrapping binder).
+        /// A unary param (`Nat -> Prop`) is the 1-element case.
+        lambda: struct { body: TermId, params: []const StrId, arg_sorts: []const SortId, result_sort: SortId },
     };
 
     pub const Typed = struct { id: TermId, sort: SortId };
@@ -1586,60 +1590,66 @@ pub const Elaborator = struct {
                 }
                 args_map.put(self.arena, pname, .{ .value = t }) catch return error.OutOfMemory;
             } else {
-                if (p.arg_sorts.len > 1) {
-                    return self.fail(p.name.start, "schema parameters take at most one argument (for now)", .{});
-                }
-                const arg_sort = try self.resolveSort(p.arg_sorts[0]);
+                // an N-ary generator param `p: S1 -> … -> Sn -> R`.
+                const arg_sorts = try self.arena.alloc(SortId, p.arg_sorts.len);
+                for (p.arg_sorts, arg_sorts) |a, *out| out.* = try self.resolveSort(a);
                 const result_sort = try self.resolveSort(p.result);
                 const pname_text = self.text(p.name);
                 _ = self.swapCtx(ctx);
-                // eta-sugar: a bare predicate name `p` (of the expected
-                // `arg_sort -> result_sort` signature) stands for the lambda
-                // `fun x => p(x)`. Synthesize that body directly at the term
-                // level and store the same `.lambda` shape as the explicit form.
+                // eta-sugar: a bare predicate/function name `p` of the expected
+                // `S1 -> … -> Sn -> R` signature stands for `fun x1…xn => p(x1…xn)`.
+                // Synthesize that body directly and store the same `.lambda` shape.
                 if (arg_expr.* == .name and
                     std.mem.indexOfScalar(u8, self.text(arg_expr.name), '.') == null)
                 {
                     const nm = try self.internTok(arg_expr.name);
                     if (self.env.findSym(self.file, nm)) |sym_id| {
                         const sym = self.env.sym(sym_id);
-                        if (sym.kind == .pred and sym.arg_sorts.len == 1 and
-                            sym.arg_sorts[0] == arg_sort and sym.result == result_sort)
+                        const kind: term.AppKind = if (result_sort == .prop) .pred else .app;
+                        if (sym.arg_sorts.len == arg_sorts.len and sym.result == result_sort and
+                            std.mem.eql(SortId, sym.arg_sorts, arg_sorts))
                         {
-                            const fresh = try self.freshName();
-                            const fvar = try self.pool.add(.{ .fvar = .{ .name = fresh, .sort = arg_sort } });
-                            const applied = try self.pool.addApp(.pred, sym_id, &.{fvar});
-                            const closed = try self.pool.close(applied, fresh);
+                            const names = try self.arena.alloc(StrId, arg_sorts.len);
+                            const fvars = try self.arena.alloc(TermId, arg_sorts.len);
+                            for (arg_sorts, names, fvars) |asort, *n, *fv| {
+                                n.* = try self.freshName();
+                                fv.* = try self.pool.add(.{ .fvar = .{ .name = n.*, .sort = asort } });
+                            }
+                            const applied = try self.pool.addApp(kind, sym_id, fvars);
                             args_map.put(self.arena, pname, .{
-                                .lambda = .{ .body = closed, .arg_sort = arg_sort, .result_sort = result_sort },
+                                .lambda = .{ .body = applied, .params = names, .arg_sorts = arg_sorts, .result_sort = result_sort },
                             }) catch return error.OutOfMemory;
                             continue;
                         }
                     }
                 }
                 if (arg_expr.* != .lambda) {
-                    return self.fail(exprLoc(arg_expr), "schema parameter '{s}' requires a lambda argument (or a bare predicate of sort '{s}' -> '{s}')", .{ pname_text, self.sortName(arg_sort), self.sortName(result_sort) });
+                    return self.fail(exprLoc(arg_expr), "schema parameter '{s}' requires a {d}-argument lambda (or a bare symbol of that signature)", .{ pname_text, arg_sorts.len });
                 }
                 const lam = arg_expr.lambda;
-                if (lam.binders.len != 1) {
-                    return self.fail(lam.tok.start, "schema parameter '{s}' expects a 1-argument lambda", .{pname_text});
+                if (lam.binders.len != arg_sorts.len) {
+                    return self.fail(lam.tok.start, "schema parameter '{s}' expects a {d}-argument lambda, got {d}", .{ pname_text, arg_sorts.len, lam.binders.len });
                 }
-                const lam_sort = try self.resolveSort(lam.binders[0].sort);
-                if (lam_sort != arg_sort) {
-                    return self.fail(lam.binders[0].sort.start, "expected sort '{s}', got '{s}'", .{
-                        self.sortName(arg_sort), self.sortName(lam_sort),
-                    });
+                // bind each lambda binder as a fresh eigenvariable (checking its
+                // declared sort against the param signature); elaborate the body with
+                // all N in scope, and KEEP the fvar names free in the stored body —
+                // application substitutes them (no closing; see SchemaArg.lambda).
+                const names = try self.arena.alloc(StrId, lam.binders.len);
+                for (lam.binders, arg_sorts, names) |b, asort, *nm| {
+                    const lam_sort = try self.resolveSort(b.sort);
+                    if (lam_sort != asort) {
+                        return self.fail(b.sort.start, "expected sort '{s}', got '{s}'", .{
+                            self.sortName(asort), self.sortName(lam_sort),
+                        });
+                    }
+                    const lam_name = try self.internTok(b.name);
+                    try self.checkNoShadow(lam_name, b.name);
+                    const fresh = try self.freshName();
+                    nm.* = fresh;
+                    try self.scope.append(self.arena, .{ .name = lam_name, .sort = asort, .fvar = fresh });
                 }
-                const lam_name = try self.internTok(lam.binders[0].name);
-                try self.checkNoShadow(lam_name, lam.binders[0].name);
-                const fresh = try self.freshName();
-                try self.scope.append(self.arena, .{
-                    .name = lam_name,
-                    .sort = arg_sort,
-                    .fvar = fresh,
-                });
                 const body = try self.elaborateExpr(lam.body);
-                _ = self.scope.pop();
+                for (0..lam.binders.len) |_| _ = self.scope.pop();
                 if (body.sort != result_sort) {
                     if (result_sort == .prop) {
                         return self.fail(exprLoc(lam.body), "expected a proposition, got sort '{s}'", .{self.sortName(body.sort)});
@@ -1648,9 +1658,8 @@ pub const Elaborator = struct {
                         self.sortName(result_sort), self.sortName(body.sort),
                     });
                 }
-                const closed = try self.pool.close(body.id, fresh);
                 args_map.put(self.arena, pname, .{
-                    .lambda = .{ .body = closed, .arg_sort = arg_sort, .result_sort = result_sort },
+                    .lambda = .{ .body = body.id, .params = names, .arg_sorts = arg_sorts, .result_sort = result_sort },
                 }) catch return error.OutOfMemory;
             }
         }
@@ -3347,16 +3356,23 @@ pub const Elaborator = struct {
         if (self.schema_args) |sa| {
             if (sa.get(name)) |arg| switch (arg) {
                 .lambda => |l| {
-                    if (c.args.len != 1) {
-                        return self.fail(c.callee.start, "schema parameter '{s}' expects 1 argument, got {d}", .{ self.text(c.callee), c.args.len });
+                    if (c.args.len != l.arg_sorts.len) {
+                        return self.fail(c.callee.start, "schema parameter '{s}' expects {d} argument(s), got {d}", .{ self.text(c.callee), l.arg_sorts.len, c.args.len });
                     }
-                    const t = try self.elaborateExpr(c.args[0]);
-                    if (t.sort != l.arg_sort) {
-                        return self.fail(exprLoc(c.args[0]), "expected sort '{s}', got '{s}'", .{
-                            self.sortName(l.arg_sort), self.sortName(t.sort),
-                        });
+                    // beta-reduce: substitute each parameter fvar with its argument.
+                    // Simultaneous by construction — the argument terms are closed and
+                    // the param fvars are fresh/distinct, so order is irrelevant.
+                    var reduced = l.body;
+                    for (c.args, l.arg_sorts, l.params) |arg_expr, expected, param| {
+                        const t = try self.elaborateExpr(arg_expr);
+                        if (t.sort != expected) {
+                            return self.fail(exprLoc(arg_expr), "expected sort '{s}', got '{s}'", .{
+                                self.sortName(expected), self.sortName(t.sort),
+                            });
+                        }
+                        reduced = try self.pool.substFvar(reduced, param, t.id);
                     }
-                    return .{ .id = try self.pool.open(l.body, t.id), .sort = l.result_sort };
+                    return .{ .id = reduced, .sort = l.result_sort };
                 },
                 .value => return self.fail(c.callee.start, "schema parameter '{s}' takes no arguments", .{self.text(c.callee)}),
             };
