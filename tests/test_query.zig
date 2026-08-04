@@ -90,30 +90,21 @@ pub fn addTests(
         \\theorem addZeroRight: forall n: Nat; add(n, ZERO) = n
         \\proof
         \\  // base case: addZeroLeft specialized at b := ZERO
-        \\  @add-zero-left |
-        \\    forall b: Nat; add(ZERO, b) = b
-        \\    [by axiom addZeroLeft]
         \\  @base-case |
         \\    add(ZERO, ZERO) = ZERO
-        \\    [by forall_elim(ZERO) add-zero-left]
+        \\    [by simplify addZeroLeft]
         \\
         \\  // inductive step: unfold add on succ(k), then rewrite with the IH
         \\  @induction-step |
         \\    fix k: Nat {
         \\      @given-inductive-hypothesis |
         \\        assume add(k, ZERO) = k {
-        \\          @add-succ-left |
-        \\            forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
-        \\            [by axiom addSuccLeft]
-        \\          @unfolded |
-        \\            add(succ(k), ZERO) = succ(add(k, ZERO))
-        \\            [by forall_elim(k, ZERO) add-succ-left]
         \\          @inductive-hypothesis |
         \\            add(k, ZERO) = k
         \\            [by hypothesis given-inductive-hypothesis]
         \\          @succ-case |
         \\            add(succ(k), ZERO) = succ(k)
-        \\            [by rewrite inductive-hypothesis unfolded]
+        \\            [by simplify addSuccLeft inductive-hypothesis]
         \\        }
         \\      @induction-step-at-k |
         \\        add(k, ZERO) = k -> add(succ(k), ZERO) = succ(k)

@@ -45,21 +45,9 @@ theorem subSelf: forall a: Int; sub(a, a) = ZERO
 proof
   @generalize-a |
     fix a: Int {
-      @sub-definition |
-        forall x, y: Int; sub(x, y) = add(x, neg(y))
-        [by axiom subDef]
-      @sub-a-a |
-        sub(a, a) = add(a, neg(a))
-        [by forall_elim(a, a) sub-definition]
-      @add-neg |
-        forall n: Int; add(n, neg(n)) = ZERO
-        [by theorem addNegRight]
-      @a-plus-neg-a |
-        add(a, neg(a)) = ZERO
-        [by forall_elim(a) add-neg]
       @conclusion-sub |
         sub(a, a) = ZERO
-        [by rewrite a-plus-neg-a sub-a-a]
+        [by simplify subDef addNegRight]
     }
   @conclusion |
     forall a: Int; sub(a, a) = ZERO

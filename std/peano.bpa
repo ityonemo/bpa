@@ -79,30 +79,21 @@ axiom induction(prop: Nat -> Prop):
 theorem addZeroRight: forall n: Nat; add(n, ZERO) = n
 proof
   // base case: addZeroLeft specialized at b := ZERO
-  @add-zero-left |
-    forall b: Nat; add(ZERO, b) = b
-    [by axiom addZeroLeft]
   @base-case |
     add(ZERO, ZERO) = ZERO
-    [by forall_elim(ZERO) add-zero-left]
+    [by simplify addZeroLeft]
 
   // inductive step: unfold add on succ(k), then rewrite with the IH
   @induction-step |
     fix k: Nat {
       @given-inductive-hypothesis |
         assume add(k, ZERO) = k {
-          @add-succ-left |
-            forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
-            [by axiom addSuccLeft]
-          @unfolded |
-            add(succ(k), ZERO) = succ(add(k, ZERO))
-            [by forall_elim(k, ZERO) add-succ-left]
           @inductive-hypothesis |
             add(k, ZERO) = k
             [by hypothesis given-inductive-hypothesis]
           @succ-case |
             add(succ(k), ZERO) = succ(k)
-            [by rewrite inductive-hypothesis unfolded]
+            [by simplify addSuccLeft inductive-hypothesis]
         }
       @induction-step-at-k |
         add(k, ZERO) = k -> add(succ(k), ZERO) = succ(k)
@@ -125,25 +116,10 @@ theorem addSuccRight: forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
 proof
   @add-succ-right-swapped |
     fix b: Nat {
-      // base case: reduce both sides with addZeroLeft, then chain via symmetry
-      @add-zero-left |
-        forall c: Nat; add(ZERO, c) = c
-        [by axiom addZeroLeft]
-      @at-succ-b |
-        add(ZERO, succ(b)) = succ(b)
-        [by forall_elim(succ(b)) add-zero-left]
-      @at-b |
-        add(ZERO, b) = b
-        [by forall_elim(b) add-zero-left]
-      @at-b-refl |
-        add(ZERO, b) = add(ZERO, b)
-        [by reflexivity]
-      @at-b-sym |
-        b = add(ZERO, b)
-        [by rewrite at-b at-b-refl]
+      // base case: both sides reduce to succ(b) via addZeroLeft
       @base-case |
         add(ZERO, succ(b)) = succ(add(ZERO, b))
-        [by rewrite at-b-sym at-succ-b]
+        [by simplify addZeroLeft]
 
       // inductive step: push succ through the left with addSuccLeft, rewrite the IH in,
       // then fold the right-hand side back up
@@ -151,33 +127,12 @@ proof
         fix k: Nat {
           @given-inductive-hypothesis |
             assume add(k, succ(b)) = succ(add(k, b)) {
-              @add-succ-left |
-                forall a, c: Nat; add(succ(a), c) = succ(add(a, c))
-                [by axiom addSuccLeft]
-              @add-succ-left-at-k |
-                forall c: Nat; add(succ(k), c) = succ(add(k, c))
-                [by forall_elim(k) add-succ-left]
-              @unfolded |
-                add(succ(k), succ(b)) = succ(add(k, succ(b)))
-                [by forall_elim(succ(b)) add-succ-left-at-k]
               @inductive-hypothesis |
                 add(k, succ(b)) = succ(add(k, b))
                 [by hypothesis given-inductive-hypothesis]
-              @rewritten |
-                add(succ(k), succ(b)) = succ(succ(add(k, b)))
-                [by rewrite inductive-hypothesis unfolded]
-              @fold-target |
-                add(succ(k), b) = succ(add(k, b))
-                [by forall_elim(b) add-succ-left-at-k]
-              @fold-refl |
-                add(succ(k), b) = add(succ(k), b)
-                [by reflexivity]
-              @fold-sym |
-                succ(add(k, b)) = add(succ(k), b)
-                [by rewrite fold-target fold-refl]
               @succ-case |
                 add(succ(k), succ(b)) = succ(add(succ(k), b))
-                [by rewrite fold-sym rewritten]
+                [by simplify addSuccLeft inductive-hypothesis]
             }
           @induction-step-at-k |
             add(k, succ(b)) = succ(add(k, b)) -> add(succ(k), succ(b)) = succ(add(succ(k), b))
@@ -217,30 +172,15 @@ qed
 // a final swap re-quantifies it into the canonical `forall a, b`.
 theorem addIsCommutative: forall a, b: Nat; add(a, b) = add(b, a)
 proof
-  // base case: add(a, ZERO) = a = add(ZERO, a), chaining the two ZERO facts
+  // base case: both sides collapse to a via addZeroRight / addZeroLeft
   @base-case-proof |
     fix a: Nat {
       @add-zero-right |
         forall n: Nat; add(n, ZERO) = n
         [by theorem addZeroRight]
-      @right-zero |
-        add(a, ZERO) = a
-        [by forall_elim(a) add-zero-right]
-      @add-zero-left |
-        forall c: Nat; add(ZERO, c) = c
-        [by axiom addZeroLeft]
-      @left-zero |
-        add(ZERO, a) = a
-        [by forall_elim(a) add-zero-left]
-      @left-zero-refl |
-        add(ZERO, a) = add(ZERO, a)
-        [by reflexivity]
-      @left-zero-sym |
-        a = add(ZERO, a)
-        [by rewrite left-zero left-zero-refl]
       @chained |
         add(a, ZERO) = add(ZERO, a)
-        [by rewrite left-zero-sym right-zero]
+        [by simplify add-zero-right addZeroLeft]
     }
   @base-case |
     forall a: Nat; add(a, ZERO) = add(ZERO, a)
@@ -253,36 +193,15 @@ proof
         assume forall a: Nat; add(a, k) = add(k, a) {
           @pointwise |
             fix a2: Nat {
-              @add-succ-right |
-                forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
-                [by theorem addSuccRight]
-              @left-unfold |
-                add(a2, succ(k)) = succ(add(a2, k))
-                [by forall_elim(a2, k) add-succ-right]
               @inductive-hypothesis |
                 forall a: Nat; add(a, k) = add(k, a)
                 [by hypothesis given-inductive-hypothesis]
               @inductive-hypothesis-at-a2 |
                 add(a2, k) = add(k, a2)
                 [by forall_elim(a2) inductive-hypothesis]
-              @swapped |
-                add(a2, succ(k)) = succ(add(k, a2))
-                [by rewrite inductive-hypothesis-at-a2 left-unfold]
-              @add-succ-left |
-                forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
-                [by axiom addSuccLeft]
-              @right-unfold |
-                add(succ(k), a2) = succ(add(k, a2))
-                [by forall_elim(k, a2) add-succ-left]
-              @right-refl |
-                add(succ(k), a2) = add(succ(k), a2)
-                [by reflexivity]
-              @right-sym |
-                succ(add(k, a2)) = add(succ(k), a2)
-                [by rewrite right-unfold right-refl]
               @succ-case |
                 add(a2, succ(k)) = add(succ(k), a2)
-                [by rewrite right-sym swapped]
+                [by simplify addSuccRight addSuccLeft inductive-hypothesis-at-a2]
             }
           @discharge-a |
             forall a: Nat; add(a, succ(k)) = add(succ(k), a)
@@ -329,75 +248,21 @@ proof
       @generalize-b |
         fix b: Nat {
           // base case: both sides collapse through addZeroLeft
-          @add-zero-left |
-            forall m: Nat; add(ZERO, m) = m
-            [by axiom addZeroLeft]
-          @inner-zero |
-            add(ZERO, b) = b
-            [by forall_elim(b) add-zero-left]
-          @base-refl |
-            add(add(ZERO, b), c) = add(add(ZERO, b), c)
-            [by reflexivity]
-          @base-collapsed |
-            add(add(ZERO, b), c) = add(b, c)
-            [by rewrite inner-zero base-refl]
-          @outer-zero |
-            add(ZERO, add(b, c)) = add(b, c)
-            [by forall_elim(add(b, c)) add-zero-left]
-          @outer-zero-refl |
-            add(ZERO, add(b, c)) = add(ZERO, add(b, c))
-            [by reflexivity]
-          @outer-zero-sym |
-            add(b, c) = add(ZERO, add(b, c))
-            [by rewrite outer-zero outer-zero-refl]
           @base-case |
             add(add(ZERO, b), c) = add(ZERO, add(b, c))
-            [by rewrite outer-zero-sym base-collapsed]
+            [by simplify addZeroLeft]
 
           // inductive step: push succ out of both additions, rewrite the IH
           @induction-step |
             fix k: Nat {
               @given-inductive-hypothesis |
                 assume add(add(k, b), c) = add(k, add(b, c)) {
-                  @add-succ-left |
-                    forall a, m: Nat; add(succ(a), m) = succ(add(a, m))
-                    [by axiom addSuccLeft]
-                  @add-succ-left-at-k |
-                    forall m: Nat; add(succ(k), m) = succ(add(k, m))
-                    [by forall_elim(k) add-succ-left]
-                  @inner-succ |
-                    add(succ(k), b) = succ(add(k, b))
-                    [by forall_elim(b) add-succ-left-at-k]
-                  @start-refl |
-                    add(add(succ(k), b), c) = add(add(succ(k), b), c)
-                    [by reflexivity]
-                  @lhs-inner |
-                    add(add(succ(k), b), c) = add(succ(add(k, b)), c)
-                    [by rewrite inner-succ start-refl]
-                  @push-out |
-                    add(succ(add(k, b)), c) = succ(add(add(k, b), c))
-                    [by forall_elim(add(k, b), c) add-succ-left]
-                  @lhs-pushed |
-                    add(add(succ(k), b), c) = succ(add(add(k, b), c))
-                    [by rewrite push-out lhs-inner]
                   @inductive-hypothesis |
                     add(add(k, b), c) = add(k, add(b, c))
                     [by hypothesis given-inductive-hypothesis]
-                  @with-inductive-hypothesis |
-                    add(add(succ(k), b), c) = succ(add(k, add(b, c)))
-                    [by rewrite inductive-hypothesis lhs-pushed]
-                  @succ-form |
-                    add(succ(k), add(b, c)) = succ(add(k, add(b, c)))
-                    [by forall_elim(add(b, c)) add-succ-left-at-k]
-                  @succ-form-refl |
-                    add(succ(k), add(b, c)) = add(succ(k), add(b, c))
-                    [by reflexivity]
-                  @succ-form-sym |
-                    succ(add(k, add(b, c))) = add(succ(k), add(b, c))
-                    [by rewrite succ-form succ-form-refl]
                   @succ-case |
                     add(add(succ(k), b), c) = add(succ(k), add(b, c))
-                    [by rewrite succ-form-sym with-inductive-hypothesis]
+                    [by simplify addSuccLeft inductive-hypothesis]
                 }
               @induction-step-at-k |
                 add(add(k, b), c) = add(k, add(b, c)) -> add(add(succ(k), b), c) = add(succ(k), add(b, c))
@@ -447,38 +312,20 @@ qed
 // Strategy: induction on n with prop(k) := mul(k, ZERO) = ZERO.
 theorem mulZeroRight: forall n: Nat; mul(n, ZERO) = ZERO
 proof
-  @mul-zero-left |
-    forall b: Nat; mul(ZERO, b) = ZERO
-    [by axiom mulZeroLeft]
   @base-case |
     mul(ZERO, ZERO) = ZERO
-    [by forall_elim(ZERO) mul-zero-left]
+    [by simplify mulZeroLeft]
 
   @induction-step |
     fix k: Nat {
       @given-inductive-hypothesis |
         assume mul(k, ZERO) = ZERO {
-          @mul-succ-left |
-            forall a, b: Nat; mul(succ(a), b) = add(mul(a, b), b)
-            [by axiom mulSuccLeft]
-          @unfolded |
-            mul(succ(k), ZERO) = add(mul(k, ZERO), ZERO)
-            [by forall_elim(k, ZERO) mul-succ-left]
           @inductive-hypothesis |
             mul(k, ZERO) = ZERO
             [by hypothesis given-inductive-hypothesis]
-          @with-inductive-hypothesis |
-            mul(succ(k), ZERO) = add(ZERO, ZERO)
-            [by rewrite inductive-hypothesis unfolded]
-          @add-zero-left |
-            forall m: Nat; add(ZERO, m) = m
-            [by axiom addZeroLeft]
-          @add-zz |
-            add(ZERO, ZERO) = ZERO
-            [by forall_elim(ZERO) add-zero-left]
           @succ-case |
             mul(succ(k), ZERO) = ZERO
-            [by rewrite add-zz with-inductive-hypothesis]
+            [by simplify mulSuccLeft addZeroLeft inductive-hypothesis]
         }
       @induction-step-at-k |
         mul(k, ZERO) = ZERO -> mul(succ(k), ZERO) = ZERO
@@ -501,34 +348,10 @@ theorem mulSuccRight: forall a, b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
 proof
   @mul-succ-right-swapped |
     fix b: Nat {
-      // base case: both sides are ZERO
-      @mul-zero-left |
-        forall m: Nat; mul(ZERO, m) = ZERO
-        [by axiom mulZeroLeft]
-      @mul-zero-at-succ-b |
-        mul(ZERO, succ(b)) = ZERO
-        [by forall_elim(succ(b)) mul-zero-left]
-      @mul-zero-at-b |
-        mul(ZERO, b) = ZERO
-        [by forall_elim(b) mul-zero-left]
-      @add-zero-right |
-        forall n: Nat; add(n, ZERO) = n
-        [by theorem addZeroRight]
-      @add-zero-right-at-product |
-        add(mul(ZERO, b), ZERO) = mul(ZERO, b)
-        [by forall_elim(mul(ZERO, b)) add-zero-right]
-      @rhs-zeroed |
-        add(mul(ZERO, b), ZERO) = ZERO
-        [by rewrite mul-zero-at-b add-zero-right-at-product]
-      @rhs-zeroed-refl |
-        add(mul(ZERO, b), ZERO) = add(mul(ZERO, b), ZERO)
-        [by reflexivity]
-      @rhs-zeroed-sym |
-        ZERO = add(mul(ZERO, b), ZERO)
-        [by rewrite rhs-zeroed rhs-zeroed-refl]
+      // base case: both sides collapse to ZERO via mulZeroLeft / addZeroLeft
       @base-case |
         mul(ZERO, succ(b)) = add(mul(ZERO, b), ZERO)
-        [by rewrite rhs-zeroed-sym mul-zero-at-succ-b]
+        [by simplify mulZeroLeft addZeroLeft]
 
       // inductive step: normalize BOTH sides to succ(add(mul(k, b), add(b, k)))
       @induction-step |
@@ -648,30 +471,15 @@ qed
 // re-quantifies it into the canonical `forall a, b`.
 theorem mulIsCommutative: forall a, b: Nat; mul(a, b) = mul(b, a)
 proof
-  // base case: both sides are ZERO
+  // base case: both sides collapse to ZERO via mulZeroRight / mulZeroLeft
   @base-case-proof |
     fix a: Nat {
       @mul-zero-right |
         forall n: Nat; mul(n, ZERO) = ZERO
         [by theorem mulZeroRight]
-      @right-zero |
-        mul(a, ZERO) = ZERO
-        [by forall_elim(a) mul-zero-right]
-      @mul-zero-left |
-        forall m: Nat; mul(ZERO, m) = ZERO
-        [by axiom mulZeroLeft]
-      @left-zero |
-        mul(ZERO, a) = ZERO
-        [by forall_elim(a) mul-zero-left]
-      @left-zero-refl |
-        mul(ZERO, a) = mul(ZERO, a)
-        [by reflexivity]
-      @left-zero-sym |
-        ZERO = mul(ZERO, a)
-        [by rewrite left-zero left-zero-refl]
       @chained |
         mul(a, ZERO) = mul(ZERO, a)
-        [by rewrite left-zero-sym right-zero]
+        [by simplify mul-zero-right mulZeroLeft]
     }
   @base-case |
     forall a: Nat; mul(a, ZERO) = mul(ZERO, a)
@@ -685,36 +493,15 @@ proof
         assume forall a: Nat; mul(a, k) = mul(k, a) {
           @pointwise |
             fix a2: Nat {
-              @mul-succ-right |
-                forall m, c: Nat; mul(m, succ(c)) = add(mul(m, c), m)
-                [by theorem mulSuccRight]
-              @left-unfold |
-                mul(a2, succ(k)) = add(mul(a2, k), a2)
-                [by forall_elim(a2, k) mul-succ-right]
               @inductive-hypothesis |
                 forall a: Nat; mul(a, k) = mul(k, a)
                 [by hypothesis given-inductive-hypothesis]
               @inductive-hypothesis-at-a2 |
                 mul(a2, k) = mul(k, a2)
                 [by forall_elim(a2) inductive-hypothesis]
-              @swapped |
-                mul(a2, succ(k)) = add(mul(k, a2), a2)
-                [by rewrite inductive-hypothesis-at-a2 left-unfold]
-              @mul-succ-left |
-                forall c, m: Nat; mul(succ(c), m) = add(mul(c, m), m)
-                [by axiom mulSuccLeft]
-              @right-unfold |
-                mul(succ(k), a2) = add(mul(k, a2), a2)
-                [by forall_elim(k, a2) mul-succ-left]
-              @right-refl |
-                mul(succ(k), a2) = mul(succ(k), a2)
-                [by reflexivity]
-              @right-sym |
-                add(mul(k, a2), a2) = mul(succ(k), a2)
-                [by rewrite right-unfold right-refl]
               @succ-case |
                 mul(a2, succ(k)) = mul(succ(k), a2)
-                [by rewrite right-sym swapped]
+                [by simplify mulSuccRight mulSuccLeft inductive-hypothesis-at-a2]
             }
           @discharge-a |
             forall a: Nat; mul(a, succ(k)) = mul(succ(k), a)
@@ -761,46 +548,10 @@ proof
     fix c: Nat {
       @generalize-b |
         fix b: Nat {
-          // base case: both sides reduce to mul(b, c)
-          @add-zero-left |
-            forall m: Nat; add(ZERO, m) = m
-            [by axiom addZeroLeft]
-          @add-zero-at-b |
-            add(ZERO, b) = b
-            [by forall_elim(b) add-zero-left]
-          @base-refl |
-            mul(add(ZERO, b), c) = mul(add(ZERO, b), c)
-            [by reflexivity]
-          @base-collapsed |
-            mul(add(ZERO, b), c) = mul(b, c)
-            [by rewrite add-zero-at-b base-refl]
-          @add-zero-at-product |
-            add(ZERO, mul(b, c)) = mul(b, c)
-            [by forall_elim(mul(b, c)) add-zero-left]
-          @add-zero-at-product-refl |
-            add(ZERO, mul(b, c)) = add(ZERO, mul(b, c))
-            [by reflexivity]
-          @add-zero-at-product-sym |
-            mul(b, c) = add(ZERO, mul(b, c))
-            [by rewrite add-zero-at-product add-zero-at-product-refl]
-          @base-padded |
-            mul(add(ZERO, b), c) = add(ZERO, mul(b, c))
-            [by rewrite add-zero-at-product-sym base-collapsed]
-          @mul-zero-left |
-            forall m: Nat; mul(ZERO, m) = ZERO
-            [by axiom mulZeroLeft]
-          @mul-zero-at-c |
-            mul(ZERO, c) = ZERO
-            [by forall_elim(c) mul-zero-left]
-          @mul-zero-at-c-refl |
-            mul(ZERO, c) = mul(ZERO, c)
-            [by reflexivity]
-          @mul-zero-at-c-sym |
-            ZERO = mul(ZERO, c)
-            [by rewrite mul-zero-at-c mul-zero-at-c-refl]
+          // base case: both sides reduce to mul(b, c) via addZeroLeft / mulZeroLeft
           @base-case |
             mul(add(ZERO, b), c) = add(mul(ZERO, c), mul(b, c))
-            [by rewrite mul-zero-at-c-sym base-padded]
+            [by simplify addZeroLeft mulZeroLeft]
 
           // inductive step
           @induction-step |
@@ -930,37 +681,10 @@ proof
     fix c: Nat {
       @generalize-b |
         fix b: Nat {
-          // base case: both sides are ZERO
-          @mul-zero-left |
-            forall m: Nat; mul(ZERO, m) = ZERO
-            [by axiom mulZeroLeft]
-          @mul-zero-at-b |
-            mul(ZERO, b) = ZERO
-            [by forall_elim(b) mul-zero-left]
-          @base-refl |
-            mul(mul(ZERO, b), c) = mul(mul(ZERO, b), c)
-            [by reflexivity]
-          @base-inner |
-            mul(mul(ZERO, b), c) = mul(ZERO, c)
-            [by rewrite mul-zero-at-b base-refl]
-          @mul-zero-at-c |
-            mul(ZERO, c) = ZERO
-            [by forall_elim(c) mul-zero-left]
-          @base-zero |
-            mul(mul(ZERO, b), c) = ZERO
-            [by rewrite mul-zero-at-c base-inner]
-          @mul-zero-at-product |
-            mul(ZERO, mul(b, c)) = ZERO
-            [by forall_elim(mul(b, c)) mul-zero-left]
-          @mul-zero-at-product-refl |
-            mul(ZERO, mul(b, c)) = mul(ZERO, mul(b, c))
-            [by reflexivity]
-          @mul-zero-at-product-sym |
-            ZERO = mul(ZERO, mul(b, c))
-            [by rewrite mul-zero-at-product mul-zero-at-product-refl]
+          // base case: both sides collapse to ZERO via mulZeroLeft
           @base-case |
             mul(mul(ZERO, b), c) = mul(ZERO, mul(b, c))
-            [by rewrite mul-zero-at-product-sym base-zero]
+            [by simplify mulZeroLeft]
 
           // inductive step: distribute, rewrite the IH, fold back up
           @induction-step |
@@ -1058,42 +782,16 @@ theorem mulOneRight: forall n: Nat; mul(n, ONE) = n
 proof
   @generalize-n |
     fix n: Nat {
-      @one-def |
-        ONE = succ(ZERO)
-        [by axiom oneIsSuccZero]
-      @start-refl |
-        mul(n, ONE) = mul(n, ONE)
-        [by reflexivity]
-      @as-succ |
-        mul(n, ONE) = mul(n, succ(ZERO))
-        [by rewrite one-def start-refl]
+      // unfold ONE, one step of mulSuccRight, then mulZeroRight / addZeroLeft collapse
       @mul-succ-right |
         forall m, c: Nat; mul(m, succ(c)) = add(mul(m, c), m)
         [by theorem mulSuccRight]
-      @unfolded-eq |
-        mul(n, succ(ZERO)) = add(mul(n, ZERO), n)
-        [by forall_elim(n, ZERO) mul-succ-right]
-      @unfolded |
-        mul(n, ONE) = add(mul(n, ZERO), n)
-        [by rewrite unfolded-eq as-succ]
       @mul-zero-right |
         forall m: Nat; mul(m, ZERO) = ZERO
         [by theorem mulZeroRight]
-      @mul-zero-at-n |
-        mul(n, ZERO) = ZERO
-        [by forall_elim(n) mul-zero-right]
-      @zeroed |
-        mul(n, ONE) = add(ZERO, n)
-        [by rewrite mul-zero-at-n unfolded]
-      @add-zero-left |
-        forall m: Nat; add(ZERO, m) = m
-        [by axiom addZeroLeft]
-      @add-zero-at-n |
-        add(ZERO, n) = n
-        [by forall_elim(n) add-zero-left]
       @collapsed |
         mul(n, ONE) = n
-        [by rewrite add-zero-at-n zeroed]
+        [by simplify oneIsSuccZero mul-succ-right mul-zero-right addZeroLeft]
     }
   @conclusion |
     forall n: Nat; mul(n, ONE) = n
@@ -1105,42 +803,10 @@ theorem mulOneLeft: forall n: Nat; mul(ONE, n) = n
 proof
   @generalize-n |
     fix n: Nat {
-      @one-def |
-        ONE = succ(ZERO)
-        [by axiom oneIsSuccZero]
-      @start-refl |
-        mul(ONE, n) = mul(ONE, n)
-        [by reflexivity]
-      @as-succ |
-        mul(ONE, n) = mul(succ(ZERO), n)
-        [by rewrite one-def start-refl]
-      @mul-succ-left |
-        forall d, m: Nat; mul(succ(d), m) = add(mul(d, m), m)
-        [by axiom mulSuccLeft]
-      @unfolded-eq |
-        mul(succ(ZERO), n) = add(mul(ZERO, n), n)
-        [by forall_elim(ZERO, n) mul-succ-left]
-      @unfolded |
-        mul(ONE, n) = add(mul(ZERO, n), n)
-        [by rewrite unfolded-eq as-succ]
-      @mul-zero-left |
-        forall m: Nat; mul(ZERO, m) = ZERO
-        [by axiom mulZeroLeft]
-      @mul-zero-at-n |
-        mul(ZERO, n) = ZERO
-        [by forall_elim(n) mul-zero-left]
-      @zeroed |
-        mul(ONE, n) = add(ZERO, n)
-        [by rewrite mul-zero-at-n unfolded]
-      @add-zero-left |
-        forall m: Nat; add(ZERO, m) = m
-        [by axiom addZeroLeft]
-      @add-zero-at-n |
-        add(ZERO, n) = n
-        [by forall_elim(n) add-zero-left]
+      // unfold ONE, one step of mulSuccLeft, then mulZeroLeft / addZeroLeft collapse
       @collapsed |
         mul(ONE, n) = n
-        [by rewrite add-zero-at-n zeroed]
+        [by simplify oneIsSuccZero mulSuccLeft mulZeroLeft addZeroLeft]
     }
   @conclusion |
     forall n: Nat; mul(ONE, n) = n
