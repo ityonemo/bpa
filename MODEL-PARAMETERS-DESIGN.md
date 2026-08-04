@@ -1,22 +1,22 @@
 # Design: models, subgroups, and theorems parameterized on models
 
-This doc records a design conversation (2026-08-03) that started from an awkward
-subgroup-intersection model block and worked toward "theorems parameterized on
-models." The endpoint (parameterized theorems) is the second half; this first half
-captures the ARCHITECTURAL reasoning and the alternatives explored/rejected/deferred
-along the way, so the *why* isn't lost.
+This doc covers the `model` mechanism for structure reuse and its extension to
+theorems parameterized on models. The motivating problem is proving "the intersection
+of two subgroups is a (sub)group" once, generic over any two subgroups. The first
+half captures the architectural reasoning — the alternatives explored, rejected, and
+deferred — so the *why* isn't lost; the second half specifies the
+parameterized-theorem mechanism.
 
 ---
 
-# Part I — the architecture, in three progressive levels
+# The architecture
 
-The design arrived in THREE LEVELS of the same evolving idea (not competing
-options). Each is a draft the user wrote; each surfaced the insight that motivated
-the next. Captured verbatim below.
+The design evolved through several readings of the same idea (not competing
+options), each surfacing the insight that motivated the next.
 
 ## Background: a `model` is a MAPPER, inert until REIFIED
 
-The crux underlying all three levels: **a `model` is just a theorem/axiom mapper** —
+The crux underlying all of this: **a `model` is just a theorem/axiom mapper** —
 a correspondence (this sort/symbol/axiom ↦ that one) that DOES NOTHING until the
 `model` command REIFIES it (materializes the remapped source proofs into
 kernel-checked synthetic theorems in your file). Before reification: a
@@ -34,7 +34,7 @@ Also settled along the way:
 - **`parent:` binds just the carrier sort** — so the parent slot is essentially a
   sort mapping, ~free.
 
-## LEVEL 1 — two-layer stack: subgroup, then group (TRANSPARENT, preferred)
+## The two-layer stack: transferring the group corpus onto a subgroup
 
 Two stacked models. `HSubGroup` reifies the subgroup criteria; `HGroup` reifies
 group-ness, DISCHARGING its closure obligations by transferring THROUGH `HSubGroup`
@@ -73,11 +73,15 @@ proof
 qed
 ```
 
-The KEY NEW CAPABILITY Level 1 needs: **`model(HSubGroup) subgroup.opAssoc` as a
+The key new capability this needs: **`model(HSubGroup) subgroup.opAssoc` as a
 MAPPING VALUE** — a model obligation discharged by a citation through another model.
-This does NOT parse today (a mapping RHS must be a plain identifier) — it is P0 in
-the pieces list, the prerequisite for everything, and proves nested-model
+This does NOT parse today (a mapping RHS must be a plain identifier); it is the
+prerequisite for everything (see the pieces list) and proves nested-model
 materialization composes.
+
+This transfer is preferred BECAUSE every discharge is a named, walkable mapping — no
+hidden steps (the opaque one-layer alternative was rejected for exactly this: it
+would silently pull in the criteria, un-walkable).
 
 The `?`-marked lines (`KSubGroup = ... where inH where inK?`, `parent: G where inH?`)
 are the ITERATED-SUBGROUP wrinkle K < H < G, left OPEN: two readings —
@@ -87,9 +91,9 @@ are the ITERATED-SUBGROUP wrinkle K < H < G, left OPEN: two readings —
   slot can point at (a first-class model/guarded-sort). This is the `sort H` problem.
 Not reconciled.
 
-## LEVEL 2 — theorems PARAMETERIZED ON MODELS (the intersection generalization)
+## Theorems parameterized on models (the intersection generalization)
 
-Level 1 discharges obligations for ONE subgroup. Intersection needs a result proved
+The two-layer stack discharges obligations for ONE subgroup. Intersection needs a result proved
 GENERICALLY over TWO subgroups. So a theorem takes MODELS as parameters, its
 statement/body PROJECT through them (`Model1.subgroup.filter`, `model(Model1) ...`),
 and the use site APPLIES it to concrete models. This removes the `inSubgroup2` clone
@@ -132,13 +136,15 @@ model HKGroup = G where inH and inK {
 }
 ```
 
-New capabilities Level 2 needs (beyond Level 1's P0): model PARAMETERS on a theorem,
+New capabilities this needs (beyond the mapping-value prerequisite): model PARAMETERS on a theorem,
 `Model.component` PROJECTION, model APPLICATION `thm(M1, M2)`, and the CONJUNCTION
-GUARD `where inH and inK` for the intersection target. Mechanism analysis in Part II.
+GUARD `where inH and inK` for the intersection target. Mechanism analysis in the
+second half of this doc.
 
-## LEVEL 3 — (K < H < G iterated subgroups) — RESOLVED via FLATTEN (2026-08-04)
+## Iterated subgroups (K < H < G)
 
-The genuine subgroup-of-a-subgroup hierarchy, flagged by the `?`s in Level 1. The
+The genuine subgroup-of-a-subgroup hierarchy, flagged by the `?`s in the two-layer
+stack — RESOLVED via flatten. The
 two readings were flatten-to-G vs. true-nesting. **SETTLED: flatten.** K's
 membership `inK` is a SINGLE predicate over the base group `Grp`, `K = Grp where
 inK` a single-guard sort, and `inK(g) -> inH(g)` records K ⊆ H. This keeps every
@@ -146,7 +152,9 @@ guard single-predicate, so the guarded-transfer engine works UNCHANGED — the
 iterated hierarchy composes on existing machinery. (True nesting would need the
 guarded-materialization engine — assume/discharge/weaken in accelerant/model.zig —
 generalized from one guard predicate to a LIST, a bounded but real change; deferred
-in favor of the flatten, which the user chose.)
+in favor of the flatten.) True nesting — K's parent genuinely H — is deferred to a
+future "model spaces" rebuild (a first-class-interpretation reworking), because the
+single-guard→list generalization fights the carrier-lowering rather than removing it.
 
 The ONE mechanism gap it surfaced (now fixed): transferring a DIRECTLY-MAPPED AXIOM.
 `[by model(HGroup) group.opAssoc]` and the `@`-projection value
@@ -160,7 +168,7 @@ sub-subgroup K — kernel-checked, untainted).
 
 ---
 
-# Part II — theorems parameterized on models
+# The parameterized-theorem mechanism
 
 ## The want
 
@@ -236,37 +244,37 @@ getting this right: it is NOT "a third variant consumed like the other two."
 
 ## Pieces, in dependency order
 
-**P0. `model(M) thm` as a mapping/citation VALUE (prerequisite, independently
+1. **`model(M) thm` as a mapping/citation VALUE (prerequisite, independently
 useful).** Today a model-mapping RHS and a `[by …]` value must be a plain
 identifier; `group.opAssoc: model(HSubGroup) subgroup.opAssoc` does NOT parse. Allow
 a `model(X) thm` citation as a mapping value (parser + desugar: materialize it into
 a synthetic named theorem via the existing `materializeModelTheorem`, then point the
-mapping at that theorem's id). This is the "transparent two-layer stack"
+mapping at that theorem's id). This is the transparent two-layer stack
 (`HSubGroup` → `HGroup`) AND the substrate for applying a parameterized theorem.
-Small; reuses the materializer. **Spike this FIRST** — it also proves nested-model
+Small; reuses the materializer. **Prototype this first** — it also proves nested-model
 materialization (one model's obligation discharged by transferring through another)
 composes and kernel-checks.
 
-**P1. Model parameters on a theorem — `theorem foo(M1, M2): …`.** At DEFINITION
+2. **Model parameters on a theorem — `theorem foo(M1, M2): …`.** At DEFINITION
 time, record it as a schema-like template with model params; nothing is checked
 (schemas already defer checking to instantiation, line 441). Store the param names.
 
-**P2. Projection `M.component`.** In `elaborateSymRef`/`elaborateCall`, when a
+3. **Projection `M.component`.** In `elaborateSymRef`/`elaborateCall`, when a
 qualified head's base is a bound model param, resolve `.component` through that
 model's maps. Small — lookup.
 
-**P3. `model(M)` citation with M a bound param.** In accelerant/model.zig `justify`,
+4. **`model(M)` citation with M a bound param.** In accelerant/model.zig `justify`,
 resolve the instance token: if it's a bound schema-model-param, use the concrete
 model it's bound to. Small — one branch at line 48.
 
-**P4. Application `foo(HSubGroup, KSubGroup)`.** The instantiation: bind the model
+5. **Application `foo(HSubGroup, KSubGroup)`.** The instantiation: bind the model
 params (new `SchemaArg.model`), run `instantiateSchemaCore` — which re-elaborates
-the body (P2/P3 now resolve) and re-checks at the kernel. The ENGINE is the existing
+the body (projection and citation now resolve) and re-checks at the kernel. The ENGINE is the existing
 schema instantiation; the new part is the `model` arg kind + the two resolution
 sites. Medium.
 
-**P5 (caching, DEFERRED).** Memoize instances on (template, model-args) so a repeated
-`foo(HSubGroup, KSubGroup)` materializes once. Pure optimization; user parked it.
+6. **Caching (DEFERRED).** Memoize instances on (template, model-args) so a repeated
+`foo(HSubGroup, KSubGroup)` materializes once. Pure optimization; parked.
 
 ## Orthogonal prerequisite: conjunction guards
 
@@ -275,7 +283,7 @@ a CONJUNCTION, not a single predicate. Today `Remap.Guard = { pred: SymId, carri
 (term.zig:314) — a single predicate symbol. Options: (a) require a defined
 `pred inHK(g) := inH(g) and inK(g)` and guard on that symbol (no guard-machinery
 change; a `define`); (b) generalize `Guard.pred` to a guard FORMULA with one hole.
-(a) is far cheaper and probably sufficient. Independent of P0–P4; needed only for the
+(a) is far cheaper and probably sufficient. Independent of the pieces above; needed only for the
 intersection target, not for the parameterized theorem itself.
 
 ## Transparency (a user requirement)
@@ -351,7 +359,7 @@ parameterized theorem, EVERYTHING is projection + bare citation.
 
 ### Disposition on the open notation choices (user)
 
-SETTLED NOW (verified, not awaiting the spike):
+SETTLED NOW (verified, not awaiting the prototype):
 - `model(M) X` is a MOVE; `[by axiom/theorem X]` is a BARE cite. This is what the
   kernel already does (`axiom_ref` = `requireClaim`, no derivation) — iron today.
 - For the UNGUARDED intersection theorem, the body cites unroll to BARE. Verified
@@ -368,10 +376,11 @@ resolution of the STILL-OPEN items:
 - **Consistent** — one rule, applied everywhere the situation arises.
 - **Iron / no user knob** — the user CANNOT pick; exactly one is sound and the tool
   enforces it. Do not expose a flag or a "both accepted" leniency.
-- **Deferred** — we cannot know which until we implement P0 and see how nested
-  materialization actually composes. Do not fix the notation before the spike.
+- **Deferred** — we cannot know which until we implement the mapping-value
+  prerequisite and see how nested materialization actually composes. Do not fix the
+  notation before that prototype.
 
-### OPEN (decide during P0): the mapping-value RHS
+### OPEN (decide during the mapping-value prototype): the mapping-value RHS
 
 A model MAPPING value that discharges an obligation by transferring through another
 model — `group.opAssoc: ???` — is UNDETERMINED between:
@@ -380,9 +389,9 @@ model — `group.opAssoc: ???` — is UNDETERMINED between:
 - `HSubGroup@subgroup.opAssoc` — if the RHS merely NAMES which theorem discharges
   the obligation and the actual materialization is deferred to the OUTER model's
   pass (a projection).
-Which one is correct depends on how P0 structures nested materialization — is the
-inner transfer eager (here) or folded into the outer model's materialization? Decide
-after the P0 spike; do not fix the notation before then.
+Which one is correct depends on how the mapping-value prerequisite structures nested
+materialization — is the inner transfer eager (here) or folded into the outer model's
+materialization? Decide after that prototype; do not fix the notation before then.
 
 ## What this is NOT
 
@@ -397,13 +406,13 @@ after the P0 spike; do not fix the notation before then.
 
 ## Suggested sequencing
 
-1. **Spike P0** (hand-written named-workaround first, then the `model(M) thm` value)
-   — proves nested-model materialization composes. Gate it. This alone unlocks the
-   transparent two-layer subgroup-is-a-group stack.
-2. **P1–P4** — the `SchemaArg.model` extension + the two resolution sites +
-   application. Fixture: `intersectionHasIdentity(M1,M2)` proved once, applied to two
-   concrete subgroup models.
+1. **Prototype the mapping-value prerequisite** (hand-written named-workaround first,
+   then the `model(M) thm` value) — proves nested-model materialization composes.
+   Gate it. This alone unlocks the transparent two-layer subgroup-is-a-group stack.
+2. **The parameterized-theorem pieces** — the `SchemaArg.model` extension + the two
+   resolution sites + application. Fixture: `intersectionHasIdentity(M1,M2)` proved
+   once, applied to two concrete subgroup models.
 3. **Conjunction guard** (option a) — enables the `HKGroup = where inH and inK`
    target; wire the parameterized intersection theorems into it.
-4. **P5 caching** — when/if instance counts warrant it.
+4. **Caching** — when/if instance counts warrant it.
 ```
