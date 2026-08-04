@@ -171,15 +171,9 @@ proof
                               @c-equals-b-times-k |
                                 c = mul(b, kk)
                                 [by hypothesis with-c-quotient-k]
-                              @c-as-nested-product |
-                                c = mul(mul(a, j), kk)
-                                [by rewrite b-equals-a-times-j c-equals-b-times-k]
-                              @product-reassociates |
-                                mul(mul(a, j), kk) = mul(a, mul(j, kk))
-                                [by simplify mulIsAssociative]
                               @c-is-a-times-jk |
                                 c = mul(a, mul(j, kk))
-                                [by rewrite product-reassociates c-as-nested-product]
+                                [by simplify b-equals-a-times-j c-equals-b-times-k mulIsAssociative]
                               @a-multiple-divides |
                                 forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
                                 [by axiom dividesIntro]
@@ -263,24 +257,9 @@ proof
                               @b-equals-d-times-k |
                                 b = mul(d, kk)
                                 [by hypothesis with-b-quotient-k]
-                              @sum-of-multiples-distributes |
-                                mul(d, add(j, kk)) = add(mul(d, j), mul(d, kk))
-                                [by simplify mulAddDistribLeft]
-                              @d-times-sum-collects-products |
-                                add(mul(d, j), mul(d, kk)) = mul(d, add(j, kk))
-                                [by symmetry sum-of-multiples-distributes]
-                              @d-times-j-is-a |
-                                mul(d, j) = a
-                                [by symmetry a-equals-d-times-j]
-                              @d-times-k-is-b |
-                                mul(d, kk) = b
-                                [by symmetry b-equals-d-times-k]
-                              @a-plus-d-multiple-is-d-multiple |
-                                add(a, mul(d, kk)) = mul(d, add(j, kk))
-                                [by rewrite d-times-j-is-a d-times-sum-collects-products]
                               @sum-is-d-multiple |
                                 add(a, b) = mul(d, add(j, kk))
-                                [by rewrite d-times-k-is-b a-plus-d-multiple-is-d-multiple]
+                                [by simplify a-equals-d-times-j b-equals-d-times-k mulAddDistribLeft]
                               @a-multiple-divides |
                                 forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
                                 [by axiom dividesIntro]
@@ -364,30 +343,9 @@ proof
                               @b-equals-d-times-k |
                                 b = mul(d, kk)
                                 [by hypothesis with-b-quotient-k]
-                              @multiple-of-difference-distributes |
-                                forall dd, aa, bb: Nat; mul(dd, sub(aa, bb)) = sub(mul(dd, aa), mul(dd, bb))
-                                [by theorem mulSubDistribLeft]
-                              @d-times-difference-splits |
-                                mul(d, sub(j, kk)) = sub(mul(d, j), mul(d, kk))
-                                [by forall_elim(d, j, kk) multiple-of-difference-distributes]
-                              @difference-is-itself |
-                                sub(a, b) = sub(a, b)
-                                [by reflexivity]
-                              @difference-with-d-multiple-numerator |
-                                sub(mul(d, j), b) = sub(a, b)
-                                [by rewrite a-equals-d-times-j difference-is-itself]
-                              @difference-of-multiples-is-a-minus-b |
-                                sub(mul(d, j), mul(d, kk)) = sub(a, b)
-                                [by rewrite b-equals-d-times-k difference-with-d-multiple-numerator]
-                              @a-minus-b-is-difference-of-multiples |
-                                sub(a, b) = sub(mul(d, j), mul(d, kk))
-                                [by symmetry difference-of-multiples-is-a-minus-b]
-                              @difference-of-multiples-is-d-multiple |
-                                sub(mul(d, j), mul(d, kk)) = mul(d, sub(j, kk))
-                                [by symmetry d-times-difference-splits]
                               @difference-is-d-multiple |
                                 sub(a, b) = mul(d, sub(j, kk))
-                                [by rewrite difference-of-multiples-is-d-multiple a-minus-b-is-difference-of-multiples]
+                                [by simplify a-equals-d-times-j b-equals-d-times-k mulSubDistribLeft]
                               @a-multiple-divides |
                                 forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
                                 [by axiom dividesIntro]
@@ -455,21 +413,9 @@ proof
                       @a-equals-d-times-j |
                         a = mul(d, j)
                         [by hypothesis with-a-quotient-j]
-                      @scaled-product-is-itself |
-                        mul(a, k) = mul(a, k)
-                        [by reflexivity]
-                      @scaled-product-over-d-multiple |
-                        mul(mul(d, j), k) = mul(a, k)
-                        [by rewrite a-equals-d-times-j scaled-product-is-itself]
-                      @scaled-product-reassociates |
-                        mul(mul(d, j), k) = mul(d, mul(j, k))
-                        [by simplify mulIsAssociative]
-                      @scaled-product-as-nested |
-                        mul(a, k) = mul(mul(d, j), k)
-                        [by symmetry scaled-product-over-d-multiple]
                       @scaled-product-is-d-multiple |
                         mul(a, k) = mul(d, mul(j, k))
-                        [by rewrite scaled-product-reassociates scaled-product-as-nested]
+                        [by simplify a-equals-d-times-j mulIsAssociative]
                       @a-multiple-divides |
                         forall n, dd, kk: Nat; n = mul(dd, kk) -> divides(dd, n)
                         [by axiom dividesIntro]
@@ -703,31 +649,10 @@ proof
                                           @q2-as-gap-sum |
                                             q2 = add(q1, succ(k))
                                             [by symmetry q2-is-q1-plus-successor-gap]
-                                          @b-times-q2-is-itself |
-                                            mul(b, q2) = mul(b, q2)
-                                            [by reflexivity]
-                                          @b-times-q2-over-gap-sum |
-                                            mul(b, q2) = mul(b, add(q1, succ(k)))
-                                            [by rewrite q2-as-gap-sum b-times-q2-is-itself]
-                                          @multiple-of-sum-distributes |
-                                            forall m, e, f: Nat; mul(m, add(e, f)) = add(mul(m, e), mul(m, f))
-                                            [by theorem mulAddDistribLeft]
-                                          @b-times-gap-sum-distributes |
-                                            mul(b, add(q1, succ(k))) = add(mul(b, q1), mul(b, succ(k)))
-                                            [by forall_elim(b, q1, succ(k)) multiple-of-sum-distributes]
-                                          @b-times-q2-is-split |
-                                            mul(b, q2) = add(mul(b, q1), mul(b, succ(k)))
-                                            [by rewrite b-times-gap-sum-distributes b-times-q2-over-gap-sum]
-                                          // mul(b, succ(k)) = add(mul(b, k), b)  [mulSuccRight]
-                                          @multiple-of-successor-adds-base |
-                                            forall m, e: Nat; mul(m, succ(e)) = add(mul(m, e), m)
-                                            [by theorem mulSuccRight]
-                                          @b-times-successor-gap-adds-b |
-                                            mul(b, succ(k)) = add(mul(b, k), b)
-                                            [by forall_elim(b, k) multiple-of-successor-adds-base]
+                                          // expand mul(b, q2) over the gap: distribute, then mulSuccRight.
                                           @b-times-q2-includes-a-full-b |
                                             mul(b, q2) = add(mul(b, q1), add(mul(b, k), b))
-                                            [by rewrite b-times-successor-gap-adds-b b-times-q2-is-split]
+                                            [by simplify q2-as-gap-sum mulAddDistribLeft mulSuccRight]
                                           // substitute into decompositions-equal
                                           @right-decomposition-is-itself |
                                             add(mul(b, q2), r2) = add(mul(b, q2), r2)
@@ -1038,12 +963,9 @@ proof
                                 less_than(mod(a, b), b)
                                 [by modus_ponens remainder-bounded-if-nonzero b-nonzero]
                               // equate the two decompositions: b*q + r = a = b*div(a,b) + mod(a,b)
-                              @a-is-canonical-decomposition |
-                                a = add(mul(b, div(a, b)), mod(a, b))
-                                [by symmetry a-canonically-decomposes]
                               @decompositions-agree |
                                 add(mul(b, q), r) = add(mul(b, div(a, b)), mod(a, b))
-                                [by rewrite a-is-canonical-decomposition decomposition-equals-a]
+                                [by simplify decomposition-equals-a a-canonically-decomposes]
                               // quotientUnique gives q = div(a, b)
                               @quotients-are-unique |
                                 forall bb, s1, s2, p1, p2: Nat; bb != ZERO -> less_than(s1, bb) -> less_than(s2, bb) -> add(mul(bb, p1), s1) = add(mul(bb, p2), s2) -> p1 = p2

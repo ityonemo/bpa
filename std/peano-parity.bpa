@@ -176,12 +176,9 @@ proof
                   @m-is-zero |
                     m = ZERO
                     [by hypothesis suppose-m-zero]
-                  @succ-p-is-two-zero |
-                    succ(p) = mul(TWO, ZERO)
-                    [by rewrite m-is-zero succ-p-via-m]
                   @succ-p-zero |
                     succ(p) = ZERO
-                    [by rewrite two-times-zero succ-p-is-two-zero]
+                    [by simplify succ-p-via-m m-is-zero two-times-zero]
                   @succ-not-zero |
                     forall a: Nat; succ(a) != ZERO
                     [by axiom succNotZero]
@@ -274,21 +271,10 @@ proof
         add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
           = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
         [by simplify addSuccRight addZeroRight oneIsSuccZero]
-      @lhs-refl |
-        mul(succ(mul(TWO, j)), succ(mul(TWO, j))) = mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-        [by reflexivity]
-      @lhs-succ-form |
-        mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-          = mul(add(mul(TWO, j), ONE), add(mul(TWO, j), ONE))
-        [by rewrite succ-as-add lhs-refl]
-      @chain1 |
-        mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-          = add(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), ONE)
-        [by rewrite lhs-poly lhs-succ-form]
       @conclusion-odd-squared-is-odd |
         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
           = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-        [by rewrite rhs-as-succ chain1]
+        [by simplify succ-as-add lhs-poly rhs-as-succ]
     }
   @conclusion |
     forall j: Nat;
@@ -502,19 +488,10 @@ proof
                         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
                           = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
                         [by forall_elim(j) odd-sq-thm]
-                      // rewrite p into the square (both occurrences)
-                      @sq-refl |
-                        mul(p, p) = mul(p, p)
-                        [by reflexivity]
-                      @sq-step1 |
-                        mul(p, p) = mul(succ(mul(TWO, j)), p)
-                        [by rewrite p-is-odd sq-refl]
-                      @sq-step2 |
-                        mul(p, p) = mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
-                        [by rewrite p-is-odd sq-step1]
+                      // rewrite p into the square, then apply the odd-square identity
                       @sq-is-odd |
                         mul(p, p) = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        [by rewrite odd-sq-at sq-step2]
+                        [by simplify p-is-odd odd-sq-at]
                       // now 2 | succ(2M) with M = ...; subtract 2M ⇒ 2 | 1
                       @intro |
                         forall n, d, k: Nat; n = mul(d, k) -> divides(d, n)

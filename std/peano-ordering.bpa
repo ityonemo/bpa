@@ -95,15 +95,9 @@ proof
                   @gap-witnesses-b |
                     add(a, succ(u)) = b
                     [by hypothesis with-gap-u]
-                  @add-succ-left |
-                    forall m, e: Nat; add(succ(m), e) = succ(add(m, e))
-                    [by axiom addSuccLeft]
-                  @successor-gap-unfolds |
-                    add(succ(a), succ(u)) = succ(add(a, succ(u)))
-                    [by forall_elim(a, succ(u)) add-succ-left]
                   @successor-gap-witnesses-succ-b |
                     add(succ(a), succ(u)) = succ(b)
-                    [by rewrite gap-witnesses-b successor-gap-unfolds]
+                    [by simplify addSuccLeft gap-witnesses-b]
                   @a-gap-witnesses-less-than |
                     forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
@@ -245,30 +239,21 @@ proof
                               @gap-v-witnesses-c |
                                 add(b, succ(v)) = c
                                 [by hypothesis with-gap-v]
-                              @gap-u-refl |
-                                add(a, succ(u)) = add(a, succ(u))
-                                [by reflexivity]
                               @b-is-a-plus-gap-u |
                                 b = add(a, succ(u))
-                                [by rewrite gap-u-witnesses-b gap-u-refl]
+                                [by symmetry gap-u-witnesses-b]
                               @nested-gaps-reach-c |
                                 add(add(a, succ(u)), succ(v)) = c
                                 [by rewrite b-is-a-plus-gap-u gap-v-witnesses-c]
-                              @add-assoc |
-                                forall m, e, f: Nat; add(add(m, e), f) = add(m, add(e, f))
-                                [by theorem addIsAssociative]
                               @nested-gaps-regroup |
                                 add(add(a, succ(u)), succ(v)) = add(a, add(succ(u), succ(v)))
-                                [by forall_elim(a, succ(u), succ(v)) add-assoc]
+                                [by simplify addIsAssociative]
                               @combined-gap-reaches-c |
                                 add(a, add(succ(u), succ(v))) = c
                                 [by rewrite nested-gaps-regroup nested-gaps-reach-c]
-                              @add-succ-left |
-                                forall m, e: Nat; add(succ(m), e) = succ(add(m, e))
-                                [by axiom addSuccLeft]
                               @combined-gap-is-successor |
                                 add(succ(u), succ(v)) = succ(add(u, succ(v)))
-                                [by forall_elim(u, succ(v)) add-succ-left]
+                                [by simplify addSuccLeft]
                               @successor-gap-reaches-c |
                                 add(a, succ(add(u, succ(v)))) = c
                                 [by rewrite combined-gap-is-successor combined-gap-reaches-c]
@@ -391,15 +376,9 @@ proof
                       @gap-witnesses-b |
                         add(a, succ(u)) = b
                         [by hypothesis with-gap-u]
-                      @add-assoc |
-                        forall m, e, f: Nat; add(add(m, e), f) = add(m, add(e, f))
-                        [by theorem addIsAssociative]
-                      @shifted-gap-regroups |
-                        add(add(c, a), succ(u)) = add(c, add(a, succ(u)))
-                        [by forall_elim(c, a, succ(u)) add-assoc]
                       @shifted-gap-witnesses-c-plus-b |
                         add(add(c, a), succ(u)) = add(c, b)
-                        [by rewrite gap-witnesses-b shifted-gap-regroups]
+                        [by simplify addIsAssociative gap-witnesses-b]
                       @a-gap-witnesses-less-than |
                         forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                         [by axiom lessThanIntro]
@@ -460,42 +439,15 @@ proof
                       @gap-witnesses-b |
                         add(a, succ(u)) = b
                         [by hypothesis with-gap-u]
-                      @gap-refl |
-                        add(a, succ(u)) = add(a, succ(u))
-                        [by reflexivity]
                       @b-is-a-plus-gap |
                         b = add(a, succ(u))
-                        [by rewrite gap-witnesses-b gap-refl]
-                      @scaled-b-refl |
-                        mul(succ(c), b) = mul(succ(c), b)
-                        [by reflexivity]
-                      @scaled-b-is-scaled-sum |
-                        mul(succ(c), b) = mul(succ(c), add(a, succ(u)))
-                        [by rewrite b-is-a-plus-gap scaled-b-refl]
-                      @scaling-distributes-over-sum |
-                        forall m, e, f: Nat; mul(m, add(e, f)) = add(mul(m, e), mul(m, f))
-                        [by theorem peano.mulAddDistribLeft]
-                      @scaled-sum-distributes |
-                        mul(succ(c), add(a, succ(u))) = add(mul(succ(c), a), mul(succ(c), succ(u)))
-                        [by forall_elim(succ(c), a, succ(u)) scaling-distributes-over-sum]
+                        [by symmetry gap-witnesses-b]
                       @scaled-b-distributed |
                         mul(succ(c), b) = add(mul(succ(c), a), mul(succ(c), succ(u)))
-                        [by rewrite scaled-sum-distributes scaled-b-is-scaled-sum]
-                      @mul-succ-left |
-                        forall m, e: Nat; mul(succ(m), e) = add(mul(m, e), e)
-                        [by axiom peano.mulSuccLeft]
-                      @scaled-gap-unfolds |
-                        mul(succ(c), succ(u)) = add(mul(c, succ(u)), succ(u))
-                        [by forall_elim(c, succ(u)) mul-succ-left]
-                      @add-succ-right |
-                        forall m, e: Nat; add(m, succ(e)) = succ(add(m, e))
-                        [by theorem addSuccRight]
-                      @scaled-gap-is-successor |
-                        add(mul(c, succ(u)), succ(u)) = succ(add(mul(c, succ(u)), u))
-                        [by forall_elim(mul(c, succ(u)), u) add-succ-right]
+                        [by simplify b-is-a-plus-gap peano.mulAddDistribLeft]
                       @scaled-gap-total |
                         mul(succ(c), succ(u)) = succ(add(mul(c, succ(u)), u))
-                        [by rewrite scaled-gap-is-successor scaled-gap-unfolds]
+                        [by simplify peano.mulSuccLeft addSuccRight]
                       @scaled-b-has-successor-gap |
                         mul(succ(c), b) = add(mul(succ(c), a), succ(add(mul(c, succ(u)), u)))
                         [by rewrite scaled-gap-total scaled-b-distributed]
@@ -505,12 +457,9 @@ proof
                       @scaled-below-if-gap |
                         add(mul(succ(c), a), succ(add(mul(c, succ(u)), u))) = mul(succ(c), b) -> less_than(mul(succ(c), a), mul(succ(c), b))
                         [by forall_elim(mul(succ(c), a), add(mul(c, succ(u)), u), mul(succ(c), b)) a-gap-witnesses-less-than]
-                      @scaled-b-has-gap-refl |
-                        mul(succ(c), b) = mul(succ(c), b)
-                        [by reflexivity]
                       @scaled-gap-witnesses-scaled-b |
                         add(mul(succ(c), a), succ(add(mul(c, succ(u)), u))) = mul(succ(c), b)
-                        [by rewrite scaled-b-has-successor-gap scaled-b-has-gap-refl]
+                        [by symmetry scaled-b-has-successor-gap]
                       @scaling-preserves-order |
                         less_than(mul(succ(c), a), mul(succ(c), b))
                         [by modus_ponens scaled-below-if-gap scaled-gap-witnesses-scaled-b]
@@ -541,24 +490,9 @@ qed
 theorem oneCoversZero: less_than(ZERO, ONE) and (forall n: Nat; not (less_than(ZERO, n) and less_than(n, ONE)))
 proof
   // part 1: ZERO < ONE, witness ZERO
-  @add-zero-left |
-    forall m: Nat; add(ZERO, m) = m
-    [by axiom addZeroLeft]
-  @zero-gap-is-succ-zero |
-    add(ZERO, succ(ZERO)) = succ(ZERO)
-    [by forall_elim(succ(ZERO)) add-zero-left]
-  @one-def |
-    ONE = succ(ZERO)
-    [by axiom oneIsSuccZero]
-  @one-refl |
-    ONE = ONE
-    [by reflexivity]
-  @succ-zero-is-one |
-    succ(ZERO) = ONE
-    [by rewrite one-def one-refl]
   @zero-gap-reaches-one |
     add(ZERO, succ(ZERO)) = ONE
-    [by rewrite succ-zero-is-one zero-gap-is-succ-zero]
+    [by simplify addZeroLeft oneIsSuccZero]
   @a-gap-witnesses-less-than |
     forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
     [by axiom lessThanIntro]
@@ -745,12 +679,9 @@ proof
               @b-is-succ-m |
                 bb = succ(m0)
                 [by hypothesis with-predecessor-m]
-              @add-zero-left |
-                forall e: Nat; add(ZERO, e) = e
-                [by axiom addZeroLeft]
               @zero-gap-reaches-succ-m |
                 add(ZERO, succ(m0)) = succ(m0)
-                [by forall_elim(succ(m0)) add-zero-left]
+                [by simplify addZeroLeft]
               @a-gap-witnesses-less-than |
                 forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                 [by axiom lessThanIntro]
@@ -803,12 +734,9 @@ proof
                 [by forall_elim(b2) zero-or-successor]
               @when-b-is-zero |
                 assume b2 = ZERO {
-                  @add-zero-left |
-                    forall e: Nat; add(ZERO, e) = e
-                    [by axiom addZeroLeft]
                   @zero-gap-reaches-succ-k |
                     add(ZERO, succ(k)) = succ(k)
-                    [by forall_elim(succ(k)) add-zero-left]
+                    [by simplify addZeroLeft]
                   @a-gap-witnesses-less-than |
                     forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
@@ -1235,18 +1163,9 @@ proof
                       @unit-gap-reaches-succ-k |
                         add(m, succ(ZERO)) = succ(k)
                         [by rewrite gap-is-zero gap-reaches-succ-k]
-                      @unit-gap-unfolds |
-                        add(m, succ(ZERO)) = succ(add(m, ZERO))
-                        [by simplify addSuccRight]
-                      @add-zero-right |
-                        forall n: Nat; add(n, ZERO) = n
-                        [by theorem addZeroRight]
-                      @m-plus-zero-is-m |
-                        add(m, ZERO) = m
-                        [by forall_elim(m) add-zero-right]
                       @unit-gap-is-succ-m |
                         add(m, succ(ZERO)) = succ(m)
-                        [by rewrite m-plus-zero-is-m unit-gap-unfolds]
+                        [by simplify addSuccRight addZeroRight]
                       @succ-m-equals-succ-k |
                         succ(m) = succ(k)
                         [by rewrite unit-gap-is-succ-m unit-gap-reaches-succ-k]
@@ -1512,18 +1431,9 @@ proof
                     add(a, d0) = b
                     [by hypothesis with-gap-d]
                   // add(a, succ d0) = succ(add(a, d0)) = succ b
-                  @grown-gap-is-successor |
-                    add(a, succ(d0)) = succ(add(a, d0))
-                    [by simplify addSuccRight]
-                  @gap-successor-refl |
-                    succ(add(a, d0)) = succ(add(a, d0))
-                    [by reflexivity]
-                  @gap-successor-is-succ-b |
-                    succ(add(a, d0)) = succ(b)
-                    [by rewrite gap-witnesses-b gap-successor-refl]
                   @grown-gap-reaches-succ-b |
                     add(a, succ(d0)) = succ(b)
-                    [by rewrite gap-successor-is-succ-b grown-gap-is-successor]
+                    [by simplify addSuccRight gap-witnesses-b]
                   @a-gap-witnesses-less-than |
                     forall x, d, y: Nat; add(x, succ(d)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
@@ -1626,12 +1536,9 @@ theorem lessOrEqualRefl: forall a: Nat; less_or_equal(a, a)
 proof
   @generalize-a |
     fix a: Nat {
-      @add-zero-right |
-        forall n: Nat; add(n, ZERO) = n
-        [by theorem addZeroRight]
       @zero-gap-reaches-a |
         add(a, ZERO) = a
-        [by forall_elim(a) add-zero-right]
+        [by simplify addZeroRight]
       @a-gap-witnesses-at-most |
         forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
         [by axiom lessOrEqualIntro]
