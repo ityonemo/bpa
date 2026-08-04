@@ -409,6 +409,20 @@ pub const Elaborator = struct {
                     guard = (try self.requireProp(g, req)).id;
                     self.scope.clearRetainingCapacity();
                 }
+                // PREDICATED ARG SORTS (`func f(x: H): R`): each H-typed param owes
+                // `inH(x)` at every call. Fold those guards into the symbol's guard
+                // formula (over the param fvars), reusing the requires/TCC machinery —
+                // the obligation is emitted at each application (elaborateCall).
+                for (d.params, param_names) |p, pn| {
+                    const quals = try self.sortQualifiers(try self.resolveSort(p.sort));
+                    if (quals.len == 0) continue;
+                    const carrier = self.env.carrierOf(try self.resolveSort(p.sort));
+                    const pfv = try self.pool.add(.{ .fvar = .{ .name = pn, .sort = carrier } });
+                    for (quals) |qpred| {
+                        const app = try self.pool.addApp(.pred, qpred, &.{pfv});
+                        guard = if (guard) |prev| try self.pool.add(.{ .bin = .{ .op = .and_op, .lhs = prev, .rhs = app } }) else app;
+                    }
+                }
                 _ = try self.env.addSym(self.file, .{
                     .name = name,
                     .kind = .app,
@@ -3124,9 +3138,18 @@ pub const Elaborator = struct {
                         .hint = try self.internTok(q.binders[i].name),
                         .body = id,
                     } });
-                    // obligations under a binder are universally closed over it
+                    // obligations under a binder are universally closed over it.
+                    // For a PREDICATED binder, the guard `inH(h)` is an available
+                    // hypothesis, so the obligation is `∀h; inH(h) -> <tcc>` (guard as
+                    // antecedent) — matching how the body receives the guard.
                     for (self.pending_tccs.items[tcc_start..]) |*t| {
-                        const closed = try self.pool.close(t.formula, fresh[i]);
+                        var f = t.formula;
+                        for (quals) |qpred| {
+                            const bound = try self.pool.add(.{ .fvar = .{ .name = fresh[i], .sort = sort } });
+                            const guard_app = try self.pool.addApp(.pred, qpred, &.{bound});
+                            f = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_app, .rhs = f } });
+                        }
+                        const closed = try self.pool.close(f, fresh[i]);
                         t.formula = try self.pool.add(.{ .quant = .{
                             .q = .forall,
                             .sort = sort,
