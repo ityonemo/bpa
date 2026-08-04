@@ -488,9 +488,21 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
             }
             return self.emitStep(plow, block, loc, new_formula, .{ .exists_intro = .{ .step = body_ref, .witness = witness, .witness_loc = loc } });
         },
-        // BRef-carrying / hypothesis / case-split forms not yet needed (the group
-        // corpus has no case-splits, unpacks, or bare hypotheses in transferable
-        // proofs); reject cleanly if one appears.
+        // schema instantiation (e.g. `instantiate induction(P) base step`): the
+        // instance formula is remapped through the model (relativizing its
+        // conclusion), and each premise SRef is translated through step_map — the
+        // premises were already re-emitted as guarded steps. This is what lets an
+        // induction-based proof transfer through a guarded model (e.g. peano ℕ onto
+        // the nonnegative integers).
+        .schema_instance => |r| {
+            const instance = self.pool.remapFormula(r.instance, model.remap) catch return error.OutOfMemory;
+            const new_premises = try self.arena.alloc(kernel.SRef, r.premises.len);
+            for (r.premises, new_premises) |pr, *out| out.* = ctx.step_map.get(pr.id).?;
+            return self.emitStep(plow, block, loc, new_formula, .{ .schema_instance = .{ .instance = instance, .premises = new_premises } });
+        },
+        // BRef-carrying / case-split forms not yet needed; reject cleanly if one
+        // appears (accelerated-tactic steps like `simplify` also land here — a
+        // separate boundary).
         else => return self.fail(loc, "guarded model materialization does not yet handle this proof shape", .{}),
     }
 }
