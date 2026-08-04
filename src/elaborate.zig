@@ -306,7 +306,12 @@ pub const Elaborator = struct {
                             const gsym = self.env.findSym(self.file, gname) orelse
                                 return self.fail(g.start, "predicated-sort guard '{s}' is not a predicate in scope", .{self.text(g)});
                             const sym = self.env.sym(gsym);
-                            if (sym.kind != .pred or sym.arg_sorts.len != 1 or sym.arg_sorts[0] != id) {
+                            // the guard must be a unary predicate over the target's
+                            // CARRIER (a pred's arg sorts are stored lowered, so a
+                            // pred over a refined target `B` has arg-sort = carrier).
+                            const arg_ok = sym.arg_sorts.len == 1 and
+                                self.env.carrierOf(sym.arg_sorts[0]) == self.env.carrierOf(id);
+                            if (sym.kind != .pred or !arg_ok) {
                                 return self.fail(g.start, "predicated-sort guard '{s}' must be a unary predicate over '{s}'", .{ self.text(g), self.text(d.target) });
                             }
                             const quals = try self.arena.dupe(term.SymId, &.{gsym});
@@ -2963,7 +2968,9 @@ pub const Elaborator = struct {
         const gsym = self.env.findSym(self.file, gname) orelse
             return self.fail(g.start, "sort refinement '{s}' is not a predicate in scope", .{self.text(g)});
         const sym = self.env.sym(gsym);
-        if (sym.kind != .pred or sym.arg_sorts.len != 1 or sym.arg_sorts[0] != base) {
+        const arg_ok = sym.arg_sorts.len == 1 and
+            self.env.carrierOf(sym.arg_sorts[0]) == self.env.carrierOf(base);
+        if (sym.kind != .pred or !arg_ok) {
             return self.fail(g.start, "sort refinement '{s}' must be a unary predicate over '{s}'", .{ self.text(g), self.text(b.sort) });
         }
         const quals = try self.arena.dupe(term.SymId, &.{gsym});

@@ -144,6 +144,10 @@ pub fn addTests(
     // subgroup-closure pattern). Gated by the arg-obligations; equivalent to an
     // explicit closure axiom. Kernel-checked.
     ctx.ok(&.{ "check", "tests/cases/predicated_sort_closure.bpa" }, "OK: 7 declarations, 1 theorems proven\n");
+    // PREDICATED SORT chain: C = B where inC over B = A where inB — carrierOf walks
+    // to the root A, qualifiers accumulate, so ∀c: C desugars to
+    // ∀c: A; inB(c) -> inC(c) -> …. (Also a Zig unit test in env.zig.)
+    ctx.ok(&.{ "check", "tests/cases/predicated_sort_chain.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
 
     // SOUNDNESS: even under --fast, the remapped source theorem must α-match the
     // goal — a flipped-equation goal is rejected (you can't prove what the source

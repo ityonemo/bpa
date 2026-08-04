@@ -202,7 +202,10 @@ pub const Env = struct {
     }
 
     /// The guard qualifiers accumulated along the refinement chain of a SortId
-    /// (empty for a base sort). Outermost-refinement qualifiers first.
+    /// (empty for a base sort). INNERMOST-refinement qualifiers first (walk order
+    /// C→B→A yields [inC, inB] for `C = B where inC`, `B = A where inB`). Binder
+    /// injection wraps each in turn, so the desugared formula reads outermost-first
+    /// (`inB(c) -> inC(c) -> …`), matching the declaration order A→B→C.
     pub fn qualifiersOf(self: *const Env, arena: Allocator, id: SortId) ![]const SymId {
         var acc: std.ArrayList(SymId) = .empty;
         var cur = id;
@@ -294,3 +297,72 @@ pub const Env = struct {
             s.statement_names.contains(name) or s.namespaces.contains(name);
     }
 };
+
+// --- tests ---
+
+const testing = std.testing;
+
+test "refinement chain: C = B where inC, B = A where inB → carrier A, quals [inB, inC]" {
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
+    var interner = intern.Interner.init(arena);
+    var env = try Env.init(arena, &interner);
+    const file = try env.newFile();
+
+    const a_name = try interner.intern("A");
+    const b_name = try interner.intern("B");
+    const c_name = try interner.intern("C");
+    const inb_name = try interner.intern("inB");
+    const inc_name = try interner.intern("inC");
+
+    // sort A (root); pred inB(a: A); sort B = A where inB
+    const a = try env.addSort(file, a_name, 0);
+    const in_b = try env.addSym(file, .{
+        .name = inb_name,
+        .kind = .pred,
+        .arg_sorts = try arena.dupe(SortId, &.{a}),
+        .result = .prop,
+        .guard = null,
+        .param_names = &.{},
+        .loc = 0,
+    });
+    const b = try env.addRefinedSort(file, b_name, 0, a, try arena.dupe(SymId, &.{in_b}));
+
+    // pred inC(b: B) — arg over the REFINED B (its arg sort is the refined id here,
+    // but carrierOf collapses it to A); sort C = B where inC
+    const in_c = try env.addSym(file, .{
+        .name = inc_name,
+        .kind = .pred,
+        .arg_sorts = try arena.dupe(SortId, &.{b}),
+        .result = .prop,
+        .guard = null,
+        .param_names = &.{},
+        .loc = 0,
+    });
+    const c = try env.addRefinedSort(file, c_name, 0, b, try arena.dupe(SymId, &.{in_c}));
+
+    // C is A: walking parents from C lands on the root A.
+    try testing.expectEqual(a, env.carrierOf(c));
+    try testing.expectEqual(a, env.carrierOf(b));
+    try testing.expectEqual(a, env.carrierOf(a)); // a base sort is its own carrier
+
+    // C's guards accumulate the whole chain, INNERMOST first: [inC, inB]. (Binder
+    // injection wraps each in turn, so the desugared formula reads inB -> inC -> …,
+    // matching the A→B→C declaration order — verified at the language level.)
+    const quals = try env.qualifiersOf(arena, c);
+    try testing.expectEqual(@as(usize, 2), quals.len);
+    try testing.expectEqual(in_c, quals[0]);
+    try testing.expectEqual(in_b, quals[1]);
+
+    // B has just [inB]; A (root) has none.
+    const b_quals = try env.qualifiersOf(arena, b);
+    try testing.expectEqual(@as(usize, 1), b_quals.len);
+    try testing.expectEqual(in_b, b_quals[0]);
+    try testing.expectEqual(@as(usize, 0), (try env.qualifiersOf(arena, a)).len);
+
+    try testing.expect(env.isRefined(c));
+    try testing.expect(env.isRefined(b));
+    try testing.expect(!env.isRefined(a));
+}
