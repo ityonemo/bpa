@@ -15,6 +15,7 @@
 import integer <<< "std/integer.bpa"
 import order <<< "std/integer-order.bpa"
 import divides <<< "std/integer-divides.bpa"
+import division <<< "std/integer-division.bpa"
 import wellordering <<< "std/integer-wellordering.bpa"
 
 sort Int = integer.Int
@@ -23,17 +24,53 @@ const ONE = integer.ONE
 func succ = integer.succ
 func add = integer.add
 func mul = integer.mul
+func sub = order.sub
+func neg = integer.neg
 
 pred is_nonneg = order.nonneg
 pred below = order.less_than
+pred at_most = order.less_or_equal
 pred does_divide = divides.divides
 
 theorem nonnegNotBelowZero = wellordering.nonnegNotBelowZero
 theorem lessThanSuccSplit = wellordering.lessThanSuccSplit
 theorem mulIsCommutative = order.mulIsCommutative
+theorem mulIsAssociative = divides.mulIsAssociative
+theorem mulOneRight = divides.mulOneRight
+theorem mulZeroRight = order.mulZeroRight
+theorem mulAddDistribLeft = divides.mulAddDistribLeft
+theorem mulNegRight = order.mulNegRight
+theorem negNeg = order.negNeg
 theorem dividesRefl = divides.dividesRefl
 theorem dividesMul = divides.dividesMul
+theorem dividesAdd = divides.dividesAdd
+axiom dividesIntro = divides.dividesIntro
+axiom dividesElim = divides.dividesElim
+axiom subDef = order.subDef
+theorem trichotomy = order.trichotomy
+theorem signTrichotomy = order.signTrichotomy
+theorem nonnegMul = order.nonnegMul
+theorem negBelowZero = order.negBelowZero
+theorem lessThanIrreflexive = order.lessThanIrreflexive
+theorem lessThanTransitive = order.lessThanTransitive
+theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
+theorem lessOrEqualRefl = order.lessOrEqualRefl
+theorem lessOrEqualSplit = order.lessOrEqualSplit
+theorem lessOrEqualAntisymmetric = order.lessOrEqualAntisymmetric
+theorem addDiffReaches = order.addDiffReaches
+theorem addNegRight = order.addNegRight
+theorem oneAtMostPositive = division.oneAtMostPositive
+theorem atMostGivesNonnegDifference = division.atMostGivesNonnegDifference
+axiom lessOrEqualIntro = order.lessOrEqualIntro
+axiom lessThanIntro = order.lessThanIntro
+axiom lessThanElim = order.lessThanElim
+axiom addZeroLeft = order.addZeroLeft
+axiom oneIsSuccZero = integer.oneIsSuccZero
+axiom nonnegZero = order.nonnegZero
+axiom nonnegSucc = order.nonnegSucc
+theorem nonnegAdd = order.nonnegAdd
 axiom nonnegInduction = order.nonnegInduction
+theorem nonnegWellOrdering = wellordering.nonnegWellOrdering
 
 // -- the sequence sort and its finite product -------------------------------
 
@@ -286,4 +323,936 @@ proof
     forall s: Seq; forall k: Int;
       is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
     [by forall_intro generalize-s]
+qed
+
+// -- membership: x occurs among the first k entries -------------------------
+
+// inSeqBelow(x, s, k) holds when some nonneg index i below the bound k has
+// at(s, i) = x. We give it an intro/elim pair over the defining existential so
+// the infinitude-of-primes argument can produce a witness index (elim) and, in
+// its completeness hypothesis, assert membership from one (intro).
+pred inSeqBelow(x: Int, s: Seq, k: Int)
+axiom inSeqBelowIntro: forall x: Int; forall s: Seq; forall k: Int; forall i: Int;
+  is_nonneg(i) -> below(i, k) -> at(s, i) = x -> inSeqBelow(x, s, k)
+axiom inSeqBelowElim: forall x: Int; forall s: Seq; forall k: Int;
+  inSeqBelow(x, s, k) -> exists i: Int; is_nonneg(i) and below(i, k) and at(s, i) = x
+
+// -- a member of the first k entries divides their product ------------------
+
+// If x occurs among the first k entries, x divides productUpTo(s, k): unpack
+// the witness index i (nonneg, below k, at(s,i) = x); everyEntryDividesProduct
+// says at(s,i) | productUpTo(s,k), and at(s,i) = x rewrites it to x.
+theorem memberDividesProduct: forall s: Seq; forall k: Int; forall x: Int;
+  inSeqBelow(x, s, k) -> does_divide(x, productUpTo(s, k))
+proof
+  @generalize-s |
+    fix s: Seq {
+      @generalize-k |
+        fix k: Int {
+          @generalize-x |
+            fix x: Int {
+              @given-x-in-sequence |
+                assume inSeqBelow(x, s, k) {
+                  @x-in-sequence |
+                    inSeqBelow(x, s, k)
+                    [by hypothesis given-x-in-sequence]
+                  @membership-elim |
+                    forall y: Int; forall t: Seq; forall j: Int; inSeqBelow(y, t, j) -> exists i: Int; is_nonneg(i) and below(i, j) and at(t, i) = y
+                    [by axiom inSeqBelowElim]
+                  @membership-of-x-elim |
+                    inSeqBelow(x, s, k) -> exists i: Int; is_nonneg(i) and below(i, k) and at(s, i) = x
+                    [by forall_elim(x, s, k) membership-elim]
+                  @witness-index-exists |
+                    exists i: Int; is_nonneg(i) and below(i, k) and at(s, i) = x
+                    [by modus_ponens membership-of-x-elim x-in-sequence]
+                  @with-witness-index |
+                    unpack i: Int from witness-index-exists {
+                      @index-nonneg-below-and-hits-x |
+                        is_nonneg(i) and below(i, k) and at(s, i) = x
+                        [by hypothesis with-witness-index]
+                      @index-nonneg |
+                        is_nonneg(i)
+                        [by tautology index-nonneg-below-and-hits-x]
+                      @index-below-k |
+                        below(i, k)
+                        [by tautology index-nonneg-below-and-hits-x]
+                      @entry-at-index-is-x |
+                        at(s, i) = x
+                        [by tautology index-nonneg-below-and-hits-x]
+                      // this needs the bound k to be nonneg: i < k with i nonneg
+                      // forces k nonneg (else i < k < 0 impossible for nonneg i).
+                      @every-entry-below-bound-divides |
+                        forall t: Seq; forall j: Int; is_nonneg(j) -> (forall e: Int; is_nonneg(e) -> below(e, j) -> does_divide(at(t, e), productUpTo(t, j)))
+                        [by theorem everyEntryDividesProduct]
+                      @entries-below-k-divide |
+                        is_nonneg(k) -> (forall e: Int; is_nonneg(e) -> below(e, k) -> does_divide(at(s, e), productUpTo(s, k)))
+                        [by forall_elim(s, k) every-entry-below-bound-divides]
+                      // k is nonneg: a nonneg index below k means k exceeds a
+                      // nonneg, so k is positive hence nonneg. We get it from the
+                      // gap i < k directly: below(i, k) with is_nonneg(i).
+                      @less-than-elim |
+                        forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
+                        [by axiom lessThanElim]
+                      @index-gap-exists |
+                        below(i, k) -> exists d: Int; is_nonneg(d) and add(i, succ(d)) = k
+                        [by forall_elim(i, k) less-than-elim]
+                      @gap-to-k-exists |
+                        exists d: Int; is_nonneg(d) and add(i, succ(d)) = k
+                        [by modus_ponens index-gap-exists index-below-k]
+                      @with-gap-to-k |
+                        unpack gap: Int from gap-to-k-exists {
+                          @gap-nonneg-and-reaches-k |
+                            is_nonneg(gap) and add(i, succ(gap)) = k
+                            [by hypothesis with-gap-to-k]
+                          @gap-nonneg |
+                            is_nonneg(gap)
+                            [by tautology gap-nonneg-and-reaches-k]
+                          @gap-reaches-k |
+                            add(i, succ(gap)) = k
+                            [by tautology gap-nonneg-and-reaches-k]
+                          @successor-of-nonneg-is-nonneg |
+                            forall n: Int; is_nonneg(n) -> is_nonneg(succ(n))
+                            [by axiom nonnegSucc]
+                          @successor-gap-nonneg |
+                            is_nonneg(gap) -> is_nonneg(succ(gap))
+                            [by forall_elim(gap) successor-of-nonneg-is-nonneg]
+                          @succ-gap-nonneg |
+                            is_nonneg(succ(gap))
+                            [by modus_ponens successor-gap-nonneg gap-nonneg]
+                          @sum-of-nonnegs-is-nonneg |
+                            forall a, b: Int; is_nonneg(a) -> is_nonneg(b) -> is_nonneg(add(a, b))
+                            [by theorem nonnegAdd]
+                          @sum-of-nonnegs-nonneg |
+                            is_nonneg(i) -> is_nonneg(succ(gap)) -> is_nonneg(add(i, succ(gap)))
+                            [by forall_elim(i, succ(gap)) sum-of-nonnegs-is-nonneg]
+                          @index-plus-gap-nonneg |
+                            is_nonneg(add(i, succ(gap)))
+                            [by tautology sum-of-nonnegs-nonneg index-nonneg succ-gap-nonneg]
+                          @k-nonneg |
+                            is_nonneg(k)
+                            [by rewrite gap-reaches-k index-plus-gap-nonneg]
+                          @entries-below-k-divide-unguarded |
+                            forall e: Int; is_nonneg(e) -> below(e, k) -> does_divide(at(s, e), productUpTo(s, k))
+                            [by modus_ponens entries-below-k-divide k-nonneg]
+                          @entry-i-divides-if-below |
+                            is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k))
+                            [by forall_elim(i) entries-below-k-divide-unguarded]
+                          @entry-i-divides-product |
+                            does_divide(at(s, i), productUpTo(s, k))
+                            [by tautology entry-i-divides-if-below index-nonneg index-below-k]
+                          @x-divides-product |
+                            does_divide(x, productUpTo(s, k))
+                            [by rewrite entry-at-index-is-x entry-i-divides-product]
+                        }
+                      @x-divides-product |
+                        does_divide(x, productUpTo(s, k))
+                        [by exists_elim with-gap-to-k]
+                    }
+                  @x-divides-product |
+                    does_divide(x, productUpTo(s, k))
+                    [by exists_elim with-witness-index]
+                }
+              @in-sequence-implies-divides-product |
+                inSeqBelow(x, s, k) -> does_divide(x, productUpTo(s, k))
+                [by implies_intro given-x-in-sequence]
+            }
+          @discharge-x |
+            forall x: Int; inSeqBelow(x, s, k) -> does_divide(x, productUpTo(s, k))
+            [by forall_intro generalize-x]
+        }
+      @discharge-k |
+        forall k: Int; forall x: Int; inSeqBelow(x, s, k) -> does_divide(x, productUpTo(s, k))
+        [by forall_intro generalize-k]
+    }
+  @conclusion |
+    forall s: Seq; forall k: Int; forall x: Int; inSeqBelow(x, s, k) -> does_divide(x, productUpTo(s, k))
+    [by forall_intro generalize-s]
+qed
+
+// -- divisibility is transitive ---------------------------------------------
+
+// a | b and b | c give a | c: unpack b = mul(a, j) and c = mul(b, k), so
+// c = mul(mul(a, j), k) = mul(a, mul(j, k)) (mulIsAssociative), and dividesIntro
+// reads a | c off that.
+theorem dividesTransitive: forall a, b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @generalize-c |
+            fix c: Int {
+              @given-a-divides-b |
+                assume does_divide(a, b) {
+                  @given-b-divides-c |
+                    assume does_divide(b, c) {
+                      @a-divides-b |
+                        does_divide(a, b)
+                        [by hypothesis given-a-divides-b]
+                      @b-divides-c |
+                        does_divide(b, c)
+                        [by hypothesis given-b-divides-c]
+                      @divides-elim |
+                        forall d, n: Int; does_divide(d, n) -> exists k: Int; n = mul(d, k)
+                        [by axiom dividesElim]
+                      @a-divides-b-quotient-exists |
+                        does_divide(a, b) -> exists k: Int; b = mul(a, k)
+                        [by forall_elim(a, b) divides-elim]
+                      @b-is-a-multiple |
+                        exists k: Int; b = mul(a, k)
+                        [by modus_ponens a-divides-b-quotient-exists a-divides-b]
+                      @with-a-quotient |
+                        unpack j: Int from b-is-a-multiple {
+                          @b-is-a-times-j |
+                            b = mul(a, j)
+                            [by hypothesis with-a-quotient]
+                          @b-divides-c-quotient-exists |
+                            does_divide(b, c) -> exists k: Int; c = mul(b, k)
+                            [by forall_elim(b, c) divides-elim]
+                          @c-is-b-multiple |
+                            exists k: Int; c = mul(b, k)
+                            [by modus_ponens b-divides-c-quotient-exists b-divides-c]
+                          @with-b-quotient |
+                            unpack k: Int from c-is-b-multiple {
+                              @c-is-b-times-k |
+                                c = mul(b, k)
+                                [by hypothesis with-b-quotient]
+                              @c-is-a-j-times-k |
+                                c = mul(mul(a, j), k)
+                                [by rewrite b-is-a-times-j c-is-b-times-k]
+                              @multiplication-associates |
+                                forall x, y, z: Int; mul(mul(x, y), z) = mul(x, mul(y, z))
+                                [by theorem mulIsAssociative]
+                              @a-j-times-k-regroups |
+                                mul(mul(a, j), k) = mul(a, mul(j, k))
+                                [by forall_elim(a, j, k) multiplication-associates]
+                              @c-is-a-times-jk |
+                                c = mul(a, mul(j, k))
+                                [by rewrite a-j-times-k-regroups c-is-a-j-times-k]
+                              @divides-intro |
+                                forall n, d, m: Int; n = mul(d, m) -> does_divide(d, n)
+                                [by axiom dividesIntro]
+                              @a-divides-c-if-product |
+                                c = mul(a, mul(j, k)) -> does_divide(a, c)
+                                [by forall_elim(c, a, mul(j, k)) divides-intro]
+                              @a-divides-c |
+                                does_divide(a, c)
+                                [by modus_ponens a-divides-c-if-product c-is-a-times-jk]
+                            }
+                          @a-divides-c |
+                            does_divide(a, c)
+                            [by exists_elim with-b-quotient]
+                        }
+                      @a-divides-c |
+                        does_divide(a, c)
+                        [by exists_elim with-a-quotient]
+                    }
+                  @b-divides-c-implies-a-divides-c |
+                    does_divide(b, c) -> does_divide(a, c)
+                    [by implies_intro given-b-divides-c]
+                }
+              @a-divides-b-implies-transitive |
+                does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
+                [by implies_intro given-a-divides-b]
+            }
+          @discharge-c |
+            forall c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
+            [by forall_intro generalize-c]
+        }
+      @discharge-b |
+        forall b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
+    [by forall_intro generalize-a]
+qed
+
+// -- divisibility respects subtraction --------------------------------------
+
+// d | a and d | b give d | (a − b): d | (−b) because −b = mul(b, −1) is a
+// multiple of b's divisor d (dividesMul with −1), then dividesAdd on a and −b,
+// with sub(a, b) = add(a, neg(b)) (subDef).
+theorem dividesSubtracts: forall d, a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-a |
+        fix a: Int {
+          @generalize-b |
+            fix b: Int {
+              @given-d-divides-a |
+                assume does_divide(d, a) {
+                  @given-d-divides-b |
+                    assume does_divide(d, b) {
+                      @d-divides-a |
+                        does_divide(d, a)
+                        [by hypothesis given-d-divides-a]
+                      @d-divides-b |
+                        does_divide(d, b)
+                        [by hypothesis given-d-divides-b]
+                      // d | neg(b): neg(b) = mul(b, neg(ONE)) is a multiple of b.
+                      @divides-multiples |
+                        forall x, y, c: Int; does_divide(x, y) -> does_divide(x, mul(y, c))
+                        [by theorem dividesMul]
+                      @d-divides-b-times-neg-one |
+                        does_divide(d, b) -> does_divide(d, mul(b, neg(ONE)))
+                        [by forall_elim(d, b, neg(ONE)) divides-multiples]
+                      @d-divides-b-times-neg-one-fact |
+                        does_divide(d, mul(b, neg(ONE)))
+                        [by modus_ponens d-divides-b-times-neg-one d-divides-b]
+                      @b-times-neg-one-is-neg-b |
+                        mul(b, neg(ONE)) = neg(b)
+                        [by simplify mulNegRight mulOneRight]
+                      @d-divides-neg-b |
+                        does_divide(d, neg(b))
+                        [by rewrite b-times-neg-one-is-neg-b d-divides-b-times-neg-one-fact]
+                      // d | add(a, neg(b)) = a − b.
+                      @divides-sums |
+                        forall x, y, z: Int; does_divide(x, y) -> does_divide(x, z) -> does_divide(x, add(y, z))
+                        [by theorem dividesAdd]
+                      @d-divides-a-plus-neg-b-if |
+                        does_divide(d, a) -> does_divide(d, neg(b)) -> does_divide(d, add(a, neg(b)))
+                        [by forall_elim(d, a, neg(b)) divides-sums]
+                      @d-divides-a-plus-neg-b |
+                        does_divide(d, add(a, neg(b)))
+                        [by tautology d-divides-a-plus-neg-b-if d-divides-a d-divides-neg-b]
+                      @difference-unfolds |
+                        forall x, y: Int; sub(x, y) = add(x, neg(y))
+                        [by axiom subDef]
+                      @a-minus-b-is-a-plus-neg-b |
+                        sub(a, b) = add(a, neg(b))
+                        [by forall_elim(a, b) difference-unfolds]
+                      @a-plus-neg-b-is-a-minus-b |
+                        add(a, neg(b)) = sub(a, b)
+                        [by symmetry a-minus-b-is-a-plus-neg-b]
+                      @d-divides-a-minus-b |
+                        does_divide(d, sub(a, b))
+                        [by rewrite a-plus-neg-b-is-a-minus-b d-divides-a-plus-neg-b]
+                    }
+                  @d-divides-b-implies-divides-difference |
+                    does_divide(d, b) -> does_divide(d, sub(a, b))
+                    [by implies_intro given-d-divides-b]
+                }
+              @d-divides-a-implies-rest |
+                does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+                [by implies_intro given-d-divides-a]
+            }
+          @discharge-b |
+            forall b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+            [by forall_intro generalize-b]
+        }
+      @discharge-a |
+        forall a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+        [by forall_intro generalize-a]
+    }
+  @conclusion |
+    forall d, a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+    [by forall_intro generalize-d]
+qed
+
+// -- small order facts the prime-factor argument names ----------------------
+
+// 0 < 1: the gap succ(ZERO) = ONE witnesses it (add(ZERO, succ ZERO) = ONE).
+theorem zeroBelowOne: below(ZERO, ONE)
+proof
+  @one-is-succ-zero |
+    ONE = succ(ZERO)
+    [by axiom oneIsSuccZero]
+  @succ-zero-is-one |
+    succ(ZERO) = ONE
+    [by symmetry one-is-succ-zero]
+  @zero-nonneg |
+    is_nonneg(ZERO)
+    [by axiom nonnegZero]
+  @zero-prefixes |
+    forall n: Int; add(ZERO, n) = n
+    [by axiom addZeroLeft]
+  @zero-plus-succ-zero-is-succ-zero |
+    add(ZERO, succ(ZERO)) = succ(ZERO)
+    [by forall_elim(succ(ZERO)) zero-prefixes]
+  @zero-plus-succ-zero-is-one |
+    add(ZERO, succ(ZERO)) = ONE
+    [by rewrite succ-zero-is-one zero-plus-succ-zero-is-succ-zero]
+  @gap-witnesses-less-than |
+    forall a, d, b: Int; is_nonneg(d) -> add(a, succ(d)) = b -> below(a, b)
+    [by axiom lessThanIntro]
+  @zero-below-one-if-gap |
+    is_nonneg(ZERO) -> add(ZERO, succ(ZERO)) = ONE -> below(ZERO, ONE)
+    [by forall_elim(ZERO, ZERO, ONE) gap-witnesses-less-than]
+  @conclusion |
+    below(ZERO, ONE)
+    [by tautology zero-below-one-if-gap zero-nonneg zero-plus-succ-zero-is-one]
+qed
+
+// A positive integer is nonnegative: unfold below(ZERO, x) to a gap succ(d) = x
+// with d nonneg (add(ZERO, succ d) = x collapses to succ d = x), and the
+// successor of a nonneg is nonneg.
+theorem positiveIsNonneg: forall x: Int; below(ZERO, x) -> is_nonneg(x)
+proof
+  @generalize-x |
+    fix x: Int {
+      @given-x-positive |
+        assume below(ZERO, x) {
+          @x-positive |
+            below(ZERO, x)
+            [by hypothesis given-x-positive]
+          @less-than-elim |
+            forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
+            [by axiom lessThanElim]
+          @gap-below-zero-x |
+            below(ZERO, x) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = x
+            [by forall_elim(ZERO, x) less-than-elim]
+          @gap-exists |
+            exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = x
+            [by modus_ponens gap-below-zero-x x-positive]
+          @with-gap-d |
+            unpack d: Int from gap-exists {
+              @gap-nonneg-and-reaches-x |
+                is_nonneg(d) and add(ZERO, succ(d)) = x
+                [by hypothesis with-gap-d]
+              @gap-nonneg |
+                is_nonneg(d)
+                [by tautology gap-nonneg-and-reaches-x]
+              @gap-reaches-x |
+                add(ZERO, succ(d)) = x
+                [by tautology gap-nonneg-and-reaches-x]
+              @zero-prefixes |
+                forall n: Int; add(ZERO, n) = n
+                [by axiom addZeroLeft]
+              @zero-plus-succ-gap-is-succ-gap |
+                add(ZERO, succ(d)) = succ(d)
+                [by forall_elim(succ(d)) zero-prefixes]
+              @succ-gap-is-x |
+                succ(d) = x
+                [by rewrite zero-plus-succ-gap-is-succ-gap gap-reaches-x]
+              @successor-of-nonneg-is-nonneg |
+                forall n: Int; is_nonneg(n) -> is_nonneg(succ(n))
+                [by axiom nonnegSucc]
+              @succ-gap-nonneg-if-gap |
+                is_nonneg(d) -> is_nonneg(succ(d))
+                [by forall_elim(d) successor-of-nonneg-is-nonneg]
+              @succ-gap-nonneg |
+                is_nonneg(succ(d))
+                [by modus_ponens succ-gap-nonneg-if-gap gap-nonneg]
+              @x-nonneg |
+                is_nonneg(x)
+                [by rewrite succ-gap-is-x succ-gap-nonneg]
+            }
+          @x-nonneg |
+            is_nonneg(x)
+            [by exists_elim with-gap-d]
+        }
+      @positive-implies-nonneg |
+        below(ZERO, x) -> is_nonneg(x)
+        [by implies_intro given-x-positive]
+    }
+  @conclusion |
+    forall x: Int; below(ZERO, x) -> is_nonneg(x)
+    [by forall_intro generalize-x]
+qed
+
+// -- a positive divisor is at most its positive multiple --------------------
+
+// If d | n with d, n positive, then d ≤ n. Write n = d·k. The quotient k is
+// positive: k = 0 makes n = 0, and k < 0 makes n = −(d·|k|) negative, both
+// against n > 0. With k ≥ 1, the difference k − 1 is nonneg, so the gap
+// g = d·(k−1) is nonneg (nonnegMul), and add(d, g) = d·(1 + (k−1)) = d·k = n,
+// which lessOrEqualIntro reads as d ≤ n.
+theorem divisorAtMost: forall d, n: Int; below(ZERO, d) -> below(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-n |
+        fix n: Int {
+          @given-d-positive |
+            assume below(ZERO, d) {
+              @given-n-positive |
+                assume below(ZERO, n) {
+                  @given-d-divides-n |
+                    assume does_divide(d, n) {
+                      @d-positive |
+                        below(ZERO, d)
+                        [by hypothesis given-d-positive]
+                      @n-positive |
+                        below(ZERO, n)
+                        [by hypothesis given-n-positive]
+                      @d-divides-n |
+                        does_divide(d, n)
+                        [by hypothesis given-d-divides-n]
+                      @divides-elim |
+                        forall x, y: Int; does_divide(x, y) -> exists k: Int; y = mul(x, k)
+                        [by axiom dividesElim]
+                      @n-is-d-multiple-if |
+                        does_divide(d, n) -> exists k: Int; n = mul(d, k)
+                        [by forall_elim(d, n) divides-elim]
+                      @n-is-d-multiple |
+                        exists k: Int; n = mul(d, k)
+                        [by modus_ponens n-is-d-multiple-if d-divides-n]
+                      @with-quotient-k |
+                        unpack k: Int from n-is-d-multiple {
+                          @n-is-d-times-k |
+                            n = mul(d, k)
+                            [by hypothesis with-quotient-k]
+                          @positive-is-nonneg-lemma |
+                            forall x: Int; below(ZERO, x) -> is_nonneg(x)
+                            [by theorem positiveIsNonneg]
+                          @d-nonneg-if-positive |
+                            below(ZERO, d) -> is_nonneg(d)
+                            [by forall_elim(d) positive-is-nonneg-lemma]
+                          @d-nonneg |
+                            is_nonneg(d)
+                            [by modus_ponens d-nonneg-if-positive d-positive]
+                          // the quotient k is positive.
+                          @sign-of-k |
+                            forall x: Int; below(ZERO, x) or x = ZERO or below(x, ZERO)
+                            [by theorem signTrichotomy]
+                          @k-sign |
+                            below(ZERO, k) or k = ZERO or below(k, ZERO)
+                            [by forall_elim(k) sign-of-k]
+                          @k-positive |
+                            below(ZERO, k)
+                            case on k-sign {
+                              @when-k-positive |
+                                assume below(ZERO, k) {
+                                  @conclusion-k-positive |
+                                    below(ZERO, k)
+                                    [by hypothesis when-k-positive]
+                                }
+                              @when-k-zero |
+                                assume k = ZERO {
+                                  @k-is-zero |
+                                    k = ZERO
+                                    [by hypothesis when-k-zero]
+                                  @product-with-zero-right |
+                                    forall x: Int; mul(x, ZERO) = ZERO
+                                    [by theorem mulZeroRight]
+                                  @d-times-zero-is-zero |
+                                    mul(d, ZERO) = ZERO
+                                    [by forall_elim(d) product-with-zero-right]
+                                  @n-is-d-times-zero |
+                                    n = mul(d, ZERO)
+                                    [by rewrite k-is-zero n-is-d-times-k]
+                                  @n-is-zero |
+                                    n = ZERO
+                                    [by rewrite d-times-zero-is-zero n-is-d-times-zero]
+                                  @zero-below-zero |
+                                    below(ZERO, ZERO)
+                                    [by rewrite n-is-zero n-positive]
+                                  @nothing-below-itself |
+                                    forall x: Int; not below(x, x)
+                                    [by theorem lessThanIrreflexive]
+                                  @zero-not-below-zero |
+                                    not below(ZERO, ZERO)
+                                    [by forall_elim(ZERO) nothing-below-itself]
+                                  @conclusion-k-positive |
+                                    below(ZERO, k)
+                                    [by absurd zero-below-zero zero-not-below-zero]
+                                }
+                              @when-k-negative |
+                                assume below(k, ZERO) {
+                                  @k-negative |
+                                    below(k, ZERO)
+                                    [by hypothesis when-k-negative]
+                                  // n = d·k = −(d·(−k)), and d·(−k) is nonneg, so n ≤ 0.
+                                  @negative-neg-is-nonneg |
+                                    forall x: Int; below(x, ZERO) -> is_nonneg(neg(x))
+                                    [by theorem negBelowZero]
+                                  @neg-k-nonneg-if-negative |
+                                    below(k, ZERO) -> is_nonneg(neg(k))
+                                    [by forall_elim(k) negative-neg-is-nonneg]
+                                  @neg-k-nonneg |
+                                    is_nonneg(neg(k))
+                                    [by modus_ponens neg-k-nonneg-if-negative k-negative]
+                                  @product-of-nonnegs-nonneg |
+                                    forall a, b: Int; is_nonneg(a) -> is_nonneg(b) -> is_nonneg(mul(a, b))
+                                    [by theorem nonnegMul]
+                                  @d-times-neg-k-nonneg-if |
+                                    is_nonneg(d) -> is_nonneg(neg(k)) -> is_nonneg(mul(d, neg(k)))
+                                    [by forall_elim(d, neg(k)) product-of-nonnegs-nonneg]
+                                  @d-times-neg-k-nonneg |
+                                    is_nonneg(mul(d, neg(k)))
+                                    [by tautology d-times-neg-k-nonneg-if d-nonneg neg-k-nonneg]
+                                  @product-negates-right |
+                                    forall a, b: Int; mul(a, neg(b)) = neg(mul(a, b))
+                                    [by theorem mulNegRight]
+                                  @d-times-neg-k-is-neg-product |
+                                    mul(d, neg(k)) = neg(mul(d, k))
+                                    [by forall_elim(d, k) product-negates-right]
+                                  @neg-product-is-d-times-neg-k |
+                                    neg(mul(d, k)) = mul(d, neg(k))
+                                    [by symmetry d-times-neg-k-is-neg-product]
+                                  @neg-n-refl |
+                                    neg(n) = neg(n)
+                                    [by reflexivity]
+                                  @neg-n-is-neg-product |
+                                    neg(n) = neg(mul(d, k))
+                                    [by rewrite n-is-d-times-k neg-n-refl]
+                                  @neg-n-is-d-times-neg-k |
+                                    neg(n) = mul(d, neg(k))
+                                    [by rewrite neg-product-is-d-times-neg-k neg-n-is-neg-product]
+                                  @d-times-neg-k-is-neg-n |
+                                    mul(d, neg(k)) = neg(n)
+                                    [by symmetry neg-n-is-d-times-neg-k]
+                                  @neg-n-nonneg |
+                                    is_nonneg(neg(n))
+                                    [by rewrite d-times-neg-k-is-neg-n d-times-neg-k-nonneg]
+                                  @sum-with-negation-right |
+                                    forall x: Int; add(x, neg(x)) = ZERO
+                                    [by theorem addNegRight]
+                                  @add-n-neg-n-is-zero |
+                                    add(n, neg(n)) = ZERO
+                                    [by forall_elim(n) sum-with-negation-right]
+                                  @at-most-intro |
+                                    forall a, g, b: Int; is_nonneg(g) -> add(a, g) = b -> at_most(a, b)
+                                    [by axiom lessOrEqualIntro]
+                                  @n-at-most-zero-if |
+                                    is_nonneg(neg(n)) -> add(n, neg(n)) = ZERO -> at_most(n, ZERO)
+                                    [by forall_elim(n, neg(n), ZERO) at-most-intro]
+                                  @n-at-most-zero |
+                                    at_most(n, ZERO)
+                                    [by tautology n-at-most-zero-if neg-n-nonneg add-n-neg-n-is-zero]
+                                  @below-gives-at-most |
+                                    forall a, b: Int; below(a, b) -> at_most(a, b)
+                                    [by theorem lessThanToLessOrEqual]
+                                  @zero-at-most-n-if-below |
+                                    below(ZERO, n) -> at_most(ZERO, n)
+                                    [by forall_elim(ZERO, n) below-gives-at-most]
+                                  @zero-at-most-n |
+                                    at_most(ZERO, n)
+                                    [by modus_ponens zero-at-most-n-if-below n-positive]
+                                  @order-is-antisymmetric |
+                                    forall a, b: Int; at_most(a, b) -> at_most(b, a) -> a = b
+                                    [by theorem lessOrEqualAntisymmetric]
+                                  @n-equals-zero-if-mutual |
+                                    at_most(n, ZERO) -> at_most(ZERO, n) -> n = ZERO
+                                    [by forall_elim(n, ZERO) order-is-antisymmetric]
+                                  @n-is-zero |
+                                    n = ZERO
+                                    [by tautology n-equals-zero-if-mutual n-at-most-zero zero-at-most-n]
+                                  @zero-below-zero |
+                                    below(ZERO, ZERO)
+                                    [by rewrite n-is-zero n-positive]
+                                  @nothing-below-itself |
+                                    forall x: Int; not below(x, x)
+                                    [by theorem lessThanIrreflexive]
+                                  @zero-not-below-zero |
+                                    not below(ZERO, ZERO)
+                                    [by forall_elim(ZERO) nothing-below-itself]
+                                  @conclusion-k-positive |
+                                    below(ZERO, k)
+                                    [by absurd zero-below-zero zero-not-below-zero]
+                                }
+                            }
+                          // k ≥ 1, so k − 1 is nonneg and g = d·(k−1) is the gap.
+                          @one-at-most-positive |
+                            forall x: Int; below(ZERO, x) -> at_most(ONE, x)
+                            [by theorem oneAtMostPositive]
+                          @one-at-most-k-if-positive |
+                            below(ZERO, k) -> at_most(ONE, k)
+                            [by forall_elim(k) one-at-most-positive]
+                          @one-at-most-k |
+                            at_most(ONE, k)
+                            [by modus_ponens one-at-most-k-if-positive k-positive]
+                          @at-most-gives-nonneg-difference |
+                            forall x, y: Int; at_most(x, y) -> is_nonneg(sub(y, x))
+                            [by theorem atMostGivesNonnegDifference]
+                          @k-minus-one-nonneg-if |
+                            at_most(ONE, k) -> is_nonneg(sub(k, ONE))
+                            [by forall_elim(ONE, k) at-most-gives-nonneg-difference]
+                          @k-minus-one-nonneg |
+                            is_nonneg(sub(k, ONE))
+                            [by modus_ponens k-minus-one-nonneg-if one-at-most-k]
+                          @product-of-nonnegs-nonneg |
+                            forall a, b: Int; is_nonneg(a) -> is_nonneg(b) -> is_nonneg(mul(a, b))
+                            [by theorem nonnegMul]
+                          @gap-nonneg-if |
+                            is_nonneg(d) -> is_nonneg(sub(k, ONE)) -> is_nonneg(mul(d, sub(k, ONE)))
+                            [by forall_elim(d, sub(k, ONE)) product-of-nonnegs-nonneg]
+                          @gap-nonneg |
+                            is_nonneg(mul(d, sub(k, ONE)))
+                            [by tautology gap-nonneg-if d-nonneg k-minus-one-nonneg]
+                          // add(d, d·(k−1)) = d·(1 + (k−1)) = d·k = n.
+                          @difference-reaches |
+                            forall a, b: Int; add(a, sub(b, a)) = b
+                            [by theorem addDiffReaches]
+                          @one-plus-k-minus-one-is-k |
+                            add(ONE, sub(k, ONE)) = k
+                            [by forall_elim(ONE, k) difference-reaches]
+                          @product-distributes-over-sum |
+                            forall a, b, c: Int; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
+                            [by theorem mulAddDistribLeft]
+                          @d-times-one-plus-diff |
+                            mul(d, add(ONE, sub(k, ONE))) = add(mul(d, ONE), mul(d, sub(k, ONE)))
+                            [by forall_elim(d, ONE, sub(k, ONE)) product-distributes-over-sum]
+                          @product-with-one-right |
+                            forall x: Int; mul(x, ONE) = x
+                            [by theorem mulOneRight]
+                          @d-times-one-is-d |
+                            mul(d, ONE) = d
+                            [by forall_elim(d) product-with-one-right]
+                          @d-times-one-plus-diff-collects |
+                            mul(d, add(ONE, sub(k, ONE))) = add(d, mul(d, sub(k, ONE)))
+                            [by rewrite d-times-one-is-d d-times-one-plus-diff]
+                          @d-times-k-splits |
+                            mul(d, k) = add(d, mul(d, sub(k, ONE)))
+                            [by rewrite one-plus-k-minus-one-is-k d-times-one-plus-diff-collects]
+                          @n-splits-into-d-plus-gap |
+                            n = add(d, mul(d, sub(k, ONE)))
+                            [by rewrite d-times-k-splits n-is-d-times-k]
+                          @d-plus-gap-is-n |
+                            add(d, mul(d, sub(k, ONE))) = n
+                            [by symmetry n-splits-into-d-plus-gap]
+                          @at-most-intro |
+                            forall a, g, b: Int; is_nonneg(g) -> add(a, g) = b -> at_most(a, b)
+                            [by axiom lessOrEqualIntro]
+                          @d-at-most-n-if |
+                            is_nonneg(mul(d, sub(k, ONE))) -> add(d, mul(d, sub(k, ONE))) = n -> at_most(d, n)
+                            [by forall_elim(d, mul(d, sub(k, ONE)), n) at-most-intro]
+                          @d-at-most-n |
+                            at_most(d, n)
+                            [by tautology d-at-most-n-if gap-nonneg d-plus-gap-is-n]
+                        }
+                      @d-at-most-n |
+                        at_most(d, n)
+                        [by exists_elim with-quotient-k]
+                    }
+                  @d-divides-n-implies-at-most |
+                    does_divide(d, n) -> at_most(d, n)
+                    [by implies_intro given-d-divides-n]
+                }
+              @n-positive-implies-at-most |
+                below(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+                [by implies_intro given-n-positive]
+            }
+          @d-positive-implies-at-most |
+            below(ZERO, d) -> below(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+            [by implies_intro given-d-positive]
+        }
+      @discharge-n |
+        forall n: Int; below(ZERO, d) -> below(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+        [by forall_intro generalize-n]
+    }
+  @conclusion |
+    forall d, n: Int; below(ZERO, d) -> below(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+    [by forall_intro generalize-d]
+qed
+
+// -- every integer > 1 has a prime divisor ----------------------------------
+
+// Well-ordering on S = {x : 1 < x and x | n}. S is nonempty (n ∈ S, since
+// 1 < n and n | n). Its least member p is prime: 1 < p by membership, and for a
+// positive divisor d of p, d | p | n so d | n; if 1 < d then d ∈ S, and d ≤ p
+// (divisorAtMost) with p ≤ d (p least) forces d = p; otherwise d = 1. And p | n.
+theorem primeFactorExists: forall n: Int; below(ONE, n)
+  -> exists p: Int; (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, n)
+proof
+  @generalize-n |
+    fix n: Int {
+      @given-n-above-one |
+        assume below(ONE, n) {
+          @n-above-one |
+            below(ONE, n)
+            [by hypothesis given-n-above-one]
+          // n itself is a member of S: 1 < n and n | n; and n is nonneg.
+          @divides-reflexive |
+            forall d: Int; does_divide(d, d)
+            [by theorem dividesRefl]
+          @n-divides-n |
+            does_divide(n, n)
+            [by forall_elim(n) divides-reflexive]
+          @zero-below-one |
+            below(ZERO, ONE)
+            [by theorem zeroBelowOne]
+          @less-than-transitive |
+            forall a, b, c: Int; below(a, b) -> below(b, c) -> below(a, c)
+            [by theorem lessThanTransitive]
+          @zero-below-n-if-chained |
+            below(ZERO, ONE) -> below(ONE, n) -> below(ZERO, n)
+            [by forall_elim(ZERO, ONE, n) less-than-transitive]
+          @zero-below-n |
+            below(ZERO, n)
+            [by tautology zero-below-n-if-chained zero-below-one n-above-one]
+          @positive-is-nonneg |
+            forall x: Int; below(ZERO, x) -> is_nonneg(x)
+            [by theorem positiveIsNonneg]
+          @n-nonneg-if-positive |
+            below(ZERO, n) -> is_nonneg(n)
+            [by forall_elim(n) positive-is-nonneg]
+          @n-nonneg |
+            is_nonneg(n)
+            [by modus_ponens n-nonneg-if-positive zero-below-n]
+          @n-is-member |
+            below(ONE, n) and does_divide(n, n)
+            [by and_intro n-above-one n-divides-n]
+          @n-is-nonneg-member |
+            is_nonneg(n) and (below(ONE, n) and does_divide(n, n))
+            [by and_intro n-nonneg n-is-member]
+          @set-is-nonempty |
+            exists x: Int; is_nonneg(x) and (below(ONE, x) and does_divide(x, n))
+            [by exists_intro(n) n-is-nonneg-member]
+          // Well-Ordering: S has a least member p.
+          @well-ordering-on-divisors |
+            (exists x: Int; is_nonneg(x) and (below(ONE, x) and does_divide(x, n)))
+              -> exists least: Int; is_nonneg(least) and (below(ONE, least) and does_divide(least, n)) and (forall m: Int; is_nonneg(m) -> (below(ONE, m) and does_divide(m, n)) -> at_most(least, m))
+            [by instantiate nonnegWellOrdering((fun x: Int => below(ONE, x) and does_divide(x, n)))]
+          @least-member-exists |
+            exists least: Int; is_nonneg(least) and (below(ONE, least) and does_divide(least, n)) and (forall m: Int; is_nonneg(m) -> (below(ONE, m) and does_divide(m, n)) -> at_most(least, m))
+            [by modus_ponens well-ordering-on-divisors set-is-nonempty]
+          @with-least-divisor-p |
+            unpack p: Int from least-member-exists {
+              @p-is-least-member |
+                is_nonneg(p) and (below(ONE, p) and does_divide(p, n)) and (forall m: Int; is_nonneg(m) -> (below(ONE, m) and does_divide(m, n)) -> at_most(p, m))
+                [by hypothesis with-least-divisor-p]
+              @p-above-one |
+                below(ONE, p)
+                [by tautology p-is-least-member]
+              @p-divides-n |
+                does_divide(p, n)
+                [by tautology p-is-least-member]
+              @p-is-least |
+                forall m: Int; is_nonneg(m) -> (below(ONE, m) and does_divide(m, n)) -> at_most(p, m)
+                [by tautology p-is-least-member]
+              // p > 0, from 0 < 1 < p.
+              @zero-below-p-if-chained |
+                below(ZERO, ONE) -> below(ONE, p) -> below(ZERO, p)
+                [by forall_elim(ZERO, ONE, p) less-than-transitive]
+              @zero-below-p |
+                below(ZERO, p)
+                [by tautology zero-below-p-if-chained zero-below-one p-above-one]
+              // p is prime: its only positive divisors are 1 and p.
+              @only-positive-divisors-are-one-and-p |
+                fix d: Int {
+                  @given-d-positive |
+                    assume below(ZERO, d) {
+                      @given-d-divides-p |
+                        assume does_divide(d, p) {
+                          @d-positive |
+                            below(ZERO, d)
+                            [by hypothesis given-d-positive]
+                          @d-divides-p |
+                            does_divide(d, p)
+                            [by hypothesis given-d-divides-p]
+                          // d | p | n gives d | n.
+                          @divides-transitive |
+                            forall a, b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
+                            [by theorem dividesTransitive]
+                          @d-divides-n-if-chained |
+                            does_divide(d, p) -> does_divide(p, n) -> does_divide(d, n)
+                            [by forall_elim(d, p, n) divides-transitive]
+                          @d-divides-n |
+                            does_divide(d, n)
+                            [by tautology d-divides-n-if-chained d-divides-p p-divides-n]
+                          // 1 <= d, so d = 1 or 1 < d.
+                          @one-at-most-positive |
+                            forall x: Int; below(ZERO, x) -> at_most(ONE, x)
+                            [by theorem oneAtMostPositive]
+                          @one-at-most-d-if-positive |
+                            below(ZERO, d) -> at_most(ONE, d)
+                            [by forall_elim(d) one-at-most-positive]
+                          @one-at-most-d |
+                            at_most(ONE, d)
+                            [by modus_ponens one-at-most-d-if-positive d-positive]
+                          @less-or-equal-splits |
+                            forall x, y: Int; at_most(x, y) -> (below(x, y) or x = y)
+                            [by theorem lessOrEqualSplit]
+                          @one-below-or-equal-d |
+                            at_most(ONE, d) -> (below(ONE, d) or ONE = d)
+                            [by forall_elim(ONE, d) less-or-equal-splits]
+                          @one-below-d-or-equals-d |
+                            below(ONE, d) or ONE = d
+                            [by modus_ponens one-below-or-equal-d one-at-most-d]
+                          @d-is-one-or-p |
+                            d = ONE or d = p
+                            case on one-below-d-or-equals-d {
+                              @when-one-below-d |
+                                assume below(ONE, d) {
+                                  @one-below-d |
+                                    below(ONE, d)
+                                    [by hypothesis when-one-below-d]
+                                  // d ∈ S, so p ≤ d by minimality.
+                                  @d-in-set |
+                                    below(ONE, d) and does_divide(d, n)
+                                    [by and_intro one-below-d d-divides-n]
+                                  @positive-is-nonneg-at-d |
+                                    below(ZERO, d) -> is_nonneg(d)
+                                    [by forall_elim(d) positive-is-nonneg]
+                                  @d-nonneg |
+                                    is_nonneg(d)
+                                    [by modus_ponens positive-is-nonneg-at-d d-positive]
+                                  @p-at-most-d-if-member |
+                                    is_nonneg(d) -> (below(ONE, d) and does_divide(d, n)) -> at_most(p, d)
+                                    [by forall_elim(d) p-is-least]
+                                  @p-at-most-d |
+                                    at_most(p, d)
+                                    [by tautology p-at-most-d-if-member d-nonneg d-in-set]
+                                  // d ≤ p, since d | p and p > 0; antisymmetry gives d = p.
+                                  @divisor-at-most-multiple |
+                                    forall x, y: Int; below(ZERO, x) -> below(ZERO, y) -> does_divide(x, y) -> at_most(x, y)
+                                    [by theorem divisorAtMost]
+                                  @d-at-most-p-if |
+                                    below(ZERO, d) -> below(ZERO, p) -> does_divide(d, p) -> at_most(d, p)
+                                    [by forall_elim(d, p) divisor-at-most-multiple]
+                                  @d-at-most-p |
+                                    at_most(d, p)
+                                    [by tautology d-at-most-p-if d-positive zero-below-p d-divides-p]
+                                  @less-or-equal-antisymmetric |
+                                    forall x, y: Int; at_most(x, y) -> at_most(y, x) -> x = y
+                                    [by theorem lessOrEqualAntisymmetric]
+                                  @d-equals-p-if-mutual |
+                                    at_most(d, p) -> at_most(p, d) -> d = p
+                                    [by forall_elim(d, p) less-or-equal-antisymmetric]
+                                  @d-equals-p |
+                                    d = p
+                                    [by tautology d-equals-p-if-mutual d-at-most-p p-at-most-d]
+                                  @conclusion-d-is-one-or-p |
+                                    d = ONE or d = p
+                                    [by or_intro_right d-equals-p]
+                                }
+                              @when-one-equals-d |
+                                assume ONE = d {
+                                  @one-equals-d |
+                                    ONE = d
+                                    [by hypothesis when-one-equals-d]
+                                  @d-equals-one |
+                                    d = ONE
+                                    [by symmetry one-equals-d]
+                                  @conclusion-d-is-one-or-p |
+                                    d = ONE or d = p
+                                    [by or_intro_left d-equals-one]
+                                }
+                            }
+                        }
+                      @d-divides-p-implies-one-or-p |
+                        does_divide(d, p) -> (d = ONE or d = p)
+                        [by implies_intro given-d-divides-p]
+                    }
+                  @d-positive-implies-divisor-is-one-or-p |
+                    below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p)
+                    [by implies_intro given-d-positive]
+                }
+              @p-only-divided-by-one-and-p |
+                forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p)
+                [by forall_intro only-positive-divisors-are-one-and-p]
+              @p-is-prime |
+                below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))
+                [by and_intro p-above-one p-only-divided-by-one-and-p]
+              @p-is-prime-and-divides-n |
+                (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, n)
+                [by and_intro p-is-prime p-divides-n]
+              @prime-divisor-exists |
+                exists q: Int; (below(ONE, q) and (forall d: Int; below(ZERO, d) -> does_divide(d, q) -> (d = ONE or d = q))) and does_divide(q, n)
+                [by exists_intro(p) p-is-prime-and-divides-n]
+            }
+          @prime-divisor-exists |
+            exists q: Int; (below(ONE, q) and (forall d: Int; below(ZERO, d) -> does_divide(d, q) -> (d = ONE or d = q))) and does_divide(q, n)
+            [by exists_elim with-least-divisor-p]
+        }
+      @n-above-one-implies-prime-divisor |
+        below(ONE, n) -> exists p: Int; (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, n)
+        [by implies_intro given-n-above-one]
+    }
+  @conclusion |
+    forall n: Int; below(ONE, n) -> exists p: Int; (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, n)
+    [by forall_intro generalize-n]
 qed
