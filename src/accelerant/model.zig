@@ -475,6 +475,7 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
         .reflexivity => return self.emitStep(plow, block, loc, new_formula, .reflexivity),
         .modus_ponens => |r| return self.emitStep(plow, block, loc, new_formula, .{ .modus_ponens = .{ .implication = ctx.step_map.get(r.implication.id).?, .antecedent = ctx.step_map.get(r.antecedent.id).? } }),
         .rewrite => |r| return self.emitStep(plow, block, loc, new_formula, .{ .rewrite = .{ .equation = ctx.step_map.get(r.equation.id).?, .target = ctx.step_map.get(r.target.id).? } }),
+        .iff_rewrite => |r| return self.emitStep(plow, block, loc, new_formula, .{ .iff_rewrite = .{ .biconditional = ctx.step_map.get(r.biconditional.id).?, .target = ctx.step_map.get(r.target.id).? } }),
         .symmetry => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .symmetry = ctx.step_map.get(sr.id).? }),
         .double_negation => |sr| return self.emitStep(plow, block, loc, new_formula, .{ .double_negation = ctx.step_map.get(sr.id).? }),
         .and_intro => |r| return self.emitStep(plow, block, loc, new_formula, .{ .and_intro = .{ .left = ctx.step_map.get(r.left.id).?, .right = ctx.step_map.get(r.right.id).? } }),

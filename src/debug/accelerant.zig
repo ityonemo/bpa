@@ -242,6 +242,7 @@ const Renderer = struct {
             .double_negation => |s| w.print("double_negation {s}", .{self.stepLabel(s.id)}) catch return error.OutOfMemory,
             .symmetry => |s| w.print("symmetry {s}", .{self.stepLabel(s.id)}) catch return error.OutOfMemory,
             .rewrite => |r| w.print("rewrite {s} {s}", .{ self.stepLabel(r.equation.id), self.stepLabel(r.target.id) }) catch return error.OutOfMemory,
+            .iff_rewrite => |r| w.print("iff_rewrite {s} {s}", .{ self.stepLabel(r.biconditional.id), self.stepLabel(r.target.id) }) catch return error.OutOfMemory,
             .accelerated => |name| w.print("{s} /* accelerated */", .{self.interner.str(name)}) catch return error.OutOfMemory,
             .schema_instance => w.writeAll("instantiate /* schema */") catch return error.OutOfMemory,
             // block-closing rules are handled by renderStep, never reach here.

@@ -88,6 +88,12 @@ pub const Justification = union(enum) {
     /// from a proven `x = y`, conclude `y = x`
     symmetry: SRef,
     rewrite: struct { equation: SRef, target: SRef },
+    /// Propositional analogue of `rewrite`: from a biconditional `(P -> Q) and
+    /// (Q -> P)` (what `P iff Q` desugars to) and a `target`, conclude the claim
+    /// obtained by replacing occurrences of the sub-PROPOSITION `P` with `Q`.
+    /// Sound because `iff` is a full congruence in classical FOL; the same
+    /// congruence walker (`rewriteMatches`) is reused, with `P`/`Q` as props.
+    iff_rewrite: struct { biconditional: SRef, target: SRef },
     /// A monomorphized schema instance (elaborator-licensed: instantiation of
     /// a stored form at written-down arguments is the system's comptime axiom
     /// rule; proof-carrying schemas were re-checked at this instance before
@@ -608,6 +614,26 @@ pub const Kernel = struct {
                     });
                 }
             },
+            .iff_rewrite => |r| {
+                const bicond_step = try self.checkStepRef(proof, r.biconditional, i, at);
+                const target = try self.checkStepRef(proof, r.target, i, at);
+                // require the desugared biconditional shape `(P -> Q) and (Q -> P)`
+                // and extract P, Q. (`P iff Q` always desugars to exactly this.)
+                const pq = self.iffSides(bicond_step.formula) orelse {
+                    return self.fail(r.biconditional.loc, "iff_rewrite expects a biconditional '(P -> Q) and (Q -> P)', got '{s}'", .{
+                        try self.render(bicond_step.formula),
+                    });
+                };
+                // replace sub-proposition P with Q at any position (subformula
+                // congruence — the SAME walker as `=`-rewrite, props not terms).
+                if (!self.rewriteMatches(target.formula, step.formula, pq.p, pq.q)) {
+                    return self.fail(step.loc, "iff_rewrite cannot derive '{s}' from '{s}' using '{s}'", .{
+                        try self.render(step.formula),
+                        try self.render(target.formula),
+                        try self.render(bicond_step.formula),
+                    });
+                }
+            },
         }
     }
 
@@ -620,6 +646,23 @@ pub const Kernel = struct {
                 try self.render(s1.formula), try self.render(s2.formula),
             });
         }
+    }
+
+    /// If `id` is a biconditional `(P -> Q) and (Q -> P)` (what `P iff Q`
+    /// desugars to — matching antecedents/consequents), return its sides
+    /// `{ p, q }`; otherwise null. Used by `iff_rewrite` to license replacing
+    /// the sub-proposition P by Q.
+    fn iffSides(self: *Kernel, id: TermId) ?struct { p: TermId, q: TermId } {
+        const n = self.pool.get(id);
+        if (n != .bin or n.bin.op != .and_op) return null;
+        const l = self.pool.get(n.bin.lhs);
+        const r = self.pool.get(n.bin.rhs);
+        if (l != .bin or l.bin.op != .implies) return null;
+        if (r != .bin or r.bin.op != .implies) return null;
+        // left `P -> Q`, right must be `Q -> P`
+        if (!self.pool.alphaEq(l.bin.lhs, r.bin.rhs)) return null;
+        if (!self.pool.alphaEq(l.bin.rhs, r.bin.lhs)) return null;
+        return .{ .p = l.bin.lhs, .q = l.bin.rhs };
     }
 
     /// `claimed` differs from `target` only by replacing occurrences of `a`

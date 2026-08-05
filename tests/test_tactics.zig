@@ -336,6 +336,18 @@ pub fn addTests(
     // …and conversely `iff_intro` requires that shape — a plain conjunction is rejected.
     ctx.fail(&.{ "check", "tests/cases/iff_intro_bad.bpa" }, "tests/cases/iff_intro_bad.bpa:14:29: error: iff_intro's goal must be a biconditional (from `P iff Q`); this goal is not of the form '(X -> Y) and (Y -> X)' — did you mean `and_intro`?\n");
 
+    // `iff_rewrite`: the propositional analogue of `=`-rewrite. From `P iff Q`,
+    // replace the sub-proposition P by Q at any position (subformula congruence,
+    // under connectives AND quantifiers), reusing the `=`-rewrite walker. A
+    // kernel-checked rule (no --fast taint), sound because iff is a congruence.
+    ctx.ok(&.{ "check", "tests/cases/iff_rewrite.bpa" }, "OK: 8 declarations, 3 theorems proven\n");
+
+    // it is SOUND: the claim must be reachable by replacing P with Q…
+    ctx.fail(&.{ "check", "tests/cases/iff_rewrite_bad.bpa" }, "tests/cases/iff_rewrite_bad.bpa:17:12: error: iff_rewrite cannot derive 'R' from 'P' using '(P -> Q) and (Q -> P)'\n");
+
+    // …and its first argument must be a biconditional, not a plain implication.
+    ctx.fail(&.{ "check", "tests/cases/iff_rewrite_notbicond.bpa" }, "tests/cases/iff_rewrite_notbicond.bpa:14:26: error: iff_rewrite expects a biconditional '(P -> Q) and (Q -> P)', got 'P -> Q'\n");
+
     // Milestone C: arithmetic accelerated tactic — Presburger quantifier elimination
     ctx.ok(&.{ "check", "--fast", "tests/cases/arithmetic.bpa" },
         \\OK: 9 declarations, 4 theorems proven (4 accelerated: arithmetic)

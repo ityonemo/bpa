@@ -1188,6 +1188,7 @@ pub const Elaborator = struct {
         reflexivity,
         symmetry,
         rewrite,
+        iff_rewrite,
         instantiate,
         simplify,
         simplify_quantified,
@@ -1230,6 +1231,7 @@ pub const Elaborator = struct {
         .{ "symmetry", .symmetry },
         .{ "reflexivity", .reflexivity },
         .{ "rewrite", .rewrite },
+        .{ "iff_rewrite", .iff_rewrite },
         .{ "instantiate", .instantiate },
         .{ "simplify", .simplify },
         .{ "simplify_quantified", .simplify_quantified },
@@ -1475,6 +1477,16 @@ pub const Elaborator = struct {
                 try self.wantRefs(c, 2);
                 return .{ .rewrite = .{
                     .equation = try self.resolveStepRef(low, c.refs[0]),
+                    .target = try self.resolveStepRef(low, c.refs[1]),
+                } };
+            },
+            // `iff_rewrite <biconditional> <target>`: replace the sub-proposition
+            // P by Q (from `P iff Q`) throughout `target`'s formula — the prop
+            // analogue of `rewrite`. First ref is the iff fact, second the target.
+            .iff_rewrite => {
+                try self.wantRefs(c, 2);
+                return .{ .iff_rewrite = .{
+                    .biconditional = try self.resolveStepRef(low, c.refs[0]),
                     .target = try self.resolveStepRef(low, c.refs[1]),
                 } };
             },

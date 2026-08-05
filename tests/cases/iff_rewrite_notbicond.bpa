@@ -1,0 +1,15 @@
+// `iff_rewrite`'s first argument must be a biconditional `(P -> Q) and (Q -> P)`
+// (what `P iff Q` desugars to). A plain implication is not enough — rejected,
+// pointing at the shape it expected.
+
+pred P
+pred Q
+axiom justP: P
+axiom justImplication: P -> Q
+
+theorem needsBiconditional: Q
+proof
+  @the-p | P [by axiom justP]
+  @the-implication | P -> Q [by axiom justImplication]
+  @q | Q [by iff_rewrite the-implication the-p]
+qed
