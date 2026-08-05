@@ -295,8 +295,9 @@ of a nonnegative integer); "nonempty" is $\exists n; \operatorname{nonneg}(n) \l
 member. `nonnegWellOrdering` delivers exactly that, and its proof runs the
 equivalence in the useful direction: assume the subset has *no* least element, run
 strong induction on $\lnot\operatorname{member}$ to conclude the subset is empty,
-and contradict nonemptiness. We restate it here to name the shape the division
-algorithm's existence proof will use.
+and contradict nonemptiness. We restate it here — `instantiate`-ing the schema at
+its own `member` parameter — to name the shape the division algorithm's existence
+proof will use.
 
 ```bpa
 theorem nonemptyNonnegSetHasLeast(member: Int -> Prop):
@@ -306,7 +307,7 @@ proof
   @least-element-exists |
     (exists n: Int; is_nonneg(n) and member(n))
       -> exists least: Int; is_nonneg(least) and member(least) and (forall m: Int; is_nonneg(m) -> member(m) -> at_most(least, m))
-    [by theorem nonnegWellOrdering]
+    [by instantiate nonnegWellOrdering((fun x: Int => member(x)))]
 qed
 ```
 
@@ -350,6 +351,12 @@ theorem subAddCancel = order.subAddCancel
 theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
 axiom lessOrEqualElim = order.lessOrEqualElim
+theorem mulIsCommutative = order.mulIsCommutative
+theorem mulIsAssociative = ring.mulIsAssociative
+theorem negBelowZero = order.negBelowZero
+theorem productOfNonpositiveFactorsIsNonneg = order.productOfNonpositiveFactorsIsNonneg
+theorem negAdd = ring.negAdd
+theorem negNeg = ring.negNeg
 ```
 
 ```bpa
@@ -2671,13 +2678,253 @@ proof
 qed
 ```
 
-Now the theorem. The set $S$ is named by the predicate "$x$ equals $a - bk$ for
-some $k$"; it is nonempty because $a = a - b\cdot 0$ belongs to it, and its least
-member is the remainder $r = a - bq$. If $r \ge b$ then $a - b(q+1) = r - b$ is a
-strictly smaller member of $S$, contradicting leastness; hence $r < b$.
+Judson's all-$a$ argument needs a few small facts about $2$, the order, and
+negation, which we isolate first. `mulProductSwapThroughTwo` reassociates the
+product $b\cdot(2a)$ into $a\cdot(2b)$ (commutativity and associativity of
+$\cdot$); `twoTimesIsSelfPlusSelf` unfolds $2n = n + n$; `oneAtMostPositive`
+turns $0 < n$ into $1 \le n$; and `negOfDifferenceSwaps` is $-(x-y) = y-x$.
 
 ```bpa
-theorem divisionAlgorithmExists: forall a, b: Int; below(ZERO, b) -> is_nonneg(a) ->
+// b·(2a) = a·(2b): reassociate the monomial (mul is commutative/associative).
+theorem mulProductSwapThroughTwo: forall a, b: Int; mul(a, mul(TWO, b)) = mul(b, mul(TWO, a))
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @mul-associative |
+            forall x, y, z: Int; mul(mul(x, y), z) = mul(x, mul(y, z))
+            [by theorem mulIsAssociative]
+          @mul-commutative |
+            forall x, y: Int; mul(x, y) = mul(y, x)
+            [by theorem mulIsCommutative]
+          // a·(2·b) = a·(b·2) = (a·b)·2
+          @two-b-is-b-two |
+            mul(TWO, b) = mul(b, TWO)
+            [by forall_elim(TWO, b) mul-commutative]
+          @left-reflexive |
+            mul(a, mul(TWO, b)) = mul(a, mul(TWO, b))
+            [by reflexivity]
+          @left-inner-swapped |
+            mul(a, mul(TWO, b)) = mul(a, mul(b, TWO))
+            [by rewrite two-b-is-b-two left-reflexive]
+          @a-b-two-reassociated |
+            mul(mul(a, b), TWO) = mul(a, mul(b, TWO))
+            [by forall_elim(a, b, TWO) mul-associative]
+          @a-b-two-reassociated-flipped |
+            mul(a, mul(b, TWO)) = mul(mul(a, b), TWO)
+            [by symmetry a-b-two-reassociated]
+          @left-is-ab-times-two |
+            mul(a, mul(TWO, b)) = mul(mul(a, b), TWO)
+            [by rewrite a-b-two-reassociated-flipped left-inner-swapped]
+          // b·(2·a) = b·(a·2) = (b·a)·2 = (a·b)·2
+          @two-a-is-a-two |
+            mul(TWO, a) = mul(a, TWO)
+            [by forall_elim(TWO, a) mul-commutative]
+          @right-reflexive |
+            mul(b, mul(TWO, a)) = mul(b, mul(TWO, a))
+            [by reflexivity]
+          @right-inner-swapped |
+            mul(b, mul(TWO, a)) = mul(b, mul(a, TWO))
+            [by rewrite two-a-is-a-two right-reflexive]
+          @b-a-two-reassociated |
+            mul(mul(b, a), TWO) = mul(b, mul(a, TWO))
+            [by forall_elim(b, a, TWO) mul-associative]
+          @b-a-two-reassociated-flipped |
+            mul(b, mul(a, TWO)) = mul(mul(b, a), TWO)
+            [by symmetry b-a-two-reassociated]
+          @right-is-ba-times-two |
+            mul(b, mul(TWO, a)) = mul(mul(b, a), TWO)
+            [by rewrite b-a-two-reassociated-flipped right-inner-swapped]
+          @b-a-is-a-b |
+            mul(b, a) = mul(a, b)
+            [by forall_elim(b, a) mul-commutative]
+          @right-is-ab-times-two |
+            mul(b, mul(TWO, a)) = mul(mul(a, b), TWO)
+            [by rewrite b-a-is-a-b right-is-ba-times-two]
+          @right-is-ab-times-two-flipped |
+            mul(mul(a, b), TWO) = mul(b, mul(TWO, a))
+            [by symmetry right-is-ab-times-two]
+          @conclusion-swap |
+            mul(a, mul(TWO, b)) = mul(b, mul(TWO, a))
+            [by rewrite right-is-ab-times-two-flipped left-is-ab-times-two]
+        }
+      @discharge-b |
+        forall b: Int; mul(a, mul(TWO, b)) = mul(b, mul(TWO, a))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Int; mul(a, mul(TWO, b)) = mul(b, mul(TWO, a))
+    [by forall_intro generalize-a]
+qed
+
+// 2n = n + n, unfolding TWO = succ(ONE) on the right via commutativity.
+theorem twoTimesIsSelfPlusSelf: forall n: Int; mul(TWO, n) = add(n, n)
+proof
+  @generalize-n |
+    fix n: Int {
+      @mul-commutative |
+        forall x, y: Int; mul(x, y) = mul(y, x)
+        [by theorem mulIsCommutative]
+      @two-n-is-n-two |
+        mul(TWO, n) = mul(n, TWO)
+        [by forall_elim(TWO, n) mul-commutative]
+      // n·2 = n·succ(ONE) = add(n·ONE, n) = add(n, n)
+      @product-with-successor |
+        forall x, y: Int; mul(x, succ(y)) = add(mul(x, y), x)
+        [by theorem mulSuccRight]
+      @n-times-two-unfolds |
+        mul(n, TWO) = add(mul(n, ONE), n)
+        [by forall_elim(n, ONE) product-with-successor]
+      @n-times-one-is-n |
+        mul(n, ONE) = n
+        [by forall_elim(n) mul-one-right]
+      @mul-one-right |
+        forall x: Int; mul(x, ONE) = x
+        [by theorem mulOneRight]
+      @n-times-two-is-n-plus-n |
+        mul(n, TWO) = add(n, n)
+        [by rewrite n-times-one-is-n n-times-two-unfolds]
+      @conclusion-two-times |
+        mul(TWO, n) = add(n, n)
+        [by rewrite n-times-two-is-n-plus-n two-n-is-n-two]
+    }
+  @conclusion |
+    forall n: Int; mul(TWO, n) = add(n, n)
+    [by forall_intro generalize-n]
+qed
+
+// 0 < n implies 1 <= n: the strict gap succ(d) with add(ZERO, succ d) = n
+// rewrites to add(ONE, d) = n, a nonneg gap witnessing 1 <= n.
+theorem oneAtMostPositive: forall n: Int; below(ZERO, n) -> at_most(ONE, n)
+proof
+  @generalize-n |
+    fix n: Int {
+      @less-than-elimination |
+        forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+        [by axiom lessThanElim]
+      @zero-prefix-identity |
+        forall m: Int; add(ZERO, m) = m
+        [by axiom addZeroLeft]
+      @given-zero-below-n |
+        assume below(ZERO, n) {
+          @zero-below-n |
+            below(ZERO, n)
+            [by hypothesis given-zero-below-n]
+          @gap-exists-if |
+            below(ZERO, n) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = n
+            [by forall_elim(ZERO, n) less-than-elimination]
+          @gap-exists |
+            exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = n
+            [by modus_ponens gap-exists-if zero-below-n]
+          @with-gap-d |
+            unpack gap: Int from gap-exists {
+              @gap-nonneg-and-witnesses-n |
+                is_nonneg(gap) and add(ZERO, succ(gap)) = n
+                [by hypothesis with-gap-d]
+              @gap-nonneg |
+                is_nonneg(gap)
+                [by and_elim_left gap-nonneg-and-witnesses-n]
+              @gap-witnesses-n |
+                add(ZERO, succ(gap)) = n
+                [by and_elim_right gap-nonneg-and-witnesses-n]
+              // add(ONE, gap) = add(succ ZERO, gap) = succ(add(ZERO,gap)) = succ(gap) = add(ZERO, succ gap) = n.
+              @one-plus-gap-is-succ-gap |
+                add(ONE, gap) = succ(gap)
+                [by simplify oneIsSuccZero addSuccLeft addZeroLeft]
+              @zero-prefix-succ-gap |
+                add(ZERO, succ(gap)) = succ(gap)
+                [by forall_elim(succ(gap)) zero-prefix-identity]
+              @succ-gap-is-n |
+                succ(gap) = n
+                [by rewrite zero-prefix-succ-gap gap-witnesses-n]
+              @one-plus-gap-is-n |
+                add(ONE, gap) = n
+                [by rewrite succ-gap-is-n one-plus-gap-is-succ-gap]
+              @at-most-intro |
+                forall x, d, y: Int; is_nonneg(d) -> add(x, d) = y -> at_most(x, y)
+                [by axiom lessOrEqualIntro]
+              @one-at-most-n-if |
+                is_nonneg(gap) -> add(ONE, gap) = n -> at_most(ONE, n)
+                [by forall_elim(ONE, gap, n) at-most-intro]
+              @conclusion-one-at-most-n |
+                at_most(ONE, n)
+                [by tautology one-at-most-n-if gap-nonneg one-plus-gap-is-n]
+            }
+          @one-at-most-n |
+            at_most(ONE, n)
+            [by exists_elim with-gap-d]
+        }
+      @zero-below-n-implies-one-at-most-n |
+        below(ZERO, n) -> at_most(ONE, n)
+        [by implies_intro given-zero-below-n]
+    }
+  @conclusion |
+    forall n: Int; below(ZERO, n) -> at_most(ONE, n)
+    [by forall_intro generalize-n]
+qed
+
+// -(x - y) = y - x.  -(x + (-y)) = (-x) + (-(-y)) = (-x) + y, and y + (-x)
+// is the same sum commuted; subDef turns both differences into these sums.
+theorem negOfDifferenceSwaps: forall x, y: Int; neg(sub(x, y)) = sub(y, x)
+proof
+  @generalize-x |
+    fix x: Int {
+      @generalize-y |
+        fix y: Int {
+          // left side: neg(sub(x,y)) = add(neg(x), y)
+          @left-unfolds |
+            neg(sub(x, y)) = add(neg(x), y)
+            [by simplify subDef negAdd negNeg]
+          // right side: sub(y, x) = add(y, neg(x))
+          @subtraction-unfolds |
+            forall p, q: Int; sub(p, q) = add(p, neg(q))
+            [by axiom subDef]
+          @right-unfolds |
+            sub(y, x) = add(y, neg(x))
+            [by forall_elim(y, x) subtraction-unfolds]
+          // the two sums are equal by commutativity.
+          @add-commutative |
+            forall p, q: Int; add(p, q) = add(q, p)
+            [by theorem addIsCommutative]
+          @sums-commute |
+            add(neg(x), y) = add(y, neg(x))
+            [by forall_elim(neg(x), y) add-commutative]
+          @neg-difference-is-commuted-sum |
+            neg(sub(x, y)) = add(y, neg(x))
+            [by rewrite sums-commute left-unfolds]
+          @sub-y-x-is-commuted-sum |
+            add(y, neg(x)) = sub(y, x)
+            [by symmetry right-unfolds]
+          @conclusion-swap |
+            neg(sub(x, y)) = sub(y, x)
+            [by rewrite sub-y-x-is-commuted-sum neg-difference-is-commuted-sum]
+        }
+      @discharge-y |
+        forall y: Int; neg(sub(x, y)) = sub(y, x)
+        [by forall_intro generalize-y]
+    }
+  @conclusion |
+    forall x, y: Int; neg(sub(x, y)) = sub(y, x)
+    [by forall_intro generalize-x]
+qed
+```
+
+Now the theorem, for **all** $a \in \mathbb Z$ (Judson does not restrict the sign
+of $a$). The set $S = \{\, a - bk : k \in \mathbb Z \,\} \cap \mathbb N$ is named
+by the predicate "$x$ equals $a - bk$ for some $k$"; its least member is the
+remainder $r = a - bq$, and if $r \ge b$ then $a - b(q+1) = r - b$ is a strictly
+smaller member of $S$, contradicting leastness, so $r < b$. Everything but
+**nonemptiness** is sign-agnostic. Nonemptiness is where the sign of $a$ enters,
+and Judson splits on it: if $a \ge 0$ the witness $k = 0$ gives the member
+$a - b\cdot 0 = a \ge 0$; if $a < 0$ the witness $k = 2a$ gives the member
+$a - b(2a) = a(1 - 2b)$, a product of two nonpositive factors ($a < 0$, and
+$1 - 2b < 0$ because $b > 0$ forces $2b \ge 2 > 1$), hence $\ge 0$. We reproduce
+that split explicitly; the factorisation $a - b(2a) = a(1 - 2b)$ is the only
+elided ring algebra.
+
+```bpa
+theorem divisionAlgorithmExists: forall a, b: Int; below(ZERO, b) ->
   exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
 proof
   @generalize-a |
@@ -2686,297 +2933,504 @@ proof
         fix b: Int {
           @given-b-positive |
             assume below(ZERO, b) {
-              @given-a-nonneg |
-                assume is_nonneg(a) {
-                  @b-positive |
-                    below(ZERO, b)
-                    [by hypothesis given-b-positive]
-                  @a-nonneg |
-                    is_nonneg(a)
-                    [by hypothesis given-a-nonneg]
-                  @difference-reaches |
-                    forall w, z: Int; add(w, sub(z, w)) = z
-                    [by theorem addDiffReaches]
-                  @product-with-zero |
-                    forall n: Int; mul(n, ZERO) = ZERO
-                    [by theorem mulZeroRight]
-                  @subtraction-unfolds |
-                    forall u, v: Int; sub(u, v) = add(u, neg(v))
-                    [by axiom subDef]
-                  @negation-of-zero |
-                    neg(ZERO) = ZERO
-                    [by axiom negZero]
-                  @adding-zero-is-identity |
-                    forall n: Int; add(n, ZERO) = n
-                    [by theorem addZeroRight]
-                  // S is nonempty: a = sub(a, mul(b, ZERO)) via mul(b, ZERO) = ZERO.
-                  @b-times-zero-is-zero |
-                    mul(b, ZERO) = ZERO
-                    [by forall_elim(b) product-with-zero]
-                  @a-minus-product-reflexive |
-                    sub(a, mul(b, ZERO)) = sub(a, mul(b, ZERO))
-                    [by reflexivity]
-                  @a-minus-product-is-a-minus-zero |
-                    sub(a, mul(b, ZERO)) = sub(a, ZERO)
-                    [by rewrite b-times-zero-is-zero a-minus-product-reflexive]
-                  @a-minus-zero-unfolds |
-                    sub(a, ZERO) = add(a, neg(ZERO))
-                    [by forall_elim(a, ZERO) subtraction-unfolds]
-                  @a-minus-zero-is-a-plus-zero |
-                    sub(a, ZERO) = add(a, ZERO)
-                    [by rewrite negation-of-zero a-minus-zero-unfolds]
-                  @a-plus-zero-is-a |
-                    add(a, ZERO) = a
-                    [by forall_elim(a) adding-zero-is-identity]
-                  @a-minus-zero-is-a |
-                    sub(a, ZERO) = a
-                    [by rewrite a-plus-zero-is-a a-minus-zero-is-a-plus-zero]
-                  @a-minus-product-is-a |
-                    sub(a, mul(b, ZERO)) = a
-                    [by rewrite a-minus-zero-is-a a-minus-product-is-a-minus-zero]
-                  @a-is-a-minus-product |
-                    a = sub(a, mul(b, ZERO))
-                    [by symmetry a-minus-product-is-a]
-                  @a-is-a-member |
-                    exists k: Int; a = sub(a, mul(b, k))
-                    [by exists_intro(ZERO) a-is-a-minus-product]
-                  @a-nonneg-and-member |
-                    is_nonneg(a) and (exists k: Int; a = sub(a, mul(b, k)))
-                    [by and_intro a-nonneg a-is-a-member]
-                  @set-is-nonempty |
-                    exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k)))
-                    [by exists_intro(a) a-nonneg-and-member]
-                  // Well-Ordering (the instance reproved above) delivers a least
-                  // member r = a - bq.
-                  @remainder-set-has-least |
-                    forall aa, bb: Int; (exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(aa, mul(bb, k)))) -> exists least: Int; is_nonneg(least) and (exists k: Int; least = sub(aa, mul(bb, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(aa, mul(bb, k))) -> at_most(least, m))
-                    [by theorem remainderSetHasLeast]
-                  @least-member-exists |
-                    (exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k))))
-                      -> exists least: Int; is_nonneg(least) and (exists k: Int; least = sub(a, mul(b, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(least, m))
-                    [by forall_elim(a, b) remainder-set-has-least]
-                  @least-member |
-                    exists least: Int; is_nonneg(least) and (exists k: Int; least = sub(a, mul(b, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(least, m))
-                    [by modus_ponens least-member-exists set-is-nonempty]
-                  @conclusion-decomposition-exists |
-                    unpack rem: Int from least-member {
-                      @least-properties |
-                        is_nonneg(rem) and (exists k: Int; rem = sub(a, mul(b, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(rem, m))
-                        [by hypothesis conclusion-decomposition-exists]
-                      @remainder-nonneg-and-member |
-                        is_nonneg(rem) and (exists k: Int; rem = sub(a, mul(b, k)))
-                        [by and_elim_left least-properties]
-                      @remainder-is-least |
-                        forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(rem, m)
-                        [by and_elim_right least-properties]
-                      @remainder-nonneg |
-                        is_nonneg(rem)
-                        [by and_elim_left remainder-nonneg-and-member]
-                      @remainder-is-member |
-                        exists k: Int; rem = sub(a, mul(b, k))
-                        [by and_elim_right remainder-nonneg-and-member]
-                      @with-quotient-q |
-                        unpack quot: Int from remainder-is-member {
-                          @remainder-is-a-minus-bq |
-                            rem = sub(a, mul(b, quot))
-                            [by hypothesis with-quotient-q]
-                          // a = bq + rem, since bq + (a - bq) = a.
-                          @bq-plus-difference-is-a |
-                            add(mul(b, quot), sub(a, mul(b, quot))) = a
-                            [by forall_elim(mul(b, quot), a) difference-reaches]
-                          @difference-is-remainder |
-                            sub(a, mul(b, quot)) = rem
-                            [by symmetry remainder-is-a-minus-bq]
-                          @bq-plus-remainder-is-a |
-                            add(mul(b, quot), rem) = a
-                            [by rewrite difference-is-remainder bq-plus-difference-is-a]
-                          @decomposition-holds |
-                            a = add(mul(b, quot), rem)
-                            [by symmetry bq-plus-remainder-is-a]
-                          // rem < b.  Suppose not; derive a smaller member of S.
-                          @suppose-not-below |
-                            assume not below(rem, b) {
-                              @not-below |
-                                not below(rem, b)
-                                [by hypothesis suppose-not-below]
-                              @order-trichotomy |
-                                forall x, y: Int; below(x, y) or x = y or below(y, x)
-                                [by theorem trichotomy]
-                              @rem-b-trichotomy |
-                                below(rem, b) or rem = b or below(b, rem)
-                                [by forall_elim(rem, b) order-trichotomy]
-                              // not below(rem,b) leaves rem = b or below(b, rem); both give b <= rem.
-                              @b-at-most-rem |
-                                at_most(b, rem)
-                                case on rem-b-trichotomy {
-                                  @when-rem-below-b |
-                                    assume below(rem, b) {
-                                      @rem-below-b |
-                                        below(rem, b)
-                                        [by hypothesis when-rem-below-b]
-                                      @conclusion-b-at-most-rem |
-                                        at_most(b, rem)
-                                        [by absurd rem-below-b not-below]
-                                    }
-                                  @when-rem-equals-b |
-                                    assume rem = b {
-                                      @rem-equals-b |
-                                        rem = b
-                                        [by hypothesis when-rem-equals-b]
-                                      @order-reflexive |
-                                        forall n: Int; at_most(n, n)
-                                        [by theorem lessOrEqualRefl]
-                                      @b-at-most-b |
-                                        at_most(b, b)
-                                        [by forall_elim(b) order-reflexive]
-                                      @b-equals-rem |
-                                        b = rem
-                                        [by symmetry rem-equals-b]
-                                      @conclusion-b-at-most-rem |
-                                        at_most(b, rem)
-                                        [by rewrite b-equals-rem b-at-most-b]
-                                    }
-                                  @when-b-below-rem |
-                                    assume below(b, rem) {
-                                      @b-below-rem |
-                                        below(b, rem)
-                                        [by hypothesis when-b-below-rem]
-                                      @below-gives-at-most |
-                                        forall x, y: Int; below(x, y) -> at_most(x, y)
-                                        [by theorem lessThanToLessOrEqual]
-                                      @b-at-most-rem-if |
-                                        below(b, rem) -> at_most(b, rem)
-                                        [by forall_elim(b, rem) below-gives-at-most]
-                                      @conclusion-b-at-most-rem |
-                                        at_most(b, rem)
-                                        [by modus_ponens b-at-most-rem-if b-below-rem]
-                                    }
+              @b-positive |
+                below(ZERO, b)
+                [by hypothesis given-b-positive]
+              @difference-reaches |
+                forall w, z: Int; add(w, sub(z, w)) = z
+                [by theorem addDiffReaches]
+              @product-with-zero |
+                forall n: Int; mul(n, ZERO) = ZERO
+                [by theorem mulZeroRight]
+              @subtraction-unfolds |
+                forall u, v: Int; sub(u, v) = add(u, neg(v))
+                [by axiom subDef]
+              @negation-of-zero |
+                neg(ZERO) = ZERO
+                [by axiom negZero]
+              @adding-zero-is-identity |
+                forall n: Int; add(n, ZERO) = n
+                [by theorem addZeroRight]
+              @less-than-elim |
+                forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                [by axiom lessThanElim]
+              @zero-prefix-is-identity |
+                forall n: Int; add(ZERO, n) = n
+                [by axiom addZeroLeft]
+              @positive-shifts-strictly-up |
+                forall x, c: Int; below(ZERO, c) -> below(x, add(x, c))
+                [by theorem belowSelfPlusPositive]
+              // S is nonempty.  Judson splits on the sign of a.  Trichotomy
+              // gives a >= 0 (0 < a or a = 0) or a < 0; we produce a member
+              // of S in each branch.
+              @sign-trichotomy |
+                forall x, y: Int; below(x, y) or x = y or below(y, x)
+                [by theorem trichotomy]
+              @a-sign |
+                below(ZERO, a) or ZERO = a or below(a, ZERO)
+                [by forall_elim(ZERO, a) sign-trichotomy]
+              @set-is-nonempty |
+                exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k)))
+                case on a-sign {
+                  @when-a-nonnegative |
+                    assume below(ZERO, a) or ZERO = a {
+                      @a-nonnegative |
+                        below(ZERO, a) or ZERO = a
+                        [by hypothesis when-a-nonnegative]
+                      // a >= 0, so a itself is a nonneg member: a = a - b*0.
+                      @a-nonneg |
+                        is_nonneg(a)
+                        case on a-nonnegative {
+                          @when-zero-below-a |
+                            assume below(ZERO, a) {
+                              @zero-below-a |
+                                below(ZERO, a)
+                                [by hypothesis when-zero-below-a]
+                              // 0 < a means a = succ(d) for nonneg d, hence nonneg.
+                              @gap-exists-if-below |
+                                below(ZERO, a) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = a
+                                [by forall_elim(ZERO, a) less-than-elim]
+                              @gap-exists |
+                                exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = a
+                                [by modus_ponens gap-exists-if-below zero-below-a]
+                              @with-gap-d |
+                                unpack gap: Int from gap-exists {
+                                  @gap-nonneg-and-witnesses-a |
+                                    is_nonneg(gap) and add(ZERO, succ(gap)) = a
+                                    [by hypothesis with-gap-d]
+                                  @gap-nonneg |
+                                    is_nonneg(gap)
+                                    [by and_elim_left gap-nonneg-and-witnesses-a]
+                                  @gap-witnesses-a |
+                                    add(ZERO, succ(gap)) = a
+                                    [by and_elim_right gap-nonneg-and-witnesses-a]
+                                  @zero-prefix-succ-gap |
+                                    add(ZERO, succ(gap)) = succ(gap)
+                                    [by forall_elim(succ(gap)) zero-prefix-is-identity]
+                                  @successor-gap-is-a |
+                                    succ(gap) = a
+                                    [by rewrite zero-prefix-succ-gap gap-witnesses-a]
+                                  @successor-of-nonneg-is-nonneg |
+                                    forall n: Int; is_nonneg(n) -> is_nonneg(succ(n))
+                                    [by axiom nonnegSucc]
+                                  @successor-gap-nonneg-if |
+                                    is_nonneg(gap) -> is_nonneg(succ(gap))
+                                    [by forall_elim(gap) successor-of-nonneg-is-nonneg]
+                                  @successor-gap-nonneg |
+                                    is_nonneg(succ(gap))
+                                    [by modus_ponens successor-gap-nonneg-if gap-nonneg]
+                                  @conclusion-a-nonneg |
+                                    is_nonneg(a)
+                                    [by rewrite successor-gap-is-a successor-gap-nonneg]
                                 }
-                              // candidate = sub(rem, b) = sub(a, mul(b, succ quot)); it is in S.
-                              @product-with-successor |
-                                forall x, y: Int; mul(x, succ(y)) = add(mul(x, y), x)
-                                [by theorem mulSuccRight]
-                              @b-times-successor-quot |
-                                mul(b, succ(quot)) = add(mul(b, quot), b)
-                                [by forall_elim(b, quot) product-with-successor]
-                              @a-minus-b-succ-quot-reflexive |
-                                sub(a, mul(b, succ(quot))) = sub(a, mul(b, succ(quot)))
-                                [by reflexivity]
-                              @a-minus-b-succ-quot-expands |
-                                sub(a, mul(b, succ(quot))) = sub(a, add(mul(b, quot), b))
-                                [by rewrite b-times-successor-quot a-minus-b-succ-quot-reflexive]
-                              @a-minus-b-succ-quot-substituted |
-                                sub(a, mul(b, succ(quot))) = sub(add(mul(b, quot), rem), add(mul(b, quot), b))
-                                [by rewrite decomposition-holds a-minus-b-succ-quot-expands]
-                              @common-prefix-cancels |
-                                forall p, x, y: Int; sub(add(p, x), add(p, y)) = sub(x, y)
-                                [by theorem subCommonPrefix]
-                              @cancelled-difference |
-                                sub(add(mul(b, quot), rem), add(mul(b, quot), b)) = sub(rem, b)
-                                [by forall_elim(mul(b, quot), rem, b) common-prefix-cancels]
-                              @candidate-is-rem-minus-b |
-                                sub(a, mul(b, succ(quot))) = sub(rem, b)
-                                [by rewrite cancelled-difference a-minus-b-succ-quot-substituted]
-                              @candidate-witnesses-membership |
-                                sub(rem, b) = sub(a, mul(b, succ(quot)))
-                                [by symmetry candidate-is-rem-minus-b]
-                              @candidate-is-member |
-                                exists k: Int; sub(rem, b) = sub(a, mul(b, k))
-                                [by exists_intro(succ(quot)) candidate-witnesses-membership]
-                              // candidate is nonneg (b <= rem).
-                              @at-most-gives-nonneg-difference |
-                                forall x, y: Int; at_most(x, y) -> is_nonneg(sub(y, x))
-                                [by theorem atMostGivesNonnegDifference]
-                              @candidate-nonneg-if |
-                                at_most(b, rem) -> is_nonneg(sub(rem, b))
-                                [by forall_elim(b, rem) at-most-gives-nonneg-difference]
-                              @candidate-nonneg |
-                                is_nonneg(sub(rem, b))
-                                [by modus_ponens candidate-nonneg-if b-at-most-rem]
-                              // candidate < rem, since b > 0.
-                              @difference-plus-b-reaches-rem |
-                                forall x, y: Int; add(sub(x, y), y) = x
-                                [by theorem subAddCancel]
-                              @candidate-plus-b-is-rem |
-                                add(sub(rem, b), b) = rem
-                                [by forall_elim(rem, b) difference-plus-b-reaches-rem]
-                              @self-below-self-plus-positive |
-                                forall x, c: Int; below(ZERO, c) -> below(x, add(x, c))
-                                [by theorem belowSelfPlusPositive]
-                              @candidate-below-candidate-plus-b-if |
-                                below(ZERO, b) -> below(sub(rem, b), add(sub(rem, b), b))
-                                [by forall_elim(sub(rem, b), b) self-below-self-plus-positive]
-                              @candidate-below-candidate-plus-b |
-                                below(sub(rem, b), add(sub(rem, b), b))
-                                [by modus_ponens candidate-below-candidate-plus-b-if b-positive]
-                              @candidate-below-rem |
-                                below(sub(rem, b), rem)
-                                [by rewrite candidate-plus-b-is-rem candidate-below-candidate-plus-b]
-                              // leastness: rem <= candidate.  Contradiction with candidate < rem.
-                              @remainder-at-most-candidate-if |
-                                is_nonneg(sub(rem, b)) -> (exists k: Int; sub(rem, b) = sub(a, mul(b, k))) -> at_most(rem, sub(rem, b))
-                                [by forall_elim(sub(rem, b)) remainder-is-least]
-                              @remainder-at-most-candidate |
-                                at_most(rem, sub(rem, b))
-                                [by tautology remainder-at-most-candidate-if candidate-nonneg candidate-is-member]
-                              @at-most-then-below |
-                                forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
-                                [by theorem atMostThenBelow]
-                              @remainder-below-itself-if |
-                                at_most(rem, sub(rem, b)) -> below(sub(rem, b), rem) -> below(rem, rem)
-                                [by forall_elim(rem, sub(rem, b), rem) at-most-then-below]
-                              @remainder-below-itself |
-                                below(rem, rem)
-                                [by tautology remainder-below-itself-if remainder-at-most-candidate candidate-below-rem]
-                              @order-irreflexive |
-                                forall n: Int; not below(n, n)
-                                [by theorem lessThanIrreflexive]
-                              @remainder-not-below-itself |
-                                not below(rem, rem)
-                                [by forall_elim(rem) order-irreflexive]
+                              @conclusion-a-nonneg |
+                                is_nonneg(a)
+                                [by exists_elim with-gap-d]
                             }
-                          @remainder-below-b-not-absent |
-                            not not below(rem, b)
-                            [by not_intro suppose-not-below remainder-below-itself remainder-not-below-itself]
-                          @remainder-below-b |
-                            below(rem, b)
-                            [by double_negation remainder-below-b-not-absent]
-                          // package quot, rem into the existential.
-                          @decomposition-and-remainder-nonneg |
-                            a = add(mul(b, quot), rem) and is_nonneg(rem)
-                            [by and_intro decomposition-holds remainder-nonneg]
-                          @decomposition-and-bounds |
-                            a = add(mul(b, quot), rem) and is_nonneg(rem) and below(rem, b)
-                            [by and_intro decomposition-and-remainder-nonneg remainder-below-b]
-                          @remainder-exists |
-                            exists r: Int; a = add(mul(b, quot), r) and is_nonneg(r) and below(r, b)
-                            [by exists_intro(rem) decomposition-and-bounds]
-                          @quotient-and-remainder-exist |
-                            exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
-                            [by exists_intro(quot) remainder-exists]
+                          @when-a-is-zero |
+                            assume ZERO = a {
+                              @zero-is-a |
+                                ZERO = a
+                                [by hypothesis when-a-is-zero]
+                              @zero-is-nonneg |
+                                is_nonneg(ZERO)
+                                [by axiom nonnegZero]
+                              @conclusion-a-nonneg |
+                                is_nonneg(a)
+                                [by rewrite zero-is-a zero-is-nonneg]
+                            }
                         }
-                      @decomposition-exists-for-remainder |
-                        exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
-                        [by exists_elim with-quotient-q]
+                      // a = a - b*0, so a is a member; witness k = ZERO.
+                      @b-times-zero-is-zero |
+                        mul(b, ZERO) = ZERO
+                        [by forall_elim(b) product-with-zero]
+                      @a-minus-product-reflexive |
+                        sub(a, mul(b, ZERO)) = sub(a, mul(b, ZERO))
+                        [by reflexivity]
+                      @a-minus-product-is-a-minus-zero |
+                        sub(a, mul(b, ZERO)) = sub(a, ZERO)
+                        [by rewrite b-times-zero-is-zero a-minus-product-reflexive]
+                      @a-minus-zero-unfolds |
+                        sub(a, ZERO) = add(a, neg(ZERO))
+                        [by forall_elim(a, ZERO) subtraction-unfolds]
+                      @a-minus-zero-is-a-plus-zero |
+                        sub(a, ZERO) = add(a, ZERO)
+                        [by rewrite negation-of-zero a-minus-zero-unfolds]
+                      @a-plus-zero-is-a |
+                        add(a, ZERO) = a
+                        [by forall_elim(a) adding-zero-is-identity]
+                      @a-minus-zero-is-a |
+                        sub(a, ZERO) = a
+                        [by rewrite a-plus-zero-is-a a-minus-zero-is-a-plus-zero]
+                      @a-minus-product-is-a |
+                        sub(a, mul(b, ZERO)) = a
+                        [by rewrite a-minus-zero-is-a a-minus-product-is-a-minus-zero]
+                      @a-is-a-minus-product |
+                        a = sub(a, mul(b, ZERO))
+                        [by symmetry a-minus-product-is-a]
+                      @a-is-a-member |
+                        exists k: Int; a = sub(a, mul(b, k))
+                        [by exists_intro(ZERO) a-is-a-minus-product]
+                      @a-nonneg-and-member |
+                        is_nonneg(a) and (exists k: Int; a = sub(a, mul(b, k)))
+                        [by and_intro a-nonneg a-is-a-member]
+                      @conclusion-set-is-nonempty |
+                        exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k)))
+                        [by exists_intro(a) a-nonneg-and-member]
                     }
-                  @decomposition-exists |
-                    exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
-                    [by exists_elim conclusion-decomposition-exists]
+                  @when-a-negative |
+                    assume below(a, ZERO) {
+                      @a-negative |
+                        below(a, ZERO)
+                        [by hypothesis when-a-negative]
+                      // Judson's witness k = 2a; the member is a - b(2a).
+                      // Ring identity: a - b(2a) = a(1 - 2b) (the only elided algebra).
+                      @member-swap-lemma |
+                        forall x, y: Int; mul(x, mul(TWO, y)) = mul(y, mul(TWO, x))
+                        [by theorem mulProductSwapThroughTwo]
+                      @b-two-a-is-a-two-b |
+                        mul(b, mul(TWO, a)) = mul(a, mul(TWO, b))
+                        [by forall_elim(b, a) member-swap-lemma]
+                      @member-reflexive |
+                        sub(a, mul(b, mul(TWO, a))) = sub(a, mul(b, mul(TWO, a)))
+                        [by reflexivity]
+                      @member-with-a-factored |
+                        sub(a, mul(b, mul(TWO, a))) = sub(a, mul(a, mul(TWO, b)))
+                        [by rewrite b-two-a-is-a-two-b member-reflexive]
+                      @factored-member-expands |
+                        sub(a, mul(a, mul(TWO, b))) = mul(a, sub(ONE, mul(TWO, b)))
+                        [by simplify subDef mulAddDistribLeft mulNegRight mulOneRight]
+                      @member-is-product |
+                        sub(a, mul(b, mul(TWO, a))) = mul(a, sub(ONE, mul(TWO, b)))
+                        [by rewrite factored-member-expands member-with-a-factored]
+                      // First factor a is nonpositive: -a >= 0 since a < 0.
+                      @a-below-zero-gives-neg-a-nonneg |
+                        forall n: Int; below(n, ZERO) -> is_nonneg(neg(n))
+                        [by theorem negBelowZero]
+                      @neg-a-nonneg-if |
+                        below(a, ZERO) -> is_nonneg(neg(a))
+                        [by forall_elim(a) a-below-zero-gives-neg-a-nonneg]
+                      @neg-a-nonneg |
+                        is_nonneg(neg(a))
+                        [by modus_ponens neg-a-nonneg-if a-negative]
+                      // Second factor 1 - 2b is nonpositive: 1 < 2b because b > 0.
+                      // 1 <= b (b positive) and b < 2b (b positive) give 1 < 2b.
+                      @positive-gives-one-at-most |
+                        forall n: Int; below(ZERO, n) -> at_most(ONE, n)
+                        [by theorem oneAtMostPositive]
+                      @one-at-most-b-if |
+                        below(ZERO, b) -> at_most(ONE, b)
+                        [by forall_elim(b) positive-gives-one-at-most]
+                      @one-at-most-b |
+                        at_most(ONE, b)
+                        [by modus_ponens one-at-most-b-if b-positive]
+                      @two-times-is-self-plus-self |
+                        forall n: Int; mul(TWO, n) = add(n, n)
+                        [by theorem twoTimesIsSelfPlusSelf]
+                      @two-b-is-b-plus-b |
+                        mul(TWO, b) = add(b, b)
+                        [by forall_elim(b) two-times-is-self-plus-self]
+                      @b-below-b-plus-b-if |
+                        below(ZERO, b) -> below(b, add(b, b))
+                        [by forall_elim(b, b) positive-shifts-strictly-up]
+                      @b-below-b-plus-b |
+                        below(b, add(b, b))
+                        [by modus_ponens b-below-b-plus-b-if b-positive]
+                      @b-plus-b-is-two-b |
+                        add(b, b) = mul(TWO, b)
+                        [by symmetry two-b-is-b-plus-b]
+                      @b-below-two-b |
+                        below(b, mul(TWO, b))
+                        [by rewrite b-plus-b-is-two-b b-below-b-plus-b]
+                      @at-most-then-below-lemma |
+                        forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
+                        [by theorem atMostThenBelow]
+                      @one-below-two-b-if |
+                        at_most(ONE, b) -> below(b, mul(TWO, b)) -> below(ONE, mul(TWO, b))
+                        [by forall_elim(ONE, b, mul(TWO, b)) at-most-then-below-lemma]
+                      @one-below-two-b |
+                        below(ONE, mul(TWO, b))
+                        [by tautology one-below-two-b-if one-at-most-b b-below-two-b]
+                      // 1 < 2b makes 2b - 1 = -(1 - 2b) nonneg.
+                      @below-gives-nonneg-difference |
+                        forall x, y: Int; below(x, y) -> is_nonneg(sub(y, x))
+                        [by theorem belowGivesNonnegDifference]
+                      @neg-of-one-minus-two-b-nonneg-if |
+                        below(ONE, mul(TWO, b)) -> is_nonneg(sub(mul(TWO, b), ONE))
+                        [by forall_elim(ONE, mul(TWO, b)) below-gives-nonneg-difference]
+                      @two-b-minus-one-nonneg |
+                        is_nonneg(sub(mul(TWO, b), ONE))
+                        [by modus_ponens neg-of-one-minus-two-b-nonneg-if one-below-two-b]
+                      @negation-swaps-difference |
+                        forall x, y: Int; neg(sub(x, y)) = sub(y, x)
+                        [by theorem negOfDifferenceSwaps]
+                      @neg-of-one-minus-two-b-is-two-b-minus-one |
+                        neg(sub(ONE, mul(TWO, b))) = sub(mul(TWO, b), ONE)
+                        [by forall_elim(ONE, mul(TWO, b)) negation-swaps-difference]
+                      @two-b-minus-one-is-neg |
+                        sub(mul(TWO, b), ONE) = neg(sub(ONE, mul(TWO, b)))
+                        [by symmetry neg-of-one-minus-two-b-is-two-b-minus-one]
+                      @neg-one-minus-two-b-nonneg |
+                        is_nonneg(neg(sub(ONE, mul(TWO, b))))
+                        [by rewrite two-b-minus-one-is-neg two-b-minus-one-nonneg]
+                      // product of the two nonpositive factors is nonneg.
+                      @nonpositive-factors-give-nonneg-product |
+                        forall x, y: Int; is_nonneg(neg(x)) -> is_nonneg(neg(y)) -> is_nonneg(mul(x, y))
+                        [by theorem productOfNonpositiveFactorsIsNonneg]
+                      @product-nonneg-if |
+                        is_nonneg(neg(a)) -> is_nonneg(neg(sub(ONE, mul(TWO, b)))) -> is_nonneg(mul(a, sub(ONE, mul(TWO, b))))
+                        [by forall_elim(a, sub(ONE, mul(TWO, b))) nonpositive-factors-give-nonneg-product]
+                      @product-nonneg |
+                        is_nonneg(mul(a, sub(ONE, mul(TWO, b))))
+                        [by tautology product-nonneg-if neg-a-nonneg neg-one-minus-two-b-nonneg]
+                      @product-is-member |
+                        mul(a, sub(ONE, mul(TWO, b))) = sub(a, mul(b, mul(TWO, a)))
+                        [by symmetry member-is-product]
+                      @member-nonneg |
+                        is_nonneg(sub(a, mul(b, mul(TWO, a))))
+                        [by rewrite product-is-member product-nonneg]
+                      // exhibit k = 2a so the member is in S.
+                      @member-reflexive-again |
+                        sub(a, mul(b, mul(TWO, a))) = sub(a, mul(b, mul(TWO, a)))
+                        [by reflexivity]
+                      @member-is-a-minus-b-k |
+                        exists k: Int; sub(a, mul(b, mul(TWO, a))) = sub(a, mul(b, k))
+                        [by exists_intro(mul(TWO, a)) member-reflexive-again]
+                      @member-nonneg-and-in-set |
+                        is_nonneg(sub(a, mul(b, mul(TWO, a)))) and (exists k: Int; sub(a, mul(b, mul(TWO, a))) = sub(a, mul(b, k)))
+                        [by and_intro member-nonneg member-is-a-minus-b-k]
+                      @conclusion-set-is-nonempty |
+                        exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k)))
+                        [by exists_intro(sub(a, mul(b, mul(TWO, a)))) member-nonneg-and-in-set]
+                    }
                 }
-              @a-nonneg-implies-decomposition |
-                is_nonneg(a) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
-                [by implies_intro given-a-nonneg]
+              // Well-Ordering (the instance reproved above) delivers a least
+              // member r = a - bq.
+              @remainder-set-has-least |
+                forall aa, bb: Int; (exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(aa, mul(bb, k)))) -> exists least: Int; is_nonneg(least) and (exists k: Int; least = sub(aa, mul(bb, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(aa, mul(bb, k))) -> at_most(least, m))
+                [by theorem remainderSetHasLeast]
+              @least-member-exists |
+                (exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k))))
+                  -> exists least: Int; is_nonneg(least) and (exists k: Int; least = sub(a, mul(b, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(least, m))
+                [by forall_elim(a, b) remainder-set-has-least]
+              @least-member |
+                exists least: Int; is_nonneg(least) and (exists k: Int; least = sub(a, mul(b, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(least, m))
+                [by modus_ponens least-member-exists set-is-nonempty]
+              @conclusion-decomposition-exists |
+                unpack rem: Int from least-member {
+                  @least-properties |
+                    is_nonneg(rem) and (exists k: Int; rem = sub(a, mul(b, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(rem, m))
+                    [by hypothesis conclusion-decomposition-exists]
+                  @remainder-nonneg-and-member |
+                    is_nonneg(rem) and (exists k: Int; rem = sub(a, mul(b, k)))
+                    [by and_elim_left least-properties]
+                  @remainder-is-least |
+                    forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(rem, m)
+                    [by and_elim_right least-properties]
+                  @remainder-nonneg |
+                    is_nonneg(rem)
+                    [by and_elim_left remainder-nonneg-and-member]
+                  @remainder-is-member |
+                    exists k: Int; rem = sub(a, mul(b, k))
+                    [by and_elim_right remainder-nonneg-and-member]
+                  @with-quotient-q |
+                    unpack quot: Int from remainder-is-member {
+                      @remainder-is-a-minus-bq |
+                        rem = sub(a, mul(b, quot))
+                        [by hypothesis with-quotient-q]
+                      // a = bq + rem, since bq + (a - bq) = a.
+                      @bq-plus-difference-is-a |
+                        add(mul(b, quot), sub(a, mul(b, quot))) = a
+                        [by forall_elim(mul(b, quot), a) difference-reaches]
+                      @difference-is-remainder |
+                        sub(a, mul(b, quot)) = rem
+                        [by symmetry remainder-is-a-minus-bq]
+                      @bq-plus-remainder-is-a |
+                        add(mul(b, quot), rem) = a
+                        [by rewrite difference-is-remainder bq-plus-difference-is-a]
+                      @decomposition-holds |
+                        a = add(mul(b, quot), rem)
+                        [by symmetry bq-plus-remainder-is-a]
+                      // rem < b.  Suppose not; derive a smaller member of S.
+                      @suppose-not-below |
+                        assume not below(rem, b) {
+                          @not-below |
+                            not below(rem, b)
+                            [by hypothesis suppose-not-below]
+                          @order-trichotomy |
+                            forall x, y: Int; below(x, y) or x = y or below(y, x)
+                            [by theorem trichotomy]
+                          @rem-b-trichotomy |
+                            below(rem, b) or rem = b or below(b, rem)
+                            [by forall_elim(rem, b) order-trichotomy]
+                          // not below(rem,b) leaves rem = b or below(b, rem); both give b <= rem.
+                          @b-at-most-rem |
+                            at_most(b, rem)
+                            case on rem-b-trichotomy {
+                              @when-rem-below-b |
+                                assume below(rem, b) {
+                                  @rem-below-b |
+                                    below(rem, b)
+                                    [by hypothesis when-rem-below-b]
+                                  @conclusion-b-at-most-rem |
+                                    at_most(b, rem)
+                                    [by absurd rem-below-b not-below]
+                                }
+                              @when-rem-equals-b |
+                                assume rem = b {
+                                  @rem-equals-b |
+                                    rem = b
+                                    [by hypothesis when-rem-equals-b]
+                                  @order-reflexive |
+                                    forall n: Int; at_most(n, n)
+                                    [by theorem lessOrEqualRefl]
+                                  @b-at-most-b |
+                                    at_most(b, b)
+                                    [by forall_elim(b) order-reflexive]
+                                  @b-equals-rem |
+                                    b = rem
+                                    [by symmetry rem-equals-b]
+                                  @conclusion-b-at-most-rem |
+                                    at_most(b, rem)
+                                    [by rewrite b-equals-rem b-at-most-b]
+                                }
+                              @when-b-below-rem |
+                                assume below(b, rem) {
+                                  @b-below-rem |
+                                    below(b, rem)
+                                    [by hypothesis when-b-below-rem]
+                                  @below-gives-at-most |
+                                    forall x, y: Int; below(x, y) -> at_most(x, y)
+                                    [by theorem lessThanToLessOrEqual]
+                                  @b-at-most-rem-if |
+                                    below(b, rem) -> at_most(b, rem)
+                                    [by forall_elim(b, rem) below-gives-at-most]
+                                  @conclusion-b-at-most-rem |
+                                    at_most(b, rem)
+                                    [by modus_ponens b-at-most-rem-if b-below-rem]
+                                }
+                            }
+                          // candidate = sub(rem, b) = sub(a, mul(b, succ quot)); it is in S.
+                          @product-with-successor |
+                            forall x, y: Int; mul(x, succ(y)) = add(mul(x, y), x)
+                            [by theorem mulSuccRight]
+                          @b-times-successor-quot |
+                            mul(b, succ(quot)) = add(mul(b, quot), b)
+                            [by forall_elim(b, quot) product-with-successor]
+                          @a-minus-b-succ-quot-reflexive |
+                            sub(a, mul(b, succ(quot))) = sub(a, mul(b, succ(quot)))
+                            [by reflexivity]
+                          @a-minus-b-succ-quot-expands |
+                            sub(a, mul(b, succ(quot))) = sub(a, add(mul(b, quot), b))
+                            [by rewrite b-times-successor-quot a-minus-b-succ-quot-reflexive]
+                          @a-minus-b-succ-quot-substituted |
+                            sub(a, mul(b, succ(quot))) = sub(add(mul(b, quot), rem), add(mul(b, quot), b))
+                            [by rewrite decomposition-holds a-minus-b-succ-quot-expands]
+                          @common-prefix-cancels |
+                            forall p, x, y: Int; sub(add(p, x), add(p, y)) = sub(x, y)
+                            [by theorem subCommonPrefix]
+                          @cancelled-difference |
+                            sub(add(mul(b, quot), rem), add(mul(b, quot), b)) = sub(rem, b)
+                            [by forall_elim(mul(b, quot), rem, b) common-prefix-cancels]
+                          @candidate-is-rem-minus-b |
+                            sub(a, mul(b, succ(quot))) = sub(rem, b)
+                            [by rewrite cancelled-difference a-minus-b-succ-quot-substituted]
+                          @candidate-witnesses-membership |
+                            sub(rem, b) = sub(a, mul(b, succ(quot)))
+                            [by symmetry candidate-is-rem-minus-b]
+                          @candidate-is-member |
+                            exists k: Int; sub(rem, b) = sub(a, mul(b, k))
+                            [by exists_intro(succ(quot)) candidate-witnesses-membership]
+                          // candidate is nonneg (b <= rem).
+                          @at-most-gives-nonneg-difference |
+                            forall x, y: Int; at_most(x, y) -> is_nonneg(sub(y, x))
+                            [by theorem atMostGivesNonnegDifference]
+                          @candidate-nonneg-if |
+                            at_most(b, rem) -> is_nonneg(sub(rem, b))
+                            [by forall_elim(b, rem) at-most-gives-nonneg-difference]
+                          @candidate-nonneg |
+                            is_nonneg(sub(rem, b))
+                            [by modus_ponens candidate-nonneg-if b-at-most-rem]
+                          // candidate < rem, since b > 0.
+                          @difference-plus-b-reaches-rem |
+                            forall x, y: Int; add(sub(x, y), y) = x
+                            [by theorem subAddCancel]
+                          @candidate-plus-b-is-rem |
+                            add(sub(rem, b), b) = rem
+                            [by forall_elim(rem, b) difference-plus-b-reaches-rem]
+                          @self-below-self-plus-positive |
+                            forall x, c: Int; below(ZERO, c) -> below(x, add(x, c))
+                            [by theorem belowSelfPlusPositive]
+                          @candidate-below-candidate-plus-b-if |
+                            below(ZERO, b) -> below(sub(rem, b), add(sub(rem, b), b))
+                            [by forall_elim(sub(rem, b), b) self-below-self-plus-positive]
+                          @candidate-below-candidate-plus-b |
+                            below(sub(rem, b), add(sub(rem, b), b))
+                            [by modus_ponens candidate-below-candidate-plus-b-if b-positive]
+                          @candidate-below-rem |
+                            below(sub(rem, b), rem)
+                            [by rewrite candidate-plus-b-is-rem candidate-below-candidate-plus-b]
+                          // leastness: rem <= candidate.  Contradiction with candidate < rem.
+                          @remainder-at-most-candidate-if |
+                            is_nonneg(sub(rem, b)) -> (exists k: Int; sub(rem, b) = sub(a, mul(b, k))) -> at_most(rem, sub(rem, b))
+                            [by forall_elim(sub(rem, b)) remainder-is-least]
+                          @remainder-at-most-candidate |
+                            at_most(rem, sub(rem, b))
+                            [by tautology remainder-at-most-candidate-if candidate-nonneg candidate-is-member]
+                          @at-most-then-below |
+                            forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
+                            [by theorem atMostThenBelow]
+                          @remainder-below-itself-if |
+                            at_most(rem, sub(rem, b)) -> below(sub(rem, b), rem) -> below(rem, rem)
+                            [by forall_elim(rem, sub(rem, b), rem) at-most-then-below]
+                          @remainder-below-itself |
+                            below(rem, rem)
+                            [by tautology remainder-below-itself-if remainder-at-most-candidate candidate-below-rem]
+                          @order-irreflexive |
+                            forall n: Int; not below(n, n)
+                            [by theorem lessThanIrreflexive]
+                          @remainder-not-below-itself |
+                            not below(rem, rem)
+                            [by forall_elim(rem) order-irreflexive]
+                        }
+                      @remainder-below-b-not-absent |
+                        not not below(rem, b)
+                        [by not_intro suppose-not-below remainder-below-itself remainder-not-below-itself]
+                      @remainder-below-b |
+                        below(rem, b)
+                        [by double_negation remainder-below-b-not-absent]
+                      // package quot, rem into the existential.
+                      @decomposition-and-remainder-nonneg |
+                        a = add(mul(b, quot), rem) and is_nonneg(rem)
+                        [by and_intro decomposition-holds remainder-nonneg]
+                      @decomposition-and-bounds |
+                        a = add(mul(b, quot), rem) and is_nonneg(rem) and below(rem, b)
+                        [by and_intro decomposition-and-remainder-nonneg remainder-below-b]
+                      @remainder-exists |
+                        exists r: Int; a = add(mul(b, quot), r) and is_nonneg(r) and below(r, b)
+                        [by exists_intro(rem) decomposition-and-bounds]
+                      @quotient-and-remainder-exist |
+                        exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+                        [by exists_intro(quot) remainder-exists]
+                    }
+                  @decomposition-exists-for-remainder |
+                    exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+                    [by exists_elim with-quotient-q]
+                }
+              @decomposition-exists |
+                exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+                [by exists_elim conclusion-decomposition-exists]
             }
           @b-positive-implies-decomposition |
-            below(ZERO, b) -> is_nonneg(a) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+            below(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
             [by implies_intro given-b-positive]
         }
       @discharge-b |
-        forall b: Int; below(ZERO, b) -> is_nonneg(a) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+        forall b: Int; below(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall a, b: Int; below(ZERO, b) -> is_nonneg(a) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+    forall a, b: Int; below(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
     [by forall_intro generalize-a]
 qed
 ```

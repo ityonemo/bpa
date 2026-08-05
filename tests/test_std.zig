@@ -48,7 +48,7 @@ pub fn addTests(
     // irreflexivity/transitivity/trichotomy (bidirectional induction on the
     // difference), addition preserves/cancels order, less_or_equal refl/trans/
     // split/antisymmetric. subSelf/subAddCancel from the inverse law, no induction.
-    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 125 declarations, 38 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 142 declarations, 43 theorems proven\n");
 
     // strong induction + the Principle of Well-Ordering over the NONNEGATIVE
     // integers (std/integer-wellordering.bpa), layered above the ℤ order (it can't
@@ -56,7 +56,7 @@ pub fn addTests(
     // nonnegStrongInduction (course-of-values) and nonnegWellOrdering (every
     // nonempty nonneg subset has a least element) — nonneg-guarded ports of the
     // peano-ordering proofs; the Division Algorithm's existence half runs on these.
-    ctx.ok(&.{ "check", "std/integer-wellordering.bpa" }, "OK: 156 declarations, 42 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-wellordering.bpa" }, "OK: 173 declarations, 47 theorems proven\n");
 
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
     // and the divides predicate; dividesRefl/dividesMul/dividesAdd proved once,

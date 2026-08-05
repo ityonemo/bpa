@@ -34,6 +34,20 @@ theorem addNegRight = ring.addNegRight
 theorem addNegLeft = ring.addNegLeft
 axiom induction = integer.induction
 
+// mul recursion + negation axioms/lemmas, for the sign lemmas below.
+axiom mulZeroLeft = integer.mulZeroLeft
+axiom mulSuccLeft = integer.mulSuccLeft
+axiom mulPrevLeft = integer.mulPrevLeft
+axiom negZero = integer.negZero
+axiom negSucc = integer.negSucc
+axiom negPrev = integer.negPrev
+theorem mulZeroRight = ring.mulZeroRight
+theorem mulSuccRight = ring.mulSuccRight
+theorem mulPrevRight = ring.mulPrevRight
+theorem mulNegRight = ring.mulNegRight
+theorem negNeg = ring.negNeg
+theorem negAdd = ring.negAdd
+
 pred nonneg = nonnegatives.nonneg
 axiom nonnegZero = nonnegatives.nonnegZero
 axiom nonnegSucc = nonnegatives.nonnegSucc
@@ -2037,4 +2051,458 @@ proof
   @conclusion |
     forall a, b: Int; less_than(a, b) or a = b or less_than(b, a)
     [by forall_intro generalize-a]
+qed
+
+// -- sign lemmas: multiplication and negation interact with the order --------
+
+// mul(neg(a), b) = neg(mul(a, b)) — negation on the LEFT factor pulls out.
+// integer-ring proves the RIGHT-factor mirror (mulNegRight) but not this one,
+// and ℤ has no proven mul-commutativity to swap them, so it needs its own
+// bidirectional induction on a. Each step unfolds the left mul-recursion on one
+// side and negAdd/negSucc/negPrev on the other; `simplify` closes the algebra.
+theorem mulNegLeft: forall a, b: Int; mul(neg(a), b) = neg(mul(a, b))
+proof
+  @generalize-b |
+    fix b: Int {
+      @base-case |
+        mul(neg(ZERO), b) = neg(mul(ZERO, b))
+        [by simplify negZero mulZeroLeft]
+      @induction-step-succ |
+        fix a: Int {
+          @given-inductive-hypothesis |
+            assume mul(neg(a), b) = neg(mul(a, b)) {
+              @inductive-hypothesis |
+                mul(neg(a), b) = neg(mul(a, b))
+                [by hypothesis given-inductive-hypothesis]
+              @successor-case |
+                mul(neg(succ(a)), b) = neg(mul(succ(a), b))
+                [by simplify negSucc mulPrevLeft mulSuccLeft negAdd negNeg inductive-hypothesis]
+            }
+          @inductive-hypothesis-implies-successor |
+            mul(neg(a), b) = neg(mul(a, b)) -> mul(neg(succ(a)), b) = neg(mul(succ(a), b))
+            [by implies_intro given-inductive-hypothesis]
+        }
+      @induction-step-for-all-succ |
+        forall a: Int; mul(neg(a), b) = neg(mul(a, b)) -> mul(neg(succ(a)), b) = neg(mul(succ(a), b))
+        [by forall_intro induction-step-succ]
+      @induction-step-prev |
+        fix a: Int {
+          @given-inductive-hypothesis |
+            assume mul(neg(a), b) = neg(mul(a, b)) {
+              @inductive-hypothesis |
+                mul(neg(a), b) = neg(mul(a, b))
+                [by hypothesis given-inductive-hypothesis]
+              @predecessor-case |
+                mul(neg(prev(a)), b) = neg(mul(prev(a), b))
+                [by simplify negPrev mulSuccLeft mulPrevLeft negAdd negNeg inductive-hypothesis]
+            }
+          @inductive-hypothesis-implies-predecessor |
+            mul(neg(a), b) = neg(mul(a, b)) -> mul(neg(prev(a)), b) = neg(mul(prev(a), b))
+            [by implies_intro given-inductive-hypothesis]
+        }
+      @induction-step-for-all-prev |
+        forall a: Int; mul(neg(a), b) = neg(mul(a, b)) -> mul(neg(prev(a)), b) = neg(mul(prev(a), b))
+        [by forall_intro induction-step-prev]
+      @conclusion-for-b |
+        forall a: Int; mul(neg(a), b) = neg(mul(a, b))
+        [by instantiate induction((fun m: Int => mul(neg(m), b) = neg(mul(m, b)))) base-case induction-step-for-all-succ induction-step-for-all-prev]
+    }
+  @swapped-binders |
+    forall b, a: Int; mul(neg(a), b) = neg(mul(a, b))
+    [by forall_intro generalize-b]
+  // swap the two leading universals into first-appearance (a, b) order.
+  @reorder-a |
+    fix a: Int {
+      @reorder-b |
+        fix b: Int {
+          @at-a-b |
+            mul(neg(a), b) = neg(mul(a, b))
+            [by forall_elim(b, a) swapped-binders]
+        }
+      @discharge-reorder-b |
+        forall b: Int; mul(neg(a), b) = neg(mul(a, b))
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Int; mul(neg(a), b) = neg(mul(a, b))
+    [by forall_intro reorder-a]
+qed
+
+// A product of nonnegatives is nonnegative. By upward induction on the second
+// factor b: the base mul(a, ZERO) = ZERO is nonneg, and the step turns
+// mul(a, succ k) into add(mul(a, k), a) — a sum of nonnegatives (nonnegAdd).
+theorem nonnegMul: forall a, b: Int; nonneg(a) -> nonneg(b) -> nonneg(mul(a, b))
+proof
+  @generalize-a |
+    fix a: Int {
+      @given-a-nonneg |
+        assume nonneg(a) {
+          @a-nonneg |
+            nonneg(a)
+            [by hypothesis given-a-nonneg]
+          // base: mul(a, ZERO) = ZERO is nonneg.
+          @product-with-zero |
+            forall n: Int; mul(n, ZERO) = ZERO
+            [by theorem mulZeroRight]
+          @a-times-zero-is-zero |
+            mul(a, ZERO) = ZERO
+            [by forall_elim(a) product-with-zero]
+          @zero-is-a-times-zero |
+            ZERO = mul(a, ZERO)
+            [by symmetry a-times-zero-is-zero]
+          @zero-is-nonneg |
+            nonneg(ZERO)
+            [by axiom nonnegZero]
+          @base-case |
+            nonneg(mul(a, ZERO))
+            [by rewrite zero-is-a-times-zero zero-is-nonneg]
+          // step: nonneg(mul(a, k)) -> nonneg(mul(a, succ k)), since
+          // mul(a, succ k) = add(mul(a, k), a), a sum of nonnegatives.
+          @induction-step |
+            fix k: Int {
+              @given-k-nonneg |
+                assume nonneg(k) {
+                  @given-product-nonneg |
+                    assume nonneg(mul(a, k)) {
+                      @product-nonneg |
+                        nonneg(mul(a, k))
+                        [by hypothesis given-product-nonneg]
+                      @product-with-successor |
+                        forall x, y: Int; mul(x, succ(y)) = add(mul(x, y), x)
+                        [by theorem mulSuccRight]
+                      @a-times-successor-k |
+                        mul(a, succ(k)) = add(mul(a, k), a)
+                        [by forall_elim(a, k) product-with-successor]
+                      @sum-of-nonnegatives-is-nonneg |
+                        forall x, y: Int; nonneg(x) -> nonneg(y) -> nonneg(add(x, y))
+                        [by theorem nonnegAdd]
+                      @product-plus-a-nonneg-if-parts |
+                        nonneg(mul(a, k)) -> nonneg(a) -> nonneg(add(mul(a, k), a))
+                        [by forall_elim(mul(a, k), a) sum-of-nonnegatives-is-nonneg]
+                      @product-plus-a-nonneg |
+                        nonneg(add(mul(a, k), a))
+                        [by tautology product-plus-a-nonneg-if-parts product-nonneg a-nonneg]
+                      @successor-product-is-sum |
+                        add(mul(a, k), a) = mul(a, succ(k))
+                        [by symmetry a-times-successor-k]
+                      @grown-product-nonneg |
+                        nonneg(mul(a, succ(k)))
+                        [by rewrite successor-product-is-sum product-plus-a-nonneg]
+                    }
+                  @product-nonneg-implies-grown-product-nonneg |
+                    nonneg(mul(a, k)) -> nonneg(mul(a, succ(k)))
+                    [by implies_intro given-product-nonneg]
+                }
+              @induction-step-at-k |
+                nonneg(k) -> nonneg(mul(a, k)) -> nonneg(mul(a, succ(k)))
+                [by implies_intro given-k-nonneg]
+            }
+          @induction-step-for-all-k |
+            forall k: Int; nonneg(k) -> nonneg(mul(a, k)) -> nonneg(mul(a, succ(k)))
+            [by forall_intro induction-step]
+          @product-nonneg-for-nonneg-b |
+            forall b: Int; nonneg(b) -> nonneg(mul(a, b))
+            [by instantiate nonnegInduction((fun b: Int => nonneg(mul(a, b)))) base-case induction-step-for-all-k]
+        }
+      @a-nonneg-implies-product-nonneg |
+        nonneg(a) -> forall b: Int; nonneg(b) -> nonneg(mul(a, b))
+        [by implies_intro given-a-nonneg]
+    }
+  @a-nonneg-gives-product-nonneg |
+    forall a: Int; nonneg(a) -> forall b: Int; nonneg(b) -> nonneg(mul(a, b))
+    [by forall_intro generalize-a]
+  // reshape `forall a; nonneg(a) -> forall b; ...` into the flat header shape.
+  @flatten |
+    fix a: Int {
+      @flatten-b |
+        fix bb: Int {
+          @given-a-nonneg |
+            assume nonneg(a) {
+              @given-b-nonneg |
+                assume nonneg(bb) {
+                  @a-nonneg |
+                    nonneg(a)
+                    [by hypothesis given-a-nonneg]
+                  @b-nonneg |
+                    nonneg(bb)
+                    [by hypothesis given-b-nonneg]
+                  @product-nonneg-for-a |
+                    nonneg(a) -> forall b: Int; nonneg(b) -> nonneg(mul(a, b))
+                    [by forall_elim(a) a-nonneg-gives-product-nonneg]
+                  @product-nonneg-all-b |
+                    forall b: Int; nonneg(b) -> nonneg(mul(a, b))
+                    [by modus_ponens product-nonneg-for-a a-nonneg]
+                  @product-nonneg-if-b-nonneg |
+                    nonneg(bb) -> nonneg(mul(a, bb))
+                    [by forall_elim(bb) product-nonneg-all-b]
+                  @conclusion-product-nonneg |
+                    nonneg(mul(a, bb))
+                    [by modus_ponens product-nonneg-if-b-nonneg b-nonneg]
+                }
+              @b-nonneg-implies-product-nonneg |
+                nonneg(bb) -> nonneg(mul(a, bb))
+                [by implies_intro given-b-nonneg]
+            }
+          @both-nonneg-imply-product-nonneg |
+            nonneg(a) -> nonneg(bb) -> nonneg(mul(a, bb))
+            [by implies_intro given-a-nonneg]
+        }
+      @discharge-b |
+        forall bb: Int; nonneg(a) -> nonneg(bb) -> nonneg(mul(a, bb))
+        [by forall_intro flatten-b]
+    }
+  @conclusion |
+    forall a, b: Int; nonneg(a) -> nonneg(b) -> nonneg(mul(a, b))
+    [by forall_intro flatten]
+qed
+
+// n < 0 implies -n is nonnegative. The strict-order witness gives a nonneg d
+// with add(n, succ(d)) = ZERO = add(n, neg(n)); cancelling n on the left pins
+// neg(n) = succ(d), which is nonneg since d is (nonnegSucc).
+theorem negBelowZero: forall n: Int; less_than(n, ZERO) -> nonneg(neg(n))
+proof
+  @generalize-n |
+    fix n: Int {
+      @given-n-below-zero |
+        assume less_than(n, ZERO) {
+          @n-below-zero |
+            less_than(n, ZERO)
+            [by hypothesis given-n-below-zero]
+          @less-than-elim |
+            forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
+            [by axiom lessThanElim]
+          @gap-exists-if-below |
+            less_than(n, ZERO) -> exists d: Int; nonneg(d) and add(n, succ(d)) = ZERO
+            [by forall_elim(n, ZERO) less-than-elim]
+          @gap-exists |
+            exists d: Int; nonneg(d) and add(n, succ(d)) = ZERO
+            [by modus_ponens gap-exists-if-below n-below-zero]
+          @with-gap-d |
+            unpack d0: Int from gap-exists {
+              @gap-nonneg-and-witnesses-zero |
+                nonneg(d0) and add(n, succ(d0)) = ZERO
+                [by hypothesis with-gap-d]
+              @gap-nonneg |
+                nonneg(d0)
+                [by and_elim_left gap-nonneg-and-witnesses-zero]
+              @gap-witnesses-zero |
+                add(n, succ(d0)) = ZERO
+                [by and_elim_right gap-nonneg-and-witnesses-zero]
+              // add(n, succ d0) = 0 = add(n, neg n); cancel n to pin neg n = succ d0.
+              @n-plus-negation-is-zero |
+                forall m: Int; add(m, neg(m)) = ZERO
+                [by theorem addNegRight]
+              @n-plus-neg-n-is-zero |
+                add(n, neg(n)) = ZERO
+                [by forall_elim(n) n-plus-negation-is-zero]
+              @zero-is-n-plus-neg-n |
+                ZERO = add(n, neg(n))
+                [by symmetry n-plus-neg-n-is-zero]
+              @gap-equals-negation-suffix |
+                add(n, succ(d0)) = add(n, neg(n))
+                [by rewrite zero-is-n-plus-neg-n gap-witnesses-zero]
+              @cancel-left |
+                forall x, y, z: Int; add(x, y) = add(x, z) -> y = z
+                [by theorem addCancelLeft]
+              @negation-is-gap-if-cancelled |
+                add(n, succ(d0)) = add(n, neg(n)) -> succ(d0) = neg(n)
+                [by forall_elim(n, succ(d0), neg(n)) cancel-left]
+              @negation-is-gap |
+                succ(d0) = neg(n)
+                [by modus_ponens negation-is-gap-if-cancelled gap-equals-negation-suffix]
+              @successor-of-nonneg-is-nonneg |
+                forall m: Int; nonneg(m) -> nonneg(succ(m))
+                [by axiom nonnegSucc]
+              @succ-gap-nonneg-if-gap-nonneg |
+                nonneg(d0) -> nonneg(succ(d0))
+                [by forall_elim(d0) successor-of-nonneg-is-nonneg]
+              @succ-gap-nonneg |
+                nonneg(succ(d0))
+                [by modus_ponens succ-gap-nonneg-if-gap-nonneg gap-nonneg]
+              @conclusion-negation-nonneg |
+                nonneg(neg(n))
+                [by rewrite negation-is-gap succ-gap-nonneg]
+            }
+          @negation-nonneg |
+            nonneg(neg(n))
+            [by exists_elim with-gap-d]
+        }
+      @below-zero-implies-negation-nonneg |
+        less_than(n, ZERO) -> nonneg(neg(n))
+        [by implies_intro given-n-below-zero]
+    }
+  @conclusion |
+    forall n: Int; less_than(n, ZERO) -> nonneg(neg(n))
+    [by forall_intro generalize-n]
+qed
+
+// A product of two nonpositive factors is nonnegative: mul(x, y) equals
+// mul(neg(x), neg(y)) (mulNegLeft then mulNegRight then negNeg collapse the two
+// sign flips), and both -x and -y are nonneg, so nonnegMul finishes.
+theorem productOfNonpositiveFactorsIsNonneg: forall x, y: Int; nonneg(neg(x)) -> nonneg(neg(y)) -> nonneg(mul(x, y))
+proof
+  @generalize-x |
+    fix x: Int {
+      @generalize-y |
+        fix y: Int {
+          @given-neg-x-nonneg |
+            assume nonneg(neg(x)) {
+              @given-neg-y-nonneg |
+                assume nonneg(neg(y)) {
+                  @neg-x-nonneg |
+                    nonneg(neg(x))
+                    [by hypothesis given-neg-x-nonneg]
+                  @neg-y-nonneg |
+                    nonneg(neg(y))
+                    [by hypothesis given-neg-y-nonneg]
+                  // product of the two nonneg negations is nonneg.
+                  @product-of-nonnegatives |
+                    forall u, v: Int; nonneg(u) -> nonneg(v) -> nonneg(mul(u, v))
+                    [by theorem nonnegMul]
+                  @neg-product-nonneg-if-parts |
+                    nonneg(neg(x)) -> nonneg(neg(y)) -> nonneg(mul(neg(x), neg(y)))
+                    [by forall_elim(neg(x), neg(y)) product-of-nonnegatives]
+                  @neg-product-nonneg |
+                    nonneg(mul(neg(x), neg(y)))
+                    [by tautology neg-product-nonneg-if-parts neg-x-nonneg neg-y-nonneg]
+                  // mul(neg x, neg y) = neg(mul(x, neg y)) = neg(neg(mul(x, y))) = mul(x, y).
+                  @mul-neg-left |
+                    forall u, v: Int; mul(neg(u), v) = neg(mul(u, v))
+                    [by theorem mulNegLeft]
+                  @left-flip |
+                    mul(neg(x), neg(y)) = neg(mul(x, neg(y)))
+                    [by forall_elim(x, neg(y)) mul-neg-left]
+                  @mul-neg-right |
+                    forall u, v: Int; mul(u, neg(v)) = neg(mul(u, v))
+                    [by theorem mulNegRight]
+                  @right-flip |
+                    mul(x, neg(y)) = neg(mul(x, y))
+                    [by forall_elim(x, y) mul-neg-right]
+                  @double-negation |
+                    forall n: Int; neg(neg(n)) = n
+                    [by theorem negNeg]
+                  @double-negation-of-product |
+                    neg(neg(mul(x, y))) = mul(x, y)
+                    [by forall_elim(mul(x, y)) double-negation]
+                  // rewrite mul(neg x, neg y) down to mul(x, y).
+                  @neg-product-is-neg-neg-product |
+                    mul(neg(x), neg(y)) = neg(neg(mul(x, y)))
+                    [by rewrite right-flip left-flip]
+                  @neg-product-is-product |
+                    mul(neg(x), neg(y)) = mul(x, y)
+                    [by rewrite double-negation-of-product neg-product-is-neg-neg-product]
+                  @conclusion-product-nonneg |
+                    nonneg(mul(x, y))
+                    [by rewrite neg-product-is-product neg-product-nonneg]
+                }
+              @neg-y-nonneg-implies-product-nonneg |
+                nonneg(neg(y)) -> nonneg(mul(x, y))
+                [by implies_intro given-neg-y-nonneg]
+            }
+          @nonpositive-factors-imply-product-nonneg |
+            nonneg(neg(x)) -> nonneg(neg(y)) -> nonneg(mul(x, y))
+            [by implies_intro given-neg-x-nonneg]
+        }
+      @discharge-y |
+        forall y: Int; nonneg(neg(x)) -> nonneg(neg(y)) -> nonneg(mul(x, y))
+        [by forall_intro generalize-y]
+    }
+  @conclusion |
+    forall x, y: Int; nonneg(neg(x)) -> nonneg(neg(y)) -> nonneg(mul(x, y))
+    [by forall_intro generalize-x]
+qed
+
+// mul(a, b) = mul(b, a). integer-ring bootstraps the RIGHT mul-recursion but
+// leaves commutativity for a consumer; the sign lemmas and the division
+// algorithm need it to reassociate products. Bidirectional induction on the
+// second factor (with a fixed): each step unfolds mulSuccRight/mulPrevLeft (and
+// mirrors) onto the shared normal form add(mul(k, a), a) / ..., closed by
+// `simplify` against the inductive hypothesis.
+theorem mulIsCommutative: forall a, b: Int; mul(a, b) = mul(b, a)
+proof
+  @base-case-proof |
+    fix a: Int {
+      @mul-zero-right |
+        forall n: Int; mul(n, ZERO) = ZERO
+        [by theorem mulZeroRight]
+      @a-times-zero-equals-zero-times-a |
+        mul(a, ZERO) = mul(ZERO, a)
+        [by simplify mul-zero-right mulZeroLeft]
+    }
+  @base-case |
+    forall a: Int; mul(a, ZERO) = mul(ZERO, a)
+    [by forall_intro base-case-proof]
+  @induction-step-succ |
+    fix k: Int {
+      @given-inductive-hypothesis |
+        assume forall a: Int; mul(a, k) = mul(k, a) {
+          @pointwise |
+            fix a2: Int {
+              @inductive-hypothesis |
+                forall a: Int; mul(a, k) = mul(k, a)
+                [by hypothesis given-inductive-hypothesis]
+              @inductive-hypothesis-at-a2 |
+                mul(a2, k) = mul(k, a2)
+                [by forall_elim(a2) inductive-hypothesis]
+              @successor-case |
+                mul(a2, succ(k)) = mul(succ(k), a2)
+                [by simplify mulSuccRight mulSuccLeft inductive-hypothesis-at-a2]
+            }
+          @discharge-a |
+            forall a: Int; mul(a, succ(k)) = mul(succ(k), a)
+            [by forall_intro pointwise]
+        }
+      @inductive-hypothesis-implies-successor |
+        (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, succ(k)) = mul(succ(k), a)
+        [by implies_intro given-inductive-hypothesis]
+    }
+  @induction-step-for-all-succ |
+    forall k: Int; (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, succ(k)) = mul(succ(k), a)
+    [by forall_intro induction-step-succ]
+  @induction-step-prev |
+    fix k: Int {
+      @given-inductive-hypothesis |
+        assume forall a: Int; mul(a, k) = mul(k, a) {
+          @pointwise |
+            fix a2: Int {
+              @inductive-hypothesis |
+                forall a: Int; mul(a, k) = mul(k, a)
+                [by hypothesis given-inductive-hypothesis]
+              @inductive-hypothesis-at-a2 |
+                mul(a2, k) = mul(k, a2)
+                [by forall_elim(a2) inductive-hypothesis]
+              @predecessor-case |
+                mul(a2, prev(k)) = mul(prev(k), a2)
+                [by simplify mulPrevRight mulPrevLeft inductive-hypothesis-at-a2]
+            }
+          @discharge-a |
+            forall a: Int; mul(a, prev(k)) = mul(prev(k), a)
+            [by forall_intro pointwise]
+        }
+      @inductive-hypothesis-implies-predecessor |
+        (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, prev(k)) = mul(prev(k), a)
+        [by implies_intro given-inductive-hypothesis]
+    }
+  @induction-step-for-all-prev |
+    forall k: Int; (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, prev(k)) = mul(prev(k), a)
+    [by forall_intro induction-step-prev]
+  @mul-is-commutative-swapped |
+    forall b, a: Int; mul(a, b) = mul(b, a)
+    [by instantiate induction((fun k: Int => forall a: Int; mul(a, k) = mul(k, a))) base-case induction-step-for-all-succ induction-step-for-all-prev]
+  // swap the two leading universals into first-appearance (a, b) order.
+  @reorder-a |
+    fix a: Int {
+      @reorder-b |
+        fix b: Int {
+          @at-a-b |
+            mul(a, b) = mul(b, a)
+            [by forall_elim(b, a) mul-is-commutative-swapped]
+        }
+      @discharge-reorder-b |
+        forall b: Int; mul(a, b) = mul(b, a)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Int; mul(a, b) = mul(b, a)
+    [by forall_intro reorder-a]
 qed
