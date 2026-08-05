@@ -74,6 +74,13 @@ pub fn addTests(
     // machinery. The reusable foundation for GCD / Bézout / the FTA.
     ctx.ok(&.{ "check", "std/integer-division.bpa" }, "OK: 310 declarations, 73 theorems proven\n");
 
+    // finite integer sequences + products (std/integer-sequence.bpa): a `Seq` sort
+    // with an `at(s,i)` accessor and a recursive `productUpTo(s,k)` (bpa has no
+    // lists/finite products, and a func can't take a Nat->Int param, so the indexed
+    // family is reified as a sort). everyEntryDividesProduct — each entry below the
+    // bound divides the product — is the lemma the infinitude/FTA arguments need.
+    ctx.ok(&.{ "check", "std/integer-sequence.bpa" }, "OK: 243 declarations, 55 theorems proven\n");
+
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
     // + LEFT inverse) + an opt-in `opCommutative`; the right-sided laws and the
     // basic-property theorems (identityUnique, inverseUnique, invProduct, cancelLeft,

@@ -1,0 +1,289 @@
+// std/integer-sequence.bpa — ℕ-indexed integer sequences and their finite
+// products, over std/integer.bpa and the ℤ order/divisibility.
+//
+// bpa has no lists and a `func` cannot take a `Nat -> Int` parameter, so an
+// integer sequence is REIFIED as an opaque sort `Seq` with an accessor `at`.
+// The finite product `productUpTo(s, k)` = at(s,0) · at(s,1) · … · at(s,k-1)
+// is defined by recursion on the (nonneg) upper bound k:
+//   productUpTo(s, 0)      = 1
+//   productUpTo(s, succ k) = productUpTo(s, k) · at(s, k)
+// The headline reusable fact is `everyEntryDividesProduct`: every entry below
+// the bound divides the product. This is what the infinitude-of-primes argument
+// (aata/2.3-primes.md) needs — a prime dividing the product+1 cannot also
+// divide the product.
+
+import integer <<< "std/integer.bpa"
+import order <<< "std/integer-order.bpa"
+import divides <<< "std/integer-divides.bpa"
+import wellordering <<< "std/integer-wellordering.bpa"
+
+sort Int = integer.Int
+const ZERO = integer.ZERO
+const ONE = integer.ONE
+func succ = integer.succ
+func add = integer.add
+func mul = integer.mul
+
+pred is_nonneg = order.nonneg
+pred below = order.less_than
+pred does_divide = divides.divides
+
+theorem nonnegNotBelowZero = wellordering.nonnegNotBelowZero
+theorem lessThanSuccSplit = wellordering.lessThanSuccSplit
+theorem mulIsCommutative = order.mulIsCommutative
+theorem dividesRefl = divides.dividesRefl
+theorem dividesMul = divides.dividesMul
+axiom nonnegInduction = order.nonnegInduction
+
+// -- the sequence sort and its finite product -------------------------------
+
+sort Seq
+func at(s: Seq, i: Int): Int
+func productUpTo(s: Seq, k: Int): Int
+axiom productUpToZero: forall s: Seq; productUpTo(s, ZERO) = ONE
+axiom productUpToSucc: forall s: Seq; forall k: Int; productUpTo(s, succ(k)) = mul(productUpTo(s, k), at(s, k))
+
+// -- the entry a bound leaves out still divides the successor product -------
+
+// at(s,k) divides productUpTo(s, succ k) = productUpTo(s, k) · at(s, k): the
+// factor being the SECOND multiplicand, commute the product to expose it, then
+// dividesRefl + dividesMul package at(s,k) | at(s,k) · productUpTo(s,k).
+theorem lastEntryDividesProduct: forall s: Seq; forall k: Int; does_divide(at(s, k), productUpTo(s, succ(k)))
+proof
+  @generalize-s |
+    fix s: Seq {
+      @generalize-k |
+        fix k: Int {
+          @entry-divides-itself |
+            forall d: Int; does_divide(d, d)
+            [by theorem dividesRefl]
+          @entry-k-divides-itself |
+            does_divide(at(s, k), at(s, k))
+            [by forall_elim(at(s, k)) entry-divides-itself]
+          @entry-divides-its-multiples |
+            forall d, a, c: Int; does_divide(d, a) -> does_divide(d, mul(a, c))
+            [by theorem dividesMul]
+          @entry-divides-entry-times-product |
+            does_divide(at(s, k), at(s, k)) -> does_divide(at(s, k), mul(at(s, k), productUpTo(s, k)))
+            [by forall_elim(at(s, k), at(s, k), productUpTo(s, k)) entry-divides-its-multiples]
+          @divides-entry-times-product |
+            does_divide(at(s, k), mul(at(s, k), productUpTo(s, k)))
+            [by modus_ponens entry-divides-entry-times-product entry-k-divides-itself]
+          @multiplication-commutes |
+            forall a, b: Int; mul(a, b) = mul(b, a)
+            [by theorem mulIsCommutative]
+          @entry-times-product-swaps |
+            mul(at(s, k), productUpTo(s, k)) = mul(productUpTo(s, k), at(s, k))
+            [by forall_elim(at(s, k), productUpTo(s, k)) multiplication-commutes]
+          @divides-product-times-entry |
+            does_divide(at(s, k), mul(productUpTo(s, k), at(s, k)))
+            [by rewrite entry-times-product-swaps divides-entry-times-product]
+          @product-of-successor-bound |
+            forall t: Seq; forall j: Int; productUpTo(t, succ(j)) = mul(productUpTo(t, j), at(t, j))
+            [by axiom productUpToSucc]
+          @successor-product-splits |
+            forall j: Int; productUpTo(s, succ(j)) = mul(productUpTo(s, j), at(s, j))
+            [by forall_elim(s) product-of-successor-bound]
+          @product-up-to-succ-k |
+            productUpTo(s, succ(k)) = mul(productUpTo(s, k), at(s, k))
+            [by forall_elim(k) successor-product-splits]
+          @succ-product-is-product-times-entry |
+            mul(productUpTo(s, k), at(s, k)) = productUpTo(s, succ(k))
+            [by symmetry product-up-to-succ-k]
+          @entry-divides-succ-product |
+            does_divide(at(s, k), productUpTo(s, succ(k)))
+            [by rewrite succ-product-is-product-times-entry divides-product-times-entry]
+        }
+      @discharge-k |
+        forall k: Int; does_divide(at(s, k), productUpTo(s, succ(k)))
+        [by forall_intro generalize-k]
+    }
+  @conclusion |
+    forall s: Seq; forall k: Int; does_divide(at(s, k), productUpTo(s, succ(k)))
+    [by forall_intro generalize-s]
+qed
+
+// -- every entry below the bound divides the product ------------------------
+
+// For nonneg i < k, at(s,i) | productUpTo(s,k). Induction on the bound k:
+//   base k=0:  nothing nonneg is below 0, so the claim is vacuous.
+//   step k→succ k:  a nonneg i < succ k is either < k (inductive hypothesis:
+//     at(s,i) | productUpTo(s,k), and productUpTo(s,k) | the succ product by
+//     dividesMul) or = k (lastEntryDividesProduct directly).
+theorem everyEntryDividesProduct: forall s: Seq; forall k: Int;
+  is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
+proof
+  @generalize-s |
+    fix s: Seq {
+      // base: forall i; nonneg i -> i < 0 -> at(s,i) | productUpTo(s,0), vacuous.
+      @base-case-proof |
+        fix i: Int {
+          @given-i-nonneg |
+            assume is_nonneg(i) {
+              @given-i-below-zero |
+                assume below(i, ZERO) {
+                  @i-below-zero |
+                    below(i, ZERO)
+                    [by hypothesis given-i-below-zero]
+                  @i-nonneg |
+                    is_nonneg(i)
+                    [by hypothesis given-i-nonneg]
+                  @nothing-nonneg-below-zero |
+                    forall m: Int; is_nonneg(m) -> (not below(m, ZERO))
+                    [by theorem nonnegNotBelowZero]
+                  @i-not-below-zero-if-nonneg |
+                    is_nonneg(i) -> (not below(i, ZERO))
+                    [by forall_elim(i) nothing-nonneg-below-zero]
+                  @i-not-below-zero |
+                    not below(i, ZERO)
+                    [by modus_ponens i-not-below-zero-if-nonneg i-nonneg]
+                  @entry-divides-empty-product |
+                    does_divide(at(s, i), productUpTo(s, ZERO))
+                    [by absurd i-below-zero i-not-below-zero]
+                }
+              @i-below-zero-implies-divides |
+                below(i, ZERO) -> does_divide(at(s, i), productUpTo(s, ZERO))
+                [by implies_intro given-i-below-zero]
+            }
+          @i-nonneg-implies-divides |
+            is_nonneg(i) -> below(i, ZERO) -> does_divide(at(s, i), productUpTo(s, ZERO))
+            [by implies_intro given-i-nonneg]
+        }
+      @base-case |
+        forall i: Int; is_nonneg(i) -> below(i, ZERO) -> does_divide(at(s, i), productUpTo(s, ZERO))
+        [by forall_intro base-case-proof]
+      // step: from the claim at k, derive it at succ k.
+      @induction-step |
+        fix k: Int {
+          @given-k-nonneg |
+            assume is_nonneg(k) {
+              @given-inductive-hypothesis |
+                assume forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)) {
+                  @inductive-hypothesis |
+                    forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k))
+                    [by hypothesis given-inductive-hypothesis]
+                  @k-nonneg |
+                    is_nonneg(k)
+                    [by hypothesis given-k-nonneg]
+                  @entries-below-succ-k-divide |
+                    fix i: Int {
+                      @given-i-nonneg |
+                        assume is_nonneg(i) {
+                          @given-i-below-succ-k |
+                            assume below(i, succ(k)) {
+                              @i-nonneg |
+                                is_nonneg(i)
+                                [by hypothesis given-i-nonneg]
+                              @i-below-succ-k |
+                                below(i, succ(k))
+                                [by hypothesis given-i-below-succ-k]
+                              // i < succ k splits into i < k or i = k.
+                              @less-than-succ-splits |
+                                forall m, j: Int; is_nonneg(m) -> is_nonneg(j) -> below(m, succ(j)) -> (below(m, j) or m = j)
+                                [by theorem lessThanSuccSplit]
+                              @i-below-succ-k-splits |
+                                is_nonneg(i) -> is_nonneg(k) -> below(i, succ(k)) -> (below(i, k) or i = k)
+                                [by forall_elim(i, k) less-than-succ-splits]
+                              @i-below-k-or-equals-k |
+                                below(i, k) or i = k
+                                [by tautology i-below-succ-k-splits i-nonneg k-nonneg i-below-succ-k]
+                              @product-of-successor-bound |
+                                forall t: Seq; forall j: Int; productUpTo(t, succ(j)) = mul(productUpTo(t, j), at(t, j))
+                                [by axiom productUpToSucc]
+                              @successor-product-splits |
+                                forall j: Int; productUpTo(s, succ(j)) = mul(productUpTo(s, j), at(s, j))
+                                [by forall_elim(s) product-of-successor-bound]
+                              @product-up-to-succ-k |
+                                productUpTo(s, succ(k)) = mul(productUpTo(s, k), at(s, k))
+                                [by forall_elim(k) successor-product-splits]
+                              @succ-product-is-product-times-entry |
+                                mul(productUpTo(s, k), at(s, k)) = productUpTo(s, succ(k))
+                                [by symmetry product-up-to-succ-k]
+                              // i < k: inductive hypothesis, then dividesMul.
+                              @when-i-below-k |
+                                assume below(i, k) {
+                                  @i-below-k |
+                                    below(i, k)
+                                    [by hypothesis when-i-below-k]
+                                  @entry-divides-product |
+                                    is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k))
+                                    [by forall_elim(i) inductive-hypothesis]
+                                  @entry-i-divides-product |
+                                    does_divide(at(s, i), productUpTo(s, k))
+                                    [by tautology entry-divides-product i-nonneg i-below-k]
+                                  @entry-divides-its-multiples |
+                                    forall d, a, c: Int; does_divide(d, a) -> does_divide(d, mul(a, c))
+                                    [by theorem dividesMul]
+                                  @entry-divides-product-times-entry-k |
+                                    does_divide(at(s, i), productUpTo(s, k)) -> does_divide(at(s, i), mul(productUpTo(s, k), at(s, k)))
+                                    [by forall_elim(at(s, i), productUpTo(s, k), at(s, k)) entry-divides-its-multiples]
+                                  @entry-divides-succ-product-when-below |
+                                    does_divide(at(s, i), mul(productUpTo(s, k), at(s, k)))
+                                    [by modus_ponens entry-divides-product-times-entry-k entry-i-divides-product]
+                                  @entry-divides-succ-product |
+                                    does_divide(at(s, i), productUpTo(s, succ(k)))
+                                    [by rewrite succ-product-is-product-times-entry entry-divides-succ-product-when-below]
+                                }
+                              // i = k: the last entry divides the succ product.
+                              @when-i-equals-k |
+                                assume i = k {
+                                  @i-equals-k |
+                                    i = k
+                                    [by hypothesis when-i-equals-k]
+                                  @k-equals-i |
+                                    k = i
+                                    [by symmetry i-equals-k]
+                                  @last-entry-divides-any-sequence |
+                                    forall t: Seq; forall j: Int; does_divide(at(t, j), productUpTo(t, succ(j)))
+                                    [by theorem lastEntryDividesProduct]
+                                  @last-entry-divides |
+                                    forall j: Int; does_divide(at(s, j), productUpTo(s, succ(j)))
+                                    [by forall_elim(s) last-entry-divides-any-sequence]
+                                  @entry-k-divides-succ-product |
+                                    does_divide(at(s, k), productUpTo(s, succ(k)))
+                                    [by forall_elim(k) last-entry-divides]
+                                  @entry-divides-succ-product |
+                                    does_divide(at(s, i), productUpTo(s, succ(k)))
+                                    [by rewrite k-equals-i entry-k-divides-succ-product]
+                                }
+                              @entry-divides-succ-product |
+                                does_divide(at(s, i), productUpTo(s, succ(k)))
+                                [by or_elim i-below-k-or-equals-k when-i-below-k when-i-equals-k]
+                            }
+                          @i-below-succ-k-gives-divides |
+                            below(i, succ(k)) -> does_divide(at(s, i), productUpTo(s, succ(k)))
+                            [by implies_intro given-i-below-succ-k]
+                        }
+                      @i-nonneg-gives-divides |
+                        is_nonneg(i) -> below(i, succ(k)) -> does_divide(at(s, i), productUpTo(s, succ(k)))
+                        [by implies_intro given-i-nonneg]
+                    }
+                  @entries-below-succ-k-divide-for-all |
+                    forall i: Int; is_nonneg(i) -> below(i, succ(k)) -> does_divide(at(s, i), productUpTo(s, succ(k)))
+                    [by forall_intro entries-below-succ-k-divide]
+                }
+              @hypothesis-at-k-gives-claim-at-succ-k |
+                (forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
+                  -> (forall i: Int; is_nonneg(i) -> below(i, succ(k)) -> does_divide(at(s, i), productUpTo(s, succ(k))))
+                [by implies_intro given-inductive-hypothesis]
+            }
+          @induction-step-at-k |
+            is_nonneg(k)
+              -> (forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
+              -> (forall i: Int; is_nonneg(i) -> below(i, succ(k)) -> does_divide(at(s, i), productUpTo(s, succ(k))))
+            [by implies_intro given-k-nonneg]
+        }
+      @induction-step-for-all-k |
+        forall k: Int; is_nonneg(k)
+          -> (forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
+          -> (forall i: Int; is_nonneg(i) -> below(i, succ(k)) -> does_divide(at(s, i), productUpTo(s, succ(k))))
+        [by forall_intro induction-step]
+      @every-entry-below-bound-divides |
+        forall k: Int; is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
+        [by instantiate nonnegInduction((fun k: Int => forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))) base-case induction-step-for-all-k]
+    }
+  @conclusion |
+    forall s: Seq; forall k: Int;
+      is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> below(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
+    [by forall_intro generalize-s]
+qed
