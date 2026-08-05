@@ -68,6 +68,12 @@ pub fn addTests(
     // abstract divisibility theory via `model IntegerDivisibility`.
     ctx.ok(&.{ "check", "std/integer-divides.bpa" }, "OK: 104 declarations, 23 theorems proven\n");
 
+    // the ℤ Division Algorithm (std/integer-division.bpa): existence over all of
+    // ℤ (via well-ordering on {a−bk≥0}) + uniqueness, with the supporting
+    // product-of-nonnegatives / bounded-multiple-is-zero / remainder-difference
+    // machinery. The reusable foundation for GCD / Bézout / the FTA.
+    ctx.ok(&.{ "check", "std/integer-division.bpa" }, "OK: 310 declarations, 73 theorems proven\n");
+
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
     // + LEFT inverse) + an opt-in `opCommutative`; the right-sided laws and the
     // basic-property theorems (identityUnique, inverseUnique, invProduct, cancelLeft,

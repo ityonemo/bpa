@@ -52,11 +52,18 @@ pub fn addTests(
     // level up). Fully proven, no holes.
     ctx.ok(&.{ "check", "aata/1.2.3-partitions.md" }, "OK: 145 declarations, 28 theorems proven\n");
 
-    // AATA Chapter 2 "The Integers": §2.1 Mathematical Induction, fully proven —
+    // AATA Chapter 2 "The Integers", §2.1 Mathematical Induction, fully proven —
     // the base case AND the ∀n≥0 3|(4ⁿ−1) nonneg-induction (its inductive step
     // splits 4^(k+1)−1 = 4(4ᵏ−1)+3 and uses dividesMul/dividesAdd), plus the
     // Second Principle (strong induction) and the Principle of Well-Ordering,
-    // both aliased from std/peano-ordering.bpa (proved there from ordinary
+    // both aliased from std/integer-wellordering.bpa (proved there from ordinary
     // induction). No hole; the file checks WITHOUT --draft.
-    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 320 declarations, 76 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/2.1-induction.md" }, "OK: 271 declarations, 56 theorems proven\n");
+    // §2.2 The Division Algorithm: Ch1-style — the proofs now live in
+    // std/integer-division.bpa; this file aliases them and narrates. Existence
+    // over all of ℤ + uniqueness.
+    ctx.ok(&.{ "check", "aata/2.2-division-algorithm.md" }, "OK: 328 declarations, 73 theorems proven\n");
+    // §2.3 Primes: stub for the GCD/Bézout/Euclid/FTA material to come; imports
+    // the division library and aliases the two headline theorems.
+    ctx.ok(&.{ "check", "aata/2.3-primes.md" }, "OK: 324 declarations, 73 theorems proven\n");
 }
