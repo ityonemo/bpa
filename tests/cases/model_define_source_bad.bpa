@@ -1,0 +1,22 @@
+// GUARDRAIL: a transparent (`define`d) symbol cannot be a model mapping SOURCE.
+// A define IS its body, so it rides along on the primitive symbols in that body
+// (which the model maps). Nominally remapping the NAME would ignore the
+// definition — definition-blind and unsound. The model must reject it and tell
+// the writer to map the body's primitives instead.
+
+sort Carrier
+const UNIT: Carrier
+func op(a: Carrier, b: Carrier): Carrier
+// TWICE is transparent — it IS op(UNIT, UNIT), not an opaque symbol.
+define TWICE = op(UNIT, UNIT)
+
+sort Thing
+const ZED: Thing
+func combine(a: Thing, b: Thing): Thing
+
+model ThingModel {
+  Carrier: Thing
+  UNIT: ZED
+  op: combine
+  TWICE: ZED
+}

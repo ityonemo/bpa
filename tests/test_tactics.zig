@@ -96,6 +96,16 @@ pub fn addTests(
     // materializes through the mapped axioms) is misuse and rejected at that mapping.
     ctx.fail(&.{ "check", "tests/cases/model_maps_theorem_bad.bpa" }, "tests/cases/model_maps_theorem_bad.bpa:19:3: error: model maps only axioms; 'src.leftUnit' is a theorem — it materializes through the mapped axioms, so drop this mapping\n");
 
+    // a transparent (`define`d) symbol cannot be a model mapping source/target — it
+    // rides along on the primitives in its body (which the model maps); nominally
+    // remapping its NAME would ignore the definition (definition-blind, unsound).
+    ctx.fail(&.{ "check", "tests/cases/model_define_source_bad.bpa" }, "tests/cases/model_define_source_bad.bpa:21:3: error: 'TWICE' is a transparent (`define`d) symbol — it rides along on the primitives in its body and cannot be a model mapping source; map those primitives instead\n");
+
+    // …but a define'd TARGET is legitimate: mapping a source symbol ONTO a defined
+    // target EXPRESSION works — the target expands to its body during transfer, so
+    // `source.UNIT: DOUBLED` yields combine(ZED, ZED) in the materialized theorem.
+    ctx.ok(&.{ "check", "tests/cases/model_define_target.bpa" }, "OK: 14 declarations, 3 theorems proven\n");
+
     // GUARDED model (`model … where <pred>`): the transfer is RELATIVIZED — every
     // carrier ∀ gains `guard(x) ->` — and strict materialization discharges the
     // guard obligation at each forall_elim over a guarded universal (recursing on

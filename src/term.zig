@@ -312,11 +312,19 @@ pub const Pool = struct {
         pub const SortPair = struct { from: SortId, to: SortId };
         pub const SymPair = struct { from: SymId, to: SymId };
         pub const Guard = struct { pred: SymId, carrier: SortId };
+        /// a source symbol whose model TARGET is a `define`d (transparent) symbol:
+        /// the remap replaces the source application not with an application of the
+        /// target symbol (which would leave a dangling `DEFINED` name) but with the
+        /// target's BODY, expanded. `from` is the source SymId; `body` its target
+        /// define's stored term. (Current defines are nullary — no arg substitution.)
+        pub const Expand = struct { from: SymId, body: TermId };
 
         sorts: []const SortPair,
         syms: []const SymPair,
         /// carrier-guard relativization (guarded models); null = unguarded
         guard: ?Guard = null,
+        /// source symbols whose target is a transparent define — expanded to `body`
+        expands: []const Expand = &.{},
 
         pub fn sort(self: Remap, s: SortId) SortId {
             for (self.sorts) |m| if (m.from == s) return m.to;
@@ -325,6 +333,11 @@ pub const Pool = struct {
         pub fn sym(self: Remap, s: SymId) SymId {
             for (self.syms) |m| if (m.from == s) return m.to;
             return s;
+        }
+        /// If source symbol `s`'s target is a transparent define, its expanded body.
+        pub fn expansionOf(self: Remap, s: SymId) ?TermId {
+            for (self.expands) |e| if (e.from == s) return e.body;
+            return null;
         }
 
         fn hasSortFrom(self: Remap, s: SortId) bool {
@@ -423,6 +436,11 @@ pub const Pool = struct {
     }
 
     fn remapApp(self: *Pool, kind: AppKind, a: Node.App, remap: Remap) Allocator.Error!TermId {
+        // a source symbol whose TARGET is a transparent define expands to the
+        // target's body — otherwise the remap would leave a dangling `DEFINED`
+        // name where the goal has the expanded form. (Current defines are nullary,
+        // so there are no args to substitute into the body.)
+        if (remap.expansionOf(a.sym)) |body| return body;
         // args() aliases extra.items; recursion may grow it (stale-slice trap,
         // see walkApp) — copy argument ids out before recursing.
         const old_args = try self.arena.dupe(TermId, self.args(a));

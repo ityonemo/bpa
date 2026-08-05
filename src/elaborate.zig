@@ -599,6 +599,7 @@ pub const Elaborator = struct {
 
         var sort_map: std.ArrayList(term.Pool.Remap.SortPair) = .empty;
         var sym_map: std.ArrayList(term.Pool.Remap.SymPair) = .empty;
+        var expands: std.ArrayList(term.Pool.Remap.Expand) = .empty;
         var stmt_map: std.ArrayList(StmtPair) = .empty;
         var source_file: ?FileId = null;
 
@@ -620,9 +621,26 @@ pub const Elaborator = struct {
                     return self.fail(m.target.start, "'{s}' is not a sort", .{self.text(m.target)});
                 try sort_map.append(self.arena, .{ .from = from_sort, .to = to_sort });
             } else if (self.env.findSym(src.file, src.base)) |from_sym| {
+                // A `define`d (transparent) SOURCE symbol is not a model mapping entity:
+                // it IS its body, so it rides along on the primitive symbols in that body
+                // (which the model maps). Nominally remapping the transparent source would
+                // remap the NAME while ignoring its definition — definition-blind and
+                // unsound. Reject; map the body's primitives instead. (A transparent
+                // TARGET is fine — mapping a source symbol onto a defined target
+                // expression is legitimate; the target expands to its body.)
+                if (self.env.sym(from_sym).definition != null) {
+                    return self.fail(m.source.start, "'{s}' is a transparent (`define`d) symbol — it rides along on the primitives in its body and cannot be a model mapping source; map those primitives instead", .{self.text(m.source)});
+                }
                 const to_sym = self.env.findSym(tgt.file, tgt.base) orelse
                     return self.fail(m.target.start, "'{s}' is not a function/predicate", .{self.text(m.target)});
-                try sym_map.append(self.arena, .{ .from = from_sym, .to = to_sym });
+                // a transparent (`define`d) TARGET: the source symbol expands to the
+                // target's BODY (not an application of the defined name, which would
+                // leave a dangling `DEFINED` in the transferred formula).
+                if (self.env.sym(to_sym).definition) |body| {
+                    try expands.append(self.arena, .{ .from = from_sym, .body = body });
+                } else {
+                    try sym_map.append(self.arena, .{ .from = from_sym, .to = to_sym });
+                }
             } else if (self.env.findStatementId(src.file, src.base)) |from_stmt| {
                 // a model discharges the source theory's AXIOM obligations only. A
                 // source THEOREM is derived, so it materializes automatically through
@@ -677,6 +695,7 @@ pub const Elaborator = struct {
             .sorts = sorts,
             .syms = try sym_map.toOwnedSlice(self.arena),
             .guard = guard,
+            .expands = try expands.toOwnedSlice(self.arena),
         };
         try self.models.put(self.arena, name, .{
             .remap = remap,
