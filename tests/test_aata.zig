@@ -65,5 +65,5 @@ pub fn addTests(
     ctx.ok(&.{ "check", "aata/2.2-division-algorithm.md" }, "OK: 328 declarations, 73 theorems proven\n");
     // §2.3 Primes: stub for the GCD/Bézout/Euclid/FTA material to come; imports
     // the division library and aliases the two headline theorems.
-    ctx.ok(&.{ "check", "aata/2.3-primes.md" }, "OK: 324 declarations, 73 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/2.3-primes.md" }, "OK: 371 declarations, 79 theorems proven\n");
 }
