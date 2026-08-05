@@ -58,5 +58,5 @@ pub fn addTests(
     // Second Principle (strong induction) and the Principle of Well-Ordering,
     // both aliased from std/peano-ordering.bpa (proved there from ordinary
     // induction). No hole; the file checks WITHOUT --draft.
-    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 342 declarations, 85 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/2-integers.md" }, "OK: 293 declarations, 67 theorems proven\n");
 }
