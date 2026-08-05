@@ -633,54 +633,55 @@ proof
                                       @order-n-m |
                                         less_than(n, m) or n = m or less_than(m, n)
                                         [by forall_elim(n, m) trichotomy-n-m]
-                                      @when-n-below-m |
-                                        assume less_than(n, m) {
-                                          @n-below-m |
-                                            less_than(n, m)
-                                            [by hypothesis when-n-below-m]
-                                          @less-than-to-le |
-                                            forall a, b: Int; less_than(a, b) -> less_or_equal(a, b)
-                                            [by theorem lessThanToLessOrEqual]
-                                          @n-le-m-if-below |
-                                            less_than(n, m) -> less_or_equal(n, m)
-                                            [by forall_elim(n, m) less-than-to-le]
-                                          @conclusion-n-le-m |
-                                            less_or_equal(n, m)
-                                            [by modus_ponens n-le-m-if-below n-below-m]
-                                        }
-                                      @when-n-equals-m |
-                                        assume n = m {
-                                          @n-equals-m |
-                                            n = m
-                                            [by hypothesis when-n-equals-m]
-                                          @less-or-equal-refl |
-                                            forall a: Int; less_or_equal(a, a)
-                                            [by theorem lessOrEqualRefl]
-                                          @n-le-n |
-                                            less_or_equal(n, n)
-                                            [by forall_elim(n) less-or-equal-refl]
-                                          @conclusion-n-le-m |
-                                            less_or_equal(n, m)
-                                            [by rewrite n-equals-m n-le-n]
-                                        }
-                                      @when-m-below-n |
-                                        assume less_than(m, n) {
-                                          @m-below-n |
-                                            less_than(m, n)
-                                            [by hypothesis when-m-below-n]
-                                          @m-fails-if-nonneg-below-n |
-                                            nonneg(m) -> less_than(m, n) -> (not prop(m))
-                                            [by forall_elim(m) all-below-fail]
-                                          @m-fails |
-                                            not prop(m)
-                                            [by tautology m-fails-if-nonneg-below-n m-nonneg m-below-n]
-                                          @conclusion-n-le-m |
-                                            less_or_equal(n, m)
-                                            [by absurd m-satisfies m-fails]
-                                        }
+                                      @less-than-to-le |
+                                        forall a, b: Int; less_than(a, b) -> less_or_equal(a, b)
+                                        [by theorem lessThanToLessOrEqual]
+                                      @less-or-equal-refl |
+                                        forall a: Int; less_or_equal(a, a)
+                                        [by theorem lessOrEqualRefl]
                                       @n-le-m-in-all-cases |
                                         less_or_equal(n, m)
-                                        [by or_elim order-n-m when-n-below-m when-n-equals-m when-m-below-n]
+                                        case on order-n-m {
+                                          @when-n-below-m |
+                                            assume less_than(n, m) {
+                                              @n-below-m |
+                                                less_than(n, m)
+                                                [by hypothesis when-n-below-m]
+                                              @n-le-m-if-below |
+                                                less_than(n, m) -> less_or_equal(n, m)
+                                                [by forall_elim(n, m) less-than-to-le]
+                                              @conclusion-n-le-m |
+                                                less_or_equal(n, m)
+                                                [by modus_ponens n-le-m-if-below n-below-m]
+                                            }
+                                          @when-n-equals-m |
+                                            assume n = m {
+                                              @n-equals-m |
+                                                n = m
+                                                [by hypothesis when-n-equals-m]
+                                              @n-le-n |
+                                                less_or_equal(n, n)
+                                                [by forall_elim(n) less-or-equal-refl]
+                                              @conclusion-n-le-m |
+                                                less_or_equal(n, m)
+                                                [by rewrite n-equals-m n-le-n]
+                                            }
+                                          @when-m-below-n |
+                                            assume less_than(m, n) {
+                                              @m-below-n |
+                                                less_than(m, n)
+                                                [by hypothesis when-m-below-n]
+                                              @m-fails-if-nonneg-below-n |
+                                                nonneg(m) -> less_than(m, n) -> (not prop(m))
+                                                [by forall_elim(m) all-below-fail]
+                                              @m-fails |
+                                                not prop(m)
+                                                [by tautology m-fails-if-nonneg-below-n m-nonneg m-below-n]
+                                              @conclusion-n-le-m |
+                                                less_or_equal(n, m)
+                                                [by absurd m-satisfies m-fails]
+                                            }
+                                        }
                                     }
                                   @m-satisfies-implies-n-le-m |
                                     prop(m) -> less_or_equal(n, m)
@@ -693,9 +694,12 @@ proof
                           @n-is-lower-bound-forall |
                             forall m: Int; nonneg(m) -> prop(m) -> less_or_equal(n, m)
                             [by forall_intro n-is-lower-bound]
+                          @n-nonneg-and-satisfies |
+                            nonneg(n) and prop(n)
+                            [by and_intro n-nonneg n-satisfies]
                           @n-is-least |
                             nonneg(n) and prop(n) and (forall m: Int; nonneg(m) -> prop(m) -> less_or_equal(n, m))
-                            [by and_intro n-nonneg n-satisfies n-is-lower-bound-forall]
+                            [by and_intro n-nonneg-and-satisfies n-is-lower-bound-forall]
                           @least-exists |
                             exists least: Int; nonneg(least) and prop(least) and (forall m: Int; nonneg(m) -> prop(m) -> less_or_equal(least, m))
                             [by exists_intro(n) n-is-least]
@@ -752,9 +756,12 @@ proof
             exists least: Int; nonneg(least) and prop(least) and (forall m: Int; nonneg(m) -> prop(m) -> less_or_equal(least, m))
             [by exists_elim with-witness-n]
         }
+      @least-exists-double-negated |
+        not not (exists least: Int; nonneg(least) and prop(least) and (forall m: Int; nonneg(m) -> prop(m) -> less_or_equal(least, m)))
+        [by not_intro given-no-least least-exists-from-witness no-least]
       @least-exists-by-contradiction |
         exists least: Int; nonneg(least) and prop(least) and (forall m: Int; nonneg(m) -> prop(m) -> less_or_equal(least, m))
-        [by double_negation given-no-least]
+        [by double_negation least-exists-double-negated]
     }
   @conclusion |
     (exists n: Int; nonneg(n) and prop(n))

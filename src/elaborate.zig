@@ -142,6 +142,10 @@ pub const Elaborator = struct {
     /// the file's forward manifest: names promised to be theorems, checked
     /// for existence and kind once the whole file has elaborated
     forwards: std.ArrayList(struct { name: StrId, loc: u32, text: []const u8 }) = .empty,
+    /// proof-carrying schemas awaiting the strict declaration-time well-formedness
+    /// check (opaque-parameter self-instantiation). Deferred to end-of-file so a
+    /// schema whose body instantiates a LATER-declared schema still resolves.
+    pending_schema_checks: std.ArrayList(struct { stmt_id: StatementId, params: []const ast.SchemaParam }) = .empty,
     /// proof obligations (TCCs) from guarded-function applications, emitted at
     /// the application and wrapped in logical context (binders, antecedents,
     /// left conjuncts) as elaboration returns upward. Discharged at the
@@ -250,6 +254,15 @@ pub const Elaborator = struct {
     pub fn elaborateFile(self: *Elaborator, file: ast.File) !void {
         for (file.decls) |*decl| {
             self.elaborateDecl(decl) catch |err| switch (err) {
+                error.OutOfMemory => return error.OutOfMemory,
+                error.Recover => continue, // diagnostic already recorded
+            };
+        }
+        // strict schema well-formedness: now that every declaration is registered
+        // (so a body may forward-reference a later schema), check each proof-
+        // carrying schema's body at opaque parameters.
+        for (self.pending_schema_checks.items) |pending| {
+            self.checkSchemaBodyOpaque(pending.stmt_id, pending.params) catch |err| switch (err) {
                 error.OutOfMemory => return error.OutOfMemory,
                 error.Recover => continue, // diagnostic already recorded
             };
@@ -510,7 +523,7 @@ pub const Elaborator = struct {
                     for (p.arg_sorts) |s| _ = try self.resolveSort(s);
                     _ = try self.resolveSort(p.result);
                 }
-                _ = try self.env.addStatement(self.file, name, .{ .schema = .{
+                const stmt_id = try self.env.addStatement(self.file, name, .{ .schema = .{
                     .name = name,
                     .params = d.params,
                     .body = d.formula,
@@ -519,6 +532,17 @@ pub const Elaborator = struct {
                     .source = self.source,
                     .loc = d.name.start,
                 } });
+                // STRICT well-formedness: in a fully-verifying run, check the
+                // schema's proof body by instantiating it at fresh OPAQUE
+                // parameters — a self-instantiation that catches structural errors
+                // (rule arity, ref resolution, block shape) and most logical ones
+                // without waiting for a concrete use site. DEFERRED to end-of-file
+                // (a schema body may instantiate a schema declared later). In
+                // --fast (certify_arithmetic=false) the body stays lazy, checked
+                // only at real instantiations. See GUIDE.md "Schema well-formedness".
+                if (self.verify.certify_arithmetic and d.steps != null) {
+                    try self.pending_schema_checks.append(self.arena, .{ .stmt_id = stmt_id, .params = d.params });
+                }
             },
             .theorem => |d| {
                 const name = try self.internTok(d.name);
@@ -1538,6 +1562,61 @@ pub const Elaborator = struct {
             .axiom => |f| f.name,
             .theorem => |f| f.name,
             .schema => |s| s.name,
+        };
+    }
+
+    /// Strict-mode declaration check: instantiate a schema at fresh OPAQUE
+    /// parameters and verify its proof body once, here. Each param `p: S1->…->Sn->R`
+    /// becomes a fresh uninterpreted symbol `p#opaque` of that exact signature, so
+    /// the body elaborates and kernel-checks exactly as at a real use site — but
+    /// generically, catching malformed steps (e.g. a mis-arity `or_elim`) at the
+    /// declaration rather than lying dormant until some caller instantiates it.
+    fn checkSchemaBodyOpaque(self: *Elaborator, stmt_id: StatementId, params: []const ast.SchemaParam) ElabError!void {
+        const schema = &self.env.statements.items[@intFromEnum(stmt_id)].schema;
+        const schema_ctx: Ctx = .{ .source = schema.source, .file = schema.file, .diag = @intFromEnum(schema.file) };
+        var args_map: SchemaArgs = .empty;
+        for (params) |p| {
+            const pname = try self.internTok(p.name);
+            const arg_sorts = try self.arena.alloc(SortId, p.arg_sorts.len);
+            for (p.arg_sorts, arg_sorts) |s, *out| out.* = try self.resolveSort(s);
+            const result_sort = try self.resolveSort(p.result);
+            const kind: term.AppKind = if (result_sort == .prop) .pred else .app;
+            // a fresh uninterpreted symbol of the param's signature.
+            const sym_name = try self.freshNamed("opaque-schema-param");
+            const sym_id = try self.env.addSym(self.file, .{
+                .name = sym_name,
+                .kind = kind,
+                .arg_sorts = arg_sorts,
+                .result = result_sort,
+                .result_refined = result_sort,
+                .guard = null,
+                .param_names = &.{},
+                .loc = 0,
+            });
+            if (p.arg_sorts.len == 0) {
+                // a nullary param (a value): the opaque constant itself.
+                const t = try self.pool.addApp(kind, sym_id, &.{});
+                args_map.put(self.arena, pname, .{ .value = .{ .id = t, .sort = result_sort } }) catch return error.OutOfMemory;
+            } else {
+                // an N-ary generator: `fun x1…xn => opaque(x1…xn)`, binders free.
+                const names = try self.arena.alloc(StrId, arg_sorts.len);
+                const fvars = try self.arena.alloc(TermId, arg_sorts.len);
+                for (arg_sorts, names, fvars) |asort, *n, *fv| {
+                    n.* = try self.freshName();
+                    fv.* = try self.pool.add(.{ .fvar = .{ .name = n.*, .sort = asort } });
+                }
+                const applied = try self.pool.addApp(kind, sym_id, fvars);
+                args_map.put(self.arena, pname, .{
+                    .lambda = .{ .body = applied, .params = names, .arg_sorts = arg_sorts, .result_sort = result_sort },
+                }) catch return error.OutOfMemory;
+            }
+        }
+        // `instantiateSchemaCore` re-reads schema.* through the pointer; take a
+        // fresh borrow (addSym above may have resized env.statements' backing).
+        const sch = &self.env.statements.items[@intFromEnum(stmt_id)].schema;
+        _ = self.instantiateSchemaCore(stmt_id, sch, schema_ctx, &args_map) catch |e| switch (e) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.Recover => return, // diagnostic already recorded
         };
     }
 

@@ -155,6 +155,22 @@ pub fn addTests(
     // from the synthetic theorem's citation. These pin the current failure; each
     // flips to a passing check once accelerants emit model-mangled synthetics.
     // (Counters #NN/$NN are stable per-file elaboration-order IDs.)
+    // SCHEMA WELL-FORMEDNESS: a schema theorem's proof body is verified at
+    // DECLARATION in strict mode (instantiated at opaque parameters), so a
+    // malformed step (here a 4-ref or_elim — the kernel's or_elim is binary) is
+    // rejected up front. In --fast the body stays lazy (checked only at real
+    // instantiations), so the same file is accepted. See agents/GUIDE.md.
+    ctx.fail(&.{ "check", "tests/cases/schema_wellformed_bad.bpa" }, "tests/cases/schema_wellformed_bad.bpa:81:13: error: 'or_elim' expects 3 reference(s), got 4\n");
+    ctx.ok(&.{ "check", "--fast", "tests/cases/schema_wellformed_bad.bpa" },
+        \\OK: 11 declarations, 1 theorems proven
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
+        \\
+    );
+    // the positive counterpart: a WELL-FORMED schema (proper `case on` split)
+    // passes the strict declaration-time check — the new pass must not reject
+    // legitimate schemas.
+    ctx.ok(&.{ "check", "tests/cases/schema_wellformed_ok.bpa" }, "OK: 11 declarations, 1 theorems proven\n");
+
     ctx.fail(&.{ "check", "tests/cases/model_accel_simplify.bpa" },
         \\tests/cases/model_accel_simplify.bpa:80:26: error: eigenvariable 'b' occurs free in step 'simplify#56' outside the subproof; rename it
         \\tests/cases/model_accel_simplify.bpa:80:26: error: guarded model transfer of 'plusZeroRight' does not kernel-check under the interpretation

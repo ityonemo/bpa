@@ -1,0 +1,91 @@
+// SCHEMA WELL-FORMEDNESS — the positive case.
+//
+// A schema theorem whose proof body IS well-formed (a proper `case on` 3-way
+// split). In strict mode the body is verified at declaration (instantiated at
+// opaque parameters) and passes — the new check must NOT reject legitimate
+// schemas. The schema is never instantiated here; the concrete theorem below
+// makes the file prove something so the summary reports it.
+
+sort T
+pred a_holds(x: T)
+pred b_holds(x: T)
+pred c_holds(x: T)
+pred goal(x: T)
+axiom trichotomy: forall x: T; a_holds(x) or b_holds(x) or c_holds(x)
+axiom a_gives_goal: forall x: T; a_holds(x) -> goal(x)
+axiom b_gives_goal: forall x: T; b_holds(x) -> goal(x)
+axiom c_gives_goal: forall x: T; c_holds(x) -> goal(x)
+
+theorem everywhereGoal(prop: T -> Prop): forall x: T; goal(x)
+proof
+  @generalize-x |
+    fix x: T {
+      @cases-rule |
+        forall y: T; a_holds(y) or b_holds(y) or c_holds(y)
+        [by axiom trichotomy]
+      @the-cases |
+        a_holds(x) or b_holds(x) or c_holds(x)
+        [by forall_elim(x) cases-rule]
+      @a-rule |
+        forall y: T; a_holds(y) -> goal(y)
+        [by axiom a_gives_goal]
+      @a-implies-goal |
+        a_holds(x) -> goal(x)
+        [by forall_elim(x) a-rule]
+      @b-rule |
+        forall y: T; b_holds(y) -> goal(y)
+        [by axiom b_gives_goal]
+      @b-implies-goal |
+        b_holds(x) -> goal(x)
+        [by forall_elim(x) b-rule]
+      @c-rule |
+        forall y: T; c_holds(y) -> goal(y)
+        [by axiom c_gives_goal]
+      @c-implies-goal |
+        c_holds(x) -> goal(x)
+        [by forall_elim(x) c-rule]
+      @goal-holds |
+        goal(x)
+        case on the-cases {
+          @when-a |
+            assume a_holds(x) {
+              @a-here |
+                a_holds(x)
+                [by hypothesis when-a]
+              @goal-a |
+                goal(x)
+                [by modus_ponens a-implies-goal a-here]
+            }
+          @when-b |
+            assume b_holds(x) {
+              @b-here |
+                b_holds(x)
+                [by hypothesis when-b]
+              @goal-b |
+                goal(x)
+                [by modus_ponens b-implies-goal b-here]
+            }
+          @when-c |
+            assume c_holds(x) {
+              @c-here |
+                c_holds(x)
+                [by hypothesis when-c]
+              @goal-c |
+                goal(x)
+                [by modus_ponens c-implies-goal c-here]
+            }
+        }
+    }
+  @conclusion |
+    forall x: T; goal(x)
+    [by forall_intro generalize-x]
+qed
+
+// a concrete instantiation, so the schema's body is also checked the ordinary way
+// and the file proves a theorem.
+theorem goalEverywhere: forall x: T; goal(x)
+proof
+  @conclusion |
+    forall x: T; goal(x)
+    [by instantiate everywhereGoal((fun y: T => goal(y)))]
+qed

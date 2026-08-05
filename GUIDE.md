@@ -170,10 +170,9 @@ hole, turn it into a `theorem`.
 ### Schematic axioms and theorems
 
 A parenthesized parameter list makes an `axiom` or `theorem` **schematic**:
-a stored form with `comptime` semantics. It is not checked at declaration;
-each `instantiate` use substitutes concrete, written-out arguments and (for
-theorem schemas) re-checks the proof at that instance. Formula-valued
-parameters are supplied as `fun` lambdas.
+a stored form with `comptime` semantics. Each `instantiate` use substitutes
+concrete, written-out arguments and (for theorem schemas) re-checks the proof at
+that instance. Formula-valued parameters are supplied as `fun` lambdas.
 
 ```bpa
 axiom induction(prop: Nat -> Prop):
@@ -185,9 +184,40 @@ proof
 qed
 ```
 
+#### Schema well-formedness (strict vs `--fast`)
+
+A theorem schema's proof body is verified in **two** places, and the policy
+differs by mode:
+
+- **Strict mode (default `bpa check`)** verifies the body **once at declaration**,
+  by instantiating the schema at *opaque parameters* — each `prop`/value parameter
+  becomes a fresh uninterpreted symbol of its signature, and the proof is
+  kernel-checked generically. This catches structural defects (rule arity, unknown
+  references, malformed blocks — e.g. a 4-reference `or_elim`, which is binary) and
+  most logical errors **up front**, at the schema's own line, rather than letting
+  them lie dormant until some caller happens to instantiate it. It is then also
+  re-checked at each concrete `instantiate` (the parameters are real there).
+
+- **`--fast` (and `--faster`/`--reckless`)** skips the declaration-time check: the
+  body stays lazy, verified only at real instantiation sites (today's older
+  behavior). A schema that is never instantiated is never checked under `--fast`.
+
+The rule of thumb: **strict `check` treats a schema like a theorem** — its proof
+must be well-formed and verifiable to pass, even with no instantiation in the file.
+`--fast` treats a bare schema more like an axiom (unproven until used). A green
+strict `check` therefore means every schema body is genuinely verified; a green
+`--fast` run does not (and says so in its "NOT FULLY VERIFIED" disclosure).
+
+Because full logical verification of an *abstract* body isn't always well-defined
+(an accelerant step may need the concrete parameter to certify), the opaque-
+parameter check is the pragmatic maximum: it is exactly a self-instantiation at
+uninterpreted symbols, so anything that would fail for *every* instantiation fails
+here, while parameter-specific facts are still deferred to the real use site.
+
 Instantiations are **not cached**: a plain theorem is checked once and cited
 by reference thereafter, but a schema's proof is re-run at every instantiation
-site (the parameters differ, so there is no single fixed result to cache). If
+site (the parameters differ, so there is no single fixed result to cache) — plus
+the strict declaration-time opaque check described above. If
 an expensive instance is reused, **realize it into a named theorem** — write a
 plain `theorem` whose one step is `[by instantiate NAME(args) ...]`, and cite
 that theorem from then on. Naming pays the instantiation cost once and reuses

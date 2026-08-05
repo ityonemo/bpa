@@ -2012,51 +2012,61 @@ proof
                               @m-satisfies |
                                 prop(m)
                                 [by hypothesis given-m-satisfies]
+                              @trichotomy-rule |
+                                forall a, b: Nat; less_than(a, b) or a = b or less_than(b, a)
+                                [by theorem trichotomy]
                               @trichotomy-n-m |
                                 less_than(n, m) or n = m or less_than(m, n)
-                                [by forall_elim(n, m) trichotomy]
-                              @when-n-below-m |
-                                assume less_than(n, m) {
-                                  @n-below-m |
-                                    less_than(n, m)
-                                    [by hypothesis when-n-below-m]
-                                  @n-le-m |
-                                    less_or_equal(n, m)
-                                    [by forall_elim(n, m) lessThanToLessOrEqual]
-                                  @conclusion-n-le-m |
-                                    less_or_equal(n, m)
-                                    [by modus_ponens n-le-m n-below-m]
-                                }
-                              @when-n-equals-m |
-                                assume n = m {
-                                  @n-equals-m |
-                                    n = m
-                                    [by hypothesis when-n-equals-m]
-                                  @n-le-n |
-                                    less_or_equal(n, n)
-                                    [by forall_elim(n) lessOrEqualRefl]
-                                  @conclusion-n-le-m |
-                                    less_or_equal(n, m)
-                                    [by rewrite n-equals-m n-le-n]
-                                }
-                              @when-m-below-n |
-                                assume less_than(m, n) {
-                                  @m-below-n |
-                                    less_than(m, n)
-                                    [by hypothesis when-m-below-n]
-                                  @m-below-n-fails |
-                                    less_than(m, n) -> (not prop(m))
-                                    [by forall_elim(m) all-below-fail]
-                                  @m-fails |
-                                    not prop(m)
-                                    [by modus_ponens m-below-n-fails m-below-n]
-                                  @conclusion-n-le-m |
-                                    less_or_equal(n, m)
-                                    [by absurd m-satisfies m-fails]
-                                }
+                                [by forall_elim(n, m) trichotomy-rule]
+                              @less-than-to-less-or-equal-rule |
+                                forall a, b: Nat; less_than(a, b) -> less_or_equal(a, b)
+                                [by theorem lessThanToLessOrEqual]
+                              @less-or-equal-refl-rule |
+                                forall a: Nat; less_or_equal(a, a)
+                                [by theorem lessOrEqualRefl]
                               @n-le-m-in-all-cases |
                                 less_or_equal(n, m)
-                                [by or_elim trichotomy-n-m when-n-below-m when-n-equals-m when-m-below-n]
+                                case on trichotomy-n-m {
+                                  @when-n-below-m |
+                                    assume less_than(n, m) {
+                                      @n-below-m |
+                                        less_than(n, m)
+                                        [by hypothesis when-n-below-m]
+                                      @n-below-m-implies-le |
+                                        less_than(n, m) -> less_or_equal(n, m)
+                                        [by forall_elim(n, m) less-than-to-less-or-equal-rule]
+                                      @conclusion-n-le-m |
+                                        less_or_equal(n, m)
+                                        [by modus_ponens n-below-m-implies-le n-below-m]
+                                    }
+                                  @when-n-equals-m |
+                                    assume n = m {
+                                      @n-equals-m |
+                                        n = m
+                                        [by hypothesis when-n-equals-m]
+                                      @n-le-n |
+                                        less_or_equal(n, n)
+                                        [by forall_elim(n) less-or-equal-refl-rule]
+                                      @conclusion-n-le-m |
+                                        less_or_equal(n, m)
+                                        [by rewrite n-equals-m n-le-n]
+                                    }
+                                  @when-m-below-n |
+                                    assume less_than(m, n) {
+                                      @m-below-n |
+                                        less_than(m, n)
+                                        [by hypothesis when-m-below-n]
+                                      @m-below-n-fails |
+                                        less_than(m, n) -> (not prop(m))
+                                        [by forall_elim(m) all-below-fail]
+                                      @m-fails |
+                                        not prop(m)
+                                        [by modus_ponens m-below-n-fails m-below-n]
+                                      @conclusion-n-le-m |
+                                        less_or_equal(n, m)
+                                        [by absurd m-satisfies m-fails]
+                                    }
+                                }
                             }
                           @m-satisfies-implies-n-le-m |
                             prop(m) -> less_or_equal(n, m)
@@ -2094,14 +2104,30 @@ proof
           @nothing-satisfies |
             forall n: Nat; not prop(n)
             [by instantiate strongInduction((fun k: Nat => not prop(k))) strong-step-forall]
-          // but something DOES satisfy prop — contradiction.
-          @contradiction |
-            forall least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
-            [by absurd some-element-satisfies nothing-satisfies]
+          // but something DOES satisfy prop; unpack that witness and specialize
+          // `nothing-satisfies` to it for a literal clash.
+          @with-witness-w |
+            unpack w: Nat from some-element-satisfies {
+              @w-satisfies |
+                prop(w)
+                [by hypothesis with-witness-w]
+              @w-fails |
+                not prop(w)
+                [by forall_elim(w) nothing-satisfies]
+              @least-exists-at-witness |
+                exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
+                [by absurd w-satisfies w-fails]
+            }
+          @least-exists-from-witness |
+            exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
+            [by exists_elim with-witness-w]
         }
+      @least-exists-double-negated |
+        not not (exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m)))
+        [by not_intro given-no-least least-exists-from-witness no-least]
       @least-exists-by-contradiction |
         exists least: Nat; prop(least) and (forall m: Nat; prop(m) -> less_or_equal(least, m))
-        [by double_negation given-no-least]
+        [by double_negation least-exists-double-negated]
     }
   @conclusion |
     (exists n: Nat; prop(n))

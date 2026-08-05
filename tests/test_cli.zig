@@ -34,7 +34,7 @@ pub fn addTests(
     // fmt --check: the exemplars are canonically formatted. The `.md` entries
     // exercise the literate path (formatLiterate reflows the ```bpa blocks and
     // leaves prose verbatim); the rest are plain `.bpa` sources.
-    for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/group-power.bpa", "std/ring.bpa", "std/integer-ring-model.bpa", "std/set.bpa", "std/collection.bpa", "std/function.bpa", "std/function-invertible.bpa", "std/integer.bpa", "std/integer-ring.bpa", "std/integer-order.bpa", "std/integer-wellordering.bpa", "std/integer-divides.bpa", "std/divisibility.bpa", "std/integer-nonneg.bpa", "std/element.bpa", "std/relation.bpa", "std/equivalence.bpa", "aata/3.2-groups.md", "aata/1.2.1-sets.md", "aata/1.2.2-functions.md", "aata/1.2.3-relations.md", "aata/1.2.3-partitions.md", "aata/2-integers.md", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/schema_binary_param.bpa", "tests/cases/choice_description.bpa", "tests/cases/model_accel_simplify.bpa", "tests/cases/model_accel_assoc.bpa", "tests/cases/model_accel_assoc_commut.bpa", "tests/cases/model_accel_tautology.bpa", "tests/cases/model_accel_polynomial.bpa", "tests/cases/model_accel_arithmetic.bpa", "tests/cases/model_accel_ext.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa", "tests/cases/axiom_as_step_bad.bpa" }) |path| {
+    for ([_][]const u8{ "examples/peano.bpa", "examples/peano-pure.bpa", "examples/peano-imports.bpa", "examples/gauss.bpa", "examples/gauss-pure.bpa", "examples/euclid.bpa", "examples/euclid-compute.bpa", "examples/incorrect.bpa", "examples/sqrt2.bpa", "std/peano.bpa", "std/peano-ordering.bpa", "std/peano-subtraction.bpa", "std/peano-division.bpa", "std/peano-gcd.bpa", "std/peano-parity.bpa", "std/group.bpa", "std/group-power.bpa", "std/ring.bpa", "std/integer-ring-model.bpa", "std/set.bpa", "std/collection.bpa", "std/function.bpa", "std/function-invertible.bpa", "std/integer.bpa", "std/integer-ring.bpa", "std/integer-order.bpa", "std/integer-wellordering.bpa", "std/integer-divides.bpa", "std/divisibility.bpa", "std/integer-nonneg.bpa", "std/element.bpa", "std/relation.bpa", "std/equivalence.bpa", "aata/3.2-groups.md", "aata/1.2.1-sets.md", "aata/1.2.2-functions.md", "aata/1.2.3-relations.md", "aata/1.2.3-partitions.md", "aata/2-integers.md", "tests/cases/kebab_label_ok.bpa", "tests/cases/schema_eta.bpa", "tests/cases/schema_binary_param.bpa", "tests/cases/schema_wellformed_ok.bpa", "tests/cases/schema_wellformed_bad.bpa", "tests/cases/choice_description.bpa", "tests/cases/model_accel_simplify.bpa", "tests/cases/model_accel_assoc.bpa", "tests/cases/model_accel_assoc_commut.bpa", "tests/cases/model_accel_tautology.bpa", "tests/cases/model_accel_polynomial.bpa", "tests/cases/model_accel_arithmetic.bpa", "tests/cases/model_accel_ext.bpa", "tests/cases/case_split.bpa", "tests/cases/fix_sibling_reuse.bpa", "tests/cases/outline.bpa", "tests/cases/assoc_commut_custom.bpa", "tests/cases/assoc_commut_bad_arity.bpa", "tests/cases/assoc_commut_oracle.bpa", "tests/cases/polynomial_oracle.bpa", "tests/cases/search_target.bpa", "tests/cases/assoc.bpa", "tests/cases/assoc_bad.bpa", "tests/cases/assoc_missing_arg.bpa", "tests/cases/assoc_oracle.bpa", "tests/cases/axiom_as_step_bad.bpa" }) |path| {
         const fmt_check = b.addRunArtifact(exe);
         fmt_check.has_side_effects = true;
         fmt_check.setCwd(b.path("."));
@@ -108,8 +108,20 @@ pub fn addTests(
     // M4: ill-sorted schema argument dies at the use site
     ctx.fail(&.{ "check", "tests/cases/induction_bad_sort.bpa" }, "tests/cases/induction_bad_sort.bpa:14:46: error: expected a proposition, got sort 'Nat'\n");
 
-    // M4: proof-carrying schema fails only at the failing instantiation
+    // proof-carrying schema `zeroLike(t): t = ZERO` whose body only survives the
+    // t := ZERO instance. STRICT rejects it at DECLARATION (opaque-parameter check:
+    // the body must hold generically, and `opaque = ZERO` is not reflexivity) AND
+    // at the failing instantiation. An over-general schema is unsound as written;
+    // proving one true specialization does not rescue it.
     ctx.fail(&.{ "check", "tests/cases/schema_per_instance.bpa" },
+        \\tests/cases/schema_per_instance.bpa:10:4: error: reflexivity requires a claim of the form 't = t', got 'succ(ZERO) = ZERO'
+        \\tests/cases/schema_per_instance.bpa:10:4: error: reflexivity requires a claim of the form 't = t', got 'opaque-schema-param#1 = ZERO'
+        \\tests/cases/schema_per_instance.bpa:29:21: error: instantiation of schema 'zeroLike' failed here
+        \\
+    );
+    // --fast keeps the lazy per-instance behavior: the schema declares fine (body
+    // unchecked), and only the bad instantiation `zeroLike(succ ZERO)` fails.
+    ctx.fail(&.{ "check", "--fast", "tests/cases/schema_per_instance.bpa" },
         \\tests/cases/schema_per_instance.bpa:10:4: error: reflexivity requires a claim of the form 't = t', got 'succ(ZERO) = ZERO'
         \\tests/cases/schema_per_instance.bpa:29:21: error: instantiation of schema 'zeroLike' failed here
         \\
@@ -121,8 +133,11 @@ pub fn addTests(
     // mutually-citing steps form a justification cycle, reported by name
     ctx.fail(&.{ "check", "tests/cases/forward_ref_cycle.bpa" }, "tests/cases/forward_ref_cycle.bpa:10:4: error: cyclic justification: a -> b -> a\n");
 
-    // a self-instantiating schema is a named cycle, not a blunt depth cap
+    // a self-instantiating schema is a named cycle, not a blunt depth cap. The
+    // strict declaration-time opaque check catches it first (its body instantiates
+    // itself); the later real instantiation site reports it again.
     ctx.fail(&.{ "check", "tests/cases/schema_cycle.bpa" },
+        \\tests/cases/schema_cycle.bpa:11:21: error: schema instantiation cycle: loopy -> loopy
         \\tests/cases/schema_cycle.bpa:11:21: error: schema instantiation cycle: loopy -> loopy
         \\tests/cases/schema_cycle.bpa:19:21: error: instantiation of schema 'loopy' failed here
         \\
