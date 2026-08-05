@@ -80,6 +80,46 @@ func productUpTo(s: Seq, k: Int): Int
 axiom productUpToZero: forall s: Seq; productUpTo(s, ZERO) = ONE
 axiom productUpToSucc: forall s: Seq; forall k: Int; productUpTo(s, succ(k)) = mul(productUpTo(s, k), at(s, k))
 
+// -- reification-existence axioms: constructing sequences -------------------
+//
+// `Seq` is otherwise observe-only: `at`/`productUpTo` read a sequence but no
+// rule produces one. The Fundamental Theorem of Arithmetic must BUILD the
+// factorizing sequences (a singleton [p], a concatenation [p] ++ t, a list with
+// one entry removed), so we disclose — exactly as `functionFromGraph` reifies a
+// function from its graph — that a `Seq` with each stated graph/product EXISTS.
+// Each axiom asserts the existence of a sequence whose relevant entries and
+// finite product are pinned to the described values; nothing about entries
+// outside the stated range is claimed. These are obviously-true facts about the
+// intended model (finite integer sequences), taken as axioms because the sort
+// carries no first-class sequence-builder.
+
+// The singleton sequence [x]: its first entry is x and its length-one product
+// is x.
+axiom seqSingletonExists: forall x: Int;
+  exists s: Seq; at(s, ZERO) = x and productUpTo(s, ONE) = x
+
+// The concatenation s ++ t of the first j entries of s with the first k entries
+// of t: the result agrees with s below j, agrees with (shifted) t on the next k
+// slots, and its length-(j+k) product is the product of the two pieces.
+axiom seqConcatExists: forall s: Seq; forall t: Seq; forall j: Int; forall k: Int;
+  is_nonneg(j) -> is_nonneg(k) ->
+  exists u: Seq;
+  (forall i: Int; is_nonneg(i) -> below(i, j) -> at(u, i) = at(s, i))
+  and (forall i: Int; is_nonneg(i) -> below(i, k) -> at(u, add(j, i)) = at(t, i))
+  and productUpTo(u, add(j, k)) = mul(productUpTo(s, j), productUpTo(t, k))
+
+// The sequence s with the entry at index m (0 ≤ m ≤ k) deleted: its length-k
+// product times the removed entry recovers s's length-(k+1) product, and its
+// entries are those of s with index m skipped (unchanged below m, shifted up by
+// one at and above m). The entry-agreement clauses let a primality hypothesis on
+// s's first k+1 entries transfer to t's first k entries.
+axiom seqRemoveExists: forall s: Seq; forall k: Int; forall m: Int;
+  is_nonneg(k) -> is_nonneg(m) -> below(m, succ(k)) ->
+  exists t: Seq;
+  mul(productUpTo(t, k), at(s, m)) = productUpTo(s, succ(k))
+  and (forall i: Int; is_nonneg(i) -> below(i, m) -> at(t, i) = at(s, i))
+  and (forall i: Int; is_nonneg(i) -> at_most(m, i) -> below(i, k) -> at(t, i) = at(s, succ(i)))
+
 // -- the entry a bound leaves out still divides the successor product -------
 
 // at(s,k) divides productUpTo(s, succ k) = productUpTo(s, k) · at(s, k): the

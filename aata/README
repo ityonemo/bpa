@@ -18,6 +18,42 @@ is kept and marked in place with a note (or a `// this section cannot currently
 be encoded [reason]` block) stating exactly what it would require — never
 silently dropped.
 
+## How these are written
+
+These conventions govern the transliterations (they are also enforced as an
+authoring rule at `.claude/rules/aata-guide.md`).
+
+**The import horizon — what a main-text proof may lean on.** A theorem Judson
+proves in the running text is transcribed as a real proof that follows Judson,
+self-contained from the book's *own cumulative development*. We do **not** import
+a `std/` library to alias such a proof away — **unless "Judson would already have
+it in hand at that point in the book."** Concretely:
+
+- the **carrier / theory Judson is currently assuming** is fair to import — early
+  Chapter 2 works over ℤ, so importing `std/integer*` for the ℤ carrier + its ring
+  and order is fine ("Judson has ℤ");
+- once **past** a chapter, later chapters may import that chapter's `std/` theory
+  (past Chapter 3, later chapters may `import std/group` — "Judson has groups by
+  then");
+- but a theorem Judson **builds in-text** is **proved in the main text**, not
+  aliased from a `std/` library that packaged it — the Division Algorithm, Bézout,
+  Euclid's Lemma, the Fundamental Theorem of Arithmetic are each transcribed as
+  real proofs.
+
+The rule of thumb: **import the objects Judson already has; prove the theorems
+Judson develops.**
+
+**Exercises.** The exercises may use `std/` **liberally** — except an exercise
+whose result the main text proves. That result is **proved in place in the main
+text**, and the exercise slot carries only a prose pointer, *"(forwarded proof,
+see §X.Y)"* — never re-proved, aliased, or `forward`-declared.
+
+**Accelerant discipline.** AATA files are pedagogy, so the proof outline must read
+like Judson's argument. Accelerants (`simplify`, `arithmetic`, `polynomial`, …) are
+used only for the algebraic drudgery the book *elides* — never for a step Judson
+spells out, which is transcribed as explicit kernel steps. (In `std/*.bpa` the rule
+is the opposite: shortest kernel-checked proof, accelerants everywhere.)
+
 ## Attribution and license
 
 The source textbook is vendored as a git submodule at **`vendor/aata`**

@@ -79,7 +79,9 @@ pub fn addTests(
     // lists/finite products, and a func can't take a Nat->Int param, so the indexed
     // family is reified as a sort). everyEntryDividesProduct — each entry below the
     // bound divides the product — is the lemma the infinitude/FTA arguments need.
-    ctx.ok(&.{ "check", "std/integer-sequence.bpa" }, "OK: 383 declarations, 82 theorems proven\n");
+    // Plus the reification-existence axioms (seqSingletonExists/seqConcatExists/
+    // seqRemoveExists) that let FTA witness/splice/cancel factorization sequences.
+    ctx.ok(&.{ "check", "std/integer-sequence.bpa" }, "OK: 386 declarations, 82 theorems proven\n");
 
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
     // + LEFT inverse) + an opt-in `opCommutative`; the right-sided laws and the
