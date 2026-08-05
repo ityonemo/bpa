@@ -367,7 +367,16 @@ derived.
 
 Quantifier binders end with a semicolon; connectives are words; `->` is
 implication (right-associative), `and`, `or`, `not` are the other boolean
-operators, and `=` / `!=` compare terms of the same sort.
+operators, `iff` is the biconditional (lowest precedence), and `=` / `!=`
+compare terms of the same sort.
+
+`P iff Q` is **surface sugar** — it desugars to `(P -> Q) and (Q -> P)` and never
+reaches the kernel. So a biconditional is proved with `iff_intro`, eliminated with
+`iff_elim_forward`/`iff_elim_backward`, and — because `tautology` sees the
+desugared conjunction — `tautology` decides `iff` goals and consumes `iff`
+hypotheses for free. `iff_rewrite` substitutes across it (see Justification rules).
+Because the shape `(X -> Y) and (Y -> X)` is canonically a biconditional, `and_intro`
+is forbidden from producing it (use `iff_intro`) and `iff_intro` requires it.
 
 **Mixed boolean operators require explicit parentheses.** A same-operator
 chain is fine unparenthesized (`a or b or c`, `a -> b -> c`, `not not a`),
@@ -516,8 +525,10 @@ names for citations). Rules taking a term argument write it in parens:
 | `forall_elim(t, ...) STEP` | specialize a universal at one or more terms — `forall_elim(A, B)` peels two binders in one step (the intermediate chain is synthesized) |
 | `exists_intro(t) STEP` | from `P[t]`, conclude `exists x; P[x]` |
 | `exists_elim BLOCK` | export an unpack block's witness-free conclusion |
-| `and_intro L R` | conjunction from both conjuncts |
+| `and_intro L R` | conjunction from both conjuncts. REJECTS a biconditional-shape goal `(X -> Y) and (Y -> X)` — use `iff_intro` |
 | `and_elim_left STEP` / `and_elim_right STEP` | project a conjunction |
+| `iff_intro FWD BWD` | a biconditional `P iff Q` from its two directions (`P -> Q` then `Q -> P`). Requires an `iff`-shaped goal (a plain conjunction is `and_intro`'s job) |
+| `iff_elim_forward STEP` / `iff_elim_backward STEP` | recover a direction of `P iff Q` (`P -> Q` / `Q -> P`) |
 | `or_intro_left STEP` / `or_intro_right STEP` | inject into a disjunction |
 | `or_elim DISJ LBLOCK RBLOCK` | case analysis: both assume blocks conclude the claim |
 | `not_intro BLOCK S1 S2` | the assumption led to the contradiction `S1`/`S2`, so its negation holds |
@@ -526,6 +537,7 @@ names for citations). Rules taking a term argument write it in parens:
 | `reflexivity` | `t = t` |
 | `symmetry STEP` | from a proven `x = y`, conclude `y = x` |
 | `rewrite EQ TARGET` | replace occurrences of the equation's left side with its right side in `TARGET` |
+| `iff_rewrite BICOND TARGET` | the propositional analogue of `rewrite`: from `P iff Q`, replace the sub-proposition `P` by `Q` at any position in `TARGET` (under connectives and quantifiers). A kernel-checked rule, no accelerant taint |
 | `instantiate NAME(args) refs...` | monomorphize a schema; refs discharge its leading antecedents |
 | `simplify refs...` | tactic: join both sides of an equation by rewriting (see Automation) |
 | `simplify_quantified refs...` | tactic: `simplify` under a `forall` prefix, without a hand `fix` (see Automation) |
