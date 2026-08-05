@@ -5,6 +5,75 @@ the kernel establishes trust, and the built-in automation. For naming and
 style conventions see `CONVENTIONS.md`; for the accelerated-tactic registry see
 `ACCELERATION.md`.
 
+## Index (how to extract one rule/tactic/keyword)
+
+This file is greppable by anchor. Every proof rule, accelerant, and declaration
+keyword has a **leaf section** headed `### RULE: <name>`, `### TACTIC: <name>`, or
+`### KEYWORD: <name>`. Each leaf is flat (it contains **no** sub-heading), so you
+can print exactly one topic — from its anchor up to the next heading of any level —
+with awk:
+
+```
+awk '/^#+ /{p=0} /^### RULE: or_elim$/{p=1} p' GUIDE.md
+```
+
+`/^#+ /` matches any markdown heading; `p` turns on at the anchor and off at the
+next heading, printing just that section. Swap the anchor to look up any entry
+below. The overview tables (`### Justification rules (overview table)`,
+`## Query commands`) are *not* leaves — they are at-a-glance indexes.
+
+| Anchor | Topic |
+|---|---|
+| `KEYWORD: sort` | declare a sort / predicated (subset) sorts |
+| `KEYWORD: const` | uninterpreted constant of a sort |
+| `KEYWORD: define` | name a term (transparent expansion) |
+| `KEYWORD: func` | function symbol; `requires` guards |
+| `KEYWORD: pred` | predicate (function into `Prop`) |
+| `KEYWORD: axiom` | assert a formula without proof |
+| `KEYWORD: theorem` | assert a formula with a checked `proof … qed` |
+| `KEYWORD: hole` | aspirational placeholder (the "sorry"); `--draft` |
+| `KEYWORD: schematic` | parameterized `axiom`/`theorem` (schemas) |
+| `KEYWORD: forward` | promise a later theorem (verified TOC) |
+| `KEYWORD: import` | load another file under a namespace |
+| `KEYWORD: alias` | local kind-checked view of an imported entity |
+| `KEYWORD: model` | declare a local structure models an abstract theory |
+| `RULE: axiom` | cite an axiom verbatim |
+| `RULE: theorem` | cite a proven theorem verbatim |
+| `RULE: hypothesis` | restate an enclosing block's assumption/witness |
+| `RULE: predicate` | surface a predicated `fix h: H` binder's guard |
+| `RULE: modus_ponens` | from `P -> Q` and `P`, conclude `Q` |
+| `RULE: implies_intro` | discharge an `assume` block as an implication |
+| `RULE: forall_intro` | discharge a `fix` block as a universal |
+| `RULE: forall_elim` | specialize a universal at one or more terms |
+| `RULE: exists_intro` | from `P[t]`, conclude `exists x; P[x]` |
+| `RULE: exists_elim` | export an `unpack` block's witness-free conclusion |
+| `RULE: and_intro` | conjunction from both conjuncts (rejects iff shape) |
+| `RULE: and_elim_left` / `and_elim_right` | project a conjunction |
+| `RULE: iff_intro` | a biconditional from its two directions |
+| `RULE: iff_elim_forward` / `iff_elim_backward` | recover a direction of an iff |
+| `RULE: or_intro_left` / `or_intro_right` | inject into a disjunction |
+| `RULE: or_elim` | binary case analysis over a disjunction |
+| `RULE: not_intro` | derive a negation from a contradiction |
+| `RULE: absurd` | from a contradiction, conclude anything |
+| `RULE: double_negation` | from `not not P`, conclude `P` |
+| `RULE: reflexivity` | `t = t` |
+| `RULE: symmetry` | from `x = y`, conclude `y = x` |
+| `RULE: rewrite` | replace an equation's LHS by its RHS in a target |
+| `RULE: iff_rewrite` | replace `P` by `Q` given `P iff Q` in a target |
+| `RULE: instantiate` | monomorphize a schema |
+| `RULE: model` | transfer a theory's theorem through a named model |
+| `TACTIC: simplify` | equational rewriting to a common normal form (documents `simplify_quantified` inline) |
+| `TACTIC: assoc_commut` | associative-commutative reordering of a sum |
+| `TACTIC: assoc` | associativity-only reordering (non-commutative) |
+| `TACTIC: polynomial` | nonlinear `add`/`mul` polynomial identities |
+| `TACTIC: ext` | extensionality-reduction (sets/functions) |
+| `TACTIC: tautology` | propositional consequence |
+| `TACTIC: arithmetic` | linear arithmetic over Nat |
+
+(The `_quantified` variant of a tactic — `simplify_quantified`, `assoc_commut_quantified`,
+`assoc_quantified`, `polynomial_quantified`, `ext_quantified` — is documented inside its
+base tactic's leaf; it peels a leading `forall` prefix without a hand `fix`.)
+
 ## Files and checking
 
 A `.bpa` file is a sequence of declarations. `bpa check file.bpa` verifies
@@ -32,7 +101,7 @@ rewriting).
 
 ## Declaration keywords
 
-### `sort`
+### KEYWORD: sort
 
 Declares a sort (a domain of discourse). `Prop`, the sort of propositions,
 is currently the only built-in. Sorts are typically capitalized; the
@@ -42,8 +111,7 @@ following declares "Natural Numbers":
 sort Nat
 ```
 
-#### Predicated sorts (`sort H = G where inH`)
-
+**Predicated sorts (`sort H = G where inH`).**
 A **predicated sort** names `G` restricted to the elements satisfying a unary
 predicate `inH` — the natural way to write a subset carrier (a subgroup, the
 nonnegatives, …). It introduces no new kernel sort: `H` *is* `G`, and every use of
@@ -85,7 +153,7 @@ theorem t: forall h: G where inH; P(h) // inline-refined binder
 The `where` clause is a bare predicate name (applied to the bound variable); for a
 conjunction of conditions, `define` a predicate for it and refine by that name.
 
-### `const`
+### KEYWORD: const
 
 Declares an uninterpreted constant of a sort.
 
@@ -93,7 +161,7 @@ Declares an uninterpreted constant of a sort.
 const ZERO: Nat
 ```
 
-### `define`
+### KEYWORD: define
 
 Names a term.  Expansion is performed transparently at elaboration — the
 kernel only ever sees the underlying term, so definitions add nothing to
@@ -105,7 +173,7 @@ define TWO = succ(succ(ZERO))
 define FOUR = succ(succ(TWO))
 ```
 
-### `func`
+### KEYWORD: func
 
 Declares a function symbol with argument and result sorts. An optional
 `requires` clause guards the function: every application incurs a proof
@@ -117,7 +185,7 @@ func succ(n: Nat): Nat
 func div(a: Nat, b: Nat): Nat requires b != ZERO
 ```
 
-### `pred`
+### KEYWORD: pred
 
 Declares a predicate (a function into `Prop`). Zero-argument predicates
 are atomic propositions and may be written bare.
@@ -127,7 +195,7 @@ pred less_than(a: Nat, b: Nat)
 pred raining
 ```
 
-### `axiom`
+### KEYWORD: axiom
 
 Asserts a formula without proof. Axioms are the file's assumptions;
 `grep 'by axiom'` audits exactly where they are used.
@@ -136,7 +204,7 @@ Asserts a formula without proof. Axioms are the file's assumptions;
 axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
 ```
 
-### `theorem`
+### KEYWORD: theorem
 
 Asserts a formula with a `proof ... qed` block, which the kernel checks.
 
@@ -147,7 +215,7 @@ proof
 qed
 ```
 
-### `hole`
+### KEYWORD: hole
 
 An **aspirational placeholder** — a claim stated up front, accepted mechanically
 like an `axiom`, but tracked as a hole. Use it to **scaffold** (state a lemma,
@@ -167,8 +235,9 @@ hole-bearing result is never mistaken for complete. `--draft` allows holes
 flags: `--fast` never accepts a hole; only `--draft` does. Once you prove a
 hole, turn it into a `theorem`.
 
-### Schematic axioms and theorems
+### KEYWORD: schematic
 
+Schematic axioms and theorems.
 A parenthesized parameter list makes an `axiom` or `theorem` **schematic**:
 a stored form with `comptime` semantics. Each `instantiate` use substitutes
 concrete, written-out arguments and (for theorem schemas) re-checks the proof at
@@ -184,8 +253,7 @@ proof
 qed
 ```
 
-#### Schema well-formedness (strict vs `--fast`)
-
+**Schema well-formedness (strict vs `--fast`).**
 A theorem schema's proof body is verified in **two** places, and the policy
 differs by mode:
 
@@ -230,7 +298,7 @@ care about assistant speed is a design smell, so any such cache would have to
 earn its keep without expanding what must be trusted. For now, caching stays
 in the language, as named theorems.)
 
-### `forward`
+### KEYWORD: forward
 
 Promises that a name will be defined later in this file as a theorem — a
 verified table of contents. A missing or wrongly-kinded definition is an
@@ -240,7 +308,7 @@ error at the `forward` line.
 forward addIsCommutative
 ```
 
-### `import`
+### KEYWORD: import
 
 Loads another file under a namespace. Members are referenced with
 qualified names (`peano.Nat`, `peano.addZeroLeft`). Paths beginning
@@ -256,7 +324,7 @@ they are trusted (proofs not re-checked) and counted separately in the
 summary. Schematic theorems are re-checked at each instantiation (in the
 instantiating file) by default, and trusted only under `--reckless`.
 
-### Aliases
+### KEYWORD: alias
 
 Any declaration keyword followed by `= qualified.name` creates a
 kind-checked **view** of an imported entity — a local name for the same
@@ -269,10 +337,15 @@ axiom addZeroLeft = peano.addZeroLeft
 theorem addIsCommutative = peano.addIsCommutative
 ```
 
-### `model` *(forthcoming — design settled, not yet implemented)*
+### KEYWORD: model
 
 Declares that a local sort **is a model of** an imported abstract theory, so
-that theory's whole proven corpus transfers to the local sort. Where an alias
+that theory's whole proven corpus transfers to the local sort — a working
+feature used throughout `std/`. A `model NAME { source: target … }` block
+discharges the abstract theory's axioms (mapping each primitive and each
+axiom obligation to a local symbol/fact), and in exchange every theorem the
+theory proves becomes citable at your sort via `[by model(NAME) source.thm]`.
+Where an alias
 identifies one entity with another, a `model` identifies a *whole structure* —
 you map each of the theory's primitives (its carrier sort, operations,
 constants) and discharge each of its axioms, and in exchange every theorem the
@@ -507,11 +580,13 @@ Steps may cite labels across the whole enclosing block regardless of textual
 order (resolution is topologically sorted; a citation cycle is an error).
 Nothing inside a closed subproof leaks out except through its discharge rule.
 
-### Justification rules
+### Justification rules (overview table)
 
 `[by <rule> <refs>]`, where refs are step or block labels (and statement
 names for citations). Rules taking a term argument write it in parens:
-`[by forall_elim(succ(b)) some-step]`.
+`[by forall_elim(succ(b)) some-step]`. This table is the at-a-glance index; the
+gotcha-heavy and non-obvious rules get their own greppable `### RULE: <name>`
+leaf below it (see the Index for the full anchor list).
 
 | Rule | Meaning |
 |---|---|
@@ -549,7 +624,255 @@ names for citations). Rules taking a term argument write it in parens:
 | `polynomial_quantified(theory)` | tactic: `polynomial` under a `forall` prefix, without a hand `fix` (see Automation) |
 | `tautology refs...` | tactic: propositional consequence (see Automation) |
 | `arithmetic refs...` | tactic: linear arithmetic over Nat (see Automation) |
-| `model(INSTANCE) source.theorem` | *(forthcoming)* transfer an abstract theory's theorem to a sort that models it, remapped through the named model (see `model` under Declaration keywords) |
+| `model(INSTANCE) source.theorem` | transfer an abstract theory's theorem to a sort that models it, remapped through the named model (see `KEYWORD: model` and `RULE: model`) |
+
+The leaves below cover each rule that has a gotcha or a non-obvious ref count;
+the simple rules get a one-line leaf too, so every rule name is greppable.
+
+### RULE: axiom
+
+`[by axiom NAME]` — cite an axiom (or a `hole`) verbatim; no refs. The goal must be
+the axiom's formula exactly.
+
+### RULE: theorem
+
+`[by theorem NAME]` — cite an already-proven theorem verbatim; no refs. The goal
+must be the theorem's formula exactly (up to α-equivalence).
+
+### RULE: hypothesis
+
+`[by hypothesis BLOCK]` — restate an enclosing `assume` block's assumption, or the
+witness fact of an enclosing `unpack` block. One ref: the block label.
+
+```bpa
+assume less_than(a, b) {
+  @h |
+    less_than(a, b)
+    [by hypothesis <this-block-label>]
+}
+```
+
+### RULE: predicate
+
+`[by predicate FIXBLOCK]` — surface the guard of a predicated `fix h: H` binder:
+the fact `inH(h)` that the refined sort `H = G where inH` provides. One ref: the
+`fix` block label. See `KEYWORD: sort` (predicated sorts).
+
+### RULE: modus_ponens
+
+`[by modus_ponens IMP ANT]` — two refs: a step proving `P -> Q` and a step proving
+`P`; concludes `Q`.
+
+```bpa
+@q |
+  q
+  [by modus_ponens have-imp have-p]
+```
+
+### RULE: implies_intro
+
+`[by implies_intro BLOCK]` — one ref: an `assume P { … }` block whose last step is
+`Q`; concludes `P -> Q`.
+
+### RULE: forall_intro
+
+`[by forall_intro BLOCK]` — one ref: a `fix x: S { … }` block whose last step is
+`P(x)`; concludes `forall x: S; P(x)`. The fix variable must be globally fresh.
+(For a predicated `fix x: H`, the conclusion is the relativized
+`forall x: G; inH(x) -> P(x)`.)
+
+### RULE: forall_elim
+
+`[by forall_elim(t, ...) STEP]` — one step ref (a universal) plus a **parenthesized
+term list**. The **multi-arg form peels several binders in one step**:
+`forall_elim(A, B) STEP` on `forall x; forall y; P(x, y)` yields `P(A, B)` — the
+intermediate `forall y; P(A, y)` chain is synthesized for you. Supply one term per
+binder you want to peel.
+
+```bpa
+@specialized |
+  P(A, B)
+  [by forall_elim(A, B) universal-step]
+```
+
+### RULE: exists_intro
+
+`[by exists_intro(t) STEP]` — one step ref proving `P[t]` plus the witness term `t`
+in parens; concludes `exists x; P[x]`.
+
+### RULE: exists_elim
+
+`[by exists_elim BLOCK]` — one ref: an `unpack u: S from WIT { … }` block whose
+last step is **witness-free** (does not mention `u`); exports that conclusion. The
+eigenvariable `u` may not escape — a conclusion mentioning `u` is a kernel error.
+
+```bpa
+@exported |
+  less_than(a, b)          // no `u` here
+  [by exists_elim use-witness]
+```
+
+### RULE: and_intro
+
+`[by and_intro L R]` — two refs, one per conjunct; concludes `L and R`. **REJECTS a
+biconditional-shaped goal** `(X -> Y) and (Y -> X)` — that shape is canonically an
+`iff`, so use `iff_intro` for it. Conversely, a plain (non-iff) conjunction is
+`and_intro`'s job, not `iff_intro`'s.
+
+### RULE: and_elim_left
+
+`[by and_elim_left STEP]` — one ref proving `L and R`; projects the left conjunct
+`L`. (`and_elim_right` projects `R`.)
+
+### RULE: and_elim_right
+
+`[by and_elim_right STEP]` — one ref proving `L and R`; projects the right conjunct
+`R`.
+
+### RULE: iff_intro
+
+`[by iff_intro FWD BWD]` — two refs: a step proving `P -> Q` and a step proving
+`Q -> P`; concludes `P iff Q`. **Requires an `iff`-shaped goal.** `and_intro`
+rejects that shape, and `iff_intro` rejects a plain conjunction — the two are
+complementary. `iff` is surface sugar for `(P -> Q) and (Q -> P)`.
+
+```bpa
+@bicond |
+  P iff Q
+  [by iff_intro forward-imp backward-imp]
+```
+
+### RULE: iff_elim_forward
+
+`[by iff_elim_forward STEP]` — one ref proving `P iff Q`; recovers the forward
+direction `P -> Q`. (`iff_elim_backward` recovers `Q -> P`.)
+
+### RULE: iff_elim_backward
+
+`[by iff_elim_backward STEP]` — one ref proving `P iff Q`; recovers the backward
+direction `Q -> P`.
+
+### RULE: or_intro_left
+
+`[by or_intro_left STEP]` — one ref proving `P`; concludes `P or Q` for the goal's
+right disjunct `Q`. (`or_intro_right` proves `Q` to conclude `P or Q`.)
+
+### RULE: or_intro_right
+
+`[by or_intro_right STEP]` — one ref proving `Q`; concludes `P or Q`.
+
+### RULE: or_elim
+
+`[by or_elim DISJ LBLOCK RBLOCK]` — **THREE refs, and it is BINARY**: a step proving
+`A or B`, then two `assume` blocks — `assume A { … }` and `assume B { … }` — **each
+of which must conclude the same goal**. That shared conclusion is the result.
+
+```bpa
+@goal-from-cases |
+  R
+  or_elim disj {
+    @left  | assume A { … @out | R | [by …] }
+    @right | assume B { … @out | R | [by …] }
+  }
+```
+
+Footgun: `or_elim` is **not N-ary**. A three-way split `(A or B) or C` needs either a
+hand-nested `or_elim` (elim the outer, then elim `A or B` inside the left arm) or —
+far better — the `case on` sugar, which fans out a left-nested disjunction into N
+arms automatically (see `case ... on` under Subproof keywords).
+
+### RULE: not_intro
+
+`[by not_intro BLOCK S1 S2]` — **THREE refs**: an `assume P { … }` block and two of
+its steps `S1`, `S2` that contradict each other (`S1 = X`, `S2 = not X`). Concludes
+`not P`. The contradiction pair is named explicitly; both steps must live inside the
+block.
+
+```bpa
+@neg |
+  not even(ONE)
+  [by not_intro assumed-block contra-a contra-b]
+```
+
+### RULE: absurd
+
+`[by absurd S1 S2]` — two refs proving `X` and `not X`; concludes **any** goal
+(ex falso). Use it to close an unreachable arm.
+
+### RULE: double_negation
+
+`[by double_negation STEP]` — one ref proving `not not P`; concludes `P`.
+
+### RULE: reflexivity
+
+`[by reflexivity]` — no refs; proves `t = t` (the goal must be a syntactic equality
+of a term with itself).
+
+### RULE: symmetry
+
+`[by symmetry STEP]` — one ref proving `x = y`; concludes `y = x`.
+
+### RULE: rewrite
+
+`[by rewrite EQ TARGET]` — two refs: an equation `a = b` and a target step `P[a]`;
+replaces occurrences of the equation's **left** side `a` with its **right** side `b`
+in the target, concluding `P[b]`. Directional — orient with `symmetry` first if you
+need `b → a`. (The tactic `simplify` rewrites both sides to a common form when a
+single directed `rewrite` is awkward.)
+
+```bpa
+@rewritten |
+  P(b)
+  [by rewrite eq-a-b target-Pa]
+```
+
+### RULE: iff_rewrite
+
+`[by iff_rewrite BICOND TARGET]` — two refs: a biconditional `P iff Q` and a target
+step; the **propositional analogue of `rewrite`**. It replaces the sub-proposition
+`P` by `Q` at any position in the target — **under connectives and quantifiers**,
+which plain `rewrite` (a term-equation rule) cannot reach. A kernel-checked rule
+with **no accelerant taint**.
+
+```bpa
+@rewritten |
+  R(Q)
+  [by iff_rewrite bicond-P-Q target-R-of-P]
+```
+
+### RULE: instantiate
+
+`[by instantiate NAME(args) refs...]` — monomorphize the schema `NAME` at the
+written-out `args` (formula params supplied as `fun … => …` lambdas). Trailing refs
+discharge the instance's **leading antecedents** (its `->` premises), left to right.
+The proof body is re-checked at this instance (see `KEYWORD: schematic`). Reusing an
+expensive instance? Realize it into a named theorem and cite that instead.
+
+```bpa
+@applied |
+  (not q) -> (not p)
+  [by instantiate contrapositive(fun => p, fun => q) have-p-imp-q]
+```
+
+### RULE: model
+
+`[by model(INSTANCE) source.theorem]` — transfer an abstract theory's proven theorem
+to a sort that models it. It takes the source theorem, rewrites it through the named
+model's mapping (relativizing by the guard if the model is guarded), and checks the
+result equals the goal. See `KEYWORD: model` for the mapping block.
+
+```bpa
+@conclusion |
+  forall a, x, y: Rat; add(a, x) = add(a, y) -> x = y
+  [by model(AdditiveGroup) group.cancelLeft]
+```
+
+It is an **accelerant**: in default (strict) mode it is legitimate because the
+model's axiom obligations were checked and the source theorem was already proven, so
+nothing untrusted enters — but under `--fast` the transfer is trusted wholesale and
+marks the theorem accelerated. A model that leaves some source axioms unmapped is
+**rejected** in strict mode when a cited transferred theorem depends on a missing
+obligation (named in the error); `--fast` passes it provisionally.
 
 ## The kernel
 
@@ -601,7 +924,9 @@ A failed tactic never marks anything accelerated: wrong goals produce located er
 with copy-pasteable detail (unjoinable normal forms, propositional
 countermodels, concrete arithmetic counterexamples).
 
-### `simplify` — equational rewriting (always emits kernel steps)
+### TACTIC: simplify
+
+Equational rewriting (always emits kernel steps).
 
 `[by simplify f1 f2 ...]` proves an equation by rewriting both sides to a
 common normal form using the cited facts (universally quantified equations
@@ -620,7 +945,9 @@ instead of hanging.
 runs the same core on the body, and closes with `forall_intro`. Each tactic
 suggests the other if you pick the wrong one for the goal shape.
 
-### `assoc_commut` — associative-commutative reordering
+### TACTIC: assoc_commut
+
+Associative-commutative reordering.
 
 `[by assoc_commut]` proves `s = t` when both are sums over an associative-
 commutative operator with the same multiset of summands, differing only by
@@ -679,7 +1006,9 @@ presumption about a symbol whose laws are never checked is why the result is
 **accelerated** (`accelerated: assoc_commut`). The explicit-triple form always
 certifies (the triple is checkable), so it has no accelerated path.
 
-### `assoc` — associativity-only reordering
+### TACTIC: assoc
+
+Associativity-only reordering.
 
 `[by assoc(assocLemma)]` proves `s = t` when both are equal by **associativity
 alone** of a single operator — the non-commutative sibling of `assoc_commut`.
@@ -708,7 +1037,9 @@ certificate — it structurally right-nests both sides and compares, presuming t
 operator is associative without kernel-checking the rearrangement — and is marked accelerated
 (`accelerated: assoc`). By default it certifies (the rewrite chain is checked).
 
-### `polynomial` — nonlinear identities
+### TACTIC: polynomial
+
+Nonlinear identities.
 
 `[by polynomial(theory)]` proves an `add`/`mul` polynomial identity `s = t`
 when both sides expand to the same polynomial — the nonlinear analogue of
@@ -747,7 +1078,9 @@ laws are never checked is why the result is **accelerated** (`accelerated:
 polynomial`). A false identity is still rejected (the accelerated tactic *decides*); the
 acceleration is for the unproven ring-structure assumption, not for the comparison.
 
-### `ext` — extensionality-reduction
+### TACTIC: ext
+
+Extensionality-reduction.
 
 `[by ext(theory)]` proves an equation `LHS = RHS` between extensional objects
 by the *element-chase*: reduce `LHS = RHS`, through the theory's extensionality
@@ -778,7 +1111,9 @@ named module); **under a `forall` prefix**, use `ext_quantified`. A false
 identity is rejected — the pointwise residue reports a countermodel or the
 values differ. It emits kernel steps (its closers do), so uses are kernel-checked.
 
-### `tautology` — propositional consequence
+### TACTIC: tautology
+
+Propositional consequence.
 
 `[by tautology refs...]` proves any goal that follows propositionally from
 the cited premises, treating non-propositional subformulas as opaque
@@ -786,7 +1121,9 @@ atoms. Valid goals replay as certificates (case splits via an inline
 excluded middle); non-consequences report a countermodel
 (`countermodel: p := true, q := false`). Atom limit: 16.
 
-### `arithmetic` — linear arithmetic over Nat
+### TACTIC: arithmetic
+
+Linear arithmetic over Nat.
 
 `[by arithmetic refs...]` decides goals over `ZERO`, `ONE`, `succ`, `add`,
 `mul`-by-literal, `=`, `!=`, and `less_than`, with full propositional
