@@ -8,10 +8,10 @@
 // element x, unfold `member(x, ·)` on both sides via the operator axioms, and
 // discharge the resulting propositional biconditional with `[by tautology]`.
 //
-// bpa has no `<->` connective, so each membership biconditional is written as
-// the `and` of its two implications. `complement` needs no explicit "universal
-// set" object — it is fixed purely by its double-negation membership rule, and
-// every theorem is proved membershipwise.
+// each membership biconditional is written with the `iff` connective.
+// `complement` needs no explicit "universal set" object — it is fixed purely by
+// its double-negation membership rule, and every theorem is proved
+// membershipwise.
 //
 // `Element` is the SHARED element carrier (std/element.bpa), so sets compose
 // with any theory over the same elements (e.g. relations, std/relation.bpa):
@@ -30,23 +30,19 @@ pred member(x: Element, s: Set)
 
 // x ∈ a∪b  iff  x∈a or x∈b
 axiom unionMember: forall a, b: Set; forall x: Element;
-  (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+  member(x, union(a, b)) iff (member(x, a) or member(x, b))
 
 // x ∈ a∩b  iff  x∈a and x∈b
 axiom intersectionMember: forall a, b: Set; forall x: Element;
-  (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+  member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
 
 // x ∈ a\b  iff  x∈a and x∉b
 axiom differenceMember: forall a, b: Set; forall x: Element;
-  (member(x, difference(a, b)) -> (member(x, a) and (not member(x, b))))
-  and ((member(x, a) and (not member(x, b))) -> member(x, difference(a, b)))
+  member(x, difference(a, b)) iff (member(x, a) and (not member(x, b)))
 
 // x ∈ a'  iff  x∉a
 axiom complementMember: forall a: Set; forall x: Element;
-  (member(x, complement(a)) -> (not member(x, a)))
-  and ((not member(x, a)) -> member(x, complement(a)))
+  member(x, complement(a)) iff (not member(x, a))
 
 // nothing is a member of the empty set
 axiom emptysetMember: forall x: Element; not member(x, emptyset)
@@ -70,19 +66,16 @@ proof
     fix a: Set {
       @union-membership-rule |
         forall p, q: Set; forall x: Element;
-          (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-          and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+          member(x, union(p, q)) iff (member(x, p) or member(x, q))
         [by axiom unionMember]
       @a-union-a-membership |
         forall x: Element;
-          (member(x, union(a, a)) -> (member(x, a) or member(x, a)))
-          and ((member(x, a) or member(x, a)) -> member(x, union(a, a)))
+          member(x, union(a, a)) iff (member(x, a) or member(x, a))
         [by forall_elim(a, a) union-membership-rule]
       @forward-inclusion |
         fix x: Element {
           @a-union-a-membership-at-x |
-            (member(x, union(a, a)) -> (member(x, a) or member(x, a)))
-              and ((member(x, a) or member(x, a)) -> member(x, union(a, a)))
+            member(x, union(a, a)) iff (member(x, a) or member(x, a))
             [by forall_elim(x) a-union-a-membership]
           @given-x-in-a-union-a |
             assume member(x, union(a, a)) {
@@ -103,8 +96,7 @@ proof
       @backward-inclusion |
         fix y: Element {
           @a-union-a-membership-at-y |
-            (member(y, union(a, a)) -> (member(y, a) or member(y, a)))
-              and ((member(y, a) or member(y, a)) -> member(y, union(a, a)))
+            member(y, union(a, a)) iff (member(y, a) or member(y, a))
             [by forall_elim(y) a-union-a-membership]
           @given-y-in-a |
             assume member(y, a) {
@@ -152,19 +144,16 @@ proof
     fix a: Set {
       @intersection-membership-rule |
         forall p, q: Set; forall x: Element;
-          (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-          and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+          member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
         [by axiom intersectionMember]
       @a-intersect-a-membership |
         forall x: Element;
-          (member(x, intersection(a, a)) -> (member(x, a) and member(x, a)))
-          and ((member(x, a) and member(x, a)) -> member(x, intersection(a, a)))
+          member(x, intersection(a, a)) iff (member(x, a) and member(x, a))
         [by forall_elim(a, a) intersection-membership-rule]
       @forward-inclusion |
         fix x: Element {
           @a-intersect-a-membership-at-x |
-            (member(x, intersection(a, a)) -> (member(x, a) and member(x, a)))
-              and ((member(x, a) and member(x, a)) -> member(x, intersection(a, a)))
+            member(x, intersection(a, a)) iff (member(x, a) and member(x, a))
             [by forall_elim(x) a-intersect-a-membership]
           @given-x-in-a-intersect-a |
             assume member(x, intersection(a, a)) {
@@ -185,8 +174,7 @@ proof
       @backward-inclusion |
         fix y: Element {
           @a-intersect-a-membership-at-y |
-            (member(y, intersection(a, a)) -> (member(y, a) and member(y, a)))
-              and ((member(y, a) and member(y, a)) -> member(y, intersection(a, a)))
+            member(y, intersection(a, a)) iff (member(y, a) and member(y, a))
             [by forall_elim(y) a-intersect-a-membership]
           @given-y-in-a |
             assume member(y, a) {
@@ -234,13 +222,11 @@ proof
     fix a: Set {
       @difference-membership-rule |
         forall p, q: Set; forall x: Element;
-          (member(x, difference(p, q)) -> (member(x, p) and (not member(x, q))))
-          and ((member(x, p) and (not member(x, q))) -> member(x, difference(p, q)))
+          member(x, difference(p, q)) iff (member(x, p) and (not member(x, q)))
         [by axiom differenceMember]
       @a-minus-a-membership |
         forall x: Element;
-          (member(x, difference(a, a)) -> (member(x, a) and (not member(x, a))))
-          and ((member(x, a) and (not member(x, a))) -> member(x, difference(a, a)))
+          member(x, difference(a, a)) iff (member(x, a) and (not member(x, a)))
         [by forall_elim(a, a) difference-membership-rule]
       @emptyset-membership-rule |
         forall x: Element; not member(x, emptyset)
@@ -248,8 +234,7 @@ proof
       @forward-inclusion |
         fix x: Element {
           @a-minus-a-membership-at-x |
-            (member(x, difference(a, a)) -> (member(x, a) and (not member(x, a))))
-              and ((member(x, a) and (not member(x, a))) -> member(x, difference(a, a)))
+            member(x, difference(a, a)) iff (member(x, a) and (not member(x, a)))
             [by forall_elim(x) a-minus-a-membership]
           @empty-membership-at-x |
             not member(x, emptyset)
@@ -273,8 +258,7 @@ proof
       @backward-inclusion |
         fix y: Element {
           @a-minus-a-membership-at-y |
-            (member(y, difference(a, a)) -> (member(y, a) and (not member(y, a))))
-              and ((member(y, a) and (not member(y, a))) -> member(y, difference(a, a)))
+            member(y, difference(a, a)) iff (member(y, a) and (not member(y, a)))
             [by forall_elim(y) a-minus-a-membership]
           @empty-membership-at-y |
             not member(y, emptyset)
@@ -325,13 +309,11 @@ proof
     fix a: Set {
       @union-membership-rule |
         forall p, q: Set; forall x: Element;
-          (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-          and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+          member(x, union(p, q)) iff (member(x, p) or member(x, q))
         [by axiom unionMember]
       @a-union-empty-membership |
         forall x: Element;
-          (member(x, union(a, emptyset)) -> (member(x, a) or member(x, emptyset)))
-          and ((member(x, a) or member(x, emptyset)) -> member(x, union(a, emptyset)))
+          member(x, union(a, emptyset)) iff (member(x, a) or member(x, emptyset))
         [by forall_elim(a, emptyset) union-membership-rule]
       @emptyset-membership-rule |
         forall x: Element; not member(x, emptyset)
@@ -339,8 +321,7 @@ proof
       @forward-inclusion |
         fix x: Element {
           @a-union-empty-membership-at-x |
-            (member(x, union(a, emptyset)) -> (member(x, a) or member(x, emptyset)))
-              and ((member(x, a) or member(x, emptyset)) -> member(x, union(a, emptyset)))
+            member(x, union(a, emptyset)) iff (member(x, a) or member(x, emptyset))
             [by forall_elim(x) a-union-empty-membership]
           @empty-membership-at-x |
             not member(x, emptyset)
@@ -364,8 +345,7 @@ proof
       @backward-inclusion |
         fix y: Element {
           @a-union-empty-membership-at-y |
-            (member(y, union(a, emptyset)) -> (member(y, a) or member(y, emptyset)))
-              and ((member(y, a) or member(y, emptyset)) -> member(y, union(a, emptyset)))
+            member(y, union(a, emptyset)) iff (member(y, a) or member(y, emptyset))
             [by forall_elim(y) a-union-empty-membership]
           @empty-membership-at-y |
             not member(y, emptyset)
@@ -416,13 +396,11 @@ proof
     fix a: Set {
       @intersection-membership-rule |
         forall p, q: Set; forall x: Element;
-          (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-          and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+          member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
         [by axiom intersectionMember]
       @a-intersect-empty-membership |
         forall x: Element;
-          (member(x, intersection(a, emptyset)) -> (member(x, a) and member(x, emptyset)))
-          and ((member(x, a) and member(x, emptyset)) -> member(x, intersection(a, emptyset)))
+          member(x, intersection(a, emptyset)) iff (member(x, a) and member(x, emptyset))
         [by forall_elim(a, emptyset) intersection-membership-rule]
       @emptyset-membership-rule |
         forall x: Element; not member(x, emptyset)
@@ -430,8 +408,7 @@ proof
       @forward-inclusion |
         fix x: Element {
           @a-intersect-empty-membership-at-x |
-            (member(x, intersection(a, emptyset)) -> (member(x, a) and member(x, emptyset)))
-              and ((member(x, a) and member(x, emptyset)) -> member(x, intersection(a, emptyset)))
+            member(x, intersection(a, emptyset)) iff (member(x, a) and member(x, emptyset))
             [by forall_elim(x) a-intersect-empty-membership]
           @empty-membership-at-x |
             not member(x, emptyset)
@@ -455,8 +432,7 @@ proof
       @backward-inclusion |
         fix y: Element {
           @a-intersect-empty-membership-at-y |
-            (member(y, intersection(a, emptyset)) -> (member(y, a) and member(y, emptyset)))
-              and ((member(y, a) and member(y, emptyset)) -> member(y, intersection(a, emptyset)))
+            member(y, intersection(a, emptyset)) iff (member(y, a) and member(y, emptyset))
             [by forall_elim(y) a-intersect-empty-membership]
           @empty-membership-at-y |
             not member(y, emptyset)
@@ -511,46 +487,37 @@ proof
             fix c: Set {
               @union-membership-rule |
                 forall p, q: Set; forall x: Element;
-                  (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-                  and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+                  member(x, union(p, q)) iff (member(x, p) or member(x, q))
                 [by axiom unionMember]
               @b-union-c-membership |
                 forall x: Element;
-                  (member(x, union(b, c)) -> (member(x, b) or member(x, c)))
-                  and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
+                  member(x, union(b, c)) iff (member(x, b) or member(x, c))
                 [by forall_elim(b, c) union-membership-rule]
               @a-union-b-union-c-right-membership |
                 forall x: Element;
-                  (member(x, union(a, union(b, c))) -> (member(x, a) or member(x, union(b, c))))
-                  and ((member(x, a) or member(x, union(b, c))) -> member(x, union(a, union(b, c))))
+                  member(x, union(a, union(b, c))) iff (member(x, a) or member(x, union(b, c)))
                 [by forall_elim(a, union(b, c)) union-membership-rule]
               @a-union-b-membership |
                 forall x: Element;
-                  (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                  member(x, union(a, b)) iff (member(x, a) or member(x, b))
                 [by forall_elim(a, b) union-membership-rule]
               @a-union-b-union-c-left-membership |
                 forall x: Element;
-                  (member(x, union(union(a, b), c)) -> (member(x, union(a, b)) or member(x, c)))
-                  and ((member(x, union(a, b)) or member(x, c)) -> member(x, union(union(a, b), c)))
+                  member(x, union(union(a, b), c)) iff (member(x, union(a, b)) or member(x, c))
                 [by forall_elim(union(a, b), c) union-membership-rule]
               @forward-inclusion |
                 fix x: Element {
                   @b-union-c-membership-at-x |
-                    (member(x, union(b, c)) -> (member(x, b) or member(x, c)))
-                      and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
+                    member(x, union(b, c)) iff (member(x, b) or member(x, c))
                     [by forall_elim(x) b-union-c-membership]
                   @a-union-b-union-c-right-membership-at-x |
-                    (member(x, union(a, union(b, c))) -> (member(x, a) or member(x, union(b, c))))
-                      and ((member(x, a) or member(x, union(b, c))) -> member(x, union(a, union(b, c))))
+                    member(x, union(a, union(b, c))) iff (member(x, a) or member(x, union(b, c)))
                     [by forall_elim(x) a-union-b-union-c-right-membership]
                   @a-union-b-membership-at-x |
-                    (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                      and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                    member(x, union(a, b)) iff (member(x, a) or member(x, b))
                     [by forall_elim(x) a-union-b-membership]
                   @a-union-b-union-c-left-membership-at-x |
-                    (member(x, union(union(a, b), c)) -> (member(x, union(a, b)) or member(x, c)))
-                      and ((member(x, union(a, b)) or member(x, c)) -> member(x, union(union(a, b), c)))
+                    member(x, union(union(a, b), c)) iff (member(x, union(a, b)) or member(x, c))
                     [by forall_elim(x) a-union-b-union-c-left-membership]
                   @given-x-in-a-union-b-union-c-right |
                     assume member(x, union(a, union(b, c))) {
@@ -571,20 +538,16 @@ proof
               @backward-inclusion |
                 fix y: Element {
                   @b-union-c-membership-at-y |
-                    (member(y, union(b, c)) -> (member(y, b) or member(y, c)))
-                      and ((member(y, b) or member(y, c)) -> member(y, union(b, c)))
+                    member(y, union(b, c)) iff (member(y, b) or member(y, c))
                     [by forall_elim(y) b-union-c-membership]
                   @a-union-b-union-c-right-membership-at-y |
-                    (member(y, union(a, union(b, c))) -> (member(y, a) or member(y, union(b, c))))
-                      and ((member(y, a) or member(y, union(b, c))) -> member(y, union(a, union(b, c))))
+                    member(y, union(a, union(b, c))) iff (member(y, a) or member(y, union(b, c)))
                     [by forall_elim(y) a-union-b-union-c-right-membership]
                   @a-union-b-membership-at-y |
-                    (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                      and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                    member(y, union(a, b)) iff (member(y, a) or member(y, b))
                     [by forall_elim(y) a-union-b-membership]
                   @a-union-b-union-c-left-membership-at-y |
-                    (member(y, union(union(a, b), c)) -> (member(y, union(a, b)) or member(y, c)))
-                      and ((member(y, union(a, b)) or member(y, c)) -> member(y, union(union(a, b), c)))
+                    member(y, union(union(a, b), c)) iff (member(y, union(a, b)) or member(y, c))
                     [by forall_elim(y) a-union-b-union-c-left-membership]
                   @given-y-in-a-union-b-union-c-left |
                     assume member(y, union(union(a, b), c)) {
@@ -644,46 +607,37 @@ proof
             fix c: Set {
               @intersection-membership-rule |
                 forall p, q: Set; forall x: Element;
-                  (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-                  and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+                  member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
                 [by axiom intersectionMember]
               @b-intersect-c-membership |
                 forall x: Element;
-                  (member(x, intersection(b, c)) -> (member(x, b) and member(x, c)))
-                  and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
+                  member(x, intersection(b, c)) iff (member(x, b) and member(x, c))
                 [by forall_elim(b, c) intersection-membership-rule]
               @a-intersect-b-intersect-c-right-membership |
                 forall x: Element;
-                  (member(x, intersection(a, intersection(b, c))) -> (member(x, a) and member(x, intersection(b, c))))
-                  and ((member(x, a) and member(x, intersection(b, c))) -> member(x, intersection(a, intersection(b, c))))
+                  member(x, intersection(a, intersection(b, c))) iff (member(x, a) and member(x, intersection(b, c)))
                 [by forall_elim(a, intersection(b, c)) intersection-membership-rule]
               @a-intersect-b-membership |
                 forall x: Element;
-                  (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                  member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
                 [by forall_elim(a, b) intersection-membership-rule]
               @a-intersect-b-intersect-c-left-membership |
                 forall x: Element;
-                  (member(x, intersection(intersection(a, b), c)) -> (member(x, intersection(a, b)) and member(x, c)))
-                  and ((member(x, intersection(a, b)) and member(x, c)) -> member(x, intersection(intersection(a, b), c)))
+                  member(x, intersection(intersection(a, b), c)) iff (member(x, intersection(a, b)) and member(x, c))
                 [by forall_elim(intersection(a, b), c) intersection-membership-rule]
               @forward-inclusion |
                 fix x: Element {
                   @b-intersect-c-membership-at-x |
-                    (member(x, intersection(b, c)) -> (member(x, b) and member(x, c)))
-                      and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
+                    member(x, intersection(b, c)) iff (member(x, b) and member(x, c))
                     [by forall_elim(x) b-intersect-c-membership]
                   @a-intersect-b-intersect-c-right-membership-at-x |
-                    (member(x, intersection(a, intersection(b, c))) -> (member(x, a) and member(x, intersection(b, c))))
-                      and ((member(x, a) and member(x, intersection(b, c))) -> member(x, intersection(a, intersection(b, c))))
+                    member(x, intersection(a, intersection(b, c))) iff (member(x, a) and member(x, intersection(b, c)))
                     [by forall_elim(x) a-intersect-b-intersect-c-right-membership]
                   @a-intersect-b-membership-at-x |
-                    (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                      and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                    member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
                     [by forall_elim(x) a-intersect-b-membership]
                   @a-intersect-b-intersect-c-left-membership-at-x |
-                    (member(x, intersection(intersection(a, b), c)) -> (member(x, intersection(a, b)) and member(x, c)))
-                      and ((member(x, intersection(a, b)) and member(x, c)) -> member(x, intersection(intersection(a, b), c)))
+                    member(x, intersection(intersection(a, b), c)) iff (member(x, intersection(a, b)) and member(x, c))
                     [by forall_elim(x) a-intersect-b-intersect-c-left-membership]
                   @given-x-in-a-intersect-b-intersect-c-right |
                     assume member(x, intersection(a, intersection(b, c))) {
@@ -704,20 +658,16 @@ proof
               @backward-inclusion |
                 fix y: Element {
                   @b-intersect-c-membership-at-y |
-                    (member(y, intersection(b, c)) -> (member(y, b) and member(y, c)))
-                      and ((member(y, b) and member(y, c)) -> member(y, intersection(b, c)))
+                    member(y, intersection(b, c)) iff (member(y, b) and member(y, c))
                     [by forall_elim(y) b-intersect-c-membership]
                   @a-intersect-b-intersect-c-right-membership-at-y |
-                    (member(y, intersection(a, intersection(b, c))) -> (member(y, a) and member(y, intersection(b, c))))
-                      and ((member(y, a) and member(y, intersection(b, c))) -> member(y, intersection(a, intersection(b, c))))
+                    member(y, intersection(a, intersection(b, c))) iff (member(y, a) and member(y, intersection(b, c)))
                     [by forall_elim(y) a-intersect-b-intersect-c-right-membership]
                   @a-intersect-b-membership-at-y |
-                    (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                      and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                    member(y, intersection(a, b)) iff (member(y, a) and member(y, b))
                     [by forall_elim(y) a-intersect-b-membership]
                   @a-intersect-b-intersect-c-left-membership-at-y |
-                    (member(y, intersection(intersection(a, b), c)) -> (member(y, intersection(a, b)) and member(y, c)))
-                      and ((member(y, intersection(a, b)) and member(y, c)) -> member(y, intersection(intersection(a, b), c)))
+                    member(y, intersection(intersection(a, b), c)) iff (member(y, intersection(a, b)) and member(y, c))
                     [by forall_elim(y) a-intersect-b-intersect-c-left-membership]
                   @given-y-in-a-intersect-b-intersect-c-left |
                     assume member(y, intersection(intersection(a, b), c)) {
@@ -775,28 +725,23 @@ proof
         fix b: Set {
           @union-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-              and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+              member(x, union(p, q)) iff (member(x, p) or member(x, q))
             [by axiom unionMember]
           @a-union-b-membership |
             forall x: Element;
-              (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-              and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+              member(x, union(a, b)) iff (member(x, a) or member(x, b))
             [by forall_elim(a, b) union-membership-rule]
           @b-union-a-membership |
             forall x: Element;
-              (member(x, union(b, a)) -> (member(x, b) or member(x, a)))
-              and ((member(x, b) or member(x, a)) -> member(x, union(b, a)))
+              member(x, union(b, a)) iff (member(x, b) or member(x, a))
             [by forall_elim(b, a) union-membership-rule]
           @forward-inclusion |
             fix x: Element {
               @a-union-b-membership-at-x |
-                (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                member(x, union(a, b)) iff (member(x, a) or member(x, b))
                 [by forall_elim(x) a-union-b-membership]
               @b-union-a-membership-at-x |
-                (member(x, union(b, a)) -> (member(x, b) or member(x, a)))
-                  and ((member(x, b) or member(x, a)) -> member(x, union(b, a)))
+                member(x, union(b, a)) iff (member(x, b) or member(x, a))
                 [by forall_elim(x) b-union-a-membership]
               @given-x-in-a-union-b |
                 assume member(x, union(a, b)) {
@@ -817,12 +762,10 @@ proof
           @backward-inclusion |
             fix y: Element {
               @a-union-b-membership-at-y |
-                (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                  and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                member(y, union(a, b)) iff (member(y, a) or member(y, b))
                 [by forall_elim(y) a-union-b-membership]
               @b-union-a-membership-at-y |
-                (member(y, union(b, a)) -> (member(y, b) or member(y, a)))
-                  and ((member(y, b) or member(y, a)) -> member(y, union(b, a)))
+                member(y, union(b, a)) iff (member(y, b) or member(y, a))
                 [by forall_elim(y) b-union-a-membership]
               @given-y-in-b-union-a |
                 assume member(y, union(b, a)) {
@@ -876,28 +819,23 @@ proof
         fix b: Set {
           @intersection-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-              and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+              member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
             [by axiom intersectionMember]
           @a-intersect-b-membership |
             forall x: Element;
-              (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-              and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+              member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
             [by forall_elim(a, b) intersection-membership-rule]
           @b-intersect-a-membership |
             forall x: Element;
-              (member(x, intersection(b, a)) -> (member(x, b) and member(x, a)))
-              and ((member(x, b) and member(x, a)) -> member(x, intersection(b, a)))
+              member(x, intersection(b, a)) iff (member(x, b) and member(x, a))
             [by forall_elim(b, a) intersection-membership-rule]
           @forward-inclusion |
             fix x: Element {
               @a-intersect-b-membership-at-x |
-                (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
                 [by forall_elim(x) a-intersect-b-membership]
               @b-intersect-a-membership-at-x |
-                (member(x, intersection(b, a)) -> (member(x, b) and member(x, a)))
-                  and ((member(x, b) and member(x, a)) -> member(x, intersection(b, a)))
+                member(x, intersection(b, a)) iff (member(x, b) and member(x, a))
                 [by forall_elim(x) b-intersect-a-membership]
               @given-x-in-a-intersect-b |
                 assume member(x, intersection(a, b)) {
@@ -918,12 +856,10 @@ proof
           @backward-inclusion |
             fix y: Element {
               @a-intersect-b-membership-at-y |
-                (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                  and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                member(y, intersection(a, b)) iff (member(y, a) and member(y, b))
                 [by forall_elim(y) a-intersect-b-membership]
               @b-intersect-a-membership-at-y |
-                (member(y, intersection(b, a)) -> (member(y, b) and member(y, a)))
-                  and ((member(y, b) and member(y, a)) -> member(y, intersection(b, a)))
+                member(y, intersection(b, a)) iff (member(y, b) and member(y, a))
                 [by forall_elim(y) b-intersect-a-membership]
               @given-y-in-b-intersect-a |
                 assume member(y, intersection(b, a)) {
@@ -979,60 +915,48 @@ proof
             fix c: Set {
               @intersection-membership-rule |
                 forall p, q: Set; forall x: Element;
-                  (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-                  and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+                  member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
                 [by axiom intersectionMember]
               @union-membership-rule |
                 forall p, q: Set; forall x: Element;
-                  (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-                  and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+                  member(x, union(p, q)) iff (member(x, p) or member(x, q))
                 [by axiom unionMember]
               @b-intersect-c-membership |
                 forall x: Element;
-                  (member(x, intersection(b, c)) -> (member(x, b) and member(x, c)))
-                  and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
+                  member(x, intersection(b, c)) iff (member(x, b) and member(x, c))
                 [by forall_elim(b, c) intersection-membership-rule]
               @a-union-b-intersect-c-membership |
                 forall x: Element;
-                  (member(x, union(a, intersection(b, c))) -> (member(x, a) or member(x, intersection(b, c))))
-                  and ((member(x, a) or member(x, intersection(b, c))) -> member(x, union(a, intersection(b, c))))
+                  member(x, union(a, intersection(b, c))) iff (member(x, a) or member(x, intersection(b, c)))
                 [by forall_elim(a, intersection(b, c)) union-membership-rule]
               @a-union-b-membership |
                 forall x: Element;
-                  (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                  member(x, union(a, b)) iff (member(x, a) or member(x, b))
                 [by forall_elim(a, b) union-membership-rule]
               @a-union-c-membership |
                 forall x: Element;
-                  (member(x, union(a, c)) -> (member(x, a) or member(x, c)))
-                  and ((member(x, a) or member(x, c)) -> member(x, union(a, c)))
+                  member(x, union(a, c)) iff (member(x, a) or member(x, c))
                 [by forall_elim(a, c) union-membership-rule]
               @a-union-b-intersect-a-union-c-membership |
                 forall x: Element;
-                  (member(x, intersection(union(a, b), union(a, c))) -> (member(x, union(a, b)) and member(x, union(a, c))))
-                  and ((member(x, union(a, b)) and member(x, union(a, c))) -> member(x, intersection(union(a, b), union(a, c))))
+                  member(x, intersection(union(a, b), union(a, c))) iff (member(x, union(a, b)) and member(x, union(a, c)))
                 [by forall_elim(union(a, b), union(a, c)) intersection-membership-rule]
               @forward-inclusion |
                 fix x: Element {
                   @b-intersect-c-membership-at-x |
-                    (member(x, intersection(b, c)) -> (member(x, b) and member(x, c)))
-                      and ((member(x, b) and member(x, c)) -> member(x, intersection(b, c)))
+                    member(x, intersection(b, c)) iff (member(x, b) and member(x, c))
                     [by forall_elim(x) b-intersect-c-membership]
                   @a-union-b-intersect-c-membership-at-x |
-                    (member(x, union(a, intersection(b, c))) -> (member(x, a) or member(x, intersection(b, c))))
-                      and ((member(x, a) or member(x, intersection(b, c))) -> member(x, union(a, intersection(b, c))))
+                    member(x, union(a, intersection(b, c))) iff (member(x, a) or member(x, intersection(b, c)))
                     [by forall_elim(x) a-union-b-intersect-c-membership]
                   @a-union-b-membership-at-x |
-                    (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                      and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                    member(x, union(a, b)) iff (member(x, a) or member(x, b))
                     [by forall_elim(x) a-union-b-membership]
                   @a-union-c-membership-at-x |
-                    (member(x, union(a, c)) -> (member(x, a) or member(x, c)))
-                      and ((member(x, a) or member(x, c)) -> member(x, union(a, c)))
+                    member(x, union(a, c)) iff (member(x, a) or member(x, c))
                     [by forall_elim(x) a-union-c-membership]
                   @a-union-b-intersect-a-union-c-membership-at-x |
-                    (member(x, intersection(union(a, b), union(a, c))) -> (member(x, union(a, b)) and member(x, union(a, c))))
-                      and ((member(x, union(a, b)) and member(x, union(a, c))) -> member(x, intersection(union(a, b), union(a, c))))
+                    member(x, intersection(union(a, b), union(a, c))) iff (member(x, union(a, b)) and member(x, union(a, c)))
                     [by forall_elim(x) a-union-b-intersect-a-union-c-membership]
                   @given-x-in-a-union-b-intersect-c |
                     assume member(x, union(a, intersection(b, c))) {
@@ -1053,24 +977,19 @@ proof
               @backward-inclusion |
                 fix y: Element {
                   @b-intersect-c-membership-at-y |
-                    (member(y, intersection(b, c)) -> (member(y, b) and member(y, c)))
-                      and ((member(y, b) and member(y, c)) -> member(y, intersection(b, c)))
+                    member(y, intersection(b, c)) iff (member(y, b) and member(y, c))
                     [by forall_elim(y) b-intersect-c-membership]
                   @a-union-b-intersect-c-membership-at-y |
-                    (member(y, union(a, intersection(b, c))) -> (member(y, a) or member(y, intersection(b, c))))
-                      and ((member(y, a) or member(y, intersection(b, c))) -> member(y, union(a, intersection(b, c))))
+                    member(y, union(a, intersection(b, c))) iff (member(y, a) or member(y, intersection(b, c)))
                     [by forall_elim(y) a-union-b-intersect-c-membership]
                   @a-union-b-membership-at-y |
-                    (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                      and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                    member(y, union(a, b)) iff (member(y, a) or member(y, b))
                     [by forall_elim(y) a-union-b-membership]
                   @a-union-c-membership-at-y |
-                    (member(y, union(a, c)) -> (member(y, a) or member(y, c)))
-                      and ((member(y, a) or member(y, c)) -> member(y, union(a, c)))
+                    member(y, union(a, c)) iff (member(y, a) or member(y, c))
                     [by forall_elim(y) a-union-c-membership]
                   @a-union-b-intersect-a-union-c-membership-at-y |
-                    (member(y, intersection(union(a, b), union(a, c))) -> (member(y, union(a, b)) and member(y, union(a, c))))
-                      and ((member(y, union(a, b)) and member(y, union(a, c))) -> member(y, intersection(union(a, b), union(a, c))))
+                    member(y, intersection(union(a, b), union(a, c))) iff (member(y, union(a, b)) and member(y, union(a, c)))
                     [by forall_elim(y) a-union-b-intersect-a-union-c-membership]
                   @given-y-in-a-union-b-intersect-a-union-c |
                     assume member(y, intersection(union(a, b), union(a, c))) {
@@ -1130,60 +1049,48 @@ proof
             fix c: Set {
               @union-membership-rule |
                 forall p, q: Set; forall x: Element;
-                  (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-                  and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+                  member(x, union(p, q)) iff (member(x, p) or member(x, q))
                 [by axiom unionMember]
               @intersection-membership-rule |
                 forall p, q: Set; forall x: Element;
-                  (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-                  and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+                  member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
                 [by axiom intersectionMember]
               @b-union-c-membership |
                 forall x: Element;
-                  (member(x, union(b, c)) -> (member(x, b) or member(x, c)))
-                  and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
+                  member(x, union(b, c)) iff (member(x, b) or member(x, c))
                 [by forall_elim(b, c) union-membership-rule]
               @a-intersect-b-union-c-membership |
                 forall x: Element;
-                  (member(x, intersection(a, union(b, c))) -> (member(x, a) and member(x, union(b, c))))
-                  and ((member(x, a) and member(x, union(b, c))) -> member(x, intersection(a, union(b, c))))
+                  member(x, intersection(a, union(b, c))) iff (member(x, a) and member(x, union(b, c)))
                 [by forall_elim(a, union(b, c)) intersection-membership-rule]
               @a-intersect-b-membership |
                 forall x: Element;
-                  (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                  member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
                 [by forall_elim(a, b) intersection-membership-rule]
               @a-intersect-c-membership |
                 forall x: Element;
-                  (member(x, intersection(a, c)) -> (member(x, a) and member(x, c)))
-                  and ((member(x, a) and member(x, c)) -> member(x, intersection(a, c)))
+                  member(x, intersection(a, c)) iff (member(x, a) and member(x, c))
                 [by forall_elim(a, c) intersection-membership-rule]
               @a-intersect-b-union-a-intersect-c-membership |
                 forall x: Element;
-                  (member(x, union(intersection(a, b), intersection(a, c))) -> (member(x, intersection(a, b)) or member(x, intersection(a, c))))
-                  and ((member(x, intersection(a, b)) or member(x, intersection(a, c))) -> member(x, union(intersection(a, b), intersection(a, c))))
+                  member(x, union(intersection(a, b), intersection(a, c))) iff (member(x, intersection(a, b)) or member(x, intersection(a, c)))
                 [by forall_elim(intersection(a, b), intersection(a, c)) union-membership-rule]
               @forward-inclusion |
                 fix x: Element {
                   @b-union-c-membership-at-x |
-                    (member(x, union(b, c)) -> (member(x, b) or member(x, c)))
-                      and ((member(x, b) or member(x, c)) -> member(x, union(b, c)))
+                    member(x, union(b, c)) iff (member(x, b) or member(x, c))
                     [by forall_elim(x) b-union-c-membership]
                   @a-intersect-b-union-c-membership-at-x |
-                    (member(x, intersection(a, union(b, c))) -> (member(x, a) and member(x, union(b, c))))
-                      and ((member(x, a) and member(x, union(b, c))) -> member(x, intersection(a, union(b, c))))
+                    member(x, intersection(a, union(b, c))) iff (member(x, a) and member(x, union(b, c)))
                     [by forall_elim(x) a-intersect-b-union-c-membership]
                   @a-intersect-b-membership-at-x |
-                    (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                      and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                    member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
                     [by forall_elim(x) a-intersect-b-membership]
                   @a-intersect-c-membership-at-x |
-                    (member(x, intersection(a, c)) -> (member(x, a) and member(x, c)))
-                      and ((member(x, a) and member(x, c)) -> member(x, intersection(a, c)))
+                    member(x, intersection(a, c)) iff (member(x, a) and member(x, c))
                     [by forall_elim(x) a-intersect-c-membership]
                   @a-intersect-b-union-a-intersect-c-membership-at-x |
-                    (member(x, union(intersection(a, b), intersection(a, c))) -> (member(x, intersection(a, b)) or member(x, intersection(a, c))))
-                      and ((member(x, intersection(a, b)) or member(x, intersection(a, c))) -> member(x, union(intersection(a, b), intersection(a, c))))
+                    member(x, union(intersection(a, b), intersection(a, c))) iff (member(x, intersection(a, b)) or member(x, intersection(a, c)))
                     [by forall_elim(x) a-intersect-b-union-a-intersect-c-membership]
                   @given-x-in-a-intersect-b-union-c |
                     assume member(x, intersection(a, union(b, c))) {
@@ -1204,24 +1111,19 @@ proof
               @backward-inclusion |
                 fix y: Element {
                   @b-union-c-membership-at-y |
-                    (member(y, union(b, c)) -> (member(y, b) or member(y, c)))
-                      and ((member(y, b) or member(y, c)) -> member(y, union(b, c)))
+                    member(y, union(b, c)) iff (member(y, b) or member(y, c))
                     [by forall_elim(y) b-union-c-membership]
                   @a-intersect-b-union-c-membership-at-y |
-                    (member(y, intersection(a, union(b, c))) -> (member(y, a) and member(y, union(b, c))))
-                      and ((member(y, a) and member(y, union(b, c))) -> member(y, intersection(a, union(b, c))))
+                    member(y, intersection(a, union(b, c))) iff (member(y, a) and member(y, union(b, c)))
                     [by forall_elim(y) a-intersect-b-union-c-membership]
                   @a-intersect-b-membership-at-y |
-                    (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                      and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                    member(y, intersection(a, b)) iff (member(y, a) and member(y, b))
                     [by forall_elim(y) a-intersect-b-membership]
                   @a-intersect-c-membership-at-y |
-                    (member(y, intersection(a, c)) -> (member(y, a) and member(y, c)))
-                      and ((member(y, a) and member(y, c)) -> member(y, intersection(a, c)))
+                    member(y, intersection(a, c)) iff (member(y, a) and member(y, c))
                     [by forall_elim(y) a-intersect-c-membership]
                   @a-intersect-b-union-a-intersect-c-membership-at-y |
-                    (member(y, union(intersection(a, b), intersection(a, c))) -> (member(y, intersection(a, b)) or member(y, intersection(a, c))))
-                      and ((member(y, intersection(a, b)) or member(y, intersection(a, c))) -> member(y, union(intersection(a, b), intersection(a, c))))
+                    member(y, union(intersection(a, b), intersection(a, c))) iff (member(y, intersection(a, b)) or member(y, intersection(a, c)))
                     [by forall_elim(y) a-intersect-b-union-a-intersect-c-membership]
                   @given-y-in-a-intersect-b-union-a-intersect-c |
                     assume member(y, union(intersection(a, b), intersection(a, c))) {
@@ -1279,65 +1181,52 @@ proof
         fix b: Set {
           @union-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-              and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+              member(x, union(p, q)) iff (member(x, p) or member(x, q))
             [by axiom unionMember]
           @complement-membership-rule |
             forall p: Set; forall x: Element;
-              (member(x, complement(p)) -> (not member(x, p)))
-              and ((not member(x, p)) -> member(x, complement(p)))
+              member(x, complement(p)) iff (not member(x, p))
             [by axiom complementMember]
           @intersection-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-              and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+              member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
             [by axiom intersectionMember]
           @a-union-b-membership |
             forall x: Element;
-              (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-              and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+              member(x, union(a, b)) iff (member(x, a) or member(x, b))
             [by forall_elim(a, b) union-membership-rule]
           @complement-of-a-union-b-membership |
             forall x: Element;
-              (member(x, complement(union(a, b))) -> (not member(x, union(a, b))))
-              and ((not member(x, union(a, b))) -> member(x, complement(union(a, b))))
+              member(x, complement(union(a, b))) iff (not member(x, union(a, b)))
             [by forall_elim(union(a, b)) complement-membership-rule]
           @complement-of-a-membership |
             forall x: Element;
-              (member(x, complement(a)) -> (not member(x, a)))
-              and ((not member(x, a)) -> member(x, complement(a)))
+              member(x, complement(a)) iff (not member(x, a))
             [by forall_elim(a) complement-membership-rule]
           @complement-of-b-membership |
             forall x: Element;
-              (member(x, complement(b)) -> (not member(x, b)))
-              and ((not member(x, b)) -> member(x, complement(b)))
+              member(x, complement(b)) iff (not member(x, b))
             [by forall_elim(b) complement-membership-rule]
           @complement-of-a-intersect-complement-of-b-membership |
             forall x: Element;
-              (member(x, intersection(complement(a), complement(b))) -> (member(x, complement(a)) and member(x, complement(b))))
-              and ((member(x, complement(a)) and member(x, complement(b))) -> member(x, intersection(complement(a), complement(b))))
+              member(x, intersection(complement(a), complement(b))) iff (member(x, complement(a)) and member(x, complement(b)))
             [by forall_elim(complement(a), complement(b)) intersection-membership-rule]
           @forward-inclusion |
             fix x: Element {
               @a-union-b-membership-at-x |
-                (member(x, union(a, b)) -> (member(x, a) or member(x, b)))
-                  and ((member(x, a) or member(x, b)) -> member(x, union(a, b)))
+                member(x, union(a, b)) iff (member(x, a) or member(x, b))
                 [by forall_elim(x) a-union-b-membership]
               @complement-of-a-union-b-membership-at-x |
-                (member(x, complement(union(a, b))) -> (not member(x, union(a, b))))
-                  and ((not member(x, union(a, b))) -> member(x, complement(union(a, b))))
+                member(x, complement(union(a, b))) iff (not member(x, union(a, b)))
                 [by forall_elim(x) complement-of-a-union-b-membership]
               @complement-of-a-membership-at-x |
-                (member(x, complement(a)) -> (not member(x, a)))
-                  and ((not member(x, a)) -> member(x, complement(a)))
+                member(x, complement(a)) iff (not member(x, a))
                 [by forall_elim(x) complement-of-a-membership]
               @complement-of-b-membership-at-x |
-                (member(x, complement(b)) -> (not member(x, b)))
-                  and ((not member(x, b)) -> member(x, complement(b)))
+                member(x, complement(b)) iff (not member(x, b))
                 [by forall_elim(x) complement-of-b-membership]
               @complement-of-a-intersect-complement-of-b-membership-at-x |
-                (member(x, intersection(complement(a), complement(b))) -> (member(x, complement(a)) and member(x, complement(b))))
-                  and ((member(x, complement(a)) and member(x, complement(b))) -> member(x, intersection(complement(a), complement(b))))
+                member(x, intersection(complement(a), complement(b))) iff (member(x, complement(a)) and member(x, complement(b)))
                 [by forall_elim(x) complement-of-a-intersect-complement-of-b-membership]
               @given-x-in-complement-of-a-union-b |
                 assume member(x, complement(union(a, b))) {
@@ -1358,24 +1247,19 @@ proof
           @backward-inclusion |
             fix y: Element {
               @a-union-b-membership-at-y |
-                (member(y, union(a, b)) -> (member(y, a) or member(y, b)))
-                  and ((member(y, a) or member(y, b)) -> member(y, union(a, b)))
+                member(y, union(a, b)) iff (member(y, a) or member(y, b))
                 [by forall_elim(y) a-union-b-membership]
               @complement-of-a-union-b-membership-at-y |
-                (member(y, complement(union(a, b))) -> (not member(y, union(a, b))))
-                  and ((not member(y, union(a, b))) -> member(y, complement(union(a, b))))
+                member(y, complement(union(a, b))) iff (not member(y, union(a, b)))
                 [by forall_elim(y) complement-of-a-union-b-membership]
               @complement-of-a-membership-at-y |
-                (member(y, complement(a)) -> (not member(y, a)))
-                  and ((not member(y, a)) -> member(y, complement(a)))
+                member(y, complement(a)) iff (not member(y, a))
                 [by forall_elim(y) complement-of-a-membership]
               @complement-of-b-membership-at-y |
-                (member(y, complement(b)) -> (not member(y, b)))
-                  and ((not member(y, b)) -> member(y, complement(b)))
+                member(y, complement(b)) iff (not member(y, b))
                 [by forall_elim(y) complement-of-b-membership]
               @complement-of-a-intersect-complement-of-b-membership-at-y |
-                (member(y, intersection(complement(a), complement(b))) -> (member(y, complement(a)) and member(y, complement(b))))
-                  and ((member(y, complement(a)) and member(y, complement(b))) -> member(y, intersection(complement(a), complement(b))))
+                member(y, intersection(complement(a), complement(b))) iff (member(y, complement(a)) and member(y, complement(b)))
                 [by forall_elim(y) complement-of-a-intersect-complement-of-b-membership]
               @given-y-in-complement-of-a-intersect-complement-of-b |
                 assume member(y, intersection(complement(a), complement(b))) {
@@ -1429,65 +1313,52 @@ proof
         fix b: Set {
           @intersection-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-              and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+              member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
             [by axiom intersectionMember]
           @complement-membership-rule |
             forall p: Set; forall x: Element;
-              (member(x, complement(p)) -> (not member(x, p)))
-              and ((not member(x, p)) -> member(x, complement(p)))
+              member(x, complement(p)) iff (not member(x, p))
             [by axiom complementMember]
           @union-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, union(p, q)) -> (member(x, p) or member(x, q)))
-              and ((member(x, p) or member(x, q)) -> member(x, union(p, q)))
+              member(x, union(p, q)) iff (member(x, p) or member(x, q))
             [by axiom unionMember]
           @a-intersect-b-membership |
             forall x: Element;
-              (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-              and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+              member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
             [by forall_elim(a, b) intersection-membership-rule]
           @complement-of-a-intersect-b-membership |
             forall x: Element;
-              (member(x, complement(intersection(a, b))) -> (not member(x, intersection(a, b))))
-              and ((not member(x, intersection(a, b))) -> member(x, complement(intersection(a, b))))
+              member(x, complement(intersection(a, b))) iff (not member(x, intersection(a, b)))
             [by forall_elim(intersection(a, b)) complement-membership-rule]
           @complement-of-a-membership |
             forall x: Element;
-              (member(x, complement(a)) -> (not member(x, a)))
-              and ((not member(x, a)) -> member(x, complement(a)))
+              member(x, complement(a)) iff (not member(x, a))
             [by forall_elim(a) complement-membership-rule]
           @complement-of-b-membership |
             forall x: Element;
-              (member(x, complement(b)) -> (not member(x, b)))
-              and ((not member(x, b)) -> member(x, complement(b)))
+              member(x, complement(b)) iff (not member(x, b))
             [by forall_elim(b) complement-membership-rule]
           @complement-of-a-union-complement-of-b-membership |
             forall x: Element;
-              (member(x, union(complement(a), complement(b))) -> (member(x, complement(a)) or member(x, complement(b))))
-              and ((member(x, complement(a)) or member(x, complement(b))) -> member(x, union(complement(a), complement(b))))
+              member(x, union(complement(a), complement(b))) iff (member(x, complement(a)) or member(x, complement(b)))
             [by forall_elim(complement(a), complement(b)) union-membership-rule]
           @forward-inclusion |
             fix x: Element {
               @a-intersect-b-membership-at-x |
-                (member(x, intersection(a, b)) -> (member(x, a) and member(x, b)))
-                  and ((member(x, a) and member(x, b)) -> member(x, intersection(a, b)))
+                member(x, intersection(a, b)) iff (member(x, a) and member(x, b))
                 [by forall_elim(x) a-intersect-b-membership]
               @complement-of-a-intersect-b-membership-at-x |
-                (member(x, complement(intersection(a, b))) -> (not member(x, intersection(a, b))))
-                  and ((not member(x, intersection(a, b))) -> member(x, complement(intersection(a, b))))
+                member(x, complement(intersection(a, b))) iff (not member(x, intersection(a, b)))
                 [by forall_elim(x) complement-of-a-intersect-b-membership]
               @complement-of-a-membership-at-x |
-                (member(x, complement(a)) -> (not member(x, a)))
-                  and ((not member(x, a)) -> member(x, complement(a)))
+                member(x, complement(a)) iff (not member(x, a))
                 [by forall_elim(x) complement-of-a-membership]
               @complement-of-b-membership-at-x |
-                (member(x, complement(b)) -> (not member(x, b)))
-                  and ((not member(x, b)) -> member(x, complement(b)))
+                member(x, complement(b)) iff (not member(x, b))
                 [by forall_elim(x) complement-of-b-membership]
               @complement-of-a-union-complement-of-b-membership-at-x |
-                (member(x, union(complement(a), complement(b))) -> (member(x, complement(a)) or member(x, complement(b))))
-                  and ((member(x, complement(a)) or member(x, complement(b))) -> member(x, union(complement(a), complement(b))))
+                member(x, union(complement(a), complement(b))) iff (member(x, complement(a)) or member(x, complement(b)))
                 [by forall_elim(x) complement-of-a-union-complement-of-b-membership]
               @given-x-in-complement-of-a-intersect-b |
                 assume member(x, complement(intersection(a, b))) {
@@ -1508,24 +1379,19 @@ proof
           @backward-inclusion |
             fix y: Element {
               @a-intersect-b-membership-at-y |
-                (member(y, intersection(a, b)) -> (member(y, a) and member(y, b)))
-                  and ((member(y, a) and member(y, b)) -> member(y, intersection(a, b)))
+                member(y, intersection(a, b)) iff (member(y, a) and member(y, b))
                 [by forall_elim(y) a-intersect-b-membership]
               @complement-of-a-intersect-b-membership-at-y |
-                (member(y, complement(intersection(a, b))) -> (not member(y, intersection(a, b))))
-                  and ((not member(y, intersection(a, b))) -> member(y, complement(intersection(a, b))))
+                member(y, complement(intersection(a, b))) iff (not member(y, intersection(a, b)))
                 [by forall_elim(y) complement-of-a-intersect-b-membership]
               @complement-of-a-membership-at-y |
-                (member(y, complement(a)) -> (not member(y, a)))
-                  and ((not member(y, a)) -> member(y, complement(a)))
+                member(y, complement(a)) iff (not member(y, a))
                 [by forall_elim(y) complement-of-a-membership]
               @complement-of-b-membership-at-y |
-                (member(y, complement(b)) -> (not member(y, b)))
-                  and ((not member(y, b)) -> member(y, complement(b)))
+                member(y, complement(b)) iff (not member(y, b))
                 [by forall_elim(y) complement-of-b-membership]
               @complement-of-a-union-complement-of-b-membership-at-y |
-                (member(y, union(complement(a), complement(b))) -> (member(y, complement(a)) or member(y, complement(b))))
-                  and ((member(y, complement(a)) or member(y, complement(b))) -> member(y, union(complement(a), complement(b))))
+                member(y, union(complement(a), complement(b))) iff (member(y, complement(a)) or member(y, complement(b)))
                 [by forall_elim(y) complement-of-a-union-complement-of-b-membership]
               @given-y-in-complement-of-a-union-complement-of-b |
                 assume member(y, union(complement(a), complement(b))) {
@@ -1579,28 +1445,23 @@ proof
         fix b: Set {
           @difference-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, difference(p, q)) -> (member(x, p) and (not member(x, q))))
-              and ((member(x, p) and (not member(x, q))) -> member(x, difference(p, q)))
+              member(x, difference(p, q)) iff (member(x, p) and (not member(x, q)))
             [by axiom differenceMember]
           @intersection-membership-rule |
             forall p, q: Set; forall x: Element;
-              (member(x, intersection(p, q)) -> (member(x, p) and member(x, q)))
-              and ((member(x, p) and member(x, q)) -> member(x, intersection(p, q)))
+              member(x, intersection(p, q)) iff (member(x, p) and member(x, q))
             [by axiom intersectionMember]
           @a-minus-b-membership |
             forall x: Element;
-              (member(x, difference(a, b)) -> (member(x, a) and (not member(x, b))))
-              and ((member(x, a) and (not member(x, b))) -> member(x, difference(a, b)))
+              member(x, difference(a, b)) iff (member(x, a) and (not member(x, b)))
             [by forall_elim(a, b) difference-membership-rule]
           @b-minus-a-membership |
             forall x: Element;
-              (member(x, difference(b, a)) -> (member(x, b) and (not member(x, a))))
-              and ((member(x, b) and (not member(x, a))) -> member(x, difference(b, a)))
+              member(x, difference(b, a)) iff (member(x, b) and (not member(x, a)))
             [by forall_elim(b, a) difference-membership-rule]
           @a-minus-b-intersect-b-minus-a-membership |
             forall x: Element;
-              (member(x, intersection(difference(a, b), difference(b, a))) -> (member(x, difference(a, b)) and member(x, difference(b, a))))
-              and ((member(x, difference(a, b)) and member(x, difference(b, a))) -> member(x, intersection(difference(a, b), difference(b, a))))
+              member(x, intersection(difference(a, b), difference(b, a))) iff (member(x, difference(a, b)) and member(x, difference(b, a)))
             [by forall_elim(difference(a, b), difference(b, a)) intersection-membership-rule]
           @emptyset-membership-rule |
             forall x: Element; not member(x, emptyset)
@@ -1608,16 +1469,13 @@ proof
           @forward-inclusion |
             fix x: Element {
               @a-minus-b-membership-at-x |
-                (member(x, difference(a, b)) -> (member(x, a) and (not member(x, b))))
-                  and ((member(x, a) and (not member(x, b))) -> member(x, difference(a, b)))
+                member(x, difference(a, b)) iff (member(x, a) and (not member(x, b)))
                 [by forall_elim(x) a-minus-b-membership]
               @b-minus-a-membership-at-x |
-                (member(x, difference(b, a)) -> (member(x, b) and (not member(x, a))))
-                  and ((member(x, b) and (not member(x, a))) -> member(x, difference(b, a)))
+                member(x, difference(b, a)) iff (member(x, b) and (not member(x, a)))
                 [by forall_elim(x) b-minus-a-membership]
               @a-minus-b-intersect-b-minus-a-membership-at-x |
-                (member(x, intersection(difference(a, b), difference(b, a))) -> (member(x, difference(a, b)) and member(x, difference(b, a))))
-                  and ((member(x, difference(a, b)) and member(x, difference(b, a))) -> member(x, intersection(difference(a, b), difference(b, a))))
+                member(x, intersection(difference(a, b), difference(b, a))) iff (member(x, difference(a, b)) and member(x, difference(b, a)))
                 [by forall_elim(x) a-minus-b-intersect-b-minus-a-membership]
               @empty-membership-at-x |
                 not member(x, emptyset)
@@ -1641,16 +1499,13 @@ proof
           @backward-inclusion |
             fix y: Element {
               @a-minus-b-membership-at-y |
-                (member(y, difference(a, b)) -> (member(y, a) and (not member(y, b))))
-                  and ((member(y, a) and (not member(y, b))) -> member(y, difference(a, b)))
+                member(y, difference(a, b)) iff (member(y, a) and (not member(y, b)))
                 [by forall_elim(y) a-minus-b-membership]
               @b-minus-a-membership-at-y |
-                (member(y, difference(b, a)) -> (member(y, b) and (not member(y, a))))
-                  and ((member(y, b) and (not member(y, a))) -> member(y, difference(b, a)))
+                member(y, difference(b, a)) iff (member(y, b) and (not member(y, a)))
                 [by forall_elim(y) b-minus-a-membership]
               @a-minus-b-intersect-b-minus-a-membership-at-y |
-                (member(y, intersection(difference(a, b), difference(b, a))) -> (member(y, difference(a, b)) and member(y, difference(b, a))))
-                  and ((member(y, difference(a, b)) and member(y, difference(b, a))) -> member(y, intersection(difference(a, b), difference(b, a))))
+                member(y, intersection(difference(a, b), difference(b, a))) iff (member(y, difference(a, b)) and member(y, difference(b, a)))
                 [by forall_elim(y) a-minus-b-intersect-b-minus-a-membership]
               @empty-membership-at-y |
                 not member(y, emptyset)

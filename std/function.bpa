@@ -11,8 +11,8 @@
 // exactly when they agree pointwise (funcExtensionality) — the mapping analogue
 // of set extensionality.
 //
-// bpa has no `<->` connective, so each defining biconditional (injective,
-// surjective, invertible) is written as the `and` of its two implications.
+// Each defining biconditional (injective, surjective, invertible) is written
+// with `iff`.
 
 sort Element
 sort Fn
@@ -38,20 +38,16 @@ axiom funcExtensionality: forall f, g: Fn;
 // inputs give equal outputs — the trivial direction, included so the predicate
 // unfolds to a full biconditional).
 axiom injectiveDef: forall f: Fn;
-  (injective(f) -> (forall a, b: Element; apply(f, a) = apply(f, b) -> a = b))
-  and ((forall a, b: Element; apply(f, a) = apply(f, b) -> a = b) -> injective(f))
+  injective(f) iff (forall a, b: Element; apply(f, a) = apply(f, b) -> a = b)
 
 // surjective (onto): every codomain element y is hit by some x.
 axiom surjectiveDef: forall f: Fn;
-  (surjective(f) -> (forall y: Element; exists x: Element; apply(f, x) = y))
-  and ((forall y: Element; exists x: Element; apply(f, x) = y) -> surjective(f))
+  surjective(f) iff (forall y: Element; exists x: Element; apply(f, x) = y)
 
 // invertible: there is a two-sided inverse g (g∘f = id and f∘g = id).
 axiom invertibleDef: forall f: Fn;
-  (invertible(f) ->
-  (exists g: Fn; compose(g, f) = identityFn and compose(f, g) = identityFn))
-  and ((exists g: Fn; compose(g, f) = identityFn and compose(f, g) = identityFn)
-  -> invertible(f))
+  invertible(f) iff
+  (exists g: Fn; compose(g, f) = identityFn and compose(f, g) = identityFn)
 
 // the inverse map. `inverse` is a TOTAL symbol (every Fn has some `inverse(f)`),
 // but its behavior is only PINNED when f is invertible: then inverse(f) is the

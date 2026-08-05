@@ -48,6 +48,7 @@ pub const Token = struct {
         keyword_not,
         keyword_and,
         keyword_or,
+        keyword_iff,
         keyword_fun,
         // punctuation / operators
         colon,
@@ -106,6 +107,7 @@ pub const Token = struct {
                 .keyword_not => "not",
                 .keyword_and => "and",
                 .keyword_or => "or",
+                .keyword_iff => "iff",
                 .keyword_fun => "fun",
                 .colon => ":",
                 .semicolon => ";",
@@ -160,6 +162,7 @@ const keywords = std.StaticStringMap(Token.Tag).initComptime(.{
     .{ "not", .keyword_not },
     .{ "and", .keyword_and },
     .{ "or", .keyword_or },
+    .{ "iff", .keyword_iff },
     .{ "fun", .keyword_fun },
 });
 

@@ -1174,6 +1174,11 @@ pub const Elaborator = struct {
         and_intro,
         and_elim_left,
         and_elim_right,
+        // iff sugar: an `iff` desugars to `(P -> Q) and (Q -> P)`, so these are
+        // thin renames of the `and` rules that read naturally on a biconditional.
+        iff_intro,
+        iff_elim_forward,
+        iff_elim_backward,
         or_intro_left,
         or_intro_right,
         or_elim,
@@ -1213,6 +1218,9 @@ pub const Elaborator = struct {
         .{ "and_intro", .and_intro },
         .{ "and_elim_left", .and_elim_left },
         .{ "and_elim_right", .and_elim_right },
+        .{ "iff_intro", .iff_intro },
+        .{ "iff_elim_forward", .iff_elim_forward },
+        .{ "iff_elim_backward", .iff_elim_backward },
         .{ "or_intro_left", .or_intro_left },
         .{ "or_intro_right", .or_intro_right },
         .{ "or_elim", .or_elim },
@@ -1237,6 +1245,24 @@ pub const Elaborator = struct {
         .{ "ext_quantified", .ext_quantified },
         .{ "model", .model },
     });
+
+    /// A term has *biconditional shape* iff it is `(X -> Y) and (Y -> X)` for
+    /// matching X, Y — i.e. exactly what `P iff Q` desugars to. Such a shape is
+    /// ALWAYS a biconditional (there is no legitimate non-iff reading of two
+    /// mutually-inverse implications conjoined), so it is the canonical iff form:
+    /// `iff_intro` requires it, and `and_intro` is forbidden from producing it
+    /// (use `iff_intro` — the surface should say what it means).
+    fn isBiconditionalShape(self: *const Elaborator, id: TermId) bool {
+        const n = self.pool.get(id);
+        if (n != .bin or n.bin.op != .and_op) return false;
+        const l = self.pool.get(n.bin.lhs);
+        const r = self.pool.get(n.bin.rhs);
+        if (l != .bin or l.bin.op != .implies) return false;
+        if (r != .bin or r.bin.op != .implies) return false;
+        // left is `X -> Y`, right must be `Y -> X`
+        return self.pool.alphaEq(l.bin.lhs, r.bin.rhs) and
+            self.pool.alphaEq(l.bin.rhs, r.bin.lhs);
+    }
 
     fn lowerJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
         const kind = rule_names.get(self.text(c.rule)) orelse {
@@ -1359,6 +1385,11 @@ pub const Elaborator = struct {
             },
             .and_intro => {
                 try self.wantRefs(c, 2);
+                // `(X -> Y) and (Y -> X)` is canonically a biconditional — route it
+                // through `iff_intro` so the surface names what it means.
+                if (self.isBiconditionalShape(goal)) {
+                    return self.fail(c.rule.start, "this goal is a biconditional '(X -> Y) and (Y -> X)' — use `iff_intro` (which is the same rule, named for what it proves)", .{});
+                }
                 return .{ .and_intro = .{
                     .left = try self.resolveStepRef(low, c.refs[0]),
                     .right = try self.resolveStepRef(low, c.refs[1]),
@@ -1369,6 +1400,31 @@ pub const Elaborator = struct {
                 return .{ .and_elim_left = try self.resolveStepRef(low, c.refs[0]) };
             },
             .and_elim_right => {
+                try self.wantRefs(c, 1);
+                return .{ .and_elim_right = try self.resolveStepRef(low, c.refs[0]) };
+            },
+            // iff sugar: `P iff Q` desugars to `(P -> Q) and (Q -> P)`, so
+            // iff_intro/forward/backward reduce to the `and` rules. iff_intro
+            // takes the forward (`P -> Q`) then backward (`Q -> P`) directions;
+            // forward projects the left conjunct, backward the right.
+            .iff_intro => {
+                try self.wantRefs(c, 2);
+                // iff_intro's goal must be a biconditional shape (which every
+                // `P iff Q` desugars to). Reject a plain conjunction — that is
+                // `and_intro`'s job.
+                if (!self.isBiconditionalShape(goal)) {
+                    return self.fail(c.rule.start, "iff_intro's goal must be a biconditional (from `P iff Q`); this goal is not of the form '(X -> Y) and (Y -> X)' — did you mean `and_intro`?", .{});
+                }
+                return .{ .and_intro = .{
+                    .left = try self.resolveStepRef(low, c.refs[0]),
+                    .right = try self.resolveStepRef(low, c.refs[1]),
+                } };
+            },
+            .iff_elim_forward => {
+                try self.wantRefs(c, 1);
+                return .{ .and_elim_left = try self.resolveStepRef(low, c.refs[0]) };
+            },
+            .iff_elim_backward => {
                 try self.wantRefs(c, 1);
                 return .{ .and_elim_right = try self.resolveStepRef(low, c.refs[0]) };
             },
@@ -3255,6 +3311,19 @@ pub const Elaborator = struct {
                         else => unreachable,
                     };
                     const id = try self.pool.add(.{ .bin = .{ .op = op, .lhs = lhs.id, .rhs = rhs.id } });
+                    return .{ .id = id, .sort = .prop };
+                },
+                .iff => {
+                    // SURFACE SUGAR: `P iff Q` desugars to `(P -> Q) and (Q -> P)`.
+                    // The kernel never sees an iff — it sees the conjunction of
+                    // implications (so `tautology` and the like handle it for free,
+                    // and `iff_rewrite` reads this exact shape). TCC context is
+                    // conservative (like disjunction): no antecedent threading.
+                    const lhs = try self.requireProp(try self.elaborateExpr(b.lhs), b.lhs);
+                    const rhs = try self.requireProp(try self.elaborateExpr(b.rhs), b.rhs);
+                    const fwd = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = lhs.id, .rhs = rhs.id } });
+                    const bwd = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = rhs.id, .rhs = lhs.id } });
+                    const id = try self.pool.add(.{ .bin = .{ .op = .and_op, .lhs = fwd, .rhs = bwd } });
                     return .{ .id = id, .sort = .prop };
                 },
                 .equal, .not_equal => {

@@ -32,17 +32,13 @@ func complementCollection(a: Collection): Collection
 // These are exactly what set's operator axioms remap to under the model below, so
 // the model discharges them and the set corpus transfers.
 axiom unionCollectionContains: forall a, b: Collection; forall s: Set;
-  (contains(s, unionCollection(a, b)) -> (contains(s, a) or contains(s, b)))
-  and ((contains(s, a) or contains(s, b)) -> contains(s, unionCollection(a, b)))
+  contains(s, unionCollection(a, b)) iff (contains(s, a) or contains(s, b))
 axiom intersectionCollectionContains: forall a, b: Collection; forall s: Set;
-  (contains(s, intersectionCollection(a, b)) -> (contains(s, a) and contains(s, b)))
-  and ((contains(s, a) and contains(s, b)) -> contains(s, intersectionCollection(a, b)))
+  contains(s, intersectionCollection(a, b)) iff (contains(s, a) and contains(s, b))
 axiom differenceCollectionContains: forall a, b: Collection; forall s: Set;
-  (contains(s, differenceCollection(a, b)) -> (contains(s, a) and (not contains(s, b))))
-  and ((contains(s, a) and (not contains(s, b))) -> contains(s, differenceCollection(a, b)))
+  contains(s, differenceCollection(a, b)) iff (contains(s, a) and (not contains(s, b)))
 axiom complementCollectionContains: forall a: Collection; forall s: Set;
-  (contains(s, complementCollection(a)) -> (not contains(s, a)))
-  and ((not contains(s, a)) -> contains(s, complementCollection(a)))
+  contains(s, complementCollection(a)) iff (not contains(s, a))
 axiom emptyCollectionContains: forall s: Set; not contains(s, emptyCollection)
 axiom collectionExtensionality: forall a, b: Collection;
   (forall s: Set; contains(s, a) -> contains(s, b)) ->
@@ -99,13 +95,11 @@ qed
 // member set of c. bigIntersection(c) — x ∈ ⋂c iff x is in EVERY member of c.
 func bigUnion(c: Collection): Set
 axiom bigUnionMember: forall c: Collection; forall x: Element;
-  (member(x, bigUnion(c)) -> (exists s: Set; contains(s, c) and member(x, s)))
-  and ((exists s: Set; contains(s, c) and member(x, s)) -> member(x, bigUnion(c)))
+  member(x, bigUnion(c)) iff (exists s: Set; contains(s, c) and member(x, s))
 
 func bigIntersection(c: Collection): Set
 axiom bigIntersectionMember: forall c: Collection; forall x: Element;
-  (member(x, bigIntersection(c)) -> (forall s: Set; contains(s, c) -> member(x, s)))
-  and ((forall s: Set; contains(s, c) -> member(x, s)) -> member(x, bigIntersection(c)))
+  member(x, bigIntersection(c)) iff (forall s: Set; contains(s, c) -> member(x, s))
 
 // the universe: the set every element belongs to (the carrier of the whole space).
 const universe: Set
@@ -115,18 +109,16 @@ axiom universeMember: forall x: Element; member(x, universe)
 // `covers(c)` — the collection's sets cover the universe: ⋃c = universe.
 pred covers(c: Collection)
 axiom coversDef: forall c: Collection;
-  (covers(c) -> bigUnion(c) = universe) and (bigUnion(c) = universe -> covers(c))
+  covers(c) iff bigUnion(c) = universe
 
 // `pairwiseDisjoint(c)` — distinct member sets share no element (their pairwise
 // intersection is empty).
 pred pairwiseDisjoint(c: Collection)
 axiom pairwiseDisjointDef: forall c: Collection;
-  (pairwiseDisjoint(c) -> (forall s, t: Set; contains(s, c) -> contains(t, c) -> s != t -> set.intersection(s, t) = set.emptyset))
-  and ((forall s, t: Set; contains(s, c) -> contains(t, c) -> s != t -> set.intersection(s, t) = set.emptyset) -> pairwiseDisjoint(c))
+  pairwiseDisjoint(c) iff (forall s, t: Set; contains(s, c) -> contains(t, c) -> s != t -> set.intersection(s, t) = set.emptyset)
 
 // `isPartition(c)` — a partition: covers the universe, pairwise-disjoint, and no
 // member is empty.
 pred isPartition(c: Collection)
 axiom isPartitionDef: forall c: Collection;
-  (isPartition(c) -> (covers(c) and pairwiseDisjoint(c) and (forall s: Set; contains(s, c) -> s != set.emptyset)))
-  and ((covers(c) and pairwiseDisjoint(c) and (forall s: Set; contains(s, c) -> s != set.emptyset)) -> isPartition(c))
+  isPartition(c) iff (covers(c) and pairwiseDisjoint(c) and (forall s: Set; contains(s, c) -> s != set.emptyset))

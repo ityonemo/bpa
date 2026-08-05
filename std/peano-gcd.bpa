@@ -172,20 +172,20 @@ proof
                         divides(gcd(a, b), mod(a, b))
                         [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-mod]
                       @divisor-crosses-mod |
-                        forall bb, d, aa: Nat; bb != ZERO -> divides(d, bb) -> ((divides(d, aa) -> divides(d, mod(aa, bb))) and (divides(d, mod(aa, bb)) -> divides(d, aa)))
+                        forall bb, d, aa: Nat; bb != ZERO -> divides(d, bb) -> (divides(d, aa) iff divides(d, mod(aa, bb)))
                         [by theorem dividesModStep]
                       @common-divisor-crosses-mod-at-gcd |
-                        b != ZERO -> divides(gcd(a, b), b) -> ((divides(gcd(a, b), a) -> divides(gcd(a, b), mod(a, b))) and (divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a)))
+                        b != ZERO -> divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
                         [by forall_elim(b, gcd(a, b), a) divisor-crosses-mod]
                       @mod-crossing-holds-if-divides-b |
-                        divides(gcd(a, b), b) -> ((divides(gcd(a, b), a) -> divides(gcd(a, b), mod(a, b))) and (divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a)))
+                        divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
                         [by modus_ponens common-divisor-crosses-mod-at-gcd b-is-nonzero]
                       @mod-crossing-holds |
-                        (divides(gcd(a, b), a) -> divides(gcd(a, b), mod(a, b))) and (divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a))
+                        divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b))
                         [by modus_ponens mod-crossing-holds-if-divides-b gcd-divides-b]
                       @divides-mod-implies-divides-a |
                         divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a)
-                        [by and_elim_right mod-crossing-holds]
+                        [by iff_elim_backward mod-crossing-holds]
                       @gcd-divides-a |
                         divides(gcd(a, b), a)
                         [by modus_ponens divides-mod-implies-divides-a gcd-divides-mod]
@@ -319,20 +319,20 @@ proof
                                     gcd(a, b) = gcd(b, mod(a, b))
                                     [by modus_ponens gcd-step-if-nonzero b-is-nonzero]
                                   @divisor-crosses-mod |
-                                    forall bb, dd, aa: Nat; bb != ZERO -> divides(dd, bb) -> ((divides(dd, aa) -> divides(dd, mod(aa, bb))) and (divides(dd, mod(aa, bb)) -> divides(dd, aa)))
+                                    forall bb, dd, aa: Nat; bb != ZERO -> divides(dd, bb) -> (divides(dd, aa) iff divides(dd, mod(aa, bb)))
                                     [by theorem dividesModStep]
                                   @divisor-crosses-mod-at-d |
-                                    b != ZERO -> divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+                                    b != ZERO -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
                                     [by forall_elim(b, d, a) divisor-crosses-mod]
                                   @mod-crossing-holds-if-divides-b |
-                                    divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+                                    divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
                                     [by modus_ponens divisor-crosses-mod-at-d b-is-nonzero]
                                   @mod-crossing-holds |
-                                    (divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a))
+                                    divides(d, a) iff divides(d, mod(a, b))
                                     [by modus_ponens mod-crossing-holds-if-divides-b d-divides-b]
                                   @divides-a-implies-divides-mod |
                                     divides(d, a) -> divides(d, mod(a, b))
-                                    [by and_elim_left mod-crossing-holds]
+                                    [by iff_elim_forward mod-crossing-holds]
                                   @d-divides-mod |
                                     divides(d, mod(a, b))
                                     [by modus_ponens divides-a-implies-divides-mod d-divides-a]

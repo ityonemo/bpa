@@ -23,7 +23,10 @@ pub const Expr = union(enum) {
     lambda: Lambda,
 
     pub const Call = struct { callee: Token, args: []const *const Expr };
-    pub const BinOp = enum { implies, and_op, or_op, equal, not_equal };
+    // `iff` is SURFACE-ONLY sugar: the parser records it, elaboration desugars
+    // `P iff Q` to `(P -> Q) and (Q -> P)`. It never reaches the kernel term
+    // language (term.BinOp stays and/or/implies).
+    pub const BinOp = enum { implies, and_op, or_op, iff, equal, not_equal };
     pub const Binary = struct {
         op: BinOp,
         tok: Token,

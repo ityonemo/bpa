@@ -1,0 +1,15 @@
+// GUARD: `iff_intro` requires a biconditional-shape goal. Applying it to a
+// plain conjunction `A and B` (not two mutual implications) is a mistake — that
+// is `and_intro`'s job.
+
+pred A
+pred B
+axiom haveA: A
+axiom haveB: B
+
+theorem plainConjunction: A and B
+proof
+  @the-a | A [by axiom haveA]
+  @the-b | B [by axiom haveB]
+  @conclusion | A and B [by iff_intro the-a the-b]
+qed

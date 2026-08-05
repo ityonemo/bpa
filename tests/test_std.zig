@@ -138,12 +138,14 @@ pub fn addTests(
     ctx.ok(&.{ "check", "std/collection.bpa" }, "OK: 68 declarations, 22 theorems proven\n");
 
     // the function theory (std/function.bpa): axioms only, no theorems — a
-    // direct check materializes nothing and exits nonzero with a warning.
-    ctx.okCode(&.{ "check", "std/function.bpa" },
+    // declarations-only DEPENDENCY. A direct check has nothing to prove, which is
+    // the correct outcome: an informational note, exit 0 (NOT a warning — the
+    // warning is reserved for a file that DECLARES theorems but proves none).
+    ctx.ok(&.{ "check", "std/function.bpa" },
         \\OK: 18 declarations, 0 theorems proven
-        \\  — WARNING: 0 theorems proven — nothing was checked (a schema/axiom/declarations-only file proves nothing on its own).
+        \\  — note: no theorems to check (a declarations-only file: axioms/defs/schemas — a dependency, not a proof file).
         \\
-    , 1);
+    );
 
     // invertible functions form a GROUP (std/function-invertible.bpa): the bijections
     // of a set under composition. A GUARDED model of std/group.bpa (guard = invertible)

@@ -79,6 +79,12 @@ pub const ProjectResult = struct {
     sink: *diagnostics.Sink,
     declarations: usize,
     theorems_proven: usize,
+    /// number of `theorem` declarations in the TARGET (root) file — i.e. things
+    /// this file set out to prove. Distinguishes a legitimately declarations-only
+    /// dependency (0 theorem decls → nothing to check, fine) from a proof file
+    /// that declared theorems but proved none (a real footgun). See the
+    /// `theorems_proven == 0` branch in main.zig.
+    target_theorem_decls: usize,
     theorems_trusted: usize,
     /// count of proven theorems that leaned on an accelerated tactic (the rest
     /// are just proven — no bucket). Disclosed in the summary.
@@ -262,16 +268,21 @@ pub fn checkProject(
     const sink = loaded.sink;
     const interner = loaded.interner;
     const environment = loaded.environment;
+    const root_file = loaded.root_file;
     const loader = struct { files: []const diagnostics.FileSrc, declarations: usize }{ .files = loaded.files, .declarations = loaded.declarations };
 
     var proven: usize = 0;
     var trusted: usize = 0;
     var accelerated: usize = 0;
+    var target_theorem_decls: usize = 0;
     var accelerated_names: std.ArrayList([]const u8) = .empty;
     for (environment.statements.items) |stmt| {
         if (stmt != .theorem) continue;
         // synthetic `model`-materialized theorems are machinery, not authored.
         if (stmt.theorem.synthetic) continue;
+        // count authored theorem DECLARATIONS in the target file (proven or not)
+        // — the signal for "this file had something to prove".
+        if (stmt.theorem.file == root_file) target_theorem_decls += 1;
         // a trusted import IS proven (it was proven in its own file; --faster/
         // --reckless just skipped re-checking it here) — so it counts toward
         // `proven`, with `trusted` as the disclosed subset.
@@ -327,6 +338,7 @@ pub fn checkProject(
         .sink = sink,
         .declarations = loader.declarations,
         .theorems_proven = proven,
+        .target_theorem_decls = target_theorem_decls,
         .theorems_trusted = trusted,
         .theorems_accelerated = accelerated,
         .accelerated_names = accelerated_names.items,

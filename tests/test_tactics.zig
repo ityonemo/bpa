@@ -318,6 +318,24 @@ pub fn addTests(
     // the atom cap is a hard, honest limit
     ctx.fail(&.{ "check", "tests/cases/tautology_cap.bpa" }, "tests/cases/tautology_cap.bpa:25:9: error: tautology: 17 distinct atoms exceeds the limit of 16\n");
 
+    // `iff` surface sugar: `P iff Q` desugars to `(P -> Q) and (Q -> P)` (never
+    // reaches the kernel). iff_intro/iff_elim_forward/iff_elim_backward are thin
+    // renames of the `and` rules; crucially `tautology` DECIDES iff goals and
+    // CONSUMES iff hypotheses for free (it sees the desugared conjunction) — the
+    // property the set/collection membership-axiom corpus relies on.
+    ctx.ok(&.{ "check", "tests/cases/iff.bpa" }, "OK: 9 declarations, 6 theorems proven\n");
+
+    // SOUNDNESS negative: an iff must not license an unrelated conclusion —
+    // tautology rejects `A iff B, A ⊢ C` with a countermodel that respects the iff.
+    ctx.fail(&.{ "check", "tests/cases/iff_bad.bpa" }, "tests/cases/iff_bad.bpa:19:22: error: tautology: not a propositional consequence; countermodel: A := true, B := true, C := false\n");
+
+    // GUARD: the biconditional shape `(X -> Y) and (Y -> X)` is canonically an
+    // iff — `and_intro` is forbidden from producing it (must use `iff_intro`)…
+    ctx.fail(&.{ "check", "tests/cases/iff_and_intro_bad.bpa" }, "tests/cases/iff_and_intro_bad.bpa:15:43: error: this goal is a biconditional '(X -> Y) and (Y -> X)' — use `iff_intro` (which is the same rule, named for what it proves)\n");
+
+    // …and conversely `iff_intro` requires that shape — a plain conjunction is rejected.
+    ctx.fail(&.{ "check", "tests/cases/iff_intro_bad.bpa" }, "tests/cases/iff_intro_bad.bpa:14:29: error: iff_intro's goal must be a biconditional (from `P iff Q`); this goal is not of the form '(X -> Y) and (Y -> X)' — did you mean `and_intro`?\n");
+
     // Milestone C: arithmetic accelerated tactic — Presburger quantifier elimination
     ctx.ok(&.{ "check", "--fast", "tests/cases/arithmetic.bpa" },
         \\OK: 9 declarations, 4 theorems proven (4 accelerated: arithmetic)

@@ -498,7 +498,7 @@ pub const Parser = struct {
                 const body = try self.parseExpr();
                 return self.newExpr(.{ .lambda = .{ .tok = tok, .binders = binders, .body = body } });
             },
-            else => return self.parseImplies(),
+            else => return self.parseIff(),
         }
     }
 
@@ -543,7 +543,7 @@ pub const Parser = struct {
     fn requireExplicit(self: *Parser, operand: *const ast.Expr, outer: ast.Expr.BinOp) ParseError!void {
         const inner: ast.Expr.BinOp = switch (operand.*) {
             .binary => |b| switch (b.op) {
-                .implies, .and_op, .or_op => if (b.paren) return else b.op,
+                .implies, .and_op, .or_op, .iff => if (b.paren) return else b.op,
                 .equal, .not_equal => return, // comparisons aren't boolean ops
             },
             .not => |n| if (n.paren) return else {
@@ -556,6 +556,23 @@ pub const Parser = struct {
         const b = operand.binary;
         self.sink.add(b.tok.start, "parenthesize: '{s}' and '{s}' are different boolean operators and their nesting must be explicit", .{ @tagName(inner), @tagName(outer) }) catch return error.OutOfMemory;
         return error.Recover;
+    }
+
+    /// `iff` — the lowest-precedence boolean operator (below `->`). SURFACE
+    /// sugar: elaboration desugars `P iff Q` to `(P -> Q) and (Q -> P)`. Like
+    /// the other boolean ops, a *different* boolean operator as an operand must
+    /// be parenthesized (so `A -> B iff C` errors, `(A -> B) iff C` is fine).
+    fn parseIff(self: *Parser) ParseError!*const ast.Expr {
+        var lhs = try self.parseImplies();
+        if (self.tok.tag != .keyword_iff) return lhs; // no iff at this level: pass through
+        try self.requireExplicit(lhs, .iff);
+        while (self.tok.tag == .keyword_iff) {
+            const tok = self.advance();
+            const rhs = try self.parseImplies();
+            try self.requireExplicit(rhs, .iff);
+            lhs = try self.newExpr(.{ .binary = .{ .op = .iff, .tok = tok, .lhs = lhs, .rhs = rhs } });
+        }
+        return lhs;
     }
 
     fn parseImplies(self: *Parser) ParseError!*const ast.Expr {

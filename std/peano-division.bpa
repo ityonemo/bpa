@@ -454,7 +454,7 @@ qed
 // [dividesSub on r = a - mul(b,q)].  Backward: d|mul(b,q) and d|r -> d|a
 // [dividesAdd on a = mul(b,q) + r].
 theorem dividesModStep: forall b, d, a: Nat; b != ZERO -> divides(d, b) ->
-  ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+  (divides(d, a) iff divides(d, mod(a, b)))
 proof
   @generalize-b |
     fix b: Nat {
@@ -568,27 +568,27 @@ proof
                         [by implies_intro when-d-divides-remainder]
 
                       @divisibility-transfers-both-ways |
-                        (divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a))
-                        [by and_intro dividing-a-implies-dividing-remainder dividing-remainder-implies-dividing-a]
+                        divides(d, a) iff divides(d, mod(a, b))
+                        [by iff_intro dividing-a-implies-dividing-remainder dividing-remainder-implies-dividing-a]
                     }
                   @dividing-b-implies-transfer |
-                    divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+                    divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
                     [by implies_intro given-d-divides-b]
                 }
               @nonzero-implies-transfer |
-                b != ZERO -> divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+                b != ZERO -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
                 [by implies_intro given-b-nonzero]
             }
           @discharge-a |
-            forall a: Nat; b != ZERO -> divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+            forall a: Nat; b != ZERO -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
             [by forall_intro generalize-a]
         }
       @discharge-d |
-        forall d, a: Nat; b != ZERO -> divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+        forall d, a: Nat; b != ZERO -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
         [by forall_intro generalize-d]
     }
   @conclusion |
-    forall b, d, a: Nat; b != ZERO -> divides(d, b) -> ((divides(d, a) -> divides(d, mod(a, b))) and (divides(d, mod(a, b)) -> divides(d, a)))
+    forall b, d, a: Nat; b != ZERO -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
     [by forall_intro generalize-b]
 qed
 

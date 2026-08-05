@@ -55,29 +55,30 @@ pub fn addTests(
     ctx.fail(&.{ "check", "nosuchfile.bpa" }, "error: cannot open 'nosuchfile.bpa': file not found\n");
 
     // Existing, valid file -> parses and checks with no diagnostics. It is
-    // comments-only, so it materializes 0 theorems and exits nonzero with
-    // the "nothing was checked" warning (valid, but proves nothing).
+    // comments-only (no theorem declarations), so it has nothing to prove — an
+    // informational note, exit 0 (a declarations-only file is a legitimate
+    // dependency, not a failure).
     const ok = b.addRunArtifact(exe);
     ok.has_side_effects = true;
     ok.addArg("check");
     ok.addFileArg(b.path("tests/cases/smoke.bpa"));
     ok.expectStdErrEqual("");
-    ok.expectExitCode(1);
+    ok.expectExitCode(0);
     test_step.dependOn(&ok.step);
 
     // Syntax error -> exact diagnostic with line:col on stderr, exit 1.
     // cwd pinned to build root so the relative path in the diagnostic is stable.
     ctx.fail(&.{ "check", "tests/cases/syntax_err.bpa" }, "tests/cases/syntax_err.bpa:4:11: error: expected ':', got 'forall'\n");
 
-    // M2: full declaration surface elaborates cleanly. A decls-only file
-    // materializes 0 theorems, so it exits nonzero with the "nothing was
-    // checked" warning (clean elaboration, but nothing to prove).
+    // M2: full declaration surface elaborates cleanly. A decls-only file has no
+    // theorem declarations, so it has nothing to prove — an informational note,
+    // exit 0 (a declarations-only file is a legitimate dependency).
     const decls = b.addRunArtifact(exe);
     decls.has_side_effects = true;
     decls.setCwd(b.path("."));
     decls.addArgs(&.{ "check", "tests/cases/pa_decls.bpa" });
     decls.expectStdErrEqual("");
-    decls.expectExitCode(1);
+    decls.expectExitCode(0);
     test_step.dependOn(&decls.step);
 
     // M2: sort errors are caught at elaboration with a precise location.

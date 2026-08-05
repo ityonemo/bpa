@@ -213,16 +213,14 @@ proof
     [by exists_intro(identityFn) two-sided]
   @invertible-def |
     forall a: Fn;
-      (invertible(a) -> (exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn))
-      and ((exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn) -> invertible(a))
+      invertible(a) iff (exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn)
     [by axiom invertibleDef]
   @invertible-def-at-id |
-    (invertible(identityFn) -> (exists h: Fn; compose(h, identityFn) = identityFn and compose(identityFn, h) = identityFn))
-      and ((exists h: Fn; compose(h, identityFn) = identityFn and compose(identityFn, h) = identityFn) -> invertible(identityFn))
+    invertible(identityFn) iff (exists h: Fn; compose(h, identityFn) = identityFn and compose(identityFn, h) = identityFn)
     [by forall_elim(identityFn) invertible-def]
   @backward |
     (exists h: Fn; compose(h, identityFn) = identityFn and compose(identityFn, h) = identityFn) -> invertible(identityFn)
-    [by and_elim_right invertible-def-at-id]
+    [by iff_elim_backward invertible-def-at-id]
   @conclusion |
     invertible(identityFn)
     [by modus_ponens backward inverse-exists]
@@ -267,16 +265,14 @@ proof
             [by exists_intro(f) two-sided]
           @invertible-def |
             forall a: Fn;
-              (invertible(a) -> (exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn))
-              and ((exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn) -> invertible(a))
+              invertible(a) iff (exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn)
             [by axiom invertibleDef]
           @invertible-def-at-inv |
-            (invertible(inverse(f)) -> (exists h: Fn; compose(h, inverse(f)) = identityFn and compose(inverse(f), h) = identityFn))
-              and ((exists h: Fn; compose(h, inverse(f)) = identityFn and compose(inverse(f), h) = identityFn) -> invertible(inverse(f)))
+            invertible(inverse(f)) iff (exists h: Fn; compose(h, inverse(f)) = identityFn and compose(inverse(f), h) = identityFn)
             [by forall_elim(inverse(f)) invertible-def]
           @backward |
             (exists h: Fn; compose(h, inverse(f)) = identityFn and compose(inverse(f), h) = identityFn) -> invertible(inverse(f))
-            [by and_elim_right invertible-def-at-inv]
+            [by iff_elim_backward invertible-def-at-inv]
           @inv-f-invertible |
             invertible(inverse(f))
             [by modus_ponens backward inverse-exists]
@@ -440,16 +436,14 @@ proof
                     [by exists_intro(compose(inverse(f), inverse(g))) two-sided]
                   @invertible-def |
                     forall a: Fn;
-                      (invertible(a) -> (exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn))
-                      and ((exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn) -> invertible(a))
+                      invertible(a) iff (exists h: Fn; compose(h, a) = identityFn and compose(a, h) = identityFn)
                     [by axiom invertibleDef]
                   @invertible-def-at-composite |
-                    (invertible(compose(g, f)) -> (exists h: Fn; compose(h, compose(g, f)) = identityFn and compose(compose(g, f), h) = identityFn))
-                      and ((exists h: Fn; compose(h, compose(g, f)) = identityFn and compose(compose(g, f), h) = identityFn) -> invertible(compose(g, f)))
+                    invertible(compose(g, f)) iff (exists h: Fn; compose(h, compose(g, f)) = identityFn and compose(compose(g, f), h) = identityFn)
                     [by forall_elim(compose(g, f)) invertible-def]
                   @backward |
                     (exists h: Fn; compose(h, compose(g, f)) = identityFn and compose(compose(g, f), h) = identityFn) -> invertible(compose(g, f))
-                    [by and_elim_right invertible-def-at-composite]
+                    [by iff_elim_backward invertible-def-at-composite]
                   @composite-invertible |
                     invertible(compose(g, f))
                     [by modus_ponens backward inverse-exists]
