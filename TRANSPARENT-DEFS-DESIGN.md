@@ -32,16 +32,40 @@ this extends transparency to **predicates**.
   overturns that: a model MAY remap a transparent pred's name, and soundness then
   requires a **definition-agreement check** — see "Models and remodeling".
 
+## HARD RULE: two axioms → cannot be a `define`
+
+A predicate characterized by TWO (or more) separate `axiom` declarations CANNOT be
+made a `define`, full stop. A `define` is a SINGLE source of truth for the pred's
+meaning — the body is stated once. Two axioms are two independent assertions the
+checker treats separately; nothing enforces they even form a clean biconditional (an
+intro/elim pair is only *believed* to be the two halves of one iff). Collapsing them
+would require fragile "do these two axioms form a biconditional?" pattern-matching.
+Refuse it: **the meaning lives in ONE statement, or the pred stays opaque `pred`.**
+
+Consequence — the real define-eligibility line is not "single-biconditional in
+principle" but "**characterized by exactly one statement in the source text**":
+- ELIGIBLE: a literal `axiom fooDef: foo(args) iff <body>` (one statement) → `define`.
+- NOT ELIGIBLE AS-IS: an intro + elim PAIR (`dividesIntro` + `dividesElim`) — TWO
+  axioms. Migration is TWO steps the writer does deliberately: (1) collapse the pair
+  into one `axiom fooDef: foo iff body`; (2) then `define foo(args) = body`. Step 1
+  cannot be skipped or automated. (The iff-sweep already did step 1 for the relation/
+  function/collection preds — they are now single `iff` axioms. The `divides` family
+  and the order preds are still intro/elim PAIRS and are NOT define-eligible until
+  hand-collapsed.)
+When the feature ships, attempting to `define` (or auto-migrate) a pred that has
+multiple characterizing axioms is an ERROR, not offered.
+
 ## The empirical survey (what the codebase actually contains)
 
 Every opaque `pred` in std/ was classified by HOW its axioms characterize it. Three
 shapes emerged (full inventory below). This is the finding that makes the feature
 non-trivial: **not all defined predicates have a closed-form body.**
 
-### Shape A — single biconditional (closed-form). ~14 preds. UNFOLDABLE.
-Characterized by exactly one `foo(args) iff <body>` — written today either as a
-literal `iff` (post the iff-sweep) or as an intro/elim axiom PAIR (the two halves of
-one biconditional). Each collapses to `pred foo(args) := <body>`.
+### Shape A — single biconditional (closed-form). ~14 preds.
+Characterized by ONE biconditional. Per the HARD RULE above, a Shape-A pred is
+define-eligible ONLY once its characterization is a SINGLE `iff` statement; those
+still written as an intro/elim PAIR must be hand-collapsed first. Each then becomes
+`define foo(args) = <body>`.
 
 | pred | body |
 |---|---|
