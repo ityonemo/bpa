@@ -11,7 +11,7 @@
 //!   - a step's LABEL is `@name |`, alone on its line, indented two spaces per
 //!     block depth. The `@` sigil marks a definition (citations stay bare); it
 //!     sits at the left margin so labels form a scannable gutter column
-//!   - the step's statement (or block header `fix …`/`assume …`/`case … on …`)
+//!   - the step's statement (or block header `fix …`/`assume …`/`case …`)
 //!     goes on the NEXT line, +2 under the label
 //!   - the `[by ...]` justification (and a `case`'s split) aligns WITH the
 //!     statement, one column beneath the label
@@ -174,7 +174,7 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
             },
             .l_brace => {
                 // in a proof, every block header (`fix …`, `assume …`,
-                // `case … on …`) sits on a label-continuation line, one level (+2)
+                // `case …`) sits on a label-continuation line, one level (+2)
                 // past its label; its body is one level past THAT, so the brace
                 // carries an extra indent level (undone at its matching `}`). A
                 // top-level `{` (a `model … { … }` declaration body), by contrast,
@@ -292,7 +292,7 @@ test "case: arms nest one level under `case`, closing brace aligns with it" {
         \\proof
         \\  d| p or q [by axiom e]
         \\  r| q
-        \\  case on d {
+        \\  case d {
         \\  a| assume p { c| q [by hypothesis a] }
         \\  b| assume q { c| q [by hypothesis b] }
         \\  }
@@ -308,7 +308,7 @@ test "case: arms nest one level under `case`, closing brace aligns with it" {
         \\    [by axiom e]
         \\  @r |
         \\    q
-        \\    case on d {
+        \\    case d {
         \\      @a |
         \\        assume p {
         \\          @c |

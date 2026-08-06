@@ -550,7 +550,7 @@ write N arms, not a hand-nested `or_elim` tree.
 ```bpa
 @result |
   q1 = q2
-  case on tri-q1q2 {
+  case tri-q1q2 {
     @arm-lt |
       assume less_than(q1, q2) {
         ...
@@ -783,7 +783,7 @@ of which must conclude the same goal**. That shared conclusion is the result.
 
 Footgun: `or_elim` is **not N-ary**. A three-way split `(A or B) or C` needs either a
 hand-nested `or_elim` (elim the outer, then elim `A or B` inside the left arm) or —
-far better — the `case on` sugar, which fans out a left-nested disjunction into N
+far better — the `case` sugar, which fans out a left-nested disjunction into N
 arms automatically (see `case ... on` under Subproof keywords).
 
 ### RULE: not_intro

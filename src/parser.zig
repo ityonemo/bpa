@@ -84,7 +84,7 @@ pub const Parser = struct {
         }
     }
 
-    /// A `[by ...]` reference / `unpack from` / `case on` citation: a bare name
+    /// A `[by ...]` reference / `unpack from` / `case` citation: a bare name
     /// (plain or kebab). References carry NO `@` — the sigil is for definitions.
     fn expectLabelRef(self: *Parser) ParseError!Token {
         return switch (self.tok.tag) {
@@ -371,10 +371,9 @@ pub const Parser = struct {
                 const formula = try self.parseExpr();
                 // a `case` step states its goal, then eliminates a disjunction:
                 //   label| GOAL
-                //     case on disj { arm* }
+                //     case disj { arm* }
                 if (self.tok.tag == .keyword_case) {
                     _ = self.advance();
-                    _ = try self.expect(.keyword_on);
                     const disj = try self.expectLabelRef();
                     const arms = try self.parseCaseArms();
                     return .{ .label = label, .body = .{ .case = .{ .goal = formula, .disj = disj, .arms = arms } } };

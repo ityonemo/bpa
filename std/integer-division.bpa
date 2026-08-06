@@ -312,7 +312,7 @@ proof
                                 [by forall_elim(k, ZERO) signs-of-k]
                               @multiple-is-zero-by-sign-of-quotient |
                                 m = ZERO
-                                case on k-sign-trichotomy {
+                                case k-sign-trichotomy {
                                   @when-k-negative |
                                     assume less_than(k, ZERO) {
                                       // -k is a positive gap, hence nonneg; b*(-k) = -m is
@@ -803,7 +803,7 @@ proof
                         [by modus_ponens zero-less_than-or-equals-partial-if zero-at-most-partial]
                       @conclusion-product-positive |
                         less_than(ZERO, mul(b, k))
-                        case on zero-less_than-or-equals-partial {
+                        case zero-less_than-or-equals-partial {
                           @when-partial-positive |
                             assume less_than(ZERO, mul(b, d)) {
                               @partial-positive |
@@ -888,7 +888,7 @@ proof
                     [by forall_elim(ZERO) order-irreflexive]
                   @conclusion-z-is-zero |
                     z = ZERO
-                    case on z-sign-trichotomy {
+                    case z-sign-trichotomy {
                       @when-z-negative |
                         assume less_than(z, ZERO) {
                           // -z > 0, so b*(-z) > 0; but b*(-z) = -(b*z) = -0 = 0. Absurd.
@@ -1070,7 +1070,7 @@ proof
                         [by modus_ponens x-less_than-or-equals-y-if x-at-most-y]
                       @conclusion-x-less_than-z |
                         less_than(x, z)
-                        case on x-less_than-or-equals-y {
+                        case x-less_than-or-equals-y {
                           @when-x-less_than-y |
                             assume less_than(x, y) {
                               @x-less_than-y |
@@ -1603,7 +1603,7 @@ proof
                                                 [by theorem boundedRemainderDifferenceIsZero]
                                               @conclusion-remainders-equal |
                                                 r1 = r2
-                                                case on r1-r2-trichotomy {
+                                                case r1-r2-trichotomy {
                                                   @when-r1-less_than-r2 |
                                                     assume less_than(r1, r2) {
                                                       @r1-less_than-r2 |
@@ -2186,7 +2186,7 @@ proof
                                                 [by forall_elim(n, m) trichotomy-n-m]
                                               @n-at-most-m |
                                                 at_most(n, m)
-                                                case on order-n-m {
+                                                case order-n-m {
                                                   @when-n-less_than-m |
                                                     assume less_than(n, m) {
                                                       @n-less_than-m |
@@ -2604,7 +2604,7 @@ proof
                 [by axiom lessThanElim]
               @set-is-nonempty |
                 exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k)))
-                case on a-sign {
+                case a-sign {
                   @when-a-nonnegative |
                     assume less_than(ZERO, a) or ZERO = a {
                       @a-nonnegative |
@@ -2613,7 +2613,7 @@ proof
                       // a >= 0, so a itself is a nonneg member: a = a - b*0.
                       @a-nonneg |
                         is_nonneg(a)
-                        case on a-nonnegative {
+                        case a-nonnegative {
                           @when-zero-less_than-a |
                             assume less_than(ZERO, a) {
                               @zero-less_than-a |
@@ -2899,7 +2899,7 @@ proof
                           // not less_than(rem,b) leaves rem = b or less_than(b, rem); both give b <= rem.
                           @b-at-most-rem |
                             at_most(b, rem)
-                            case on rem-b-trichotomy {
+                            case rem-b-trichotomy {
                               @when-rem-less_than-b |
                                 assume less_than(rem, b) {
                                   @rem-less_than-b |

@@ -809,7 +809,7 @@ proof
                             [by forall_elim(k) sign-of-k]
                           @k-positive |
                             less_than(ZERO, k)
-                            case on k-sign {
+                            case k-sign {
                               @when-k-positive |
                                 assume less_than(ZERO, k) {
                                   @conclusion-k-positive |
@@ -1179,7 +1179,7 @@ proof
                             [by modus_ponens one-less_than-or-equal-d one-at-most-d]
                           @d-is-one-or-p |
                             d = ONE or d = p
-                            case on one-less_than-d-or-equals-d {
+                            case one-less_than-d-or-equals-d {
                               @when-one-less_than-d |
                                 assume less_than(ONE, d) {
                                   @one-less_than-d |

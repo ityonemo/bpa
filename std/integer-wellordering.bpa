@@ -641,7 +641,7 @@ proof
                                         [by theorem lessOrEqualRefl]
                                       @n-le-m-in-all-cases |
                                         less_or_equal(n, m)
-                                        case on order-n-m {
+                                        case order-n-m {
                                           @when-n-less_than-m |
                                             assume less_than(n, m) {
                                               @n-less_than-m |

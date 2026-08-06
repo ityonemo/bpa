@@ -75,7 +75,7 @@ qed
 | `iff_intro FWD BWD` | 2 | forward `P->Q` then backward `Q->P`; goal must be `P iff Q` shape |
 | `iff_elim_forward STEP` / `iff_elim_backward STEP` | 1 | recover `P->Q` / `Q->P` from `P iff Q` |
 | `or_intro_left STEP` / `or_intro_right STEP` | 1 | |
-| **`or_elim DISJ LBLOCK RBLOCK`** | **3 (1 step + 2 blocks)** | **BINARY only.** A 3-way split needs `case on <disj> { … }` (see below), NOT a 3-ref or_elim |
+| **`or_elim DISJ LBLOCK RBLOCK`** | **3 (1 step + 2 blocks)** | **BINARY only.** A 3-way split needs `case <disj> { … }` (see below), NOT a 3-ref or_elim |
 | `not_intro BLOCK S1 S2` | 3 (1 block + 2 steps) | the block's assumption yielded contradiction S1/S2 |
 | `absurd S1 S2` | 2 | from a contradiction, conclude anything |
 | `double_negation STEP` | 1 | `not not P` → `P` |
@@ -85,7 +85,7 @@ qed
 | `iff_rewrite BICOND TARGET` | 2 | from `P iff Q`, replace sub-prop P by Q in TARGET (any position). Kernel-checked, no taint |
 | `instantiate NAME(args) refs…` | schema + premise refs | monomorphize a schema; refs discharge its leading antecedents |
 
-`case on <disj-step> { @when-left| assume A { … } @when-right| assume B { … } }` — the 3-way (or N-way) disjunction eliminator. Use this instead of trying to give `or_elim` more than 2 arms.
+`case <disj-step> { @when-left| assume A { … } @when-right| assume B { … } }` — the 3-way (or N-way) disjunction eliminator. Use this instead of trying to give `or_elim` more than 2 arms.
 
 ## Formula syntax edges
 
@@ -125,7 +125,7 @@ qed
 - **Gates don't pin counts**: `tests/test_*.zig` uses `ctx.okSilent(&.{"check", FILE})` (asserts "checks OK, exit 0") — NOT a `"OK: N declarations, …"` golden. So an edit that changes decl/theorem counts needs NO gate update; just make sure the file still checks. (A few `--fast`/accelerated gates keep a full banner golden with counts — leave those.) Run `bpa fmt <file>` before `fmt --check` gates.
 - `[by hole]` is INVALID — `hole` is a top-level declaration, not a justification. Every obligation must really be proved (or the theorem itself is a `hole`).
 - **When `hole` is OK**: for RESEARCH / EXPLORATION (spiking a new construction, sketching a skeleton before filling details) `hole` is a legitimate "assume for now, come back" placeholder. For WELL-KNOWN proofs — the AATA transliterations, std lemmas, anything where the proof is known and the job is to transcribe it — do NOT use `hole`: a hole there is unfinished work dressed up as done. Finish the proof.
-- `or_elim` is BINARY. 3-way → `case on`.
+- `or_elim` is BINARY. 3-way → `case`.
 - Cite a theorem/axiom as a `[by theorem X]` / `[by axiom X]` STEP before a later `forall_elim` refs that step.
 - No `<->`; use `iff`. No `<->`-style iff intro/elim beyond `iff_intro`/`iff_elim_forward`/`iff_elim_backward`.
 - A `func` cannot return `Prop` and cannot take a `-> Prop` parameter; predicates are opaque (no body).

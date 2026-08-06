@@ -27,7 +27,7 @@ proof
         [by forall_elim(a) p-or-q-rule]
       @by-cases |
         op(UNIT, a) = a
-        case on p-or-q {
+        case p-or-q {
           @when-p |
             assume p(a) {
               @have-p |

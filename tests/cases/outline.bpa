@@ -24,7 +24,7 @@ proof
         [by forall_elim(n) cases]
       @conclusion-inner |
         q(n)
-        case on p-or-q {
+        case p-or-q {
           @from-p |
             assume p(n) {
               @p-holds |

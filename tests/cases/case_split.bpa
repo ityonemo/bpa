@@ -22,7 +22,7 @@ proof
     [by axiom tri]
   @result |
     g(Z)
-    case on disj {
+    case disj {
       @arm-p |
         assume p(Z) {
           @i |

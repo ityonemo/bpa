@@ -19,7 +19,7 @@ pub fn addTests(
         \\  generalize-n  fix n
         \\    cases
         \\    p-or-q
-        \\    conclusion-inner  case on p-or-q
+        \\    conclusion-inner  case p-or-q
         \\      from-p  assume p(n)
         \\        p-holds
         \\        p-gives-q
@@ -37,7 +37,7 @@ pub fn addTests(
         \\  generalize-n  fix n
         \\    cases
         \\    p-or-q
-        \\    conclusion-inner  case on p-or-q
+        \\    conclusion-inner  case p-or-q
         \\      from-p  assume p(n)
         \\        p-holds
         \\        p-gives-q

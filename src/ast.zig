@@ -78,7 +78,7 @@ pub const Step = struct {
     pub const Block = struct { formula: *const Expr, steps: []const Step };
     pub const FixBlock = struct { name: Token, sort: Token, steps: []const Step };
     pub const UnpackBlock = struct { name: Token, sort: Token, from: Token, steps: []const Step };
-    /// `case on disj { arm* }` — eliminate the disjunction proved by step
+    /// `case disj { arm* }` — eliminate the disjunction proved by step
     /// `disj`, one `arm` per (left-nested) disjunct, all arms concluding the
     /// step's goal. Sugar for a hand-written (nested) `or_elim`.
     pub const CaseBlock = struct {

@@ -824,7 +824,7 @@ proof
                         [by theorem lessThanToLessOrEqual]
                       @a-at-most-c |
                         less_or_equal(a, c)
-                        case on a-less_than-b-or-equal {
+                        case a-less_than-b-or-equal {
                           @when-a-less_than-b |
                             assume less_than(a, b) {
                               @a-less_than-b |
@@ -832,7 +832,7 @@ proof
                                 [by hypothesis when-a-less_than-b]
                               @conclusion-a-at-most-c |
                                 less_or_equal(a, c)
-                                case on b-less_than-c-or-equal {
+                                case b-less_than-c-or-equal {
                                   @when-b-less_than-c |
                                     assume less_than(b, c) {
                                       @b-less_than-c |
@@ -959,7 +959,7 @@ proof
                 [by hypothesis given-a-at-most-b]
               @gap-exists |
                 exists d: Int; nonneg(d) and add(a, d) = b
-                case on a-less_than-b-or-equal {
+                case a-less_than-b-or-equal {
                   @when-a-less_than-b |
                     assume less_than(a, b) {
                       @a-less_than-b |
@@ -1060,7 +1060,7 @@ proof
                     [by modus_ponens gap-is-zero-or-successor-if-nonneg gap-nonneg]
                   @a-less_than-b-or-equal |
                     less_than(a, b) or a = b
-                    case on gap-is-zero-or-successor {
+                    case gap-is-zero-or-successor {
                       @when-gap-is-zero |
                         assume d0 = ZERO {
                           @gap-is-zero |
@@ -1171,7 +1171,7 @@ proof
                     [by modus_ponens a-less_than-b-or-equal-if-at-most a-at-most-b]
                   @a-equals-b |
                     a = b
-                    case on a-less_than-b-or-equal {
+                    case a-less_than-b-or-equal {
                       @when-a-less_than-b |
                         assume less_than(a, b) {
                           @a-less_than-b |
@@ -1185,7 +1185,7 @@ proof
                             [by modus_ponens b-less_than-a-or-equal-if-at-most b-at-most-a]
                           @conclusion-a-equals-b |
                             a = b
-                            case on b-less_than-a-or-equal {
+                            case b-less_than-a-or-equal {
                               @when-b-less_than-a |
                                 assume less_than(b, a) {
                                   @b-less_than-a |
@@ -1461,7 +1461,7 @@ proof
                 [by modus_ponens gap-is-zero-or-successor-if-nonneg gap-nonneg]
               @succ-less_than-or-equal-zero |
                 less_than(succ(k), ZERO) or succ(k) = ZERO
-                case on gap-is-zero-or-successor {
+                case gap-is-zero-or-successor {
                   @when-gap-is-zero |
                     assume d0 = ZERO {
                       @gap-is-zero |
@@ -1628,7 +1628,7 @@ proof
                 [by modus_ponens gap-is-zero-or-successor-if-nonneg gap-nonneg]
               @zero-less_than-or-equal-prev |
                 less_than(ZERO, prev(k)) or prev(k) = ZERO
-                case on gap-is-zero-or-successor {
+                case gap-is-zero-or-successor {
                   @when-gap-is-zero |
                     assume d0 = ZERO {
                       @gap-is-zero |
@@ -1778,7 +1778,7 @@ proof
             [by hypothesis given-inductive-hypothesis]
           @sign-of-succ-k |
             less_than(ZERO, succ(k)) or succ(k) = ZERO or less_than(succ(k), ZERO)
-            case on inductive-hypothesis {
+            case inductive-hypothesis {
               @when-k-nonneg |
                 assume less_than(ZERO, k) or k = ZERO {
                   @k-positive-or-zero |
@@ -1786,7 +1786,7 @@ proof
                     [by hypothesis when-k-nonneg]
                   @sign-of-succ-k |
                     less_than(ZERO, succ(k)) or succ(k) = ZERO or less_than(succ(k), ZERO)
-                    case on k-positive-or-zero {
+                    case k-positive-or-zero {
                       @when-k-positive |
                         assume less_than(ZERO, k) {
                           @k-positive |
@@ -1862,7 +1862,7 @@ proof
                     [by modus_ponens succ-k-split-if-k-negative k-negative]
                   @sign-of-succ-k |
                     less_than(ZERO, succ(k)) or succ(k) = ZERO or less_than(succ(k), ZERO)
-                    case on succ-k-less_than-or-equal-zero {
+                    case succ-k-less_than-or-equal-zero {
                       @when-succ-k-negative |
                         assume less_than(succ(k), ZERO) {
                           @succ-k-negative |
@@ -1906,7 +1906,7 @@ proof
             [by hypothesis given-inductive-hypothesis-prev]
           @sign-of-prev-k |
             less_than(ZERO, prev(k)) or prev(k) = ZERO or less_than(prev(k), ZERO)
-            case on inductive-hypothesis {
+            case inductive-hypothesis {
               @when-k-nonneg |
                 assume less_than(ZERO, k) or k = ZERO {
                   @k-positive-or-zero |
@@ -1914,7 +1914,7 @@ proof
                     [by hypothesis when-k-nonneg]
                   @sign-of-prev-k |
                     less_than(ZERO, prev(k)) or prev(k) = ZERO or less_than(prev(k), ZERO)
-                    case on k-positive-or-zero {
+                    case k-positive-or-zero {
                       @when-k-positive |
                         assume less_than(ZERO, k) {
                           @k-positive |
@@ -2031,7 +2031,7 @@ proof
             [by theorem additionPreservesOrder]
           @trichotomy-at-a-b |
             less_than(a, b) or a = b or less_than(b, a)
-            case on sign-of-difference {
+            case sign-of-difference {
               @when-difference-positive-or-zero |
                 assume less_than(ZERO, sub(b, a)) or sub(b, a) = ZERO {
                   @difference-positive-or-zero |
@@ -2039,7 +2039,7 @@ proof
                     [by hypothesis when-difference-positive-or-zero]
                   @trichotomy-at-a-b |
                     less_than(a, b) or a = b or less_than(b, a)
-                    case on difference-positive-or-zero {
+                    case difference-positive-or-zero {
                       @when-difference-positive |
                         assume less_than(ZERO, sub(b, a)) {
                           @difference-positive |

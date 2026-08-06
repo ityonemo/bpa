@@ -15,7 +15,7 @@ proof
     [by axiom either]
   @result |
     q(Z)
-    case on disj {
+    case disj {
       @wrong |
         assume q(Z) {
           @c |

@@ -758,7 +758,7 @@ proof
                                       // impossible (they contradict the not-below facts).
                                       @quotients-are-equal |
                                         q1 = q2
-                                        case on q1-q2-trichotomy {
+                                        case q1-q2-trichotomy {
                                           @when-q1-below-q2 |
                                             assume less_than(q1, q2) {
                                               @q1-below-q2 |

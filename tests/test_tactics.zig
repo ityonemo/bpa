@@ -176,7 +176,7 @@ pub fn addTests(
         \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );
-    // the positive counterpart: a WELL-FORMED schema (proper `case on` split)
+    // the positive counterpart: a WELL-FORMED schema (proper `case` split)
     // passes the strict declaration-time check — the new pass must not reject
     // legitimate schemas.
     ctx.okSilent(&.{ "check", "tests/cases/schema_wellformed_ok.bpa" });

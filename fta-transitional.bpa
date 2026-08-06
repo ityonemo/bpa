@@ -1,0 +1,1374 @@
+// fta-scratch.bpa — SCRATCH build of the Fundamental Theorem of Arithmetic.
+// Not part of the chapter; once existence + uniqueness check here, the proofs get
+// ported inline into aata/2.3-primes.md (main-text, per the AATA import horizon).
+//
+// Imports the ℤ sequence machinery directly (Seq, productUpTo, the constructor
+// existence axioms, primeFactorExists, nonneg strong induction).
+
+import seq <<< "std/integer-sequence.bpa"
+import wellordering <<< "std/integer-wellordering.bpa"
+import order <<< "std/integer-order.bpa"
+import divides <<< "std/integer-divides.bpa"
+import division <<< "std/integer-division.bpa"
+
+sort Int = seq.Int
+const ZERO = seq.ZERO
+const ONE = seq.ONE
+func succ = seq.succ
+func add = seq.add
+func mul = seq.mul
+func sub = seq.sub
+func neg = seq.neg
+sort Seq = seq.Seq
+func at = seq.at
+func productUpTo = seq.productUpTo
+pred is_nonneg = seq.is_nonneg
+pred below = seq.below
+pred at_most = seq.at_most
+pred does_divide = seq.does_divide
+
+axiom productUpToZero = seq.productUpToZero
+axiom productUpToSucc = seq.productUpToSucc
+axiom seqSingletonExists = seq.seqSingletonExists
+axiom seqConcatExists = seq.seqConcatExists
+axiom seqRemoveExists = seq.seqRemoveExists
+theorem primeFactorExists = seq.primeFactorExists
+theorem nonnegStrongInduction = wellordering.nonnegStrongInduction
+
+axiom dividesElim = divides.dividesElim
+axiom dividesIntro = divides.dividesIntro
+theorem positiveIsNonneg = seq.positiveIsNonneg
+axiom oneIsSuccZero = seq.oneIsSuccZero
+theorem mulOneRight = seq.mulOneRight
+theorem lessThanTransitive = order.lessThanTransitive
+
+// -- order/arith facts pulled in for the FTA existence argument -----------
+theorem zeroBelowOne = seq.zeroBelowOne
+theorem additionPreservesOrder = order.additionPreservesOrder
+theorem lessThanAddCancelLeft = order.lessThanAddCancelLeft
+theorem lessThanIrreflexive = order.lessThanIrreflexive
+theorem addDiffReaches = order.addDiffReaches
+theorem addZeroRight = order.addZeroRight
+theorem mulAddDistribLeft = seq.mulAddDistribLeft
+theorem mulIsCommutative = seq.mulIsCommutative
+theorem productWithPositiveIsPositive = division.productWithPositiveIsPositive
+theorem lessThanSuccSplit = seq.lessThanSuccSplit
+theorem nonnegNotBelowZero = seq.nonnegNotBelowZero
+axiom lessOrEqualElim = order.lessOrEqualElim
+theorem oneAtMostPositive = seq.oneAtMostPositive
+theorem trichotomy = order.trichotomy
+axiom nonnegZero = order.nonnegZero
+axiom lessThanElim = order.lessThanElim
+theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
+theorem signTrichotomy = order.signTrichotomy
+theorem mulZeroRight = order.mulZeroRight
+theorem negBelowZero = order.negBelowZero
+theorem nonnegMul = order.nonnegMul
+theorem mulNegRight = order.mulNegRight
+theorem addNegRight = order.addNegRight
+axiom lessOrEqualIntro = order.lessOrEqualIntro
+theorem lessOrEqualAntisymmetric = order.lessOrEqualAntisymmetric
+theorem mulIsAssociative = seq.mulIsAssociative
+theorem lessOrEqualRefl = order.lessOrEqualRefl
+theorem nonnegAdd = order.nonnegAdd
+
+// prime(p) — Judson's inline definition, kept consistent with the chapter.
+// (a local macro would be nice; bpa has no pred body, so we spell it out.)
+
+// A prime factorization of n: k prime entries whose product is n.
+//   isPrimeFactorization(n, s, k) :=
+//     is_nonneg(k)
+//     and (forall i; is_nonneg(i) -> below(i,k) -> prime(at(s,i)))
+//     and n = productUpTo(s, k)
+// We spell this inline in the theorems (bpa preds are opaque; a pred+intro/elim
+// would just add fold/unfold tax here).
+
+// ===========================================================================
+// Small order/arithmetic helpers not aliased above.
+// ===========================================================================
+
+// A nonneg index strictly below ONE must be ZERO: ONE = succ ZERO, so m < ONE
+// splits into m < ZERO (impossible for nonneg m) or m = ZERO.
+theorem nonnegBelowOneIsZero: forall m: Int; is_nonneg(m) -> below(m, ONE) -> m = ZERO
+proof
+  @generalize-m |
+    fix m: Int {
+      @given-m-nonneg |
+        assume is_nonneg(m) {
+          @given-m-below-one |
+            assume below(m, ONE) {
+              @m-nonneg |
+                is_nonneg(m)
+                [by hypothesis given-m-nonneg]
+              @m-below-one |
+                below(m, ONE)
+                [by hypothesis given-m-below-one]
+              @one-is-succ-zero |
+                ONE = succ(ZERO)
+                [by axiom oneIsSuccZero]
+              @m-below-succ-zero |
+                below(m, succ(ZERO))
+                [by rewrite one-is-succ-zero m-below-one]
+              @zero-is-nonneg |
+                is_nonneg(ZERO)
+                [by axiom nonnegZero]
+              @succ-split |
+                forall a, b: Int; is_nonneg(a) -> is_nonneg(b) -> below(a, succ(b)) -> (below(a, b) or a = b)
+                [by theorem lessThanSuccSplit]
+              @m-below-succ-zero-splits |
+                is_nonneg(m) -> is_nonneg(ZERO) -> below(m, succ(ZERO)) -> (below(m, ZERO) or m = ZERO)
+                [by forall_elim(m, ZERO) succ-split]
+              @m-below-zero-or-equal-zero |
+                below(m, ZERO) or m = ZERO
+                [by tautology m-below-succ-zero-splits m-nonneg zero-is-nonneg m-below-succ-zero]
+              @m-is-zero |
+                m = ZERO
+                case on m-below-zero-or-equal-zero {
+                  @when-m-below-zero |
+                    assume below(m, ZERO) {
+                      @m-below-zero |
+                        below(m, ZERO)
+                        [by hypothesis when-m-below-zero]
+                      @nothing-nonneg-below-zero |
+                        forall a: Int; is_nonneg(a) -> (not below(a, ZERO))
+                        [by theorem nonnegNotBelowZero]
+                      @m-not-below-zero-if-nonneg |
+                        is_nonneg(m) -> (not below(m, ZERO))
+                        [by forall_elim(m) nothing-nonneg-below-zero]
+                      @m-not-below-zero |
+                        not below(m, ZERO)
+                        [by modus_ponens m-not-below-zero-if-nonneg m-nonneg]
+                      @conclusion-m-is-zero |
+                        m = ZERO
+                        [by absurd m-below-zero m-not-below-zero]
+                    }
+                  @when-m-equals-zero |
+                    assume m = ZERO {
+                      @conclusion-m-is-zero |
+                        m = ZERO
+                        [by hypothesis when-m-equals-zero]
+                    }
+                }
+            }
+          @below-one-implies-zero |
+            below(m, ONE) -> m = ZERO
+            [by implies_intro given-m-below-one]
+        }
+      @nonneg-implies-below-one-implies-zero |
+        is_nonneg(m) -> below(m, ONE) -> m = ZERO
+        [by implies_intro given-m-nonneg]
+    }
+  @conclusion |
+    forall m: Int; is_nonneg(m) -> below(m, ONE) -> m = ZERO
+    [by forall_intro generalize-m]
+qed
+
+// p > 1 and c > 0 force c < p·c: write p = 1 + q with q = p − 1 > 0, so
+// p·c = c·p = c·1 + c·q = c + c·q with c·q > 0, whence c < c + c·q = p·c.
+theorem belowMulGreaterThanOne: forall p, c: Int;
+  below(ONE, p) -> below(ZERO, c) -> below(c, mul(p, c))
+proof
+  @generalize-p |
+    fix p: Int {
+      @generalize-c |
+        fix c: Int {
+          @given-p-above-one |
+            assume below(ONE, p) {
+              @given-c-positive |
+                assume below(ZERO, c) {
+                  @p-above-one |
+                    below(ONE, p)
+                    [by hypothesis given-p-above-one]
+                  @c-positive |
+                    below(ZERO, c)
+                    [by hypothesis given-c-positive]
+                  // q := p − 1 is positive, and 1 + q = p.
+                  @add-diff-reaches |
+                    forall a, b: Int; add(a, sub(b, a)) = b
+                    [by theorem addDiffReaches]
+                  @one-plus-gap-is-p |
+                    add(ONE, sub(p, ONE)) = p
+                    [by forall_elim(ONE, p) add-diff-reaches]
+                  @add-preserves-order |
+                    forall a, b, x: Int; below(a, b) -> below(add(x, a), add(x, b))
+                    [by theorem additionPreservesOrder]
+                  @add-zero-right |
+                    forall a: Int; add(a, ZERO) = a
+                    [by theorem addZeroRight]
+                  @one-plus-zero-is-one |
+                    add(ONE, ZERO) = ONE
+                    [by forall_elim(ONE) add-zero-right]
+                  @one-is-one-plus-zero |
+                    ONE = add(ONE, ZERO)
+                    [by symmetry one-plus-zero-is-one]
+                  @p-is-one-plus-gap |
+                    p = add(ONE, sub(p, ONE))
+                    [by symmetry one-plus-gap-is-p]
+                  // recast 1 < p as (1+0) < (1+q), then cancel the leading 1.
+                  @one-recast-below-p |
+                    below(add(ONE, ZERO), p)
+                    [by rewrite one-is-one-plus-zero p-above-one]
+                  @one-plus-zero-below-one-plus-gap |
+                    below(add(ONE, ZERO), add(ONE, sub(p, ONE)))
+                    [by rewrite p-is-one-plus-gap one-recast-below-p]
+                  @cancel-leading-one |
+                    forall x, a, b: Int; below(add(x, a), add(x, b)) -> below(a, b)
+                    [by theorem lessThanAddCancelLeft]
+                  @cancel-one-for-gap |
+                    below(add(ONE, ZERO), add(ONE, sub(p, ONE))) -> below(ZERO, sub(p, ONE))
+                    [by forall_elim(ONE, ZERO, sub(p, ONE)) cancel-leading-one]
+                  @gap-positive |
+                    below(ZERO, sub(p, ONE))
+                    [by modus_ponens cancel-one-for-gap one-plus-zero-below-one-plus-gap]
+                  // c·q > 0 and c·1 + c·q = c·p.
+                  @product-positive |
+                    forall a, b: Int; below(ZERO, a) -> below(ZERO, b) -> below(ZERO, mul(a, b))
+                    [by theorem productWithPositiveIsPositive]
+                  @c-gap-positive-if-both |
+                    below(ZERO, c) -> below(ZERO, sub(p, ONE)) -> below(ZERO, mul(c, sub(p, ONE)))
+                    [by forall_elim(c, sub(p, ONE)) product-positive]
+                  @c-times-gap-positive |
+                    below(ZERO, mul(c, sub(p, ONE)))
+                    [by tautology c-gap-positive-if-both c-positive gap-positive]
+                  @distribute |
+                    forall a, b, x: Int; mul(a, add(b, x)) = add(mul(a, b), mul(a, x))
+                    [by theorem mulAddDistribLeft]
+                  @c-times-p-distributes |
+                    mul(c, add(ONE, sub(p, ONE))) = add(mul(c, ONE), mul(c, sub(p, ONE)))
+                    [by forall_elim(c, ONE, sub(p, ONE)) distribute]
+                  @mul-one-right |
+                    forall a: Int; mul(a, ONE) = a
+                    [by theorem mulOneRight]
+                  @c-times-one-is-c |
+                    mul(c, ONE) = c
+                    [by forall_elim(c) mul-one-right]
+                  @distribute-with-p |
+                    mul(c, p) = add(mul(c, ONE), mul(c, sub(p, ONE)))
+                    [by rewrite one-plus-gap-is-p c-times-p-distributes]
+                  @c-times-p-is-c-plus-c-gap |
+                    mul(c, p) = add(c, mul(c, sub(p, ONE)))
+                    [by rewrite c-times-one-is-c distribute-with-p]
+                  // c < c + c·q via additionPreservesOrder, then rewrite to c·p, p·c.
+                  @c-below-c-plus-c-gap-raw |
+                    below(ZERO, mul(c, sub(p, ONE))) -> below(add(c, ZERO), add(c, mul(c, sub(p, ONE))))
+                    [by forall_elim(ZERO, mul(c, sub(p, ONE)), c) add-preserves-order]
+                  @c-plus-zero-below-c-plus-gap |
+                    below(add(c, ZERO), add(c, mul(c, sub(p, ONE))))
+                    [by modus_ponens c-below-c-plus-c-gap-raw c-times-gap-positive]
+                  @c-plus-zero-is-c |
+                    add(c, ZERO) = c
+                    [by forall_elim(c) add-zero-right]
+                  @c-below-c-plus-c-gap |
+                    below(c, add(c, mul(c, sub(p, ONE))))
+                    [by rewrite c-plus-zero-is-c c-plus-zero-below-c-plus-gap]
+                  @c-plus-c-gap-is-c-times-p |
+                    add(c, mul(c, sub(p, ONE))) = mul(c, p)
+                    [by symmetry c-times-p-is-c-plus-c-gap]
+                  @c-below-c-times-p |
+                    below(c, mul(c, p))
+                    [by rewrite c-plus-c-gap-is-c-times-p c-below-c-plus-c-gap]
+                  @mul-commutes |
+                    forall a, b: Int; mul(a, b) = mul(b, a)
+                    [by theorem mulIsCommutative]
+                  @c-times-p-is-p-times-c |
+                    mul(c, p) = mul(p, c)
+                    [by forall_elim(c, p) mul-commutes]
+                  @c-below-p-times-c |
+                    below(c, mul(p, c))
+                    [by rewrite c-times-p-is-p-times-c c-below-c-times-p]
+                }
+              @c-positive-implies-below |
+                below(ZERO, c) -> below(c, mul(p, c))
+                [by implies_intro given-c-positive]
+            }
+          @p-above-one-implies-below |
+            below(ONE, p) -> below(ZERO, c) -> below(c, mul(p, c))
+            [by implies_intro given-p-above-one]
+        }
+      @discharge-c |
+        forall c: Int; below(ONE, p) -> below(ZERO, c) -> below(c, mul(p, c))
+        [by forall_intro generalize-c]
+    }
+  @conclusion |
+    forall p, c: Int; below(ONE, p) -> below(ZERO, c) -> below(c, mul(p, c))
+    [by forall_intro generalize-p]
+qed
+
+// The cofactor of a positive number by a positive factor is positive: from
+// n = p·c with n, p > 0, the sign of c cannot be zero (n = 0) nor negative
+// (n = −(p·(−c)) ≤ 0), both against n > 0. (Ported from divisorAtMost's
+// interior "quotient is positive" argument, specialized to n = p·c.)
+theorem positiveCofactor: forall n, p, c: Int;
+  below(ZERO, n) -> below(ZERO, p) -> n = mul(p, c) -> below(ZERO, c)
+proof
+  @generalize-n |
+    fix n: Int {
+      @generalize-p |
+        fix p: Int {
+          @generalize-c |
+            fix c: Int {
+              @given-n-positive |
+                assume below(ZERO, n) {
+                  @given-p-positive |
+                    assume below(ZERO, p) {
+                      @given-n-is-p-times-c |
+                        assume n = mul(p, c) {
+                          @n-positive |
+                            below(ZERO, n)
+                            [by hypothesis given-n-positive]
+                          @p-positive |
+                            below(ZERO, p)
+                            [by hypothesis given-p-positive]
+                          @n-is-p-times-c |
+                            n = mul(p, c)
+                            [by hypothesis given-n-is-p-times-c]
+                          @positive-is-nonneg-lemma |
+                            forall x: Int; below(ZERO, x) -> is_nonneg(x)
+                            [by theorem positiveIsNonneg]
+                          @p-nonneg-if-positive |
+                            below(ZERO, p) -> is_nonneg(p)
+                            [by forall_elim(p) positive-is-nonneg-lemma]
+                          @p-nonneg |
+                            is_nonneg(p)
+                            [by modus_ponens p-nonneg-if-positive p-positive]
+                          @sign-of-c |
+                            forall x: Int; below(ZERO, x) or x = ZERO or below(x, ZERO)
+                            [by theorem signTrichotomy]
+                          @c-sign |
+                            below(ZERO, c) or c = ZERO or below(c, ZERO)
+                            [by forall_elim(c) sign-of-c]
+                          @c-positive |
+                            below(ZERO, c)
+                            case on c-sign {
+                              @when-c-positive |
+                                assume below(ZERO, c) {
+                                  @conclusion-c-positive |
+                                    below(ZERO, c)
+                                    [by hypothesis when-c-positive]
+                                }
+                              @when-c-zero |
+                                assume c = ZERO {
+                                  @c-is-zero |
+                                    c = ZERO
+                                    [by hypothesis when-c-zero]
+                                  @product-with-zero-right |
+                                    forall x: Int; mul(x, ZERO) = ZERO
+                                    [by theorem mulZeroRight]
+                                  @p-times-zero-is-zero |
+                                    mul(p, ZERO) = ZERO
+                                    [by forall_elim(p) product-with-zero-right]
+                                  @n-is-p-times-zero |
+                                    n = mul(p, ZERO)
+                                    [by rewrite c-is-zero n-is-p-times-c]
+                                  @n-is-zero |
+                                    n = ZERO
+                                    [by rewrite p-times-zero-is-zero n-is-p-times-zero]
+                                  @zero-below-zero |
+                                    below(ZERO, ZERO)
+                                    [by rewrite n-is-zero n-positive]
+                                  @nothing-below-itself |
+                                    forall x: Int; not below(x, x)
+                                    [by theorem lessThanIrreflexive]
+                                  @zero-not-below-zero |
+                                    not below(ZERO, ZERO)
+                                    [by forall_elim(ZERO) nothing-below-itself]
+                                  @conclusion-c-positive |
+                                    below(ZERO, c)
+                                    [by absurd zero-below-zero zero-not-below-zero]
+                                }
+                              @when-c-negative |
+                                assume below(c, ZERO) {
+                                  @c-negative |
+                                    below(c, ZERO)
+                                    [by hypothesis when-c-negative]
+                                  @negative-neg-is-nonneg |
+                                    forall x: Int; below(x, ZERO) -> is_nonneg(neg(x))
+                                    [by theorem negBelowZero]
+                                  @neg-c-nonneg-if-negative |
+                                    below(c, ZERO) -> is_nonneg(neg(c))
+                                    [by forall_elim(c) negative-neg-is-nonneg]
+                                  @neg-c-nonneg |
+                                    is_nonneg(neg(c))
+                                    [by modus_ponens neg-c-nonneg-if-negative c-negative]
+                                  @product-of-nonnegs-nonneg |
+                                    forall a, b: Int; is_nonneg(a) -> is_nonneg(b) -> is_nonneg(mul(a, b))
+                                    [by theorem nonnegMul]
+                                  @p-times-neg-c-nonneg-if |
+                                    is_nonneg(p) -> is_nonneg(neg(c)) -> is_nonneg(mul(p, neg(c)))
+                                    [by forall_elim(p, neg(c)) product-of-nonnegs-nonneg]
+                                  @p-times-neg-c-nonneg |
+                                    is_nonneg(mul(p, neg(c)))
+                                    [by tautology p-times-neg-c-nonneg-if p-nonneg neg-c-nonneg]
+                                  @product-negates-right |
+                                    forall a, b: Int; mul(a, neg(b)) = neg(mul(a, b))
+                                    [by theorem mulNegRight]
+                                  @p-times-neg-c-is-neg-product |
+                                    mul(p, neg(c)) = neg(mul(p, c))
+                                    [by forall_elim(p, c) product-negates-right]
+                                  @neg-product-is-p-times-neg-c |
+                                    neg(mul(p, c)) = mul(p, neg(c))
+                                    [by symmetry p-times-neg-c-is-neg-product]
+                                  @neg-n-refl |
+                                    neg(n) = neg(n)
+                                    [by reflexivity]
+                                  @neg-n-is-neg-product |
+                                    neg(n) = neg(mul(p, c))
+                                    [by rewrite n-is-p-times-c neg-n-refl]
+                                  @neg-n-is-p-times-neg-c |
+                                    neg(n) = mul(p, neg(c))
+                                    [by rewrite neg-product-is-p-times-neg-c neg-n-is-neg-product]
+                                  @p-times-neg-c-is-neg-n |
+                                    mul(p, neg(c)) = neg(n)
+                                    [by symmetry neg-n-is-p-times-neg-c]
+                                  @neg-n-nonneg |
+                                    is_nonneg(neg(n))
+                                    [by rewrite p-times-neg-c-is-neg-n p-times-neg-c-nonneg]
+                                  @sum-with-negation-right |
+                                    forall x: Int; add(x, neg(x)) = ZERO
+                                    [by theorem addNegRight]
+                                  @add-n-neg-n-is-zero |
+                                    add(n, neg(n)) = ZERO
+                                    [by forall_elim(n) sum-with-negation-right]
+                                  @at-most-intro |
+                                    forall a, g, b: Int; is_nonneg(g) -> add(a, g) = b -> at_most(a, b)
+                                    [by axiom lessOrEqualIntro]
+                                  @n-at-most-zero-if |
+                                    is_nonneg(neg(n)) -> add(n, neg(n)) = ZERO -> at_most(n, ZERO)
+                                    [by forall_elim(n, neg(n), ZERO) at-most-intro]
+                                  @n-at-most-zero |
+                                    at_most(n, ZERO)
+                                    [by tautology n-at-most-zero-if neg-n-nonneg add-n-neg-n-is-zero]
+                                  @below-gives-at-most |
+                                    forall a, b: Int; below(a, b) -> at_most(a, b)
+                                    [by theorem lessThanToLessOrEqual]
+                                  @zero-at-most-n-if-below |
+                                    below(ZERO, n) -> at_most(ZERO, n)
+                                    [by forall_elim(ZERO, n) below-gives-at-most]
+                                  @zero-at-most-n |
+                                    at_most(ZERO, n)
+                                    [by modus_ponens zero-at-most-n-if-below n-positive]
+                                  @order-is-antisymmetric |
+                                    forall a, b: Int; at_most(a, b) -> at_most(b, a) -> a = b
+                                    [by theorem lessOrEqualAntisymmetric]
+                                  @n-equals-zero-if-mutual |
+                                    at_most(n, ZERO) -> at_most(ZERO, n) -> n = ZERO
+                                    [by forall_elim(n, ZERO) order-is-antisymmetric]
+                                  @n-is-zero |
+                                    n = ZERO
+                                    [by tautology n-equals-zero-if-mutual n-at-most-zero zero-at-most-n]
+                                  @zero-below-zero |
+                                    below(ZERO, ZERO)
+                                    [by rewrite n-is-zero n-positive]
+                                  @nothing-below-itself |
+                                    forall x: Int; not below(x, x)
+                                    [by theorem lessThanIrreflexive]
+                                  @zero-not-below-zero |
+                                    not below(ZERO, ZERO)
+                                    [by forall_elim(ZERO) nothing-below-itself]
+                                  @conclusion-c-positive |
+                                    below(ZERO, c)
+                                    [by absurd zero-below-zero zero-not-below-zero]
+                                }
+                            }
+                        }
+                      @is-p-times-c-implies-c-positive |
+                        n = mul(p, c) -> below(ZERO, c)
+                        [by implies_intro given-n-is-p-times-c]
+                    }
+                  @p-positive-implies |
+                    below(ZERO, p) -> n = mul(p, c) -> below(ZERO, c)
+                    [by implies_intro given-p-positive]
+                }
+              @n-positive-implies |
+                below(ZERO, n) -> below(ZERO, p) -> n = mul(p, c) -> below(ZERO, c)
+                [by implies_intro given-n-positive]
+            }
+          @discharge-c |
+            forall c: Int; below(ZERO, n) -> below(ZERO, p) -> n = mul(p, c) -> below(ZERO, c)
+            [by forall_intro generalize-c]
+        }
+      @discharge-p |
+        forall p, c: Int; below(ZERO, n) -> below(ZERO, p) -> n = mul(p, c) -> below(ZERO, c)
+        [by forall_intro generalize-p]
+    }
+  @conclusion |
+    forall n, p, c: Int; below(ZERO, n) -> below(ZERO, p) -> n = mul(p, c) -> below(ZERO, c)
+    [by forall_intro generalize-n]
+qed
+
+// ===========================================================================
+// FTA, existence half: every integer n > 1 is a product of primes.
+//
+// Strong induction on n. Take a prime factor p | n (primeFactorExists) and the
+// cofactor c with n = p·c. The cofactor is positive (positiveCofactor). Split:
+//   c = 1 : n = p is itself prime — use the singleton sequence [p].
+//   c > 1 : c < n (belowMulGreaterThanOne), so the IH factors c as a sequence t
+//           of j primes; prepend the singleton [p] via seqConcatExists. Every
+//           entry of the concatenation is prime (index 0 is p, indices ≥ 1 are
+//           shifted t-entries) and its product is p·c = n.
+// ===========================================================================
+theorem ftaExistence: forall n: Int; below(ONE, n) ->
+  exists s: Seq; exists k: Int;
+  is_nonneg(k)
+  and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+  (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+  and n = productUpTo(s, k)
+proof
+  @zero-below-one |
+    below(ZERO, ONE)
+    [by theorem zeroBelowOne]
+  @positive-is-nonneg |
+    forall x: Int; below(ZERO, x) -> is_nonneg(x)
+    [by theorem positiveIsNonneg]
+  @one-nonneg-if-positive |
+    below(ZERO, ONE) -> is_nonneg(ONE)
+    [by forall_elim(ONE) positive-is-nonneg]
+  @one-nonneg |
+    is_nonneg(ONE)
+    [by modus_ponens one-nonneg-if-positive zero-below-one]
+  @less-than-transitive |
+    forall a, b, c: Int; below(a, b) -> below(b, c) -> below(a, c)
+    [by theorem lessThanTransitive]
+
+  @strong-step |
+    fix n: Int {
+      @given-n-nonneg |
+        assume is_nonneg(n) {
+          @given-inductive-hypothesis |
+            assume forall m: Int; is_nonneg(m) -> below(m, n) ->
+              (below(ONE, m) -> exists s: Seq; exists k: Int;
+              is_nonneg(k)
+              and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+              (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+              and m = productUpTo(s, k)) {
+              @inductive-hypothesis |
+                forall m: Int; is_nonneg(m) -> below(m, n) ->
+                  (below(ONE, m) -> exists s: Seq; exists k: Int;
+                  is_nonneg(k)
+                  and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                  (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                  and m = productUpTo(s, k))
+                [by hypothesis given-inductive-hypothesis]
+              @given-n-above-one |
+                assume below(ONE, n) {
+                  @n-above-one |
+                    below(ONE, n)
+                    [by hypothesis given-n-above-one]
+                  @one-below-n-transitive |
+                    below(ZERO, ONE) -> below(ONE, n) -> below(ZERO, n)
+                    [by forall_elim(ZERO, ONE, n) less-than-transitive]
+                  @n-positive |
+                    below(ZERO, n)
+                    [by tautology one-below-n-transitive zero-below-one n-above-one]
+
+                  // ---- get a prime factor p and cofactor c with n = p·c -----
+                  @prime-factor-exists-lemma |
+                    forall x: Int; below(ONE, x)
+                      -> exists p: Int; (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, x)
+                    [by theorem primeFactorExists]
+                  @prime-factor-exists |
+                    below(ONE, n)
+                      -> exists p: Int; (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, n)
+                    [by forall_elim(n) prime-factor-exists-lemma]
+                  @n-has-a-prime-factor |
+                    exists p: Int; (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, n)
+                    [by tautology prime-factor-exists n-above-one]
+                  @with-prime-factor-p |
+                    unpack p: Int from n-has-a-prime-factor {
+                      @prime-and-divides |
+                        (below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))) and does_divide(p, n)
+                        [by hypothesis with-prime-factor-p]
+                      @p-is-prime |
+                        below(ONE, p) and (forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p))
+                        [by and_elim_left prime-and-divides]
+                      @p-above-one |
+                        below(ONE, p)
+                        [by and_elim_left p-is-prime]
+                      @p-divides-n |
+                        does_divide(p, n)
+                        [by and_elim_right prime-and-divides]
+                      @one-below-p-transitive |
+                        below(ZERO, ONE) -> below(ONE, p) -> below(ZERO, p)
+                        [by forall_elim(ZERO, ONE, p) less-than-transitive]
+                      @p-positive |
+                        below(ZERO, p)
+                        [by tautology one-below-p-transitive zero-below-one p-above-one]
+                      @divides-elim |
+                        forall d, x: Int; does_divide(d, x) -> exists k: Int; x = mul(d, k)
+                        [by axiom dividesElim]
+                      @n-is-p-multiple-if |
+                        does_divide(p, n) -> exists k: Int; n = mul(p, k)
+                        [by forall_elim(p, n) divides-elim]
+                      @n-is-p-multiple |
+                        exists k: Int; n = mul(p, k)
+                        [by modus_ponens n-is-p-multiple-if p-divides-n]
+                      @with-cofactor-c |
+                        unpack c: Int from n-is-p-multiple {
+                          @n-is-p-times-c |
+                            n = mul(p, c)
+                            [by hypothesis with-cofactor-c]
+                          @cofactor-positive-lemma |
+                            forall x, y, z: Int; below(ZERO, x) -> below(ZERO, y) -> x = mul(y, z) -> below(ZERO, z)
+                            [by theorem positiveCofactor]
+                          @cofactor-positive-if |
+                            below(ZERO, n) -> below(ZERO, p) -> n = mul(p, c) -> below(ZERO, c)
+                            [by forall_elim(n, p, c) cofactor-positive-lemma]
+                          @c-positive |
+                            below(ZERO, c)
+                            [by tautology cofactor-positive-if n-positive p-positive n-is-p-times-c]
+
+                          // ---- split the cofactor: c = 1 or c > 1 ----------
+                          @trichotomy-one-c |
+                            forall a, b: Int; below(a, b) or a = b or below(b, a)
+                            [by theorem trichotomy]
+                          @one-versus-c |
+                            below(ONE, c) or ONE = c or below(c, ONE)
+                            [by forall_elim(ONE, c) trichotomy-one-c]
+                          @factorization |
+                            exists s: Seq; exists k: Int;
+                              is_nonneg(k)
+                              and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                              (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                              and n = productUpTo(s, k)
+                            case on one-versus-c {
+                              // c > 1: factor c by the IH, then prepend p via concat.
+                              @when-c-above-one |
+                                assume below(ONE, c) {
+                                  @c-above-one |
+                                    below(ONE, c)
+                                    [by hypothesis when-c-above-one]
+                                  @c-nonneg-if-positive |
+                                    below(ZERO, c) -> is_nonneg(c)
+                                    [by forall_elim(c) positive-is-nonneg]
+                                  @c-nonneg |
+                                    is_nonneg(c)
+                                    [by modus_ponens c-nonneg-if-positive c-positive]
+                                  // c < n = p·c, so the IH applies to c.
+                                  @below-mul-lemma |
+                                    forall x, y: Int; below(ONE, x) -> below(ZERO, y) -> below(y, mul(x, y))
+                                    [by theorem belowMulGreaterThanOne]
+                                  @c-below-p-times-c-if |
+                                    below(ONE, p) -> below(ZERO, c) -> below(c, mul(p, c))
+                                    [by forall_elim(p, c) below-mul-lemma]
+                                  @c-below-p-times-c |
+                                    below(c, mul(p, c))
+                                    [by tautology c-below-p-times-c-if p-above-one c-positive]
+                                  @p-times-c-is-n |
+                                    mul(p, c) = n
+                                    [by symmetry n-is-p-times-c]
+                                  @c-below-n |
+                                    below(c, n)
+                                    [by rewrite p-times-c-is-n c-below-p-times-c]
+                                  // apply the IH: c has a prime factorization (t, j).
+                                  @ih-at-c |
+                                    is_nonneg(c) -> below(c, n) ->
+                                      (below(ONE, c) -> exists s: Seq; exists k: Int;
+                                      is_nonneg(k)
+                                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                      and c = productUpTo(s, k))
+                                    [by forall_elim(c) inductive-hypothesis]
+                                  @c-has-factorization |
+                                    exists s: Seq; exists k: Int;
+                                      is_nonneg(k)
+                                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                      and c = productUpTo(s, k)
+                                    [by tautology ih-at-c c-nonneg c-below-n c-above-one]
+                                  @with-factor-sequence |
+                                    unpack t: Seq from c-has-factorization {
+                                      @factorization-of-c-with-length |
+                                        exists k: Int;
+                                          is_nonneg(k)
+                                          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                          (below(ONE, at(t, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(t, i)) -> (d = ONE or d = at(t, i)))))
+                                          and c = productUpTo(t, k)
+                                        [by hypothesis with-factor-sequence]
+                                      @with-factor-length |
+                                        unpack j: Int from factorization-of-c-with-length {
+                                          @factorization-of-c |
+                                            is_nonneg(j)
+                                              and (forall i: Int; is_nonneg(i) -> below(i, j) ->
+                                              (below(ONE, at(t, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(t, i)) -> (d = ONE or d = at(t, i)))))
+                                              and c = productUpTo(t, j)
+                                            [by hypothesis with-factor-length]
+                                          @length-and-primes-of-c |
+                                            is_nonneg(j)
+                                              and (forall i: Int; is_nonneg(i) -> below(i, j) ->
+                                              (below(ONE, at(t, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(t, i)) -> (d = ONE or d = at(t, i)))))
+                                            [by and_elim_left factorization-of-c]
+                                          @j-nonneg |
+                                            is_nonneg(j)
+                                            [by and_elim_left length-and-primes-of-c]
+                                          @t-entries-prime |
+                                            forall i: Int; is_nonneg(i) -> below(i, j) ->
+                                              (below(ONE, at(t, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(t, i)) -> (d = ONE or d = at(t, i))))
+                                            [by and_elim_right length-and-primes-of-c]
+                                          @c-is-t-product |
+                                            c = productUpTo(t, j)
+                                            [by and_elim_right factorization-of-c]
+                                          // singleton [p] to prepend.
+                                          @singleton-exists-schema |
+                                            forall x: Int; exists s: Seq; at(s, ZERO) = x and productUpTo(s, ONE) = x
+                                            [by axiom seqSingletonExists]
+                                          @singleton-p-exists |
+                                            exists s: Seq; at(s, ZERO) = p and productUpTo(s, ONE) = p
+                                            [by forall_elim(p) singleton-exists-schema]
+                                          @with-singleton |
+                                            unpack sp: Seq from singleton-p-exists {
+                                              @singleton-entry-and-product |
+                                                at(sp, ZERO) = p and productUpTo(sp, ONE) = p
+                                                [by hypothesis with-singleton]
+                                              @singleton-entry-is-p |
+                                                at(sp, ZERO) = p
+                                                [by and_elim_left singleton-entry-and-product]
+                                              @singleton-product-is-p |
+                                                productUpTo(sp, ONE) = p
+                                                [by and_elim_right singleton-entry-and-product]
+                                              // concatenate [p] (length 1) with t (length j).
+                                              @concat-exists-schema |
+                                                forall s: Seq; forall t2: Seq; forall a: Int; forall b: Int;
+                                                  is_nonneg(a) -> is_nonneg(b) ->
+                                                  exists u: Seq;
+                                                  (forall i: Int; is_nonneg(i) -> below(i, a) -> at(u, i) = at(s, i))
+                                                  and (forall i: Int; is_nonneg(i) -> below(i, b) -> at(u, add(a, i)) = at(t2, i))
+                                                  and productUpTo(u, add(a, b)) = mul(productUpTo(s, a), productUpTo(t2, b))
+                                                [by axiom seqConcatExists]
+                                              @concat-sp-t-if |
+                                                is_nonneg(ONE) -> is_nonneg(j) ->
+                                                  exists u: Seq;
+                                                  (forall i: Int; is_nonneg(i) -> below(i, ONE) -> at(u, i) = at(sp, i))
+                                                  and (forall i: Int; is_nonneg(i) -> below(i, j) -> at(u, add(ONE, i)) = at(t, i))
+                                                  and productUpTo(u, add(ONE, j)) = mul(productUpTo(sp, ONE), productUpTo(t, j))
+                                                [by forall_elim(sp, t, ONE, j) concat-exists-schema]
+                                              @concat-sp-t |
+                                                exists u: Seq;
+                                                  (forall i: Int; is_nonneg(i) -> below(i, ONE) -> at(u, i) = at(sp, i))
+                                                  and (forall i: Int; is_nonneg(i) -> below(i, j) -> at(u, add(ONE, i)) = at(t, i))
+                                                  and productUpTo(u, add(ONE, j)) = mul(productUpTo(sp, ONE), productUpTo(t, j))
+                                                [by tautology concat-sp-t-if one-nonneg j-nonneg]
+                                              @with-concat |
+                                                unpack u: Seq from concat-sp-t {
+                                                  @concat-clauses |
+                                                    (forall i: Int; is_nonneg(i) -> below(i, ONE) -> at(u, i) = at(sp, i))
+                                                      and (forall i: Int; is_nonneg(i) -> below(i, j) -> at(u, add(ONE, i)) = at(t, i))
+                                                      and productUpTo(u, add(ONE, j)) = mul(productUpTo(sp, ONE), productUpTo(t, j))
+                                                    [by hypothesis with-concat]
+                                                  @concat-prefix-and-shift |
+                                                    (forall i: Int; is_nonneg(i) -> below(i, ONE) -> at(u, i) = at(sp, i))
+                                                      and (forall i: Int; is_nonneg(i) -> below(i, j) -> at(u, add(ONE, i)) = at(t, i))
+                                                    [by and_elim_left concat-clauses]
+                                                  @concat-prefix |
+                                                    forall i: Int; is_nonneg(i) -> below(i, ONE) -> at(u, i) = at(sp, i)
+                                                    [by and_elim_left concat-prefix-and-shift]
+                                                  @concat-shift |
+                                                    forall i: Int; is_nonneg(i) -> below(i, j) -> at(u, add(ONE, i)) = at(t, i)
+                                                    [by and_elim_right concat-prefix-and-shift]
+                                                  @concat-product |
+                                                    productUpTo(u, add(ONE, j)) = mul(productUpTo(sp, ONE), productUpTo(t, j))
+                                                    [by and_elim_right concat-clauses]
+                                                  // length k = 1 + j is nonneg.
+                                                  @nonneg-add |
+                                                    forall a, b: Int; is_nonneg(a) -> is_nonneg(b) -> is_nonneg(add(a, b))
+                                                    [by theorem nonnegAdd]
+                                                  @length-nonneg-if |
+                                                    is_nonneg(ONE) -> is_nonneg(j) -> is_nonneg(add(ONE, j))
+                                                    [by forall_elim(ONE, j) nonneg-add]
+                                                  @length-nonneg |
+                                                    is_nonneg(add(ONE, j))
+                                                    [by tautology length-nonneg-if one-nonneg j-nonneg]
+                                                  // product: productUpTo(u, 1+j) = p·c = n.
+                                                  @product-is-p-times-c-raw |
+                                                    productUpTo(u, add(ONE, j)) = mul(p, productUpTo(t, j))
+                                                    [by rewrite singleton-product-is-p concat-product]
+                                                  @t-product-is-c |
+                                                    productUpTo(t, j) = c
+                                                    [by symmetry c-is-t-product]
+                                                  @product-is-p-times-c |
+                                                    productUpTo(u, add(ONE, j)) = mul(p, c)
+                                                    [by rewrite t-product-is-c product-is-p-times-c-raw]
+                                                  @product-is-n |
+                                                    productUpTo(u, add(ONE, j)) = n
+                                                    [by rewrite p-times-c-is-n product-is-p-times-c]
+                                                  @n-is-concat-product |
+                                                    n = productUpTo(u, add(ONE, j))
+                                                    [by symmetry product-is-n]
+                                                  // every entry of u below 1+j is prime.
+                                                  @entries-of-concat-prime |
+                                                    fix i: Int {
+                                                      @given-i-nonneg |
+                                                        assume is_nonneg(i) {
+                                                          @given-i-below-length |
+                                                            assume below(i, add(ONE, j)) {
+                                                              @i-nonneg |
+                                                                is_nonneg(i)
+                                                                [by hypothesis given-i-nonneg]
+                                                              @i-below-length |
+                                                                below(i, add(ONE, j))
+                                                                [by hypothesis given-i-below-length]
+                                                              @one-refl |
+                                                                forall x: Int; at_most(x, x)
+                                                                [by theorem lessOrEqualRefl]
+                                                              @below-to-at-most |
+                                                                forall a, b: Int; below(a, b) -> at_most(a, b)
+                                                                [by theorem lessThanToLessOrEqual]
+                                                              @at-most-elim-schema |
+                                                                forall a, b: Int; at_most(a, b) -> exists d: Int; is_nonneg(d) and add(a, d) = b
+                                                                [by axiom lessOrEqualElim]
+                                                              @at-most-elim-at-one-i |
+                                                                at_most(ONE, i) -> exists d: Int; is_nonneg(d) and add(ONE, d) = i
+                                                                [by forall_elim(ONE, i) at-most-elim-schema]
+                                                              // split i < 1 (the p slot) vs 1 ≤ i (a t slot).
+                                                              @trichotomy-i-one |
+                                                                forall a, b: Int; below(a, b) or a = b or below(b, a)
+                                                                [by theorem trichotomy]
+                                                              @i-versus-one |
+                                                                below(i, ONE) or i = ONE or below(ONE, i)
+                                                                [by forall_elim(i, ONE) trichotomy-i-one]
+                                                              @below-or-at-most |
+                                                                below(i, ONE) or at_most(ONE, i)
+                                                                case on i-versus-one {
+                                                                  @when-i-below-one |
+                                                                    assume below(i, ONE) {
+                                                                      @i-below-one-here |
+                                                                        below(i, ONE)
+                                                                        [by hypothesis when-i-below-one]
+                                                                      @conclusion-below-or-at-most |
+                                                                        below(i, ONE) or at_most(ONE, i)
+                                                                        [by or_intro_left i-below-one-here]
+                                                                    }
+                                                                  @when-i-equals-one |
+                                                                    assume i = ONE {
+                                                                      @i-equals-one-here |
+                                                                        i = ONE
+                                                                        [by hypothesis when-i-equals-one]
+                                                                      @one-equals-i |
+                                                                        ONE = i
+                                                                        [by symmetry i-equals-one-here]
+                                                                      @one-at-most-one |
+                                                                        at_most(ONE, ONE)
+                                                                        [by forall_elim(ONE) one-refl]
+                                                                      @one-at-most-i |
+                                                                        at_most(ONE, i)
+                                                                        [by rewrite one-equals-i one-at-most-one]
+                                                                      @conclusion-below-or-at-most |
+                                                                        below(i, ONE) or at_most(ONE, i)
+                                                                        [by or_intro_right one-at-most-i]
+                                                                    }
+                                                                  @when-one-below-i |
+                                                                    assume below(ONE, i) {
+                                                                      @one-below-i-here |
+                                                                        below(ONE, i)
+                                                                        [by hypothesis when-one-below-i]
+                                                                      @one-below-i-at-most |
+                                                                        below(ONE, i) -> at_most(ONE, i)
+                                                                        [by forall_elim(ONE, i) below-to-at-most]
+                                                                      @one-at-most-i |
+                                                                        at_most(ONE, i)
+                                                                        [by modus_ponens one-below-i-at-most one-below-i-here]
+                                                                      @conclusion-below-or-at-most |
+                                                                        below(i, ONE) or at_most(ONE, i)
+                                                                        [by or_intro_right one-at-most-i]
+                                                                    }
+                                                                }
+                                                              @entry-is-prime |
+                                                                below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i)))
+                                                                case on below-or-at-most {
+                                                                  // index 0: at(u,0) = at(sp,0) = p, prime.
+                                                                  @when-i-in-prefix |
+                                                                    assume below(i, ONE) {
+                                                                      @i-below-one |
+                                                                        below(i, ONE)
+                                                                        [by hypothesis when-i-in-prefix]
+                                                                      @nonneg-below-one-is-zero |
+                                                                        forall x: Int; is_nonneg(x) -> below(x, ONE) -> x = ZERO
+                                                                        [by theorem nonnegBelowOneIsZero]
+                                                                      @i-is-zero-if |
+                                                                        is_nonneg(i) -> below(i, ONE) -> i = ZERO
+                                                                        [by forall_elim(i) nonneg-below-one-is-zero]
+                                                                      @i-is-zero |
+                                                                        i = ZERO
+                                                                        [by tautology i-is-zero-if i-nonneg i-below-one]
+                                                                      @concat-prefix-at-i |
+                                                                        is_nonneg(i) -> below(i, ONE) -> at(u, i) = at(sp, i)
+                                                                        [by forall_elim(i) concat-prefix]
+                                                                      @u-at-i-is-sp-at-i |
+                                                                        at(u, i) = at(sp, i)
+                                                                        [by tautology concat-prefix-at-i i-nonneg i-below-one]
+                                                                      @sp-at-i-refl |
+                                                                        at(sp, i) = at(sp, i)
+                                                                        [by reflexivity]
+                                                                      @sp-at-i-is-sp-at-zero |
+                                                                        at(sp, i) = at(sp, ZERO)
+                                                                        [by rewrite i-is-zero sp-at-i-refl]
+                                                                      @sp-at-i-is-p |
+                                                                        at(sp, i) = p
+                                                                        [by rewrite singleton-entry-is-p sp-at-i-is-sp-at-zero]
+                                                                      @u-at-i-is-p |
+                                                                        at(u, i) = p
+                                                                        [by rewrite sp-at-i-is-p u-at-i-is-sp-at-i]
+                                                                      @p-is-u-at-i |
+                                                                        p = at(u, i)
+                                                                        [by symmetry u-at-i-is-p]
+                                                                      @entry-above-one |
+                                                                        below(ONE, at(u, i))
+                                                                        [by rewrite p-is-u-at-i p-above-one]
+                                                                      @p-divisor-clause |
+                                                                        forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p)
+                                                                        [by and_elim_right p-is-prime]
+                                                                      @entry-divisor-clause |
+                                                                        forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i))
+                                                                        [by rewrite p-is-u-at-i p-divisor-clause]
+                                                                      @conclusion-entry-is-prime |
+                                                                        below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i)))
+                                                                        [by and_intro entry-above-one entry-divisor-clause]
+                                                                    }
+                                                                  // index ≥ 1: at(u,i) = at(t, i-1), prime by t's factorization.
+                                                                  @when-i-in-shift |
+                                                                    assume at_most(ONE, i) {
+                                                                      @one-at-most-i |
+                                                                        at_most(ONE, i)
+                                                                        [by hypothesis when-i-in-shift]
+                                                                      @gap-exists |
+                                                                        exists d: Int; is_nonneg(d) and add(ONE, d) = i
+                                                                        [by modus_ponens at-most-elim-at-one-i one-at-most-i]
+                                                                      @with-gap |
+                                                                        unpack g: Int from gap-exists {
+                                                                          @gap-nonneg-and-reaches |
+                                                                            is_nonneg(g) and add(ONE, g) = i
+                                                                            [by hypothesis with-gap]
+                                                                          @gap-nonneg |
+                                                                            is_nonneg(g)
+                                                                            [by and_elim_left gap-nonneg-and-reaches]
+                                                                          @one-plus-gap-is-i |
+                                                                            add(ONE, g) = i
+                                                                            [by and_elim_right gap-nonneg-and-reaches]
+                                                                          @i-is-one-plus-gap |
+                                                                            i = add(ONE, g)
+                                                                            [by symmetry one-plus-gap-is-i]
+                                                                          // g < j from add(1,g) = i < add(1,j).
+                                                                          @i-below-length-recast |
+                                                                            below(add(ONE, g), add(ONE, j))
+                                                                            [by rewrite i-is-one-plus-gap i-below-length]
+                                                                          @cancel-leading-one |
+                                                                            forall x, a, b: Int; below(add(x, a), add(x, b)) -> below(a, b)
+                                                                            [by theorem lessThanAddCancelLeft]
+                                                                          @gap-below-j-if |
+                                                                            below(add(ONE, g), add(ONE, j)) -> below(g, j)
+                                                                            [by forall_elim(ONE, g, j) cancel-leading-one]
+                                                                          @gap-below-j |
+                                                                            below(g, j)
+                                                                            [by modus_ponens gap-below-j-if i-below-length-recast]
+                                                                          // at(u, i) = at(u, 1+g) = at(t, g).
+                                                                          @concat-shift-at-g |
+                                                                            is_nonneg(g) -> below(g, j) -> at(u, add(ONE, g)) = at(t, g)
+                                                                            [by forall_elim(g) concat-shift]
+                                                                          @u-at-one-plus-gap-is-t-at-gap |
+                                                                            at(u, add(ONE, g)) = at(t, g)
+                                                                            [by tautology concat-shift-at-g gap-nonneg gap-below-j]
+                                                                          @u-at-i-is-t-at-gap |
+                                                                            at(u, i) = at(t, g)
+                                                                            [by rewrite one-plus-gap-is-i u-at-one-plus-gap-is-t-at-gap]
+                                                                          @t-at-gap-is-u-at-i |
+                                                                            at(t, g) = at(u, i)
+                                                                            [by symmetry u-at-i-is-t-at-gap]
+                                                                          // t's g-th entry is prime.
+                                                                          @t-entry-prime-at-g |
+                                                                            is_nonneg(g) -> below(g, j) -> (below(ONE, at(t, g)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(t, g)) -> (d = ONE or d = at(t, g))))
+                                                                            [by forall_elim(g) t-entries-prime]
+                                                                          @t-gap-entry-prime |
+                                                                            below(ONE, at(t, g)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(t, g)) -> (d = ONE or d = at(t, g)))
+                                                                            [by tautology t-entry-prime-at-g gap-nonneg gap-below-j]
+                                                                          @t-gap-above-one |
+                                                                            below(ONE, at(t, g))
+                                                                            [by and_elim_left t-gap-entry-prime]
+                                                                          @t-gap-divisor-clause |
+                                                                            forall d: Int; below(ZERO, d) -> does_divide(d, at(t, g)) -> (d = ONE or d = at(t, g))
+                                                                            [by and_elim_right t-gap-entry-prime]
+                                                                          @entry-above-one |
+                                                                            below(ONE, at(u, i))
+                                                                            [by rewrite t-at-gap-is-u-at-i t-gap-above-one]
+                                                                          @entry-divisor-clause |
+                                                                            forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i))
+                                                                            [by rewrite t-at-gap-is-u-at-i t-gap-divisor-clause]
+                                                                          @conclusion-entry-is-prime |
+                                                                            below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i)))
+                                                                            [by and_intro entry-above-one entry-divisor-clause]
+                                                                        }
+                                                                      @conclusion-entry-is-prime |
+                                                                        below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i)))
+                                                                        [by exists_elim with-gap]
+                                                                    }
+                                                                }
+                                                            }
+                                                          @i-below-length-implies-prime |
+                                                            below(i, add(ONE, j)) -> (below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i))))
+                                                            [by implies_intro given-i-below-length]
+                                                        }
+                                                      @i-nonneg-implies-prime |
+                                                        is_nonneg(i) -> below(i, add(ONE, j)) -> (below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i))))
+                                                        [by implies_intro given-i-nonneg]
+                                                    }
+                                                  @every-concat-entry-prime |
+                                                    forall i: Int; is_nonneg(i) -> below(i, add(ONE, j)) -> (below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i))))
+                                                    [by forall_intro entries-of-concat-prime]
+                                                  // assemble the existential.
+                                                  @length-and-primes |
+                                                    is_nonneg(add(ONE, j))
+                                                      and (forall i: Int; is_nonneg(i) -> below(i, add(ONE, j)) -> (below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i)))))
+                                                    [by and_intro length-nonneg every-concat-entry-prime]
+                                                  @factorization-body |
+                                                    is_nonneg(add(ONE, j))
+                                                      and (forall i: Int; is_nonneg(i) -> below(i, add(ONE, j)) -> (below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i)))))
+                                                      and n = productUpTo(u, add(ONE, j))
+                                                    [by and_intro length-and-primes n-is-concat-product]
+                                                  @factorization-with-length |
+                                                    exists k: Int;
+                                                      is_nonneg(k)
+                                                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                                      (below(ONE, at(u, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(u, i)) -> (d = ONE or d = at(u, i)))))
+                                                      and n = productUpTo(u, k)
+                                                    [by exists_intro(add(ONE, j)) factorization-body]
+                                                  @conclusion-factorization |
+                                                    exists s: Seq; exists k: Int;
+                                                      is_nonneg(k)
+                                                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                                      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                                      and n = productUpTo(s, k)
+                                                    [by exists_intro(u) factorization-with-length]
+                                                }
+                                              @conclusion-concat-factorization |
+                                                exists s: Seq; exists k: Int;
+                                                  is_nonneg(k)
+                                                  and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                                  (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                                  and n = productUpTo(s, k)
+                                                [by exists_elim with-concat]
+                                            }
+                                          @conclusion-singleton-factorization |
+                                            exists s: Seq; exists k: Int;
+                                              is_nonneg(k)
+                                              and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                              (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                              and n = productUpTo(s, k)
+                                            [by exists_elim with-singleton]
+                                        }
+                                      @conclusion-factor-length |
+                                        exists s: Seq; exists k: Int;
+                                          is_nonneg(k)
+                                          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                          (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                          and n = productUpTo(s, k)
+                                        [by exists_elim with-factor-length]
+                                    }
+                                  @conclusion-factorization |
+                                    exists s: Seq; exists k: Int;
+                                      is_nonneg(k)
+                                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                      and n = productUpTo(s, k)
+                                    [by exists_elim with-factor-sequence]
+                                }
+                              // c = 1: n = p·1 = p is itself prime; use [p].
+                              @when-c-equals-one |
+                                assume ONE = c {
+                                  @one-is-c |
+                                    ONE = c
+                                    [by hypothesis when-c-equals-one]
+                                  @c-is-one |
+                                    c = ONE
+                                    [by symmetry one-is-c]
+                                  @n-is-p-times-one |
+                                    n = mul(p, ONE)
+                                    [by rewrite c-is-one n-is-p-times-c]
+                                  @mul-one-right |
+                                    forall x: Int; mul(x, ONE) = x
+                                    [by theorem mulOneRight]
+                                  @p-times-one-is-p |
+                                    mul(p, ONE) = p
+                                    [by forall_elim(p) mul-one-right]
+                                  @n-is-p |
+                                    n = p
+                                    [by rewrite p-times-one-is-p n-is-p-times-one]
+                                  // build the singleton [p].
+                                  @singleton-exists-schema |
+                                    forall x: Int; exists s: Seq; at(s, ZERO) = x and productUpTo(s, ONE) = x
+                                    [by axiom seqSingletonExists]
+                                  @singleton-p-exists |
+                                    exists s: Seq; at(s, ZERO) = p and productUpTo(s, ONE) = p
+                                    [by forall_elim(p) singleton-exists-schema]
+                                  @with-singleton |
+                                    unpack sp: Seq from singleton-p-exists {
+                                      @singleton-entry-and-product |
+                                        at(sp, ZERO) = p and productUpTo(sp, ONE) = p
+                                        [by hypothesis with-singleton]
+                                      @singleton-entry-is-p |
+                                        at(sp, ZERO) = p
+                                        [by and_elim_left singleton-entry-and-product]
+                                      @singleton-product-is-p |
+                                        productUpTo(sp, ONE) = p
+                                        [by and_elim_right singleton-entry-and-product]
+                                      // the sole entry (index 0) is p, which is prime.
+                                      @entries-below-one-are-prime |
+                                        fix i: Int {
+                                          @given-i-nonneg |
+                                            assume is_nonneg(i) {
+                                              @given-i-below-one |
+                                                assume below(i, ONE) {
+                                                  @i-nonneg |
+                                                    is_nonneg(i)
+                                                    [by hypothesis given-i-nonneg]
+                                                  @i-below-one |
+                                                    below(i, ONE)
+                                                    [by hypothesis given-i-below-one]
+                                                  @nonneg-below-one-is-zero |
+                                                    forall x: Int; is_nonneg(x) -> below(x, ONE) -> x = ZERO
+                                                    [by theorem nonnegBelowOneIsZero]
+                                                  @i-is-zero-if |
+                                                    is_nonneg(i) -> below(i, ONE) -> i = ZERO
+                                                    [by forall_elim(i) nonneg-below-one-is-zero]
+                                                  @i-is-zero |
+                                                    i = ZERO
+                                                    [by tautology i-is-zero-if i-nonneg i-below-one]
+                                                  @entry-refl |
+                                                    at(sp, i) = at(sp, i)
+                                                    [by reflexivity]
+                                                  @entry-at-i-is-entry-at-zero |
+                                                    at(sp, i) = at(sp, ZERO)
+                                                    [by rewrite i-is-zero entry-refl]
+                                                  @entry-at-i-is-p |
+                                                    at(sp, i) = p
+                                                    [by rewrite singleton-entry-is-p entry-at-i-is-entry-at-zero]
+                                                  @p-is-entry-at-i |
+                                                    p = at(sp, i)
+                                                    [by symmetry entry-at-i-is-p]
+                                                  @entry-above-one |
+                                                    below(ONE, at(sp, i))
+                                                    [by rewrite p-is-entry-at-i p-above-one]
+                                                  @p-divisor-clause |
+                                                    forall d: Int; below(ZERO, d) -> does_divide(d, p) -> (d = ONE or d = p)
+                                                    [by and_elim_right p-is-prime]
+                                                  @entry-divisor-clause |
+                                                    forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i))
+                                                    [by rewrite p-is-entry-at-i p-divisor-clause]
+                                                  @conclusion-entry-is-prime |
+                                                    below(ONE, at(sp, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i)))
+                                                    [by and_intro entry-above-one entry-divisor-clause]
+                                                }
+                                              @i-below-one-implies-prime |
+                                                below(i, ONE) -> (below(ONE, at(sp, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i))))
+                                                [by implies_intro given-i-below-one]
+                                            }
+                                          @i-nonneg-implies-prime |
+                                            is_nonneg(i) -> below(i, ONE) -> (below(ONE, at(sp, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i))))
+                                            [by implies_intro given-i-nonneg]
+                                        }
+                                      @every-entry-is-prime |
+                                        forall i: Int; is_nonneg(i) -> below(i, ONE) -> (below(ONE, at(sp, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i))))
+                                        [by forall_intro entries-below-one-are-prime]
+                                      // n = p = productUpTo(sp, 1).
+                                      @p-is-singleton-product |
+                                        p = productUpTo(sp, ONE)
+                                        [by symmetry singleton-product-is-p]
+                                      @n-is-singleton-product |
+                                        n = productUpTo(sp, ONE)
+                                        [by rewrite p-is-singleton-product n-is-p]
+                                      @length-and-primes |
+                                        is_nonneg(ONE)
+                                          and (forall i: Int; is_nonneg(i) -> below(i, ONE) -> (below(ONE, at(sp, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i)))))
+                                        [by and_intro one-nonneg every-entry-is-prime]
+                                      @factorization-body |
+                                        is_nonneg(ONE)
+                                          and (forall i: Int; is_nonneg(i) -> below(i, ONE) -> (below(ONE, at(sp, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i)))))
+                                          and n = productUpTo(sp, ONE)
+                                        [by and_intro length-and-primes n-is-singleton-product]
+                                      @factorization-with-length |
+                                        exists k: Int;
+                                          is_nonneg(k)
+                                          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                          (below(ONE, at(sp, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(sp, i)) -> (d = ONE or d = at(sp, i)))))
+                                          and n = productUpTo(sp, k)
+                                        [by exists_intro(ONE) factorization-body]
+                                      @conclusion-factorization |
+                                        exists s: Seq; exists k: Int;
+                                          is_nonneg(k)
+                                          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                          (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                          and n = productUpTo(s, k)
+                                        [by exists_intro(sp) factorization-with-length]
+                                    }
+                                  @conclusion-singleton-factorization |
+                                    exists s: Seq; exists k: Int;
+                                      is_nonneg(k)
+                                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                      and n = productUpTo(s, k)
+                                    [by exists_elim with-singleton]
+                                }
+                              @when-c-below-one |
+                                assume below(c, ONE) {
+                                  @c-nonneg-if-positive |
+                                    below(ZERO, c) -> is_nonneg(c)
+                                    [by forall_elim(c) positive-is-nonneg]
+                                  @c-nonneg |
+                                    is_nonneg(c)
+                                    [by modus_ponens c-nonneg-if-positive c-positive]
+                                  @c-below-one |
+                                    below(c, ONE)
+                                    [by hypothesis when-c-below-one]
+                                  @nonneg-below-one-is-zero |
+                                    forall x: Int; is_nonneg(x) -> below(x, ONE) -> x = ZERO
+                                    [by theorem nonnegBelowOneIsZero]
+                                  @c-is-zero-if |
+                                    is_nonneg(c) -> below(c, ONE) -> c = ZERO
+                                    [by forall_elim(c) nonneg-below-one-is-zero]
+                                  @c-is-zero |
+                                    c = ZERO
+                                    [by tautology c-is-zero-if c-nonneg c-below-one]
+                                  @zero-below-zero |
+                                    below(ZERO, ZERO)
+                                    [by rewrite c-is-zero c-positive]
+                                  @nothing-below-itself |
+                                    forall x: Int; not below(x, x)
+                                    [by theorem lessThanIrreflexive]
+                                  @zero-not-below-zero |
+                                    not below(ZERO, ZERO)
+                                    [by forall_elim(ZERO) nothing-below-itself]
+                                  @conclusion-factorization |
+                                    exists s: Seq; exists k: Int;
+                                      is_nonneg(k)
+                                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                                      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                                      and n = productUpTo(s, k)
+                                    [by absurd zero-below-zero zero-not-below-zero]
+                                }
+                            }
+                        }
+                      @conclusion-with-prime |
+                        exists s: Seq; exists k: Int;
+                          is_nonneg(k)
+                          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                          (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                          and n = productUpTo(s, k)
+                        [by exists_elim with-cofactor-c]
+                    }
+                  @conclusion-factorization |
+                    exists s: Seq; exists k: Int;
+                      is_nonneg(k)
+                      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                      and n = productUpTo(s, k)
+                    [by exists_elim with-prime-factor-p]
+                }
+              @above-one-implies-factorization |
+                below(ONE, n) -> exists s: Seq; exists k: Int;
+                  is_nonneg(k)
+                  and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+                  (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+                  and n = productUpTo(s, k)
+                [by implies_intro given-n-above-one]
+            }
+          @ih-implies-factorization |
+            (forall m: Int; is_nonneg(m) -> below(m, n) ->
+              (below(ONE, m) -> exists s: Seq; exists k: Int;
+              is_nonneg(k)
+              and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+              (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+              and m = productUpTo(s, k)))
+              -> (below(ONE, n) -> exists s: Seq; exists k: Int;
+              is_nonneg(k)
+              and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+              (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+              and n = productUpTo(s, k))
+            [by implies_intro given-inductive-hypothesis]
+        }
+      @strong-step-at-n |
+        is_nonneg(n) ->
+          (forall m: Int; is_nonneg(m) -> below(m, n) ->
+          (below(ONE, m) -> exists s: Seq; exists k: Int;
+          is_nonneg(k)
+          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+          (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+          and m = productUpTo(s, k)))
+          -> (below(ONE, n) -> exists s: Seq; exists k: Int;
+          is_nonneg(k)
+          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+          (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+          and n = productUpTo(s, k))
+        [by implies_intro given-n-nonneg]
+    }
+  @strong-step-for-all-n |
+    forall n: Int; is_nonneg(n) ->
+      (forall m: Int; is_nonneg(m) -> below(m, n) ->
+      (below(ONE, m) -> exists s: Seq; exists k: Int;
+      is_nonneg(k)
+      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+      and m = productUpTo(s, k)))
+      -> (below(ONE, n) -> exists s: Seq; exists k: Int;
+      is_nonneg(k)
+      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+      and n = productUpTo(s, k))
+    [by forall_intro strong-step]
+  @factorization-for-nonneg |
+    forall n: Int; is_nonneg(n) ->
+      (below(ONE, n) -> exists s: Seq; exists k: Int;
+      is_nonneg(k)
+      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+      and n = productUpTo(s, k))
+    [by instantiate nonnegStrongInduction((fun n: Int => below(ONE, n) -> exists s: Seq; exists k: Int; is_nonneg(k) and (forall i: Int; is_nonneg(i) -> below(i, k) -> (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i))))) and n = productUpTo(s, k))) strong-step-for-all-n]
+  @discharge-below-one |
+    fix n: Int {
+      @given-n-above-one |
+        assume below(ONE, n) {
+          @n-above-one |
+            below(ONE, n)
+            [by hypothesis given-n-above-one]
+          @one-below-n-transitive |
+            below(ZERO, ONE) -> below(ONE, n) -> below(ZERO, n)
+            [by forall_elim(ZERO, ONE, n) less-than-transitive]
+          @n-positive |
+            below(ZERO, n)
+            [by tautology one-below-n-transitive zero-below-one n-above-one]
+          @n-nonneg-if-positive |
+            below(ZERO, n) -> is_nonneg(n)
+            [by forall_elim(n) positive-is-nonneg]
+          @n-nonneg |
+            is_nonneg(n)
+            [by modus_ponens n-nonneg-if-positive n-positive]
+          @factorization-at-n |
+            is_nonneg(n) ->
+              (below(ONE, n) -> exists s: Seq; exists k: Int;
+              is_nonneg(k)
+              and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+              (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+              and n = productUpTo(s, k))
+            [by forall_elim(n) factorization-for-nonneg]
+          @conclusion-factorization |
+            exists s: Seq; exists k: Int;
+              is_nonneg(k)
+              and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+              (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+              and n = productUpTo(s, k)
+            [by tautology factorization-at-n n-nonneg n-above-one]
+        }
+      @above-one-gives-factorization |
+        below(ONE, n) ->
+          exists s: Seq; exists k: Int;
+          is_nonneg(k)
+          and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+          (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+          and n = productUpTo(s, k)
+        [by implies_intro given-n-above-one]
+    }
+  @conclusion |
+    forall n: Int; below(ONE, n) ->
+      exists s: Seq; exists k: Int;
+      is_nonneg(k)
+      and (forall i: Int; is_nonneg(i) -> below(i, k) ->
+      (below(ONE, at(s, i)) and (forall d: Int; below(ZERO, d) -> does_divide(d, at(s, i)) -> (d = ONE or d = at(s, i)))))
+      and n = productUpTo(s, k)
+    [by forall_intro discharge-below-one]
+qed

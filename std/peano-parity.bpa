@@ -72,7 +72,7 @@ proof
             [by hypothesis given-inductive-hypothesis]
           @conclusion-succ-k-or-succ-succ-k-even |
             divides(TWO, succ(k)) or divides(TWO, succ(succ(k)))
-            case on inductive-hypothesis {
+            case inductive-hypothesis {
               @k-even |
                 assume divides(TWO, k) {
                   @k-div |
@@ -319,7 +319,7 @@ proof
             [by forall_elim(x) zos]
           @one-is-zero |
             ONE = ZERO
-            case on x-cases {
+            case x-cases {
               @x-zero |
                 assume x = ZERO {
                   // ONE = 2*0 = 0
@@ -431,7 +431,7 @@ proof
             [by forall_elim(p) parity]
           @conclusion-two-divides-p |
             divides(TWO, p)
-            case on p-parity {
+            case p-parity {
               @p-even |
                 assume divides(TWO, p) {
                   @two-divides-p |

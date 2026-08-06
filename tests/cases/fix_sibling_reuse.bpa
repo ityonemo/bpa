@@ -18,7 +18,7 @@ proof
     [by axiom either]
   @result |
     p(Z) or q(Z)
-    case on disj {
+    case disj {
       @arm-p |
         assume p(Z) {
           @gp |

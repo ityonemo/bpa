@@ -1392,7 +1392,7 @@ proof
                 [by hypothesis given-a-at-most-b]
               @gap-exists |
                 exists d: Nat; add(a, d) = b
-                case on a-below-b-or-equal {
+                case a-below-b-or-equal {
                   @when-a-below-b |
                     assume less_than(a, b) {
                       @a-below-b |
@@ -1460,7 +1460,7 @@ proof
                     [by forall_elim(d0) zero-or-successor]
                   @a-below-b-or-equal |
                     less_than(a, b) or a = b
-                    case on gap-is-zero-or-successor {
+                    case gap-is-zero-or-successor {
                       @when-gap-is-zero |
                         assume d0 = ZERO {
                           @gap-is-zero |
@@ -1551,7 +1551,7 @@ proof
                 [by hypothesis given-a-at-most-b]
               @a-below-succ-b |
                 less_than(a, succ(b))
-                case on a-below-b-or-equal {
+                case a-below-b-or-equal {
                   @when-a-below-b |
                     assume less_than(a, b) {
                       @a-below-b |
@@ -1715,7 +1715,7 @@ proof
                       // split le(a,b): a < b or a = b
                       @a-at-most-c |
                         less_or_equal(a, c)
-                        case on a-below-b-or-equal {
+                        case a-below-b-or-equal {
                           @when-a-below-b |
                             assume less_than(a, b) {
                               @a-below-b |
@@ -1724,7 +1724,7 @@ proof
                               // split le(b,c): b < c or b = c
                               @conclusion-a-at-most-c |
                                 less_or_equal(a, c)
-                                case on b-below-c-or-equal {
+                                case b-below-c-or-equal {
                                   @when-b-below-c |
                                     assume less_than(b, c) {
                                       @b-below-c |
@@ -1984,7 +1984,7 @@ proof
                             [by forall_elim(a, b) trich]
                           @equal-conclusion |
                             a = b
-                            case on tri {
+                            case tri {
                               @a-below-b |
                                 assume less_than(a, b) {
                                   @a-lt-b |
@@ -2148,7 +2148,7 @@ proof
                                 [by theorem lessOrEqualRefl]
                               @n-le-m-in-all-cases |
                                 less_or_equal(n, m)
-                                case on trichotomy-n-m {
+                                case trichotomy-n-m {
                                   @when-n-below-m |
                                     assume less_than(n, m) {
                                       @n-below-m |

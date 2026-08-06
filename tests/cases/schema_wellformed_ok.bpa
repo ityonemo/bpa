@@ -1,6 +1,6 @@
 // SCHEMA WELL-FORMEDNESS — the positive case.
 //
-// A schema theorem whose proof body IS well-formed (a proper `case on` 3-way
+// A schema theorem whose proof body IS well-formed (a proper `case` 3-way
 // split). In strict mode the body is verified at declaration (instantiated at
 // opaque parameters) and passes — the new check must NOT reject legitimate
 // schemas. The schema is never instantiated here; the concrete theorem below
@@ -46,7 +46,7 @@ proof
         [by forall_elim(x) c-rule]
       @goal-holds |
         goal(x)
-        case on the-cases {
+        case the-cases {
           @when-a |
             assume a_holds(x) {
               @a-here |

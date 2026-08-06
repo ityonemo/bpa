@@ -6,7 +6,7 @@
 //!   fix k
 //!   assume <formula>
 //!   unpack u from <source>
-//!   case on <disj>            (each arm: `<label> assume <formula>`)
+//!   case <disj>            (each arm: `<label> assume <formula>`)
 //! Plain claim steps (modus_ponens, rewrite, forall_elim, axiom, …) are bare
 //! labels: no rule, no refs, no formula. Nesting is shown by indentation
 //! (2 spaces per block level).
@@ -132,7 +132,7 @@ fn renderStep(arena: Allocator, w: *std.Io.Writer, source: []const u8, step: ast
             for (b.steps) |s| try renderStep(arena, w, source, s, depth + 1);
         },
         .case => |b| {
-            try w.print("  case on {s}\n", .{tokenText(source, b.disj)});
+            try w.print("  case {s}\n", .{tokenText(source, b.disj)});
             // each arm is its own scope: a header line + its own steps, so a
             // multi-statement arm (or a nested block inside one) stays legible.
             for (b.arms) |arm| {

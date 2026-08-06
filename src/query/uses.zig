@@ -197,7 +197,7 @@ fn walk(
                 try walk(arena, source, b.steps, rules, cites, labels);
             },
             .case => |b| {
-                // `case on <disj>`: the disjunction step is a cite unless local.
+                // `case <disj>`: the disjunction step is a cite unless local.
                 const name = tokenText(source, b.disj);
                 if (!labels.contains(name)) try cites.bump(arena, name);
                 for (b.arms) |arm| try walk(arena, source, arm.steps, rules, cites, labels);

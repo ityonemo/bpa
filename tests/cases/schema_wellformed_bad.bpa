@@ -8,7 +8,7 @@
 // In STRICT mode (default) the body is now verified at declaration by
 // instantiating at opaque parameters, so this is REJECTED. In `--fast` the body
 // stays lazy and the file is accepted (see schema_wellformed_fast in the gates).
-// The correct way to split a 3-way disjunction is `case on` (which fans out to
+// The correct way to split a 3-way disjunction is `case` (which fans out to
 // nested binary or_elims) — see tests/cases/case_split.bpa.
 
 sort T

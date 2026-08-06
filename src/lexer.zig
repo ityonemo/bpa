@@ -41,7 +41,6 @@ pub const Token = struct {
         keyword_from,
         keyword_by,
         keyword_case,
-        keyword_on,
         // formula keywords
         keyword_forall,
         keyword_exists,
@@ -101,7 +100,6 @@ pub const Token = struct {
                 .keyword_from => "from",
                 .keyword_by => "by",
                 .keyword_case => "case",
-                .keyword_on => "on",
                 .keyword_forall => "forall",
                 .keyword_exists => "exists",
                 .keyword_not => "not",
@@ -156,7 +154,6 @@ const keywords = std.StaticStringMap(Token.Tag).initComptime(.{
     .{ "from", .keyword_from },
     .{ "by", .keyword_by },
     .{ "case", .keyword_case },
-    .{ "on", .keyword_on },
     .{ "forall", .keyword_forall },
     .{ "exists", .keyword_exists },
     .{ "not", .keyword_not },
