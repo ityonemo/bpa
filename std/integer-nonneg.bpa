@@ -24,6 +24,33 @@ pred nonneg(n: Int)
 axiom nonnegZero: nonneg(ZERO)
 axiom nonnegSucc: forall n: Int; nonneg(n) -> nonneg(succ(n))
 
+// ONE = succ(ZERO) is nonnegative: the successor of the nonnegative ZERO.
+axiom oneIsSuccZero = integer.oneIsSuccZero
+theorem oneIsNonneg: nonneg(ONE)
+proof
+  @zero-nonneg |
+    nonneg(ZERO)
+    [by axiom nonnegZero]
+  @succ-preserves-nonneg |
+    forall n: Int; nonneg(n) -> nonneg(succ(n))
+    [by axiom nonnegSucc]
+  @succ-zero-conditions |
+    nonneg(ZERO) -> nonneg(succ(ZERO))
+    [by forall_elim(ZERO) succ-preserves-nonneg]
+  @succ-zero-nonneg |
+    nonneg(succ(ZERO))
+    [by modus_ponens succ-zero-conditions zero-nonneg]
+  @one-is-succ-zero |
+    ONE = succ(ZERO)
+    [by axiom oneIsSuccZero]
+  @succ-zero-is-one |
+    succ(ZERO) = ONE
+    [by symmetry one-is-succ-zero]
+  @conclusion |
+    nonneg(ONE)
+    [by rewrite succ-zero-is-one succ-zero-nonneg]
+qed
+
 // DISTINCTNESS. std/integer.bpa carries NO nontriviality axiom — ZERO = ONE (the
 // trivial ring) is consistent with it, and succ is a bijection (succ(prev(ZERO)) =
 // ZERO), so `succ(n) != ZERO` is FALSE for a general integer n. But on the ℕ part
