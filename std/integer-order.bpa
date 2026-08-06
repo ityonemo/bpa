@@ -443,24 +443,16 @@ proof
                                 add(b, succ(v)) = c
                                 [by and_elim_right gap-v-nonneg-and-witnesses-c]
                               // combine the gaps: add(a, succ(add(u, succ v))) = c.
-                              @b-is-a-plus-gap-u |
-                                b = add(a, succ(u))
-                                [by symmetry gap-u-witnesses-b]
-                              @nested-gaps-reach-c |
-                                add(add(a, succ(u)), succ(v)) = c
-                                [by rewrite b-is-a-plus-gap-u gap-v-witnesses-c]
                               @nested-gaps-regroup |
                                 add(add(a, succ(u)), succ(v)) = add(a, add(succ(u), succ(v)))
                                 [by simplify addIsAssociative]
-                              @combined-gap-reaches-c |
-                                add(a, add(succ(u), succ(v))) = c
-                                [by rewrite nested-gaps-regroup nested-gaps-reach-c]
                               @combined-gap-is-successor |
                                 add(succ(u), succ(v)) = succ(add(u, succ(v)))
                                 [by simplify addSuccLeft]
+                              // a+succ(u+succ v) = a+(succ u+succ v) = (a+succ u)+succ v = b+succ v = c
                               @successor-gap-reaches-c |
                                 add(a, succ(add(u, succ(v)))) = c
-                                [by rewrite combined-gap-is-successor combined-gap-reaches-c]
+                                [by chain combined-gap-is-successor nested-gaps-regroup gap-u-witnesses-b gap-v-witnesses-c]
                               // the new gap add(u, succ v) is nonneg.
                               @succ-v-nonneg |
                                 nonneg(succ(v))
@@ -1084,62 +1076,25 @@ proof
           @sub-is-b-plus-neg-a |
             sub(b, a) = add(b, neg(a))
             [by specialize subDef(b, a)]
-          @a-plus-diff-is-a-plus-b-minus-a |
-            add(a, sub(b, a)) = add(a, add(b, neg(a)))
-            [by rewrite sub-is-b-plus-neg-a add-diff-refl]
-          @add-diff-refl |
-            add(a, sub(b, a)) = add(a, sub(b, a))
-            [by reflexivity]
-          // a + (b + (-a)) = (a + b) + (-a) = (b + a) + (-a) = b + (a + (-a)) = b + 0 = b.
           @regroup-a-b-neg-a |
             add(add(a, b), neg(a)) = add(a, add(b, neg(a)))
             [by specialize addIsAssociative(a, b, neg(a))]
           @b-plus-a-flips |
             add(b, a) = add(a, b)
             [by specialize addIsCommutative(b, a)]
-          @b-a-neg-a-is-a-b-neg-a |
-            add(add(b, a), neg(a)) = add(add(a, b), neg(a))
-            [by rewrite b-plus-a-flips regroup-b-a-neg-a-refl]
-          @regroup-b-a-neg-a-refl |
-            add(add(b, a), neg(a)) = add(add(b, a), neg(a))
-            [by reflexivity]
           @regroup-b-a-neg-a |
             add(add(b, a), neg(a)) = add(b, add(a, neg(a)))
             [by specialize addIsAssociative(b, a, neg(a))]
           @a-plus-neg-a-vanishes |
             add(a, neg(a)) = ZERO
             [by specialize addNegRight(a)]
-          @b-plus-a-plus-neg-a-is-b-plus-zero |
-            add(b, add(a, neg(a))) = add(b, ZERO)
-            [by rewrite a-plus-neg-a-vanishes b-plus-a-plus-neg-a-refl]
-          @b-plus-a-plus-neg-a-refl |
-            add(b, add(a, neg(a))) = add(b, add(a, neg(a)))
-            [by reflexivity]
           @b-plus-zero-is-b |
             add(b, ZERO) = b
             [by specialize addZeroRight(b)]
-          // chain the pieces: a + (b + (-a)) back down to b.
-          @a-b-neg-a-is-a-b-grouped |
-            add(a, add(b, neg(a))) = add(add(a, b), neg(a))
-            [by symmetry regroup-a-b-neg-a]
-          @a-b-grouped-is-b-a-grouped |
-            add(add(a, b), neg(a)) = add(add(b, a), neg(a))
-            [by symmetry b-a-neg-a-is-a-b-neg-a]
-          @a-b-neg-a-is-b-a-neg-a |
-            add(a, add(b, neg(a))) = add(add(b, a), neg(a))
-            [by rewrite a-b-grouped-is-b-a-grouped a-b-neg-a-is-a-b-grouped]
-          @a-b-neg-a-is-b-plus-inner |
-            add(a, add(b, neg(a))) = add(b, add(a, neg(a)))
-            [by rewrite regroup-b-a-neg-a a-b-neg-a-is-b-a-neg-a]
-          @a-b-neg-a-is-b-plus-zero |
-            add(a, add(b, neg(a))) = add(b, ZERO)
-            [by rewrite b-plus-a-plus-neg-a-is-b-plus-zero a-b-neg-a-is-b-plus-inner]
-          @regrouped-to-b |
-            add(a, add(b, neg(a))) = b
-            [by rewrite b-plus-zero-is-b a-b-neg-a-is-b-plus-zero]
+          // a + (b + (-a)) = (a + b) + (-a) = (b + a) + (-a) = b + (a + (-a)) = b + 0 = b.
           @conclusion-diff-reaches |
             add(a, sub(b, a)) = b
-            [by rewrite regrouped-to-b a-plus-diff-is-a-plus-b-minus-a]
+            [by chain sub-is-b-plus-neg-a regroup-a-b-neg-a b-plus-a-flips regroup-b-a-neg-a a-plus-neg-a-vanishes b-plus-zero-is-b]
         }
       @discharge-b |
         forall b: Int; add(a, sub(b, a)) = b
@@ -1286,21 +1241,17 @@ proof
                           @right-succ-pulls-out |
                             add(k, succ(succ(m0))) = succ(add(k, succ(m0)))
                             [by specialize addSuccRight(k, succ(m0))]
-                          @right-succ-pulls-out-flipped |
-                            succ(add(k, succ(m0))) = add(k, succ(succ(m0)))
-                            [by symmetry right-succ-pulls-out]
                           @left-succ-pulls-out |
                             add(succ(k), succ(m0)) = succ(add(k, succ(m0)))
                             [by specialize addSuccLeft(k, succ(m0))]
+                          // succ(k)+succ(m) = succ(k+succ m) = k+succ(succ m)
                           @left-equals-right-succ |
                             add(succ(k), succ(m0)) = add(k, succ(succ(m0)))
-                            [by rewrite right-succ-pulls-out-flipped left-succ-pulls-out]
-                          @left-equals-right-succ-flipped |
-                            add(k, succ(succ(m0))) = add(succ(k), succ(m0))
-                            [by symmetry left-equals-right-succ]
+                            [by chain left-succ-pulls-out right-succ-pulls-out]
+                          // succ(k)+succ(m) = k+succ(succ m) = 0
                           @succ-k-gap-witnesses-zero |
                             add(succ(k), succ(m0)) = ZERO
-                            [by rewrite left-equals-right-succ-flipped gap-succ-succ-witnesses-zero]
+                            [by chain left-equals-right-succ gap-succ-succ-witnesses-zero]
                           @succ-k-less_than-zero |
                             less_than(succ(k), ZERO)
                             [by specialize lessThanIntro(succ(k), m0, ZERO) predecessor-nonneg succ-k-gap-witnesses-zero]
@@ -1405,12 +1356,10 @@ proof
                           @zero-plus-succ-m |
                             add(ZERO, succ(m0)) = succ(m0)
                             [by specialize addZeroLeft(succ(m0))]
-                          @succ-m-is-prev-k |
-                            succ(m0) = prev(k)
-                            [by symmetry prev-k-is-succ-m]
+                          // 0+succ(m) = succ(m) = prev(k)
                           @zero-gap-reaches-prev-k |
                             add(ZERO, succ(m0)) = prev(k)
-                            [by rewrite succ-m-is-prev-k zero-plus-succ-m]
+                            [by chain zero-plus-succ-m prev-k-is-succ-m]
                           @zero-less_than-prev-k |
                             less_than(ZERO, prev(k))
                             [by specialize lessThanIntro(ZERO, m0, prev(k)) predecessor-nonneg zero-gap-reaches-prev-k]

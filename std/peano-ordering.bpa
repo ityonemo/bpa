@@ -207,24 +207,16 @@ proof
                               @gap-v-witnesses-c |
                                 add(b, succ(v)) = c
                                 [by hypothesis with-gap-v]
-                              @b-is-a-plus-gap-u |
-                                b = add(a, succ(u))
-                                [by symmetry gap-u-witnesses-b]
-                              @nested-gaps-reach-c |
-                                add(add(a, succ(u)), succ(v)) = c
-                                [by rewrite b-is-a-plus-gap-u gap-v-witnesses-c]
                               @nested-gaps-regroup |
                                 add(add(a, succ(u)), succ(v)) = add(a, add(succ(u), succ(v)))
                                 [by simplify addIsAssociative]
-                              @combined-gap-reaches-c |
-                                add(a, add(succ(u), succ(v))) = c
-                                [by rewrite nested-gaps-regroup nested-gaps-reach-c]
                               @combined-gap-is-successor |
                                 add(succ(u), succ(v)) = succ(add(u, succ(v)))
                                 [by simplify addSuccLeft]
+                              // add(a, succ(add(u, succ(v)))) = add(a, add(succ(u), succ(v))) = add(add(a, succ(u)), succ(v)) = add(b, succ(v)) = c
                               @successor-gap-reaches-c |
                                 add(a, succ(add(u, succ(v)))) = c
-                                [by rewrite combined-gap-is-successor combined-gap-reaches-c]
+                                [by chain combined-gap-is-successor nested-gaps-regroup gap-u-witnesses-b gap-v-witnesses-c]
                               @a-below-c |
                                 less_than(a, c)
                                 [by specialize lessThanIntro(a, add(u, succ(v)), c) successor-gap-reaches-c]
@@ -462,36 +454,26 @@ proof
                   @upper-gap-witnesses-one |
                     add(n, succ(v)) = ONE
                     [by hypothesis with-upper-gap-v]
-                  @combined-gap-is-one |
-                    add(succ(u), succ(v)) = ONE
-                    [by rewrite n-is-succ-u upper-gap-witnesses-one]
                   @one-def-in |
                     ONE = succ(ZERO)
                     [by axiom oneIsSuccZero]
-                  @combined-gap-is-succ-zero |
-                    add(succ(u), succ(v)) = succ(ZERO)
-                    [by rewrite one-def-in combined-gap-is-one]
                   @combined-gap-unfolds |
                     add(succ(u), succ(v)) = succ(add(u, succ(v)))
                     [by simplify addSuccLeft]
-                  @succ-of-inner-gap-is-combined |
-                    succ(add(u, succ(v))) = add(succ(u), succ(v))
-                    [by symmetry combined-gap-unfolds]
+                  // succ(add(u, succ(v))) = add(succ(u), succ(v)) = add(n, succ(v)) = ONE = succ(ZERO)
                   @succ-of-inner-gap-is-succ-zero |
                     succ(add(u, succ(v))) = succ(ZERO)
-                    [by rewrite combined-gap-is-succ-zero succ-of-inner-gap-is-combined]
+                    [by chain combined-gap-unfolds n-is-succ-u upper-gap-witnesses-one one-def-in]
                   @inner-gap-is-zero |
                     add(u, succ(v)) = ZERO
                     [by specialize succInjective(add(u, succ(v)), ZERO) succ-of-inner-gap-is-succ-zero]
                   @inner-gap-unfolds |
                     add(u, succ(v)) = succ(add(u, v))
                     [by simplify addSuccRight]
-                  @succ-of-sum-is-inner-gap |
-                    succ(add(u, v)) = add(u, succ(v))
-                    [by symmetry inner-gap-unfolds]
+                  // succ(add(u, v)) = add(u, succ(v)) = ZERO
                   @succ-of-sum-is-zero |
                     succ(add(u, v)) = ZERO
-                    [by rewrite inner-gap-is-zero succ-of-sum-is-inner-gap]
+                    [by chain inner-gap-unfolds inner-gap-is-zero]
                   @succ-of-sum-is-nonzero |
                     succ(add(u, v)) != ZERO
                     [by specialize succNotZero(add(u, v))]

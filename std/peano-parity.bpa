@@ -168,18 +168,13 @@ proof
                   @unfold-mul |
                     mul(TWO, succ(mp)) = add(mul(TWO, mp), TWO)
                     [by specialize mulSuccRight(TWO, mp)]
-                  @succ-p-eq1 |
-                    succ(p) = mul(TWO, succ(mp))
-                    [by rewrite m-is-succ-mp succ-p-is-two-m]
-                  @succ-p-eq2 |
-                    succ(p) = add(mul(TWO, mp), TWO)
-                    [by rewrite unfold-mul succ-p-eq1]
                   @collapse |
                     add(mul(TWO, mp), TWO) = succ(succ(mul(TWO, mp)))
                     [by simplify addSuccRight addZeroRight oneIsSuccZero]
+                  // succ(p) = mul(TWO, m) = mul(TWO, succ(mp)) = add(mul(TWO, mp), TWO) = succ(succ(mul(TWO, mp)))
                   @succ-p-eq3 |
                     succ(p) = succ(succ(mul(TWO, mp)))
-                    [by rewrite collapse succ-p-eq2]
+                    [by chain succ-p-is-two-m m-is-succ-mp unfold-mul collapse]
                   @p-is-odd |
                     p = succ(mul(TWO, mp))
                     [by specialize succInjective(p, succ(mul(TWO, mp))) succ-p-eq3]
@@ -315,24 +310,16 @@ proof
                       @unfold |
                         mul(TWO, succ(xp)) = add(mul(TWO, xp), TWO)
                         [by specialize mulSuccRight(TWO, xp)]
-                      @one-eq1 |
-                        ONE = mul(TWO, succ(xp))
-                        [by rewrite x-is-succ one-is-two-x]
-                      @one-eq2 |
-                        ONE = add(mul(TWO, xp), TWO)
-                        [by rewrite unfold one-eq1]
                       @collapse |
                         add(mul(TWO, xp), TWO) = succ(succ(mul(TWO, xp)))
                         [by simplify addSuccRight addZeroRight oneIsSuccZero]
-                      @one-eq3 |
-                        ONE = succ(succ(mul(TWO, xp)))
-                        [by rewrite collapse one-eq2]
                       @one-succ |
                         ONE = succ(ZERO)
                         [by axiom oneIsSuccZero]
+                      // succ(ZERO) = ONE = mul(TWO, x) = mul(TWO, succ(xp)) = add(mul(TWO, xp), TWO) = succ(succ(mul(TWO, xp)))
                       @succ-zero-eq |
                         succ(ZERO) = succ(succ(mul(TWO, xp)))
-                        [by rewrite one-succ one-eq3]
+                        [by chain one-succ one-is-two-x x-is-succ unfold collapse]
                       @zero-is-succ |
                         ZERO = succ(mul(TWO, xp))
                         [by specialize succInjective(ZERO, succ(mul(TWO, xp))) succ-zero-eq]

@@ -51,33 +51,16 @@ proof
           @add-m-zero |
             add(m, ZERO) = m
             [by specialize addZeroRight(m)]
-          @exponent-refl |
-            pow(g, add(m, ZERO)) = pow(g, add(m, ZERO))
-            [by reflexivity]
-          @exponent-is-m |
-            pow(g, add(m, ZERO)) = pow(g, m)
-            [by rewrite add-m-zero exponent-refl]
           @pow-g-zero-is-identity |
             pow(g, ZERO) = E
             [by specialize powZero(g)]
-          @right-factor-refl |
-            op(pow(g, m), pow(g, ZERO)) = op(pow(g, m), pow(g, ZERO))
-            [by reflexivity]
-          @right-factor-is-identity |
-            op(pow(g, m), pow(g, ZERO)) = op(pow(g, m), E)
-            [by rewrite pow-g-zero-is-identity right-factor-refl]
           @op-with-identity |
             op(pow(g, m), E) = pow(g, m)
             [by specialize opIdentityRight(pow(g, m))]
-          @right-factor-is-pow-m |
-            op(pow(g, m), pow(g, ZERO)) = pow(g, m)
-            [by rewrite op-with-identity right-factor-is-identity]
-          @right-factor-is-pow-m-flipped |
-            pow(g, m) = op(pow(g, m), pow(g, ZERO))
-            [by symmetry right-factor-is-pow-m]
+          // pow(g, add(m, ZERO)) = pow(g, m) = op(pow(g, m), E) = op(pow(g, m), pow(g, ZERO))
           @base-case |
             pow(g, add(m, ZERO)) = op(pow(g, m), pow(g, ZERO))
-            [by rewrite right-factor-is-pow-m-flipped exponent-is-m]
+            [by chain add-m-zero op-with-identity pow-g-zero-is-identity]
 
           // inductive step: assume g^(m+k) = g^m·g^k, show it for succ(k).
           @induction-step |
@@ -91,51 +74,31 @@ proof
                   @pow-at-successor |
                     forall a: Grp; forall n: Nat; pow(a, succ(n)) = op(pow(a, n), a)
                     [by axiom powSucc]
-                  // rewrite the exponent add(m, succ k) as succ(add(m, k)).
+                  // the exponent add(m, succ k) unfolds to succ(add(m, k)).
                   @exponent-unfolds |
                     add(m, succ(k)) = succ(add(m, k))
                     [by specialize addSuccRight(m, k)]
-                  @lhs-exponent-refl |
-                    pow(g, add(m, succ(k))) = pow(g, add(m, succ(k)))
-                    [by reflexivity]
-                  @lhs-exponent-is-succ |
-                    pow(g, add(m, succ(k))) = pow(g, succ(add(m, k)))
-                    [by rewrite exponent-unfolds lhs-exponent-refl]
 
-                  // unfold pow at succ(add(m, k)), then apply the IH.
+                  // unfold pow at succ(add(m, k)).
                   @lhs-unfolds |
                     pow(g, succ(add(m, k))) = op(pow(g, add(m, k)), g)
                     [by forall_elim(g, add(m, k)) pow-at-successor]
-                  @lhs-with-hypothesis |
-                    pow(g, succ(add(m, k))) = op(op(pow(g, m), pow(g, k)), g)
-                    [by rewrite inductive-hypothesis lhs-unfolds]
 
                   // reassociate op(op(g^m, g^k), g) = op(g^m, op(g^k, g)).
                   @reassociates |
                     op(op(pow(g, m), pow(g, k)), g) = op(pow(g, m), op(pow(g, k), g))
                     [by specialize opAssoc(pow(g, m), pow(g, k), g)]
-                  @lhs-reassociated |
-                    pow(g, succ(add(m, k))) = op(pow(g, m), op(pow(g, k), g))
-                    [by rewrite reassociates lhs-with-hypothesis]
 
                   // fold op(g^k, g) back into g^(succ k) via powSucc.
                   @right-factor-unfolds |
                     pow(g, succ(k)) = op(pow(g, k), g)
                     [by forall_elim(g, k) pow-at-successor]
-                  @right-factor-unfolds-flipped |
-                    op(pow(g, k), g) = pow(g, succ(k))
-                    [by symmetry right-factor-unfolds]
-                  @lhs-is-target |
-                    pow(g, succ(add(m, k))) = op(pow(g, m), pow(g, succ(k)))
-                    [by rewrite right-factor-unfolds-flipped lhs-reassociated]
 
-                  // transport back along the exponent unfolding.
-                  @exponent-succ-flipped |
-                    pow(g, succ(add(m, k))) = pow(g, add(m, succ(k)))
-                    [by symmetry lhs-exponent-is-succ]
+                  // pow(g, add(m, succ k)) = pow(g, succ(add(m, k))) = op(g^(m+k), g)
+                  //   = op(op(g^m, g^k), g) = op(g^m, op(g^k, g)) = op(g^m, g^(succ k))
                   @succ-case |
                     pow(g, add(m, succ(k))) = op(pow(g, m), pow(g, succ(k)))
-                    [by rewrite exponent-succ-flipped lhs-is-target]
+                    [by chain exponent-unfolds lhs-unfolds inductive-hypothesis reassociates right-factor-unfolds]
                 }
               @induction-step-at-k |
                 pow(g, add(m, k)) = op(pow(g, m), pow(g, k)) -> pow(g, add(m, succ(k))) = op(pow(g, m), pow(g, succ(k)))

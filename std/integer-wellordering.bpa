@@ -54,24 +54,16 @@ proof
               @succ-equal |
                 succ(a) = succ(b)
                 [by hypothesis given-succ-equal]
-              @prev-succ-a-refl |
-                prev(succ(a)) = prev(succ(a))
-                [by reflexivity]
-              @prev-of-succ-equal |
-                prev(succ(a)) = prev(succ(b))
-                [by rewrite succ-equal prev-succ-a-refl]
               @prev-succ-a |
                 prev(succ(a)) = a
                 [by specialize prevSucc(a)]
               @prev-succ-b |
                 prev(succ(b)) = b
                 [by specialize prevSucc(b)]
-              @a-equals-prev-succ-b |
-                a = prev(succ(b))
-                [by rewrite prev-succ-a prev-of-succ-equal]
+              // a = prev(succ(a)) = prev(succ(b)) = b
               @a-equals-b |
                 a = b
-                [by rewrite prev-succ-b a-equals-prev-succ-b]
+                [by chain prev-succ-a succ-equal prev-succ-b]
             }
           @succ-equal-implies-equal |
             succ(a) = succ(b) -> a = b

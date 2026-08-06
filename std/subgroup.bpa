@@ -43,45 +43,23 @@ proof
       @idAtai |
         op(E, op(a, inverse(a))) = op(a, inverse(a))
         [by specialize grpIdentityLeft(op(a, inverse(a)))]
-      @ai-eq-e-ai |
-        op(a, inverse(a)) = op(E, op(a, inverse(a)))
-        [by symmetry idAtai]
       @invi-i-is-E |
         op(inverse(inverse(a)), inverse(a)) = E
         [by specialize grpInverseLeft(inverse(a))]
-      @E-is-invi-i |
-        E = op(inverse(inverse(a)), inverse(a))
-        [by symmetry invi-i-is-E]
-      @ai-eq-grouped |
-        op(a, inverse(a)) = op(op(inverse(inverse(a)), inverse(a)), op(a, inverse(a)))
-        [by rewrite E-is-invi-i ai-eq-e-ai]
       @assoc1 |
         op(op(inverse(inverse(a)), inverse(a)), op(a, inverse(a))) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
         [by specialize grpAssoc(inverse(inverse(a)), inverse(a), op(a, inverse(a)))]
-      @ai-eq-1 |
-        op(a, inverse(a)) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
-        [by rewrite assoc1 ai-eq-grouped]
       @assoc2 |
         op(op(inverse(a), a), inverse(a)) = op(inverse(a), op(a, inverse(a)))
         [by specialize grpAssoc(inverse(a), a, inverse(a))]
-      @inner-flip |
-        op(inverse(a), op(a, inverse(a))) = op(op(inverse(a), a), inverse(a))
-        [by symmetry assoc2]
-      @ai-eq-2 |
-        op(a, inverse(a)) = op(inverse(inverse(a)), op(op(inverse(a), a), inverse(a)))
-        [by rewrite inner-flip ai-eq-1]
-      @ai-eq-3 |
-        op(a, inverse(a)) = op(inverse(inverse(a)), op(E, inverse(a)))
-        [by rewrite ia-is-E ai-eq-2]
       @Ei-is-i |
         op(E, inverse(a)) = inverse(a)
         [by specialize grpIdentityLeft(inverse(a))]
-      @ai-eq-4 |
-        op(a, inverse(a)) = op(inverse(inverse(a)), inverse(a))
-        [by rewrite Ei-is-i ai-eq-3]
+      // a·a⁻¹ = e·(a·a⁻¹) = (a⁻¹⁻¹·a⁻¹)·(a·a⁻¹) = a⁻¹⁻¹·(a⁻¹·(a·a⁻¹))
+      //   = a⁻¹⁻¹·((a⁻¹·a)·a⁻¹) = a⁻¹⁻¹·(e·a⁻¹) = a⁻¹⁻¹·a⁻¹ = e
       @conclusion-ai |
         op(a, inverse(a)) = E
-        [by rewrite invi-i-is-E ai-eq-4]
+        [by chain idAtai invi-i-is-E assoc1 assoc2 ia-is-E Ei-is-i]
     }
   @conclusion |
     forall a: Grp; op(a, inverse(a)) = E
@@ -95,36 +73,19 @@ proof
       @ia-is-E |
         op(inverse(a), a) = E
         [by specialize grpInverseLeft(a)]
-      @E-is-ia |
-        E = op(inverse(a), a)
-        [by symmetry ia-is-E]
-      @reflAE |
-        op(a, E) = op(a, E)
-        [by reflexivity]
-      @aE-eq-1 |
-        op(a, E) = op(a, op(inverse(a), a))
-        [by rewrite E-is-ia reflAE]
       @assoc1 |
         op(op(a, inverse(a)), a) = op(a, op(inverse(a), a))
         [by specialize grpAssoc(a, inverse(a), a)]
-      @flip1 |
-        op(a, op(inverse(a), a)) = op(op(a, inverse(a)), a)
-        [by symmetry assoc1]
-      @aE-eq-2 |
-        op(a, E) = op(op(a, inverse(a)), a)
-        [by rewrite flip1 aE-eq-1]
       @aInv-is-E |
         op(a, inverse(a)) = E
         [by specialize grpInverseRight(a)]
-      @aE-eq-3 |
-        op(a, E) = op(E, a)
-        [by rewrite aInv-is-E aE-eq-2]
       @Ea-is-a |
         op(E, a) = a
         [by specialize grpIdentityLeft(a)]
+      // a·e = a·(a⁻¹·a) = (a·a⁻¹)·a = e·a = a
       @conclusion-aE |
         op(a, E) = a
-        [by rewrite Ea-is-a aE-eq-3]
+        [by chain ia-is-E assoc1 aInv-is-E Ea-is-a]
     }
   @conclusion |
     forall a: Grp; op(a, E) = a
@@ -147,33 +108,19 @@ proof
               @b-eq |
                 op(E, b) = b
                 [by specialize grpIdentityLeft(b)]
-              @b-is-eb |
-                b = op(E, b)
-                [by symmetry b-eq]
               @inva-a-is-E |
                 op(inverse(a), a) = E
                 [by specialize grpInverseLeft(a)]
-              @E-is-inva-a |
-                E = op(inverse(a), a)
-                [by symmetry inva-a-is-E]
-              @b-is-inva-a-b |
-                b = op(op(inverse(a), a), b)
-                [by rewrite E-is-inva-a b-is-eb]
               @assoc-step |
                 op(op(inverse(a), a), b) = op(inverse(a), op(a, b))
                 [by specialize grpAssoc(inverse(a), a, b)]
-              @b-is-inva-ab |
-                b = op(inverse(a), op(a, b))
-                [by rewrite assoc-step b-is-inva-a-b]
-              @b-is-inva-E |
-                b = op(inverse(a), E)
-                [by rewrite ab-is-E b-is-inva-ab]
               @inva-E-is-inva |
                 op(inverse(a), E) = inverse(a)
                 [by specialize grpIdentityRight(inverse(a))]
+              // b = e·b = (a⁻¹·a)·b = a⁻¹·(a·b) = a⁻¹·e = a⁻¹
               @b-is-inva |
                 b = inverse(a)
-                [by rewrite inva-E-is-inva b-is-inva-E]
+                [by chain b-eq inva-a-is-E assoc-step ab-is-E inva-E-is-inva]
             }
           @discharge |
             op(a, b) = E -> b = inverse(a)

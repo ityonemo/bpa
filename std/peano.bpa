@@ -367,58 +367,32 @@ proof
               @inductive-hypothesis |
                 mul(k, succ(b)) = add(mul(k, b), k)
                 [by hypothesis given-inductive-hypothesis]
-              @lhs-with-inductive-hypothesis |
-                mul(succ(k), succ(b)) = add(add(mul(k, b), k), succ(b))
-                [by rewrite inductive-hypothesis lhs-unfolded]
               @pull-succ-b |
                 add(add(mul(k, b), k), succ(b)) = succ(add(add(mul(k, b), k), b))
                 [by specialize addSuccRight(add(mul(k, b), k), b)]
-              @lhs-succ-pulled |
-                mul(succ(k), succ(b)) = succ(add(add(mul(k, b), k), b))
-                [by rewrite pull-succ-b lhs-with-inductive-hypothesis]
               @reassociated-lhs |
                 add(add(mul(k, b), k), b) = add(mul(k, b), add(k, b))
                 [by specialize addIsAssociative(mul(k, b), k, b)]
-              @lhs-assoc |
-                mul(succ(k), succ(b)) = succ(add(mul(k, b), add(k, b)))
-                [by rewrite reassociated-lhs lhs-succ-pulled]
               @summands-commuted |
                 add(k, b) = add(b, k)
                 [by specialize addIsCommutative(k, b)]
-              @lhs-comm |
-                mul(succ(k), succ(b)) = succ(add(mul(k, b), add(b, k)))
-                [by rewrite summands-commuted lhs-assoc]
-
               @rhs-unfolded |
                 mul(succ(k), b) = add(mul(k, b), b)
                 [by forall_elim(b) mul-succ-left-at-k]
-              @rhs-start-refl |
-                add(mul(succ(k), b), succ(k)) = add(mul(succ(k), b), succ(k))
-                [by reflexivity]
-              @rhs-inner |
-                add(mul(succ(k), b), succ(k)) = add(add(mul(k, b), b), succ(k))
-                [by rewrite rhs-unfolded rhs-start-refl]
               @pull-succ-k |
                 add(add(mul(k, b), b), succ(k)) = succ(add(add(mul(k, b), b), k))
                 [by specialize addSuccRight(add(mul(k, b), b), k)]
-              @rhs-succ-pulled |
-                add(mul(succ(k), b), succ(k)) = succ(add(add(mul(k, b), b), k))
-                [by rewrite pull-succ-k rhs-inner]
               @reassociated-rhs |
                 add(add(mul(k, b), b), k) = add(mul(k, b), add(b, k))
                 [by specialize addIsAssociative(mul(k, b), b, k)]
-              @rhs-normal |
-                add(mul(succ(k), b), succ(k)) = succ(add(mul(k, b), add(b, k)))
-                [by rewrite reassociated-rhs rhs-succ-pulled]
-              @rhs-normal-refl |
-                add(mul(succ(k), b), succ(k)) = add(mul(succ(k), b), succ(k))
-                [by reflexivity]
-              @rhs-normal-sym |
-                succ(add(mul(k, b), add(b, k))) = add(mul(succ(k), b), succ(k))
-                [by rewrite rhs-normal rhs-normal-refl]
+
+              // both sides normalize to succ(add(mul(k, b), add(b, k))):
+              // LHS = add(mul(k, succ(b)), succ(b)) = add(add(mul(k, b), k), succ(b))
+              //     = succ(add(add(mul(k, b), k), b)) = succ(add(mul(k, b), add(k, b))) = succ(add(mul(k, b), add(b, k)))
+              // RHS = add(add(mul(k, b), b), succ(k)) = succ(add(add(mul(k, b), b), k)) = succ(add(mul(k, b), add(b, k)))
               @succ-case |
                 mul(succ(k), succ(b)) = add(mul(succ(k), b), succ(k))
-                [by rewrite rhs-normal-sym lhs-comm]
+                [by chain lhs-unfolded inductive-hypothesis pull-succ-b reassociated-lhs summands-commuted rhs-unfolded pull-succ-k reassociated-rhs]
             }
           @induction-step-at-k |
             mul(k, succ(b)) = add(mul(k, b), k) -> mul(succ(k), succ(b)) = add(mul(succ(k), b), succ(k))
@@ -549,60 +523,31 @@ proof
                   @add-succ-left-at-k-b |
                     add(succ(k), b) = succ(add(k, b))
                     [by specialize addSuccLeft(k, b)]
-                  @start-refl |
-                    mul(add(succ(k), b), c) = mul(add(succ(k), b), c)
-                    [by reflexivity]
-                  @lhs-succ-in |
-                    mul(add(succ(k), b), c) = mul(succ(add(k, b)), c)
-                    [by rewrite add-succ-left-at-k-b start-refl]
                   @mul-succ-at-inner-sum |
                     mul(succ(add(k, b)), c) = add(mul(add(k, b), c), c)
                     [by specialize mulSuccLeft(add(k, b), c)]
-                  @lhs-unfolded |
-                    mul(add(succ(k), b), c) = add(mul(add(k, b), c), c)
-                    [by rewrite mul-succ-at-inner-sum lhs-succ-in]
                   @inductive-hypothesis |
                     mul(add(k, b), c) = add(mul(k, c), mul(b, c))
                     [by hypothesis given-inductive-hypothesis]
-                  @lhs-with-inductive-hypothesis |
-                    mul(add(succ(k), b), c) = add(add(mul(k, c), mul(b, c)), c)
-                    [by rewrite inductive-hypothesis lhs-unfolded]
                   @reassociated |
                     add(add(mul(k, c), mul(b, c)), c) = add(mul(k, c), add(mul(b, c), c))
                     [by specialize addIsAssociative(mul(k, c), mul(b, c), c)]
-                  @lhs-assoc |
-                    mul(add(succ(k), b), c) = add(mul(k, c), add(mul(b, c), c))
-                    [by rewrite reassociated lhs-with-inductive-hypothesis]
                   @product-and-c-commuted |
                     add(mul(b, c), c) = add(c, mul(b, c))
                     [by specialize addIsCommutative(mul(b, c), c)]
-                  @lhs-comm |
-                    mul(add(succ(k), b), c) = add(mul(k, c), add(c, mul(b, c)))
-                    [by rewrite product-and-c-commuted lhs-assoc]
                   @reassociated-back |
                     add(add(mul(k, c), c), mul(b, c)) = add(mul(k, c), add(c, mul(b, c)))
                     [by specialize addIsAssociative(mul(k, c), c, mul(b, c))]
-                  @reassociated-back-refl |
-                    add(add(mul(k, c), c), mul(b, c)) = add(add(mul(k, c), c), mul(b, c))
-                    [by reflexivity]
-                  @reassociated-back-sym |
-                    add(mul(k, c), add(c, mul(b, c))) = add(add(mul(k, c), c), mul(b, c))
-                    [by rewrite reassociated-back reassociated-back-refl]
-                  @lhs-shuffled |
-                    mul(add(succ(k), b), c) = add(add(mul(k, c), c), mul(b, c))
-                    [by rewrite reassociated-back-sym lhs-comm]
                   @mul-succ-at-k-c |
                     mul(succ(k), c) = add(mul(k, c), c)
                     [by specialize mulSuccLeft(k, c)]
-                  @mul-succ-at-k-c-refl |
-                    mul(succ(k), c) = mul(succ(k), c)
-                    [by reflexivity]
-                  @mul-succ-at-k-c-sym |
-                    add(mul(k, c), c) = mul(succ(k), c)
-                    [by rewrite mul-succ-at-k-c mul-succ-at-k-c-refl]
+
+                  // mul(add(succ(k), b), c) = mul(succ(add(k, b)), c) = add(mul(add(k, b), c), c)
+                  //   = add(add(mul(k, c), mul(b, c)), c) = add(mul(k, c), add(mul(b, c), c)) = add(mul(k, c), add(c, mul(b, c)))
+                  //   = add(add(mul(k, c), c), mul(b, c)) = add(mul(succ(k), c), mul(b, c))
                   @succ-case |
                     mul(add(succ(k), b), c) = add(mul(succ(k), c), mul(b, c))
-                    [by rewrite mul-succ-at-k-c-sym lhs-shuffled]
+                    [by chain add-succ-left-at-k-b mul-succ-at-inner-sum inductive-hypothesis reassociated product-and-c-commuted reassociated-back mul-succ-at-k-c]
                 }
               @induction-step-at-k |
                 mul(add(k, b), c) = add(mul(k, c), mul(b, c)) -> mul(add(succ(k), b), c) = add(mul(succ(k), c), mul(b, c))
@@ -673,36 +618,21 @@ proof
                   @inner-unfold |
                     mul(succ(k), b) = add(mul(k, b), b)
                     [by forall_elim(b) mul-succ-left-at-k]
-                  @start-refl |
-                    mul(mul(succ(k), b), c) = mul(mul(succ(k), b), c)
-                    [by reflexivity]
-                  @lhs-inner |
-                    mul(mul(succ(k), b), c) = mul(add(mul(k, b), b), c)
-                    [by rewrite inner-unfold start-refl]
                   @product-of-sum-expanded |
                     mul(add(mul(k, b), b), c) = add(mul(mul(k, b), c), mul(b, c))
                     [by specialize mulAddDistribRight(mul(k, b), b, c)]
-                  @lhs-distributed |
-                    mul(mul(succ(k), b), c) = add(mul(mul(k, b), c), mul(b, c))
-                    [by rewrite product-of-sum-expanded lhs-inner]
                   @inductive-hypothesis |
                     mul(mul(k, b), c) = mul(k, mul(b, c))
                     [by hypothesis given-inductive-hypothesis]
-                  @lhs-with-inductive-hypothesis |
-                    mul(mul(succ(k), b), c) = add(mul(k, mul(b, c)), mul(b, c))
-                    [by rewrite inductive-hypothesis lhs-distributed]
                   @mul-succ-at-k-product |
                     mul(succ(k), mul(b, c)) = add(mul(k, mul(b, c)), mul(b, c))
                     [by forall_elim(mul(b, c)) mul-succ-left-at-k]
-                  @mul-succ-at-k-product-refl |
-                    mul(succ(k), mul(b, c)) = mul(succ(k), mul(b, c))
-                    [by reflexivity]
-                  @mul-succ-at-k-product-sym |
-                    add(mul(k, mul(b, c)), mul(b, c)) = mul(succ(k), mul(b, c))
-                    [by rewrite mul-succ-at-k-product mul-succ-at-k-product-refl]
+
+                  // mul(mul(succ(k), b), c) = mul(add(mul(k, b), b), c) = add(mul(mul(k, b), c), mul(b, c))
+                  //   = add(mul(k, mul(b, c)), mul(b, c)) = mul(succ(k), mul(b, c))
                   @succ-case |
                     mul(mul(succ(k), b), c) = mul(succ(k), mul(b, c))
-                    [by rewrite mul-succ-at-k-product-sym lhs-with-inductive-hypothesis]
+                    [by chain inner-unfold product-of-sum-expanded inductive-hypothesis mul-succ-at-k-product]
                 }
               @induction-step-at-k |
                 mul(mul(k, b), c) = mul(k, mul(b, c)) -> mul(mul(succ(k), b), c) = mul(succ(k), mul(b, c))
@@ -799,21 +729,16 @@ proof
               @sum-times-a-distributed |
                 mul(add(b, c), a) = add(mul(b, a), mul(c, a))
                 [by specialize mulAddDistribRight(b, c, a)]
-              @product-of-sum-expanded |
-                mul(a, add(b, c)) = add(mul(b, a), mul(c, a))
-                [by rewrite sum-times-a-distributed swap-outer]
               @b-a-commuted |
                 mul(b, a) = mul(a, b)
                 [by specialize mulIsCommutative(b, a)]
-              @left-fixed |
-                mul(a, add(b, c)) = add(mul(a, b), mul(c, a))
-                [by rewrite b-a-commuted product-of-sum-expanded]
               @c-a-commuted |
                 mul(c, a) = mul(a, c)
                 [by specialize mulIsCommutative(c, a)]
+              // mul(a, add(b, c)) = mul(add(b, c), a) = add(mul(b, a), mul(c, a)) = add(mul(a, b), mul(a, c))
               @both-fixed |
                 mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
-                [by rewrite c-a-commuted left-fixed]
+                [by chain swap-outer sum-times-a-distributed b-a-commuted c-a-commuted]
             }
           @discharge-c |
             forall c: Nat; mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
@@ -843,18 +768,13 @@ proof
           @add-zero-at-succ-d |
             add(ZERO, succ(d)) = succ(d)
             [by specialize addZeroLeft(succ(d))]
-          @add-zero-at-succ-d-refl |
-            add(ZERO, succ(d)) = add(ZERO, succ(d))
-            [by reflexivity]
-          @add-zero-at-succ-d-sym |
-            succ(d) = add(ZERO, succ(d))
-            [by rewrite add-zero-at-succ-d add-zero-at-succ-d-refl]
           @got-h |
             add(ZERO, succ(d)) = ZERO
             [by hypothesis suppose-base]
+          // succ(d) = add(ZERO, succ(d)) = ZERO
           @to-zero |
             succ(d) = ZERO
-            [by rewrite got-h add-zero-at-succ-d-sym]
+            [by chain add-zero-at-succ-d got-h]
           @succ-d-is-nonzero |
             succ(d) != ZERO
             [by specialize succNotZero(d)]
@@ -873,18 +793,13 @@ proof
                   @add-succ-at-k |
                     add(succ(k), succ(d)) = succ(add(k, succ(d)))
                     [by specialize addSuccLeft(k, succ(d))]
-                  @add-succ-at-k-refl |
-                    add(succ(k), succ(d)) = add(succ(k), succ(d))
-                    [by reflexivity]
-                  @add-succ-at-k-sym |
-                    succ(add(k, succ(d))) = add(succ(k), succ(d))
-                    [by rewrite add-succ-at-k add-succ-at-k-refl]
                   @sum-at-succ-k-collapses |
                     add(succ(k), succ(d)) = succ(k)
                     [by hypothesis suppose-succ]
+                  // succ(add(k, succ(d))) = add(succ(k), succ(d)) = succ(k)
                   @succ-eq |
                     succ(add(k, succ(d))) = succ(k)
-                    [by rewrite sum-at-succ-k-collapses add-succ-at-k-sym]
+                    [by chain add-succ-at-k sum-at-succ-k-collapses]
                   @collapsed |
                     add(k, succ(d)) = k
                     [by specialize succInjective(add(k, succ(d)), k) succ-eq]
@@ -985,12 +900,10 @@ proof
               @red-b |
                 add(ZERO, b1) = b1
                 [by simplify addZeroLeft]
-              @a1-equals-padded-b1 |
-                a1 = add(ZERO, b1)
-                [by rewrite red-a padded-sums-are-equal]
+              // a1 = add(ZERO, a1) = add(ZERO, b1) = b1
               @a1-equals-b1 |
                 a1 = b1
-                [by rewrite red-b a1-equals-padded-b1]
+                [by chain red-a padded-sums-are-equal red-b]
             }
           @base-imp |
             add(ZERO, a1) = add(ZERO, b1) -> a1 = b1
@@ -1023,12 +936,10 @@ proof
                       @push-b |
                         add(succ(k), b2) = succ(add(k, b2))
                         [by simplify addSuccLeft]
-                      @peeled-left |
-                        succ(add(k, a2)) = add(succ(k), b2)
-                        [by rewrite push-a succ-padded-sums-are-equal]
+                      // succ(add(k, a2)) = add(succ(k), a2) = add(succ(k), b2) = succ(add(k, b2))
                       @successors-are-equal |
                         succ(add(k, a2)) = succ(add(k, b2))
-                        [by rewrite push-b peeled-left]
+                        [by chain push-a succ-padded-sums-are-equal push-b]
                       @unpadded-sums-are-equal |
                         add(k, a2) = add(k, b2)
                         [by specialize succInjective(add(k, a2), add(k, b2)) successors-are-equal]
@@ -1086,18 +997,10 @@ proof
               @x-y-commuted |
                 add(x, y) = add(y, x)
                 [by specialize addIsCommutative(x, y)]
-              @grouped-refl |
-                add(add(x, y), r) = add(add(x, y), r)
-                [by reflexivity]
-              @ungrouped |
-                add(x, add(y, r)) = add(add(x, y), r)
-                [by rewrite reassociated-x-y grouped-refl]
-              @swapped |
-                add(x, add(y, r)) = add(add(y, x), r)
-                [by rewrite x-y-commuted ungrouped]
+              // add(x, add(y, r)) = add(add(x, y), r) = add(add(y, x), r) = add(y, add(x, r))
               @conclusion-add-left-swaps |
                 add(x, add(y, r)) = add(y, add(x, r))
-                [by rewrite reassociated-y-x swapped]
+                [by chain reassociated-x-y x-y-commuted reassociated-y-x]
             }
           @discharge-r |
             forall r: Nat; add(x, add(y, r)) = add(y, add(x, r))
@@ -1130,18 +1033,10 @@ proof
               @x-y-commuted |
                 mul(x, y) = mul(y, x)
                 [by specialize mulIsCommutative(x, y)]
-              @grouped-refl |
-                mul(mul(x, y), r) = mul(mul(x, y), r)
-                [by reflexivity]
-              @ungrouped |
-                mul(x, mul(y, r)) = mul(mul(x, y), r)
-                [by rewrite reassociated-x-y grouped-refl]
-              @swapped |
-                mul(x, mul(y, r)) = mul(mul(y, x), r)
-                [by rewrite x-y-commuted ungrouped]
+              // mul(x, mul(y, r)) = mul(mul(x, y), r) = mul(mul(y, x), r) = mul(y, mul(x, r))
               @conclusion-mul-left-swaps |
                 mul(x, mul(y, r)) = mul(y, mul(x, r))
-                [by rewrite reassociated-y-x swapped]
+                [by chain reassociated-x-y x-y-commuted reassociated-y-x]
             }
           @discharge-r |
             forall r: Nat; mul(x, mul(y, r)) = mul(y, mul(x, r))

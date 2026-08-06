@@ -70,18 +70,13 @@ proof
                       @a-equals-d-times-k |
                         a = mul(d, k)
                         [by hypothesis with-quotient-k]
-                      @product-refl |
-                        mul(a, c) = mul(a, c)
-                        [by reflexivity]
-                      @product-with-a-expanded |
-                        mul(a, c) = mul(mul(d, k), c)
-                        [by rewrite a-equals-d-times-k product-refl]
                       @product-reassociates |
                         mul(mul(d, k), c) = mul(d, mul(k, c))
                         [by specialize mulIsAssociative(d, k, c)]
+                      // a·c = (d·k)·c = d·(k·c)
                       @product-is-d-multiple |
                         mul(a, c) = mul(d, mul(k, c))
-                        [by rewrite product-reassociates product-with-a-expanded]
+                        [by chain a-equals-d-times-k product-reassociates]
                       @d-divides-product-under-witness |
                         divides(d, mul(a, c))
                         [by exists_intro(mul(k, c)) product-is-d-multiple]

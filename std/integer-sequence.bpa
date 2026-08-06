@@ -480,15 +480,13 @@ proof
                               @c-is-b-times-k |
                                 c = mul(b, k)
                                 [by hypothesis with-b-quotient]
-                              @c-is-a-j-times-k |
-                                c = mul(mul(a, j), k)
-                                [by rewrite b-is-a-times-j c-is-b-times-k]
                               @a-j-times-k-regroups |
                                 mul(mul(a, j), k) = mul(a, mul(j, k))
                                 [by specialize mulIsAssociative(a, j, k)]
+                              // c = b·k = (a·j)·k = a·(j·k)
                               @c-is-a-times-jk |
                                 c = mul(a, mul(j, k))
-                                [by rewrite a-j-times-k-regroups c-is-a-j-times-k]
+                                [by chain c-is-b-times-k b-is-a-times-j a-j-times-k-regroups]
                               @a-divides-c |
                                 does_divide(a, c)
                                 [by exists_intro(mul(j, k)) c-is-a-times-jk]
@@ -724,12 +722,10 @@ proof
                                   @d-times-zero-is-zero |
                                     mul(d, ZERO) = ZERO
                                     [by specialize mulZeroRight(d)]
-                                  @n-is-d-times-zero |
-                                    n = mul(d, ZERO)
-                                    [by rewrite k-is-zero n-is-d-times-k]
+                                  // n = d·k = d·0 = 0
                                   @n-is-zero |
                                     n = ZERO
-                                    [by rewrite d-times-zero-is-zero n-is-d-times-zero]
+                                    [by chain n-is-d-times-k k-is-zero d-times-zero-is-zero]
                                   @zero-less_than-zero |
                                     less_than(ZERO, ZERO)
                                     [by rewrite n-is-zero n-positive]
@@ -755,21 +751,10 @@ proof
                                   @d-times-neg-k-is-neg-product |
                                     mul(d, neg(k)) = neg(mul(d, k))
                                     [by specialize mulNegRight(d, k)]
-                                  @neg-product-is-d-times-neg-k |
-                                    neg(mul(d, k)) = mul(d, neg(k))
-                                    [by symmetry d-times-neg-k-is-neg-product]
-                                  @neg-n-refl |
-                                    neg(n) = neg(n)
-                                    [by reflexivity]
-                                  @neg-n-is-neg-product |
-                                    neg(n) = neg(mul(d, k))
-                                    [by rewrite n-is-d-times-k neg-n-refl]
-                                  @neg-n-is-d-times-neg-k |
-                                    neg(n) = mul(d, neg(k))
-                                    [by rewrite neg-product-is-d-times-neg-k neg-n-is-neg-product]
+                                  // d·(−k) = −(d·k) = −n
                                   @d-times-neg-k-is-neg-n |
                                     mul(d, neg(k)) = neg(n)
-                                    [by symmetry neg-n-is-d-times-neg-k]
+                                    [by chain d-times-neg-k-is-neg-product n-is-d-times-k]
                                   @neg-n-nonneg |
                                     is_nonneg(neg(n))
                                     [by rewrite d-times-neg-k-is-neg-n d-times-neg-k-nonneg]

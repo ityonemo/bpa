@@ -637,84 +637,41 @@ proof
               @lhs-unfold |
                 mul(succ(a), succ(b)) = add(mul(a, succ(b)), succ(b))
                 [by forall_elim(a, succ(b)) mul-succ-left]
-              @lhs-with-ih |
-                mul(succ(a), succ(b)) = add(add(mul(a, b), a), succ(b))
-                [by rewrite inductive-hypothesis lhs-unfold]
               @lhs-reassociated |
                 add(add(mul(a, b), a), succ(b)) = add(mul(a, b), add(a, succ(b)))
                 [by forall_elim(mul(a, b), a, succ(b)) add-associative]
-              @lhs-assoc |
-                mul(succ(a), succ(b)) = add(mul(a, b), add(a, succ(b)))
-                [by rewrite lhs-reassociated lhs-with-ih]
               @a-comm-succ-b |
                 add(a, succ(b)) = add(succ(b), a)
                 [by forall_elim(a, succ(b)) add-commutative]
-              @lhs-inner-refl |
-                add(mul(a, b), add(a, succ(b))) = add(mul(a, b), add(a, succ(b)))
-                [by reflexivity]
-              @lhs-inner-commuted |
-                add(mul(a, b), add(a, succ(b))) = add(mul(a, b), add(succ(b), a))
-                [by rewrite a-comm-succ-b lhs-inner-refl]
-              @lhs-comm |
-                mul(succ(a), succ(b)) = add(mul(a, b), add(succ(b), a))
-                [by rewrite lhs-inner-commuted lhs-assoc]
               @succ-b-a |
                 add(succ(b), a) = succ(add(b, a))
                 [by forall_elim(b, a) add-succ-left]
-              @lhs-inner-succ |
-                mul(succ(a), succ(b)) = add(mul(a, b), succ(add(b, a)))
-                [by rewrite succ-b-a lhs-comm]
               @b-a-comm |
                 add(b, a) = add(a, b)
                 [by forall_elim(b, a) add-commutative]
-              @lhs-inner-refl2 |
-                add(mul(a, b), succ(add(b, a))) = add(mul(a, b), succ(add(b, a)))
-                [by reflexivity]
-              @lhs-inner-commuted2 |
-                add(mul(a, b), succ(add(b, a))) = add(mul(a, b), succ(add(a, b)))
-                [by rewrite b-a-comm lhs-inner-refl2]
+              // succ(a)·succ(b) = (a·succ(b))+succ(b) = ((ab+a)+succ(b)) = ab+(a+succ(b)) = ab+(succ(b)+a) = ab+succ(b+a) = ab+succ(a+b)
               @lhs-normal |
                 mul(succ(a), succ(b)) = add(mul(a, b), succ(add(a, b)))
-                [by rewrite lhs-inner-commuted2 lhs-inner-succ]
+                [by chain lhs-unfold inductive-hypothesis lhs-reassociated a-comm-succ-b succ-b-a b-a-comm]
               @rhs-unfold |
                 mul(succ(a), b) = add(mul(a, b), b)
                 [by forall_elim(a, b) mul-succ-left]
-              @rhs-refl |
-                add(mul(succ(a), b), succ(a)) = add(mul(succ(a), b), succ(a))
-                [by reflexivity]
-              @rhs-with-mul |
-                add(mul(succ(a), b), succ(a)) = add(add(mul(a, b), b), succ(a))
-                [by rewrite rhs-unfold rhs-refl]
               @rhs-reassociated |
                 add(add(mul(a, b), b), succ(a)) = add(mul(a, b), add(b, succ(a)))
                 [by forall_elim(mul(a, b), b, succ(a)) add-associative]
-              @rhs-assoc |
-                add(mul(succ(a), b), succ(a)) = add(mul(a, b), add(b, succ(a)))
-                [by rewrite rhs-reassociated rhs-with-mul]
               @b-succ-a |
                 add(b, succ(a)) = add(succ(a), b)
                 [by forall_elim(b, succ(a)) add-commutative]
-              @rhs-inner-refl |
-                add(mul(a, b), add(b, succ(a))) = add(mul(a, b), add(b, succ(a)))
-                [by reflexivity]
-              @rhs-inner-commuted |
-                add(mul(a, b), add(b, succ(a))) = add(mul(a, b), add(succ(a), b))
-                [by rewrite b-succ-a rhs-inner-refl]
-              @rhs-comm |
-                add(mul(succ(a), b), succ(a)) = add(mul(a, b), add(succ(a), b))
-                [by rewrite rhs-inner-commuted rhs-assoc]
               @succ-a-b |
                 add(succ(a), b) = succ(add(a, b))
                 [by forall_elim(a, b) add-succ-left]
+              // (succ(a)·b)+succ(a) = ((ab+b)+succ(a)) = ab+(b+succ(a)) = ab+(succ(a)+b) = ab+succ(a+b)
               @rhs-normal |
                 add(mul(succ(a), b), succ(a)) = add(mul(a, b), succ(add(a, b)))
-                [by rewrite succ-a-b rhs-comm]
-              @rhs-normal-flipped |
-                add(mul(a, b), succ(add(a, b))) = add(mul(succ(a), b), succ(a))
-                [by symmetry rhs-normal]
+                [by chain rhs-unfold rhs-reassociated b-succ-a succ-a-b]
               @succ-case |
                 mul(succ(a), succ(b)) = add(mul(succ(a), b), succ(a))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @discharge-succ |
             mul(a, succ(b)) = add(mul(a, b), a) -> mul(succ(a), succ(b)) = add(mul(succ(a), b), succ(a))
@@ -734,90 +691,44 @@ proof
               @lhs-unfold |
                 mul(prev(a), succ(b)) = add(mul(a, succ(b)), neg(succ(b)))
                 [by forall_elim(a, succ(b)) mul-prev-left]
-              @lhs-with-ih |
-                mul(prev(a), succ(b)) = add(add(mul(a, b), a), neg(succ(b)))
-                [by rewrite inductive-hypothesis lhs-unfold]
               @open-neg-succ |
                 neg(succ(b)) = prev(neg(b))
                 [by forall_elim(b) neg-succ]
-              @lhs-neg-opened |
-                mul(prev(a), succ(b)) = add(add(mul(a, b), a), prev(neg(b)))
-                [by rewrite open-neg-succ lhs-with-ih]
               @lhs-reassociated |
                 add(add(mul(a, b), a), prev(neg(b))) = add(mul(a, b), add(a, prev(neg(b))))
                 [by forall_elim(mul(a, b), a, prev(neg(b))) add-associative]
-              @lhs-assoc |
-                mul(prev(a), succ(b)) = add(mul(a, b), add(a, prev(neg(b))))
-                [by rewrite lhs-reassociated lhs-neg-opened]
               @a-comm-prev-neg-b |
                 add(a, prev(neg(b))) = add(prev(neg(b)), a)
                 [by forall_elim(a, prev(neg(b))) add-commutative]
-              @lhs-inner-refl |
-                add(mul(a, b), add(a, prev(neg(b)))) = add(mul(a, b), add(a, prev(neg(b))))
-                [by reflexivity]
-              @lhs-inner-commuted |
-                add(mul(a, b), add(a, prev(neg(b)))) = add(mul(a, b), add(prev(neg(b)), a))
-                [by rewrite a-comm-prev-neg-b lhs-inner-refl]
-              @lhs-comm |
-                mul(prev(a), succ(b)) = add(mul(a, b), add(prev(neg(b)), a))
-                [by rewrite lhs-inner-commuted lhs-assoc]
               @prev-neg-b-a |
                 add(prev(neg(b)), a) = prev(add(neg(b), a))
                 [by forall_elim(neg(b), a) add-prev-left]
-              @lhs-inner-prev |
-                mul(prev(a), succ(b)) = add(mul(a, b), prev(add(neg(b), a)))
-                [by rewrite prev-neg-b-a lhs-comm]
               @neg-b-a-comm |
                 add(neg(b), a) = add(a, neg(b))
                 [by forall_elim(neg(b), a) add-commutative]
-              @lhs-inner-refl2 |
-                add(mul(a, b), prev(add(neg(b), a))) = add(mul(a, b), prev(add(neg(b), a)))
-                [by reflexivity]
-              @lhs-inner-commuted2 |
-                add(mul(a, b), prev(add(neg(b), a))) = add(mul(a, b), prev(add(a, neg(b))))
-                [by rewrite neg-b-a-comm lhs-inner-refl2]
+              // prev(a)·succ(b) = (a·succ(b))+neg(succ b) = ((ab+a)+prev(neg b)) = ab+(a+prev(neg b)) = ab+(prev(neg b)+a) = ab+prev(neg(b)+a) = ab+prev(a+neg b)
               @lhs-normal |
                 mul(prev(a), succ(b)) = add(mul(a, b), prev(add(a, neg(b))))
-                [by rewrite lhs-inner-commuted2 lhs-inner-prev]
+                [by chain lhs-unfold inductive-hypothesis open-neg-succ lhs-reassociated a-comm-prev-neg-b prev-neg-b-a neg-b-a-comm]
               @rhs-unfold |
                 mul(prev(a), b) = add(mul(a, b), neg(b))
                 [by forall_elim(a, b) mul-prev-left]
-              @rhs-refl |
-                add(mul(prev(a), b), prev(a)) = add(mul(prev(a), b), prev(a))
-                [by reflexivity]
-              @rhs-with-mul |
-                add(mul(prev(a), b), prev(a)) = add(add(mul(a, b), neg(b)), prev(a))
-                [by rewrite rhs-unfold rhs-refl]
               @rhs-reassociated |
                 add(add(mul(a, b), neg(b)), prev(a)) = add(mul(a, b), add(neg(b), prev(a)))
                 [by forall_elim(mul(a, b), neg(b), prev(a)) add-associative]
-              @rhs-assoc |
-                add(mul(prev(a), b), prev(a)) = add(mul(a, b), add(neg(b), prev(a)))
-                [by rewrite rhs-reassociated rhs-with-mul]
               @neg-b-prev-a |
                 add(neg(b), prev(a)) = prev(add(neg(b), a))
                 [by forall_elim(neg(b), a) add-prev-right]
-              @rhs-inner-prev |
-                add(mul(prev(a), b), prev(a)) = add(mul(a, b), prev(add(neg(b), a)))
-                [by rewrite neg-b-prev-a rhs-assoc]
               @neg-b-a-comm-rhs |
                 add(neg(b), a) = add(a, neg(b))
                 [by forall_elim(neg(b), a) add-commutative]
-              @rhs-inner-refl |
-                add(mul(a, b), prev(add(neg(b), a))) = add(mul(a, b), prev(add(neg(b), a)))
-                [by reflexivity]
-              @rhs-inner-commuted |
-                add(mul(a, b), prev(add(neg(b), a))) = add(mul(a, b), prev(add(a, neg(b))))
-                [by rewrite neg-b-a-comm-rhs rhs-inner-refl]
+              // (prev(a)·b)+prev(a) = ((ab+neg b)+prev a) = ab+(neg b+prev a) = ab+prev(neg(b)+a) = ab+prev(a+neg b)
               @rhs-normal |
                 add(mul(prev(a), b), prev(a)) = add(mul(a, b), prev(add(a, neg(b))))
-                [by rewrite rhs-inner-commuted rhs-inner-prev]
-              @rhs-normal-flipped |
-                add(mul(a, b), prev(add(a, neg(b)))) = add(mul(prev(a), b), prev(a))
-                [by symmetry rhs-normal]
+                [by chain rhs-unfold rhs-reassociated neg-b-prev-a neg-b-a-comm-rhs]
               @prev-case |
                 mul(prev(a), succ(b)) = add(mul(prev(a), b), prev(a))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @discharge-prev |
             mul(a, succ(b)) = add(mul(a, b), a) -> mul(prev(a), succ(b)) = add(mul(prev(a), b), prev(a))
@@ -926,66 +837,38 @@ proof
               @lhs-unfold |
                 mul(succ(a), prev(b)) = add(mul(a, prev(b)), prev(b))
                 [by forall_elim(a, prev(b)) mul-succ-left]
-              @lhs-with-ih |
-                mul(succ(a), prev(b)) = add(add(mul(a, b), neg(a)), prev(b))
-                [by rewrite inductive-hypothesis lhs-unfold]
               @lhs-reassociated |
                 add(add(mul(a, b), neg(a)), prev(b)) = add(mul(a, b), add(neg(a), prev(b)))
                 [by forall_elim(mul(a, b), neg(a), prev(b)) add-associative]
-              @lhs-assoc |
-                mul(succ(a), prev(b)) = add(mul(a, b), add(neg(a), prev(b)))
-                [by rewrite lhs-reassociated lhs-with-ih]
               @neg-a-prev-b |
                 add(neg(a), prev(b)) = prev(add(neg(a), b))
                 [by forall_elim(neg(a), b) add-prev-right]
+              // succ(a)·prev(b) = (a·prev(b))+prev(b) = ((ab-a)+prev b) = ab+(-a+prev b) = ab+prev(-a+b)
               @lhs-normal |
                 mul(succ(a), prev(b)) = add(mul(a, b), prev(add(neg(a), b)))
-                [by rewrite neg-a-prev-b lhs-assoc]
+                [by chain lhs-unfold inductive-hypothesis lhs-reassociated neg-a-prev-b]
               @rhs-unfold |
                 mul(succ(a), b) = add(mul(a, b), b)
                 [by forall_elim(a, b) mul-succ-left]
-              @rhs-refl |
-                add(mul(succ(a), b), neg(succ(a))) = add(mul(succ(a), b), neg(succ(a)))
-                [by reflexivity]
-              @rhs-with-mul |
-                add(mul(succ(a), b), neg(succ(a))) = add(add(mul(a, b), b), neg(succ(a)))
-                [by rewrite rhs-unfold rhs-refl]
               @open-neg-succ |
                 neg(succ(a)) = prev(neg(a))
                 [by forall_elim(a) neg-succ]
-              @rhs-neg-opened |
-                add(mul(succ(a), b), neg(succ(a))) = add(add(mul(a, b), b), prev(neg(a)))
-                [by rewrite open-neg-succ rhs-with-mul]
               @rhs-reassociated |
                 add(add(mul(a, b), b), prev(neg(a))) = add(mul(a, b), add(b, prev(neg(a))))
                 [by forall_elim(mul(a, b), b, prev(neg(a))) add-associative]
-              @rhs-assoc |
-                add(mul(succ(a), b), neg(succ(a))) = add(mul(a, b), add(b, prev(neg(a))))
-                [by rewrite rhs-reassociated rhs-neg-opened]
               @b-prev-neg-a |
                 add(b, prev(neg(a))) = prev(add(b, neg(a)))
                 [by forall_elim(b, neg(a)) add-prev-right]
-              @rhs-inner-prev |
-                add(mul(succ(a), b), neg(succ(a))) = add(mul(a, b), prev(add(b, neg(a))))
-                [by rewrite b-prev-neg-a rhs-assoc]
               @b-neg-a-comm |
                 add(b, neg(a)) = add(neg(a), b)
                 [by forall_elim(b, neg(a)) add-commutative]
-              @rhs-inner-refl |
-                add(mul(a, b), prev(add(b, neg(a)))) = add(mul(a, b), prev(add(b, neg(a))))
-                [by reflexivity]
-              @rhs-inner-commuted |
-                add(mul(a, b), prev(add(b, neg(a)))) = add(mul(a, b), prev(add(neg(a), b)))
-                [by rewrite b-neg-a-comm rhs-inner-refl]
+              // (succ(a)·b)+neg(succ a) = ((ab+b)+prev(-a)) = ab+(b+prev(-a)) = ab+prev(b-a) = ab+prev(-a+b)
               @rhs-normal |
                 add(mul(succ(a), b), neg(succ(a))) = add(mul(a, b), prev(add(neg(a), b)))
-                [by rewrite rhs-inner-commuted rhs-inner-prev]
-              @rhs-normal-flipped |
-                add(mul(a, b), prev(add(neg(a), b))) = add(mul(succ(a), b), neg(succ(a)))
-                [by symmetry rhs-normal]
+                [by chain rhs-unfold open-neg-succ rhs-reassociated b-prev-neg-a b-neg-a-comm]
               @succ-case |
                 mul(succ(a), prev(b)) = add(mul(succ(a), b), neg(succ(a)))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @discharge-succ |
             mul(a, prev(b)) = add(mul(a, b), neg(a)) -> mul(succ(a), prev(b)) = add(mul(succ(a), b), neg(succ(a)))
@@ -1005,78 +888,41 @@ proof
               @lhs-unfold |
                 mul(prev(a), prev(b)) = add(mul(a, prev(b)), neg(prev(b)))
                 [by forall_elim(a, prev(b)) mul-prev-left]
-              @lhs-with-ih |
-                mul(prev(a), prev(b)) = add(add(mul(a, b), neg(a)), neg(prev(b)))
-                [by rewrite inductive-hypothesis lhs-unfold]
               @lhs-reassociated |
                 add(add(mul(a, b), neg(a)), neg(prev(b))) = add(mul(a, b), add(neg(a), neg(prev(b))))
                 [by forall_elim(mul(a, b), neg(a), neg(prev(b))) add-associative]
-              @lhs-assoc |
-                mul(prev(a), prev(b)) = add(mul(a, b), add(neg(a), neg(prev(b))))
-                [by rewrite lhs-reassociated lhs-with-ih]
               @open-neg-prev-b |
                 neg(prev(b)) = succ(neg(b))
                 [by forall_elim(b) neg-prev]
-              @lhs-inner-refl |
-                add(mul(a, b), add(neg(a), neg(prev(b)))) = add(mul(a, b), add(neg(a), neg(prev(b))))
-                [by reflexivity]
-              @lhs-neg-opened |
-                add(mul(a, b), add(neg(a), neg(prev(b)))) = add(mul(a, b), add(neg(a), succ(neg(b))))
-                [by rewrite open-neg-prev-b lhs-inner-refl]
-              @lhs-neg-normal |
-                mul(prev(a), prev(b)) = add(mul(a, b), add(neg(a), succ(neg(b))))
-                [by rewrite lhs-neg-opened lhs-assoc]
               @neg-a-succ-neg-b |
                 add(neg(a), succ(neg(b))) = succ(add(neg(a), neg(b)))
                 [by forall_elim(neg(a), neg(b)) add-succ-right]
+              // prev(a)·prev(b) = (a·prev(b))+neg(prev b) = ((ab-a)+(-prev b)) = ab+(-a+(-prev b)) = ab+(-a+succ(-b)) = ab+succ(-a+-b)
               @lhs-normal |
                 mul(prev(a), prev(b)) = add(mul(a, b), succ(add(neg(a), neg(b))))
-                [by rewrite neg-a-succ-neg-b lhs-neg-normal]
+                [by chain lhs-unfold inductive-hypothesis lhs-reassociated open-neg-prev-b neg-a-succ-neg-b]
               @rhs-unfold |
                 mul(prev(a), b) = add(mul(a, b), neg(b))
                 [by forall_elim(a, b) mul-prev-left]
-              @rhs-refl |
-                add(mul(prev(a), b), neg(prev(a))) = add(mul(prev(a), b), neg(prev(a)))
-                [by reflexivity]
-              @rhs-with-mul |
-                add(mul(prev(a), b), neg(prev(a))) = add(add(mul(a, b), neg(b)), neg(prev(a)))
-                [by rewrite rhs-unfold rhs-refl]
               @open-neg-prev-a |
                 neg(prev(a)) = succ(neg(a))
                 [by forall_elim(a) neg-prev]
-              @rhs-neg-opened |
-                add(mul(prev(a), b), neg(prev(a))) = add(add(mul(a, b), neg(b)), succ(neg(a)))
-                [by rewrite open-neg-prev-a rhs-with-mul]
               @rhs-reassociated |
                 add(add(mul(a, b), neg(b)), succ(neg(a))) = add(mul(a, b), add(neg(b), succ(neg(a))))
                 [by forall_elim(mul(a, b), neg(b), succ(neg(a))) add-associative]
-              @rhs-assoc |
-                add(mul(prev(a), b), neg(prev(a))) = add(mul(a, b), add(neg(b), succ(neg(a))))
-                [by rewrite rhs-reassociated rhs-neg-opened]
               @neg-b-succ-neg-a |
                 add(neg(b), succ(neg(a))) = succ(add(neg(b), neg(a)))
                 [by forall_elim(neg(b), neg(a)) add-succ-right]
-              @rhs-inner-succ |
-                add(mul(prev(a), b), neg(prev(a))) = add(mul(a, b), succ(add(neg(b), neg(a))))
-                [by rewrite neg-b-succ-neg-a rhs-assoc]
               @neg-b-neg-a-comm |
                 add(neg(b), neg(a)) = add(neg(a), neg(b))
                 [by forall_elim(neg(b), neg(a)) add-commutative]
-              @rhs-inner-refl |
-                add(mul(a, b), succ(add(neg(b), neg(a)))) = add(mul(a, b), succ(add(neg(b), neg(a))))
-                [by reflexivity]
-              @rhs-inner-commuted |
-                add(mul(a, b), succ(add(neg(b), neg(a)))) = add(mul(a, b), succ(add(neg(a), neg(b))))
-                [by rewrite neg-b-neg-a-comm rhs-inner-refl]
+              // (prev(a)·b)+neg(prev a) = ((ab-b)+succ(-a)) = ab+(-b+succ(-a)) = ab+succ(-b+-a) = ab+succ(-a+-b)
               @rhs-normal |
                 add(mul(prev(a), b), neg(prev(a))) = add(mul(a, b), succ(add(neg(a), neg(b))))
-                [by rewrite rhs-inner-commuted rhs-inner-succ]
-              @rhs-normal-flipped |
-                add(mul(a, b), succ(add(neg(a), neg(b)))) = add(mul(prev(a), b), neg(prev(a)))
-                [by symmetry rhs-normal]
+                [by chain rhs-unfold open-neg-prev-a rhs-reassociated neg-b-succ-neg-a neg-b-neg-a-comm]
               @prev-case |
                 mul(prev(a), prev(b)) = add(mul(prev(a), b), neg(prev(a)))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @discharge-prev |
             mul(a, prev(b)) = add(mul(a, b), neg(a)) -> mul(prev(a), prev(b)) = add(mul(prev(a), b), neg(prev(a)))
@@ -1202,42 +1048,23 @@ proof
                   @inner-add-succ |
                     add(b, succ(c)) = succ(add(b, c))
                     [by forall_elim(b, c) add-succ]
-                  @lhs-refl |
-                    mul(a, add(b, succ(c))) = mul(a, add(b, succ(c)))
-                    [by reflexivity]
-                  @lhs-inner-unfolded |
-                    mul(a, add(b, succ(c))) = mul(a, succ(add(b, c)))
-                    [by rewrite inner-add-succ lhs-refl]
                   @lhs-mul-unfold |
                     mul(a, succ(add(b, c))) = add(mul(a, add(b, c)), a)
                     [by forall_elim(a, add(b, c)) mul-succ-right]
-                  @lhs-mul-unfolded |
-                    mul(a, add(b, succ(c))) = add(mul(a, add(b, c)), a)
-                    [by rewrite lhs-mul-unfold lhs-inner-unfolded]
-                  @lhs-with-ih |
-                    mul(a, add(b, succ(c))) = add(add(mul(a, b), mul(a, c)), a)
-                    [by rewrite inductive-hypothesis lhs-mul-unfolded]
                   @reassociate |
                     add(add(mul(a, b), mul(a, c)), a) = add(mul(a, b), add(mul(a, c), a))
                     [by forall_elim(mul(a, b), mul(a, c), a) add-associative]
+                  // a·(b+succ c) = a·succ(b+c) = a·(b+c)+a = (ab+ac)+a = ab+(ac+a)
                   @lhs-normal |
                     mul(a, add(b, succ(c))) = add(mul(a, b), add(mul(a, c), a))
-                    [by rewrite reassociate lhs-with-ih]
+                    [by chain inner-add-succ lhs-mul-unfold inductive-hypothesis reassociate]
                   @rhs-mul-unfold |
                     mul(a, succ(c)) = add(mul(a, c), a)
                     [by forall_elim(a, c) mul-succ-right]
-                  @rhs-refl |
-                    add(mul(a, b), mul(a, succ(c))) = add(mul(a, b), mul(a, succ(c)))
-                    [by reflexivity]
-                  @rhs-normal |
-                    add(mul(a, b), mul(a, succ(c))) = add(mul(a, b), add(mul(a, c), a))
-                    [by rewrite rhs-mul-unfold rhs-refl]
-                  @rhs-normal-flipped |
-                    add(mul(a, b), add(mul(a, c), a)) = add(mul(a, b), mul(a, succ(c)))
-                    [by symmetry rhs-normal]
+                  // ab+(ac+a) = ab + a·succ(c)
                   @succ-case |
                     mul(a, add(b, succ(c))) = add(mul(a, b), mul(a, succ(c)))
-                    [by rewrite rhs-normal-flipped lhs-normal]
+                    [by chain lhs-normal rhs-mul-unfold]
                 }
               @induction-step-at-k |
                 mul(a, add(b, c)) = add(mul(a, b), mul(a, c)) -> mul(a, add(b, succ(c))) = add(mul(a, b), mul(a, succ(c)))
@@ -1257,42 +1084,23 @@ proof
                   @inner-add-prev |
                     add(b, prev(c)) = prev(add(b, c))
                     [by forall_elim(b, c) add-prev]
-                  @lhs-refl |
-                    mul(a, add(b, prev(c))) = mul(a, add(b, prev(c)))
-                    [by reflexivity]
-                  @lhs-inner-unfolded |
-                    mul(a, add(b, prev(c))) = mul(a, prev(add(b, c)))
-                    [by rewrite inner-add-prev lhs-refl]
                   @lhs-mul-unfold |
                     mul(a, prev(add(b, c))) = add(mul(a, add(b, c)), neg(a))
                     [by forall_elim(a, add(b, c)) mul-prev-right]
-                  @lhs-mul-unfolded |
-                    mul(a, add(b, prev(c))) = add(mul(a, add(b, c)), neg(a))
-                    [by rewrite lhs-mul-unfold lhs-inner-unfolded]
-                  @lhs-with-ih |
-                    mul(a, add(b, prev(c))) = add(add(mul(a, b), mul(a, c)), neg(a))
-                    [by rewrite inductive-hypothesis lhs-mul-unfolded]
                   @reassociate |
                     add(add(mul(a, b), mul(a, c)), neg(a)) = add(mul(a, b), add(mul(a, c), neg(a)))
                     [by forall_elim(mul(a, b), mul(a, c), neg(a)) add-associative]
+                  // a·(b+prev c) = a·prev(b+c) = a·(b+c)+(-a) = (ab+ac)+(-a) = ab+(ac+(-a))
                   @lhs-normal |
                     mul(a, add(b, prev(c))) = add(mul(a, b), add(mul(a, c), neg(a)))
-                    [by rewrite reassociate lhs-with-ih]
+                    [by chain inner-add-prev lhs-mul-unfold inductive-hypothesis reassociate]
                   @rhs-mul-unfold |
                     mul(a, prev(c)) = add(mul(a, c), neg(a))
                     [by forall_elim(a, c) mul-prev-right]
-                  @rhs-refl |
-                    add(mul(a, b), mul(a, prev(c))) = add(mul(a, b), mul(a, prev(c)))
-                    [by reflexivity]
-                  @rhs-normal |
-                    add(mul(a, b), mul(a, prev(c))) = add(mul(a, b), add(mul(a, c), neg(a)))
-                    [by rewrite rhs-mul-unfold rhs-refl]
-                  @rhs-normal-flipped |
-                    add(mul(a, b), add(mul(a, c), neg(a))) = add(mul(a, b), mul(a, prev(c)))
-                    [by symmetry rhs-normal]
+                  // ab+(ac+(-a)) = ab + a·prev(c)
                   @prev-case |
                     mul(a, add(b, prev(c))) = add(mul(a, b), mul(a, prev(c)))
-                    [by rewrite rhs-normal-flipped lhs-normal]
+                    [by chain lhs-normal rhs-mul-unfold]
                 }
               @induction-step-at-k |
                 mul(a, add(b, c)) = add(mul(a, b), mul(a, c)) -> mul(a, add(b, prev(c))) = add(mul(a, b), mul(a, prev(c)))
@@ -1378,42 +1186,26 @@ proof
               @inner-succ |
                 add(u, succ(v)) = succ(add(u, v))
                 [by forall_elim(u, v) add-succ]
-              @lhs-refl |
-                neg(add(u, succ(v))) = neg(add(u, succ(v)))
-                [by reflexivity]
-              @lhs-inner-unfolded |
-                neg(add(u, succ(v))) = neg(succ(add(u, v)))
-                [by rewrite inner-succ lhs-refl]
               @open-neg-succ |
                 neg(succ(add(u, v))) = prev(neg(add(u, v)))
                 [by forall_elim(add(u, v)) neg-succ]
-              @lhs-neg-opened |
-                neg(add(u, succ(v))) = prev(neg(add(u, v)))
-                [by rewrite open-neg-succ lhs-inner-unfolded]
+              // -(u+succ v) = -succ(u+v) = prev(-(u+v)) = prev(-u+-v)
               @lhs-normal |
                 neg(add(u, succ(v))) = prev(add(neg(u), neg(v)))
-                [by rewrite inductive-hypothesis lhs-neg-opened]
+                [by chain inner-succ open-neg-succ inductive-hypothesis]
               @rhs-neg-succ |
                 neg(succ(v)) = prev(neg(v))
                 [by forall_elim(v) neg-succ]
-              @rhs-refl |
-                add(neg(u), neg(succ(v))) = add(neg(u), neg(succ(v)))
-                [by reflexivity]
-              @rhs-neg-opened |
-                add(neg(u), neg(succ(v))) = add(neg(u), prev(neg(v)))
-                [by rewrite rhs-neg-succ rhs-refl]
               @pull-prev-out |
                 add(neg(u), prev(neg(v))) = prev(add(neg(u), neg(v)))
                 [by forall_elim(neg(u), neg(v)) add-prev]
+              // -u + -succ(v) = -u + prev(-v) = prev(-u+-v)
               @rhs-normal |
                 add(neg(u), neg(succ(v))) = prev(add(neg(u), neg(v)))
-                [by rewrite pull-prev-out rhs-neg-opened]
-              @rhs-normal-flipped |
-                prev(add(neg(u), neg(v))) = add(neg(u), neg(succ(v)))
-                [by symmetry rhs-normal]
+                [by chain rhs-neg-succ pull-prev-out]
               @succ-case |
                 neg(add(u, succ(v))) = add(neg(u), neg(succ(v)))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @induction-step-at-k |
             neg(add(u, v)) = add(neg(u), neg(v)) -> neg(add(u, succ(v))) = add(neg(u), neg(succ(v)))
@@ -1433,42 +1225,26 @@ proof
               @inner-prev |
                 add(u, prev(v)) = prev(add(u, v))
                 [by forall_elim(u, v) add-prev]
-              @lhs-refl |
-                neg(add(u, prev(v))) = neg(add(u, prev(v)))
-                [by reflexivity]
-              @lhs-inner-unfolded |
-                neg(add(u, prev(v))) = neg(prev(add(u, v)))
-                [by rewrite inner-prev lhs-refl]
               @open-neg-prev |
                 neg(prev(add(u, v))) = succ(neg(add(u, v)))
                 [by forall_elim(add(u, v)) neg-prev]
-              @lhs-neg-opened |
-                neg(add(u, prev(v))) = succ(neg(add(u, v)))
-                [by rewrite open-neg-prev lhs-inner-unfolded]
+              // -(u+prev v) = -prev(u+v) = succ(-(u+v)) = succ(-u+-v)
               @lhs-normal |
                 neg(add(u, prev(v))) = succ(add(neg(u), neg(v)))
-                [by rewrite inductive-hypothesis lhs-neg-opened]
+                [by chain inner-prev open-neg-prev inductive-hypothesis]
               @rhs-neg-prev |
                 neg(prev(v)) = succ(neg(v))
                 [by forall_elim(v) neg-prev]
-              @rhs-refl |
-                add(neg(u), neg(prev(v))) = add(neg(u), neg(prev(v)))
-                [by reflexivity]
-              @rhs-neg-opened |
-                add(neg(u), neg(prev(v))) = add(neg(u), succ(neg(v)))
-                [by rewrite rhs-neg-prev rhs-refl]
               @pull-succ-out |
                 add(neg(u), succ(neg(v))) = succ(add(neg(u), neg(v)))
                 [by forall_elim(neg(u), neg(v)) add-succ]
+              // -u + -prev(v) = -u + succ(-v) = succ(-u+-v)
               @rhs-normal |
                 add(neg(u), neg(prev(v))) = succ(add(neg(u), neg(v)))
-                [by rewrite pull-succ-out rhs-neg-opened]
-              @rhs-normal-flipped |
-                succ(add(neg(u), neg(v))) = add(neg(u), neg(prev(v)))
-                [by symmetry rhs-normal]
+                [by chain rhs-neg-prev pull-succ-out]
               @prev-case |
                 neg(add(u, prev(v))) = add(neg(u), neg(prev(v)))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @induction-step-at-k |
             neg(add(u, v)) = add(neg(u), neg(v)) -> neg(add(u, prev(v))) = add(neg(u), neg(prev(v)))
@@ -1521,21 +1297,13 @@ proof
           @open-outer |
             neg(succ(k)) = prev(neg(k))
             [by forall_elim(k) neg-succ]
-          @lhs-refl |
-            neg(neg(succ(k))) = neg(neg(succ(k)))
-            [by reflexivity]
-          @lhs-outer-opened |
-            neg(neg(succ(k))) = neg(prev(neg(k)))
-            [by rewrite open-outer lhs-refl]
           @open-inner |
             neg(prev(neg(k))) = succ(neg(neg(k)))
             [by forall_elim(neg(k)) neg-prev]
-          @lhs-inner-opened |
-            neg(neg(succ(k))) = succ(neg(neg(k)))
-            [by rewrite open-inner lhs-outer-opened]
+          // --succ(k) = -prev(-k) = succ(--k) = succ(k)
           @succ-case |
             neg(neg(succ(k))) = succ(k)
-            [by rewrite inductive-hypothesis lhs-inner-opened]
+            [by chain open-outer open-inner inductive-hypothesis]
         }
       @induction-step-at-k |
         neg(neg(k)) = k -> neg(neg(succ(k))) = succ(k)
@@ -1555,21 +1323,13 @@ proof
           @open-outer |
             neg(prev(k)) = succ(neg(k))
             [by forall_elim(k) neg-prev]
-          @lhs-refl |
-            neg(neg(prev(k))) = neg(neg(prev(k)))
-            [by reflexivity]
-          @lhs-outer-opened |
-            neg(neg(prev(k))) = neg(succ(neg(k)))
-            [by rewrite open-outer lhs-refl]
           @open-inner |
             neg(succ(neg(k))) = prev(neg(neg(k)))
             [by forall_elim(neg(k)) neg-succ]
-          @lhs-inner-opened |
-            neg(neg(prev(k))) = prev(neg(neg(k)))
-            [by rewrite open-inner lhs-outer-opened]
+          // --prev(k) = -succ(-k) = prev(--k) = prev(k)
           @prev-case |
             neg(neg(prev(k))) = prev(k)
-            [by rewrite inductive-hypothesis lhs-inner-opened]
+            [by chain open-outer open-inner inductive-hypothesis]
         }
       @induction-step-at-k |
         neg(neg(k)) = k -> neg(neg(prev(k))) = prev(k)
@@ -1655,42 +1415,26 @@ proof
               @open-neg |
                 neg(succ(b)) = prev(neg(b))
                 [by forall_elim(b) neg-succ]
-              @lhs-refl |
-                mul(a, neg(succ(b))) = mul(a, neg(succ(b)))
-                [by reflexivity]
-              @lhs-neg-opened |
-                mul(a, neg(succ(b))) = mul(a, prev(neg(b)))
-                [by rewrite open-neg lhs-refl]
               @unfold-mul-prev |
                 mul(a, prev(neg(b))) = add(mul(a, neg(b)), neg(a))
                 [by forall_elim(a, neg(b)) mul-prev-right]
-              @lhs-mul-unfolded |
-                mul(a, neg(succ(b))) = add(mul(a, neg(b)), neg(a))
-                [by rewrite unfold-mul-prev lhs-neg-opened]
+              // a·-succ(b) = a·prev(-b) = a·(-b)+(-a) = -(ab)+(-a)
               @lhs-normal |
                 mul(a, neg(succ(b))) = add(neg(mul(a, b)), neg(a))
-                [by rewrite inductive-hypothesis lhs-mul-unfolded]
+                [by chain open-neg unfold-mul-prev inductive-hypothesis]
               @unfold-mul-succ |
                 mul(a, succ(b)) = add(mul(a, b), a)
                 [by forall_elim(a, b) mul-succ-right]
-              @rhs-refl |
-                neg(mul(a, succ(b))) = neg(mul(a, succ(b)))
-                [by reflexivity]
-              @rhs-mul-unfolded |
-                neg(mul(a, succ(b))) = neg(add(mul(a, b), a))
-                [by rewrite unfold-mul-succ rhs-refl]
               @distribute-neg |
                 neg(add(mul(a, b), a)) = add(neg(mul(a, b)), neg(a))
                 [by forall_elim(mul(a, b), a) neg-add]
+              // -(a·succ b) = -(ab+a) = -(ab)+(-a)
               @rhs-normal |
                 neg(mul(a, succ(b))) = add(neg(mul(a, b)), neg(a))
-                [by rewrite distribute-neg rhs-mul-unfolded]
-              @rhs-normal-flipped |
-                add(neg(mul(a, b)), neg(a)) = neg(mul(a, succ(b)))
-                [by symmetry rhs-normal]
+                [by chain unfold-mul-succ distribute-neg]
               @succ-case |
                 mul(a, neg(succ(b))) = neg(mul(a, succ(b)))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @induction-step-at-k |
             mul(a, neg(b)) = neg(mul(a, b)) -> mul(a, neg(succ(b))) = neg(mul(a, succ(b)))
@@ -1710,48 +1454,29 @@ proof
               @open-neg |
                 neg(prev(b)) = succ(neg(b))
                 [by forall_elim(b) neg-prev]
-              @lhs-refl |
-                mul(a, neg(prev(b))) = mul(a, neg(prev(b)))
-                [by reflexivity]
-              @lhs-neg-opened |
-                mul(a, neg(prev(b))) = mul(a, succ(neg(b)))
-                [by rewrite open-neg lhs-refl]
               @unfold-mul-succ |
                 mul(a, succ(neg(b))) = add(mul(a, neg(b)), a)
                 [by forall_elim(a, neg(b)) mul-succ-right]
-              @lhs-mul-unfolded |
-                mul(a, neg(prev(b))) = add(mul(a, neg(b)), a)
-                [by rewrite unfold-mul-succ lhs-neg-opened]
+              // a·-prev(b) = a·succ(-b) = a·(-b)+a = -(ab)+a
               @lhs-normal |
                 mul(a, neg(prev(b))) = add(neg(mul(a, b)), a)
-                [by rewrite inductive-hypothesis lhs-mul-unfolded]
+                [by chain open-neg unfold-mul-succ inductive-hypothesis]
               @unfold-mul-prev |
                 mul(a, prev(b)) = add(mul(a, b), neg(a))
                 [by forall_elim(a, b) mul-prev-right]
-              @rhs-refl |
-                neg(mul(a, prev(b))) = neg(mul(a, prev(b)))
-                [by reflexivity]
-              @rhs-mul-unfolded |
-                neg(mul(a, prev(b))) = neg(add(mul(a, b), neg(a)))
-                [by rewrite unfold-mul-prev rhs-refl]
               @distribute-neg |
                 neg(add(mul(a, b), neg(a))) = add(neg(mul(a, b)), neg(neg(a)))
                 [by forall_elim(mul(a, b), neg(a)) neg-add]
-              @rhs-distributed |
-                neg(mul(a, prev(b))) = add(neg(mul(a, b)), neg(neg(a)))
-                [by rewrite distribute-neg rhs-mul-unfolded]
               @cancel-double-neg |
                 neg(neg(a)) = a
                 [by specialize negNeg(a)]
+              // -(a·prev b) = -(ab+(-a)) = -(ab)+(--a) = -(ab)+a
               @rhs-normal |
                 neg(mul(a, prev(b))) = add(neg(mul(a, b)), a)
-                [by rewrite cancel-double-neg rhs-distributed]
-              @rhs-normal-flipped |
-                add(neg(mul(a, b)), a) = neg(mul(a, prev(b)))
-                [by symmetry rhs-normal]
+                [by chain unfold-mul-prev distribute-neg cancel-double-neg]
               @prev-case |
                 mul(a, neg(prev(b))) = neg(mul(a, prev(b)))
-                [by rewrite rhs-normal-flipped lhs-normal]
+                [by chain lhs-normal rhs-normal]
             }
           @induction-step-at-k |
             mul(a, neg(b)) = neg(mul(a, b)) -> mul(a, neg(prev(b))) = neg(mul(a, prev(b)))
@@ -1827,30 +1552,23 @@ proof
                   @lhs-unfold |
                     mul(mul(a, b), succ(c)) = add(mul(mul(a, b), c), mul(a, b))
                     [by forall_elim(mul(a, b), c) mul-succ-right]
+                  // (ab)·succ(c) = (ab)·c+ab = a(bc)+ab
                   @lhs-normal |
                     mul(mul(a, b), succ(c)) = add(mul(a, mul(b, c)), mul(a, b))
-                    [by rewrite inductive-hypothesis lhs-unfold]
+                    [by chain lhs-unfold inductive-hypothesis]
                   @inner-unfold |
                     mul(b, succ(c)) = add(mul(b, c), b)
                     [by forall_elim(b, c) mul-succ-right]
-                  @rhs-refl |
-                    mul(a, mul(b, succ(c))) = mul(a, mul(b, succ(c)))
-                    [by reflexivity]
-                  @rhs-inner-unfolded |
-                    mul(a, mul(b, succ(c))) = mul(a, add(mul(b, c), b))
-                    [by rewrite inner-unfold rhs-refl]
                   @distribute |
                     mul(a, add(mul(b, c), b)) = add(mul(a, mul(b, c)), mul(a, b))
                     [by forall_elim(a, mul(b, c), b) mul-add-distrib]
+                  // a·(b·succ c) = a·(bc+b) = a(bc)+ab
                   @rhs-normal |
                     mul(a, mul(b, succ(c))) = add(mul(a, mul(b, c)), mul(a, b))
-                    [by rewrite distribute rhs-inner-unfolded]
-                  @rhs-normal-flipped |
-                    add(mul(a, mul(b, c)), mul(a, b)) = mul(a, mul(b, succ(c)))
-                    [by symmetry rhs-normal]
+                    [by chain inner-unfold distribute]
                   @succ-case |
                     mul(mul(a, b), succ(c)) = mul(a, mul(b, succ(c)))
-                    [by rewrite rhs-normal-flipped lhs-normal]
+                    [by chain lhs-normal rhs-normal]
                 }
               @induction-step-at-k |
                 mul(mul(a, b), c) = mul(a, mul(b, c)) -> mul(mul(a, b), succ(c)) = mul(a, mul(b, succ(c)))
@@ -1870,36 +1588,26 @@ proof
                   @lhs-unfold |
                     mul(mul(a, b), prev(c)) = add(mul(mul(a, b), c), neg(mul(a, b)))
                     [by forall_elim(mul(a, b), c) mul-prev-right]
+                  // (ab)·prev(c) = (ab)·c+(-(ab)) = a(bc)+(-(ab))
                   @lhs-normal |
                     mul(mul(a, b), prev(c)) = add(mul(a, mul(b, c)), neg(mul(a, b)))
-                    [by rewrite inductive-hypothesis lhs-unfold]
+                    [by chain lhs-unfold inductive-hypothesis]
                   @inner-unfold |
                     mul(b, prev(c)) = add(mul(b, c), neg(b))
                     [by forall_elim(b, c) mul-prev-right]
-                  @rhs-refl |
-                    mul(a, mul(b, prev(c))) = mul(a, mul(b, prev(c)))
-                    [by reflexivity]
-                  @rhs-inner-unfolded |
-                    mul(a, mul(b, prev(c))) = mul(a, add(mul(b, c), neg(b)))
-                    [by rewrite inner-unfold rhs-refl]
                   @distribute |
                     mul(a, add(mul(b, c), neg(b))) = add(mul(a, mul(b, c)), mul(a, neg(b)))
                     [by forall_elim(a, mul(b, c), neg(b)) mul-add-distrib]
-                  @rhs-distributed |
-                    mul(a, mul(b, prev(c))) = add(mul(a, mul(b, c)), mul(a, neg(b)))
-                    [by rewrite distribute rhs-inner-unfolded]
                   @pull-neg-out |
                     mul(a, neg(b)) = neg(mul(a, b))
                     [by specialize mulNegRight(a, b)]
+                  // a·(b·prev c) = a·(bc+(-b)) = a(bc)+a(-b) = a(bc)+(-(ab))
                   @rhs-normal |
                     mul(a, mul(b, prev(c))) = add(mul(a, mul(b, c)), neg(mul(a, b)))
-                    [by rewrite pull-neg-out rhs-distributed]
-                  @rhs-normal-flipped |
-                    add(mul(a, mul(b, c)), neg(mul(a, b))) = mul(a, mul(b, prev(c)))
-                    [by symmetry rhs-normal]
+                    [by chain inner-unfold distribute pull-neg-out]
                   @prev-case |
                     mul(mul(a, b), prev(c)) = mul(a, mul(b, prev(c)))
-                    [by rewrite rhs-normal-flipped lhs-normal]
+                    [by chain lhs-normal rhs-normal]
                 }
               @induction-step-at-k |
                 mul(mul(a, b), c) = mul(a, mul(b, c)) -> mul(mul(a, b), prev(c)) = mul(a, mul(b, prev(c)))
@@ -2021,68 +1729,40 @@ proof
                   @lhs-mul-unfold |
                     mul(add(a, b), succ(c)) = add(mul(add(a, b), c), add(a, b))
                     [by forall_elim(add(a, b), c) mul-succ-right]
-                  @lhs-with-ih |
-                    mul(add(a, b), succ(c)) = add(add(mul(a, c), mul(b, c)), add(a, b))
-                    [by rewrite inductive-hypothesis lhs-mul-unfold]
                   // reshuffle add(add(P, Q), add(a, b)) -> add(add(P, a), add(Q, b))
-                  // with P = mul(a, c), Q = mul(b, c).
-                  @reshuffle-1 |
+                  // with P = mul(a, c), Q = mul(b, c), via associativity + one commute.
+                  @reshuffle-outer |
                     add(add(mul(a, c), mul(b, c)), add(a, b)) = add(mul(a, c), add(mul(b, c), add(a, b)))
                     [by forall_elim(mul(a, c), mul(b, c), add(a, b)) add-associative]
-                  @inner-assoc-back |
+                  @inner-assoc |
                     add(add(mul(b, c), a), b) = add(mul(b, c), add(a, b))
                     [by forall_elim(mul(b, c), a, b) add-associative]
-                  @inner-assoc-fwd |
-                    add(mul(b, c), add(a, b)) = add(add(mul(b, c), a), b)
-                    [by symmetry inner-assoc-back]
                   @inner-comm |
                     add(mul(b, c), a) = add(a, mul(b, c))
                     [by forall_elim(mul(b, c), a) add-commutative]
-                  @inner-step1 |
-                    add(mul(b, c), add(a, b)) = add(add(a, mul(b, c)), b)
-                    [by rewrite inner-comm inner-assoc-fwd]
                   @inner-reassoc |
                     add(add(a, mul(b, c)), b) = add(a, add(mul(b, c), b))
                     [by forall_elim(a, mul(b, c), b) add-associative]
-                  @inner-normal |
-                    add(mul(b, c), add(a, b)) = add(a, add(mul(b, c), b))
-                    [by rewrite inner-reassoc inner-step1]
-                  @reshuffle-2 |
-                    add(add(mul(a, c), mul(b, c)), add(a, b)) = add(mul(a, c), add(a, add(mul(b, c), b)))
-                    [by rewrite inner-normal reshuffle-1]
                   @outer-reassoc |
                     add(add(mul(a, c), a), add(mul(b, c), b)) = add(mul(a, c), add(a, add(mul(b, c), b)))
                     [by forall_elim(mul(a, c), a, add(mul(b, c), b)) add-associative]
-                  @outer-reassoc-flipped |
-                    add(mul(a, c), add(a, add(mul(b, c), b))) = add(add(mul(a, c), a), add(mul(b, c), b))
-                    [by symmetry outer-reassoc]
-                  @reshuffle-done |
-                    add(add(mul(a, c), mul(b, c)), add(a, b)) = add(add(mul(a, c), a), add(mul(b, c), b))
-                    [by rewrite outer-reassoc-flipped reshuffle-2]
+                  // (a+b)·succ(c) = (a+b)·c+(a+b) = (ac+bc)+(a+b) = (ac+a)+(bc+b)
                   @lhs-normal |
                     mul(add(a, b), succ(c)) = add(add(mul(a, c), a), add(mul(b, c), b))
-                    [by rewrite reshuffle-done lhs-with-ih]
+                    [by chain lhs-mul-unfold inductive-hypothesis reshuffle-outer inner-assoc inner-comm inner-reassoc outer-reassoc]
                   @mul-a-succ |
                     mul(a, succ(c)) = add(mul(a, c), a)
                     [by forall_elim(a, c) mul-succ-right]
                   @mul-b-succ |
                     mul(b, succ(c)) = add(mul(b, c), b)
                     [by forall_elim(b, c) mul-succ-right]
-                  @rhs-refl |
-                    add(mul(a, succ(c)), mul(b, succ(c))) = add(mul(a, succ(c)), mul(b, succ(c)))
-                    [by reflexivity]
-                  @rhs-with-a |
-                    add(mul(a, succ(c)), mul(b, succ(c))) = add(add(mul(a, c), a), mul(b, succ(c)))
-                    [by rewrite mul-a-succ rhs-refl]
+                  // a·succ(c) + b·succ(c) = (ac+a)+(bc+b)
                   @rhs-normal |
                     add(mul(a, succ(c)), mul(b, succ(c))) = add(add(mul(a, c), a), add(mul(b, c), b))
-                    [by rewrite mul-b-succ rhs-with-a]
-                  @rhs-normal-flipped |
-                    add(add(mul(a, c), a), add(mul(b, c), b)) = add(mul(a, succ(c)), mul(b, succ(c)))
-                    [by symmetry rhs-normal]
+                    [by chain mul-a-succ mul-b-succ]
                   @succ-case |
                     mul(add(a, b), succ(c)) = add(mul(a, succ(c)), mul(b, succ(c)))
-                    [by rewrite rhs-normal-flipped lhs-normal]
+                    [by chain lhs-normal rhs-normal]
                 }
               @induction-step-at-k |
                 mul(add(a, b), c) = add(mul(a, c), mul(b, c)) -> mul(add(a, b), succ(c)) = add(mul(a, succ(c)), mul(b, succ(c)))
@@ -2103,74 +1783,43 @@ proof
                   @lhs-mul-unfold |
                     mul(add(a, b), prev(c)) = add(mul(add(a, b), c), neg(add(a, b)))
                     [by forall_elim(add(a, b), c) mul-prev-right]
-                  @lhs-with-ih |
-                    mul(add(a, b), prev(c)) = add(add(mul(a, c), mul(b, c)), neg(add(a, b)))
-                    [by rewrite inductive-hypothesis lhs-mul-unfold]
                   @neg-add-ab |
                     neg(add(a, b)) = add(neg(a), neg(b))
                     [by forall_elim(a, b) neg-add]
-                  @lhs-neg-distributed |
-                    mul(add(a, b), prev(c)) = add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b)))
-                    [by rewrite neg-add-ab lhs-with-ih]
                   // reshuffle add(add(P, Q), add(neg(a), neg(b))) ->
                   // add(add(P, neg(a)), add(Q, neg(b))) with P = mul(a, c), Q = mul(b, c).
-                  @reshuffle-1 |
+                  @reshuffle-outer |
                     add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b))) = add(mul(a, c), add(mul(b, c), add(neg(a), neg(b))))
                     [by forall_elim(mul(a, c), mul(b, c), add(neg(a), neg(b))) add-associative]
-                  @inner-assoc-back |
+                  @inner-assoc |
                     add(add(mul(b, c), neg(a)), neg(b)) = add(mul(b, c), add(neg(a), neg(b)))
                     [by forall_elim(mul(b, c), neg(a), neg(b)) add-associative]
-                  @inner-assoc-fwd |
-                    add(mul(b, c), add(neg(a), neg(b))) = add(add(mul(b, c), neg(a)), neg(b))
-                    [by symmetry inner-assoc-back]
                   @inner-comm |
                     add(mul(b, c), neg(a)) = add(neg(a), mul(b, c))
                     [by forall_elim(mul(b, c), neg(a)) add-commutative]
-                  @inner-step1 |
-                    add(mul(b, c), add(neg(a), neg(b))) = add(add(neg(a), mul(b, c)), neg(b))
-                    [by rewrite inner-comm inner-assoc-fwd]
                   @inner-reassoc |
                     add(add(neg(a), mul(b, c)), neg(b)) = add(neg(a), add(mul(b, c), neg(b)))
                     [by forall_elim(neg(a), mul(b, c), neg(b)) add-associative]
-                  @inner-normal |
-                    add(mul(b, c), add(neg(a), neg(b))) = add(neg(a), add(mul(b, c), neg(b)))
-                    [by rewrite inner-reassoc inner-step1]
-                  @reshuffle-2 |
-                    add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b))) = add(mul(a, c), add(neg(a), add(mul(b, c), neg(b))))
-                    [by rewrite inner-normal reshuffle-1]
                   @outer-reassoc |
                     add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b))) = add(mul(a, c), add(neg(a), add(mul(b, c), neg(b))))
                     [by forall_elim(mul(a, c), neg(a), add(mul(b, c), neg(b))) add-associative]
-                  @outer-reassoc-flipped |
-                    add(mul(a, c), add(neg(a), add(mul(b, c), neg(b)))) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
-                    [by symmetry outer-reassoc]
-                  @reshuffle-done |
-                    add(add(mul(a, c), mul(b, c)), add(neg(a), neg(b))) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
-                    [by rewrite outer-reassoc-flipped reshuffle-2]
+                  // (a+b)·prev(c) = (a+b)·c+(-(a+b)) = (ac+bc)+(-a+-b) = (ac+-a)+(bc+-b)
                   @lhs-normal |
                     mul(add(a, b), prev(c)) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
-                    [by rewrite reshuffle-done lhs-neg-distributed]
+                    [by chain lhs-mul-unfold inductive-hypothesis neg-add-ab reshuffle-outer inner-assoc inner-comm inner-reassoc outer-reassoc]
                   @mul-a-prev |
                     mul(a, prev(c)) = add(mul(a, c), neg(a))
                     [by forall_elim(a, c) mul-prev-right]
                   @mul-b-prev |
                     mul(b, prev(c)) = add(mul(b, c), neg(b))
                     [by forall_elim(b, c) mul-prev-right]
-                  @rhs-refl |
-                    add(mul(a, prev(c)), mul(b, prev(c))) = add(mul(a, prev(c)), mul(b, prev(c)))
-                    [by reflexivity]
-                  @rhs-with-a |
-                    add(mul(a, prev(c)), mul(b, prev(c))) = add(add(mul(a, c), neg(a)), mul(b, prev(c)))
-                    [by rewrite mul-a-prev rhs-refl]
+                  // a·prev(c) + b·prev(c) = (ac+-a)+(bc+-b)
                   @rhs-normal |
                     add(mul(a, prev(c)), mul(b, prev(c))) = add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b)))
-                    [by rewrite mul-b-prev rhs-with-a]
-                  @rhs-normal-flipped |
-                    add(add(mul(a, c), neg(a)), add(mul(b, c), neg(b))) = add(mul(a, prev(c)), mul(b, prev(c)))
-                    [by symmetry rhs-normal]
+                    [by chain mul-a-prev mul-b-prev]
                   @prev-case |
                     mul(add(a, b), prev(c)) = add(mul(a, prev(c)), mul(b, prev(c)))
-                    [by rewrite rhs-normal-flipped lhs-normal]
+                    [by chain lhs-normal rhs-normal]
                 }
               @induction-step-at-k |
                 mul(add(a, b), c) = add(mul(a, c), mul(b, c)) -> mul(add(a, b), prev(c)) = add(mul(a, prev(c)), mul(b, prev(c)))

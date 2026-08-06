@@ -50,9 +50,6 @@ proof
                   @lhs-inner |
                     apply(compose(h, g), apply(f, x)) = apply(h, apply(g, apply(f, x)))
                     [by specialize composeApply(h, g, apply(f, x))]
-                  @lhs |
-                    apply(compose(compose(h, g), f), x) = apply(h, apply(g, apply(f, x)))
-                    [by rewrite lhs-inner lhs-outer]
                   // RHS: (h∘(g∘f))(x) = h((g∘f)(x)) = h(g(f(x)))
                   @rhs-outer |
                     apply(compose(h, compose(g, f)), x) = apply(h, apply(compose(g, f), x))
@@ -60,21 +57,10 @@ proof
                   @rhs-inner |
                     apply(compose(g, f), x) = apply(g, apply(f, x))
                     [by specialize composeApply(g, f, x)]
-                  @rhs-inner-refl |
-                    apply(h, apply(compose(g, f), x)) = apply(h, apply(compose(g, f), x))
-                    [by reflexivity]
-                  @rhs-inner-rewritten |
-                    apply(h, apply(compose(g, f), x)) = apply(h, apply(g, apply(f, x)))
-                    [by rewrite rhs-inner rhs-inner-refl]
-                  @rhs |
-                    apply(compose(h, compose(g, f)), x) = apply(h, apply(g, apply(f, x)))
-                    [by rewrite rhs-inner-rewritten rhs-outer]
-                  @rhs-flipped |
-                    apply(h, apply(g, apply(f, x))) = apply(compose(h, compose(g, f)), x)
-                    [by symmetry rhs]
+                  // ((h∘g)∘f)(x) = (h∘g)(f(x)) = h(g(f(x))) = h((g∘f)(x)) = (h∘(g∘f))(x)
                   @agree-at-x |
                     apply(compose(compose(h, g), f), x) = apply(compose(h, compose(g, f)), x)
-                    [by rewrite rhs-flipped lhs]
+                    [by chain lhs-outer lhs-inner rhs-inner rhs-outer]
                 }
               @agree |
                 forall x: Element; apply(compose(compose(h, g), f), x) = apply(compose(h, compose(g, f)), x)
@@ -138,15 +124,10 @@ proof
           @id-at-x |
             apply(identityFn, x) = x
             [by specialize identityApply(x)]
-          @f-at-id-x-refl |
-            apply(f, apply(identityFn, x)) = apply(f, apply(identityFn, x))
-            [by reflexivity]
-          @f-at-id-x-equals-f-at-x |
-            apply(f, apply(identityFn, x)) = apply(f, x)
-            [by rewrite id-at-x f-at-id-x-refl]
+          // (f∘id)(x) = f(id(x)) = f(x)
           @agree-at-x |
             apply(compose(f, identityFn), x) = apply(f, x)
-            [by rewrite f-at-id-x-equals-f-at-x compose-f-id-at-x]
+            [by chain compose-f-id-at-x id-at-x]
         }
       @agree |
         forall x: Element; apply(compose(f, identityFn), x) = apply(f, x)
@@ -271,35 +252,14 @@ proof
                   @f-then-inverses-reassociate |
                     compose(compose(f, inverse(f)), inverse(g)) = compose(f, compose(inverse(f), inverse(g)))
                     [by specialize composeAssoc(f, inverse(f), inverse(g))]
-                  // collapse f∘f⁻¹ to id inside compose((f∘f⁻¹), g⁻¹).
-                  @f-inverse-collapses-right-refl |
-                    compose(compose(f, inverse(f)), inverse(g)) = compose(compose(f, inverse(f)), inverse(g))
-                    [by reflexivity]
-                  @f-inverse-collapses-right |
-                    compose(compose(f, inverse(f)), inverse(g)) = compose(identityFn, inverse(g))
-                    [by rewrite f-cancels-on-the-right f-inverse-collapses-right-refl]
                   @identity-then-inverse-g |
                     compose(identityFn, inverse(g)) = inverse(g)
                     [by specialize composeIdentityLeft(inverse(g))]
-                  @f-inner-collapses-to-inverse-g |
-                    compose(compose(f, inverse(f)), inverse(g)) = inverse(g)
-                    [by rewrite identity-then-inverse-g f-inverse-collapses-right]
-                  @f-block-equals-inverse-g |
-                    compose(f, compose(inverse(f), inverse(g))) = inverse(g)
-                    [by rewrite f-then-inverses-reassociate f-inner-collapses-to-inverse-g]
-                  @g-of-f-block-refl |
-                    compose(g, compose(f, compose(inverse(f), inverse(g))))
-                      = compose(g, compose(f, compose(inverse(f), inverse(g))))
-                    [by reflexivity]
-                  @g-of-f-block-equals-g-of-inverse-g |
-                    compose(g, compose(f, compose(inverse(f), inverse(g)))) = compose(g, inverse(g))
-                    [by rewrite f-block-equals-inverse-g g-of-f-block-refl]
-                  @right-composite-equals-g-of-inverse-g |
-                    compose(compose(g, f), compose(inverse(f), inverse(g))) = compose(g, inverse(g))
-                    [by rewrite g-of-f-block-equals-g-of-inverse-g right-reassociate-outer]
+                  // (g∘f)∘(f⁻¹∘g⁻¹) = g∘(f∘(f⁻¹∘g⁻¹)) = g∘((f∘f⁻¹)∘g⁻¹)
+                  //   = g∘(id∘g⁻¹) = g∘g⁻¹ = id
                   @right-composite-is-identity |
                     compose(compose(g, f), compose(inverse(f), inverse(g))) = identityFn
-                    [by rewrite g-cancels-on-the-right right-composite-equals-g-of-inverse-g]
+                    [by chain right-reassociate-outer f-then-inverses-reassociate f-cancels-on-the-right identity-then-inverse-g g-cancels-on-the-right]
 
                   // ── the LEFT inverse: (f⁻¹∘g⁻¹)∘(g∘f) = id ──
                   // reassociate to f⁻¹∘(g⁻¹∘(g∘f)), then f⁻¹∘((g⁻¹∘g)∘f).
@@ -310,35 +270,14 @@ proof
                   @g-inverse-then-g-reassociate |
                     compose(compose(inverse(g), g), f) = compose(inverse(g), compose(g, f))
                     [by specialize composeAssoc(inverse(g), g, f)]
-                  // collapse g⁻¹∘g to id inside compose((g⁻¹∘g), f).
-                  @g-inverse-collapses-left-refl |
-                    compose(compose(inverse(g), g), f) = compose(compose(inverse(g), g), f)
-                    [by reflexivity]
-                  @g-inverse-collapses-left |
-                    compose(compose(inverse(g), g), f) = compose(identityFn, f)
-                    [by rewrite g-cancels-on-the-left g-inverse-collapses-left-refl]
                   @identity-then-f |
                     compose(identityFn, f) = f
                     [by specialize composeIdentityLeft(f)]
-                  @g-inner-collapses-to-f |
-                    compose(compose(inverse(g), g), f) = f
-                    [by rewrite identity-then-f g-inverse-collapses-left]
-                  @g-block-equals-f |
-                    compose(inverse(g), compose(g, f)) = f
-                    [by rewrite g-inverse-then-g-reassociate g-inner-collapses-to-f]
-                  @f-inverse-of-g-block-refl |
-                    compose(inverse(f), compose(inverse(g), compose(g, f)))
-                      = compose(inverse(f), compose(inverse(g), compose(g, f)))
-                    [by reflexivity]
-                  @f-inverse-of-g-block-equals-f-inverse-of-f |
-                    compose(inverse(f), compose(inverse(g), compose(g, f))) = compose(inverse(f), f)
-                    [by rewrite g-block-equals-f f-inverse-of-g-block-refl]
-                  @left-composite-equals-f-inverse-of-f |
-                    compose(compose(inverse(f), inverse(g)), compose(g, f)) = compose(inverse(f), f)
-                    [by rewrite f-inverse-of-g-block-equals-f-inverse-of-f left-reassociate-outer]
+                  // (f⁻¹∘g⁻¹)∘(g∘f) = f⁻¹∘(g⁻¹∘(g∘f)) = f⁻¹∘((g⁻¹∘g)∘f)
+                  //   = f⁻¹∘(id∘f) = f⁻¹∘f = id
                   @left-composite-is-identity |
                     compose(compose(inverse(f), inverse(g)), compose(g, f)) = identityFn
-                    [by rewrite f-cancels-on-the-left left-composite-equals-f-inverse-of-f]
+                    [by chain left-reassociate-outer g-inverse-then-g-reassociate g-cancels-on-the-left identity-then-f f-cancels-on-the-left]
 
                   // ── discharge invertibleDef with witness h := f⁻¹∘g⁻¹ ──
                   @two-sided |

@@ -520,23 +520,15 @@ proof
                                           @b-times-q2-includes-a-full-b |
                                             mul(b, q2) = add(mul(b, q1), add(mul(b, k), b))
                                             [by simplify q2-as-gap-sum mulAddDistribLeft mulSuccRight]
-                                          // substitute into decompositions-equal
-                                          @right-decomposition-is-itself |
-                                            add(mul(b, q2), r2) = add(mul(b, q2), r2)
-                                            [by reflexivity]
-                                          @right-decomposition-expanded |
-                                            add(mul(b, q2), r2) = add(add(mul(b, q1), add(mul(b, k), b)), r2)
-                                            [by rewrite b-times-q2-includes-a-full-b right-decomposition-is-itself]
-                                          @left-decomposition-expanded |
-                                            add(mul(b, q1), r1) = add(add(mul(b, q1), add(mul(b, k), b)), r2)
-                                            [by rewrite right-decomposition-expanded decompositions-equal]
                                           // reassociate RHS: add(add(mul(b,q1), X), r2) = add(mul(b,q1), add(X, r2))
                                           @rhs-reassociates |
                                             add(add(mul(b, q1), add(mul(b, k), b)), r2) = add(mul(b, q1), add(add(mul(b, k), b), r2))
                                             [by specialize addIsAssociative(mul(b, q1), add(mul(b, k), b), r2)]
+                                          // add(mul(b, q1), r1) = add(mul(b, q2), r2) = add(add(mul(b, q1), add(mul(b, k), b)), r2)
+                                          //   = add(mul(b, q1), add(add(mul(b, k), b), r2))
                                           @decomposition-over-common-prefix |
                                             add(mul(b, q1), r1) = add(mul(b, q1), add(add(mul(b, k), b), r2))
-                                            [by rewrite rhs-reassociates left-decomposition-expanded]
+                                            [by chain decompositions-equal b-times-q2-includes-a-full-b rhs-reassociates]
                                           // cancel mul(b, q1): r1 = add(add(mul(b,k), b), r2)
                                           @r1-contains-a-full-b |
                                             r1 = add(add(mul(b, k), b), r2)
@@ -546,15 +538,13 @@ proof
                                           @base-moves-to-front |
                                             add(mul(b, k), b) = add(b, mul(b, k))
                                             [by specialize addIsCommutative(mul(b, k), b)]
-                                          @r1-with-base-in-front |
-                                            r1 = add(add(b, mul(b, k)), r2)
-                                            [by rewrite base-moves-to-front r1-contains-a-full-b]
                                           @base-prefix-reassociates |
                                             add(add(b, mul(b, k)), r2) = add(b, add(mul(b, k), r2))
                                             [by specialize addIsAssociative(b, mul(b, k), r2)]
+                                          // r1 = add(add(mul(b, k), b), r2) = add(add(b, mul(b, k)), r2) = add(b, add(mul(b, k), r2))
                                           @r1-is-b-plus-remainder |
                                             r1 = add(b, add(mul(b, k), r2))
-                                            [by rewrite base-prefix-reassociates r1-with-base-in-front]
+                                            [by chain r1-contains-a-full-b base-moves-to-front base-prefix-reassociates]
                                           // less_than(r1, b) with r1 = add(b, Y): substitute, then cancel b.
                                           @r1-below-b-restated |
                                             less_than(r1, b)
@@ -789,20 +779,11 @@ proof
                               @quotient-equals-canonical |
                                 q = div(a, b)
                                 [by specialize quotientUnique(b, r, mod(a, b), q, div(a, b)) b-nonzero r-below-b canonical-remainder-below-b decompositions-agree]
-                              // now mul(b, q) = mul(b, div(a, b)), so add(mul(b,q), r) = add(mul(b,q), mod(a,b))
-                              // and cancel to get r = mod(a, b), then symmetry.
-                              @b-times-quotient-is-itself |
-                                mul(b, q) = mul(b, q)
-                                [by reflexivity]
-                              @b-times-quotient-equals-canonical |
-                                mul(b, q) = mul(b, div(a, b))
-                                [by rewrite quotient-equals-canonical b-times-quotient-is-itself]
-                              @canonical-multiple-equals-b-times-quotient |
-                                mul(b, div(a, b)) = mul(b, q)
-                                [by symmetry b-times-quotient-equals-canonical]
+                              // now cancel to get r = mod(a, b), then symmetry.
+                              // add(mul(b, q), r) = add(mul(b, div(a, b)), mod(a, b)) = add(mul(b, q), mod(a, b))
                               @decompositions-share-multiple |
                                 add(mul(b, q), r) = add(mul(b, q), mod(a, b))
-                                [by rewrite canonical-multiple-equals-b-times-quotient decompositions-agree]
+                                [by chain decompositions-agree quotient-equals-canonical]
                               @r-equals-remainder |
                                 r = mod(a, b)
                                 [by specialize addCancelLeft(mul(b, q), r, mod(a, b)) decompositions-share-multiple]

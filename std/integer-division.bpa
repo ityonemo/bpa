@@ -1359,59 +1359,38 @@ proof
                           @products-commute |
                             add(mul(b, q2), mul(b, q1)) = add(mul(b, q1), mul(b, q2))
                             [by forall_elim(mul(b, q2), mul(b, q1)) addition-commutes]
-                          @regroup-a-commuted |
-                            add(add(mul(b, q1), mul(b, q2)), neg(mul(b, q2))) = add(mul(b, q2), add(mul(b, q1), neg(mul(b, q2))))
-                            [by rewrite products-commute regroup-a]
                           @regroup-a-inner |
                             add(add(mul(b, q1), mul(b, q2)), neg(mul(b, q2))) = add(mul(b, q1), add(mul(b, q2), neg(mul(b, q2))))
                             [by forall_elim(mul(b, q1), mul(b, q2), neg(mul(b, q2))) addition-associates]
                           @product-plus-its-negation-zero |
                             add(mul(b, q2), neg(mul(b, q2))) = ZERO
                             [by forall_elim(mul(b, q2)) summand-plus-negation-is-zero]
-                          @regroup-a-inner-zero |
-                            add(add(mul(b, q1), mul(b, q2)), neg(mul(b, q2))) = add(mul(b, q1), ZERO)
-                            [by rewrite product-plus-its-negation-zero regroup-a-inner]
                           @product-plus-zero-is-product |
                             add(mul(b, q1), ZERO) = mul(b, q1)
                             [by forall_elim(mul(b, q1)) adding-zero-is-identity]
-                          @regroup-a-is-product |
-                            add(add(mul(b, q1), mul(b, q2)), neg(mul(b, q2))) = mul(b, q1)
-                            [by rewrite product-plus-zero-is-product regroup-a-inner-zero]
+                          // bq2+(bq1-bq2) = (bq2+bq1)-bq2 = (bq1+bq2)-bq2 = bq1+(bq2-bq2) = bq1+0 = bq1
                           @a-is-product |
                             add(mul(b, q2), add(mul(b, q1), neg(mul(b, q2)))) = mul(b, q1)
-                            [by rewrite regroup-a-commuted regroup-a-is-product]
+                            [by chain regroup-a products-commute regroup-a-inner product-plus-its-negation-zero product-plus-zero-is-product]
                           // B := add(bq2, add(r2, neg r1)) = bq1.
                           @regroup-b |
                             add(add(mul(b, q2), r2), neg(r1)) = add(mul(b, q2), add(r2, neg(r1)))
                             [by forall_elim(mul(b, q2), r2, neg(r1)) addition-associates]
-                          @right-decomposition-is-left |
-                            add(mul(b, q2), r2) = add(mul(b, q1), r1)
-                            [by symmetry decompositions-equal]
-                          @regroup-b-substituted |
-                            add(add(mul(b, q1), r1), neg(r1)) = add(mul(b, q2), add(r2, neg(r1)))
-                            [by rewrite right-decomposition-is-left regroup-b]
                           @regroup-b-inner |
                             add(add(mul(b, q1), r1), neg(r1)) = add(mul(b, q1), add(r1, neg(r1)))
                             [by forall_elim(mul(b, q1), r1, neg(r1)) addition-associates]
                           @remainder-plus-its-negation-zero |
                             add(r1, neg(r1)) = ZERO
                             [by specialize addNegRight(r1)]
-                          @regroup-b-inner-zero |
-                            add(add(mul(b, q1), r1), neg(r1)) = add(mul(b, q1), ZERO)
-                            [by rewrite remainder-plus-its-negation-zero regroup-b-inner]
-                          @regroup-b-is-product |
-                            add(add(mul(b, q1), r1), neg(r1)) = mul(b, q1)
-                            [by rewrite product-plus-zero-is-product regroup-b-inner-zero]
+                          // bq2+(r2-r1) = (bq2+r2)-r1 = (bq1+r1)-r1 = bq1+(r1-r1) = bq1+0 = bq1
                           @b-is-product |
                             add(mul(b, q2), add(r2, neg(r1))) = mul(b, q1)
-                            [by rewrite regroup-b-substituted regroup-b-is-product]
+                            [by chain regroup-b decompositions-equal regroup-b-inner remainder-plus-its-negation-zero product-plus-zero-is-product]
                           // A = B, so cancel bq2: add(r2,neg r1) = add(bq1, neg bq2).
-                          @a-is-product-flipped |
-                            mul(b, q1) = add(mul(b, q2), add(mul(b, q1), neg(mul(b, q2))))
-                            [by symmetry a-is-product]
+                          // both sides equal bq1 (b-is-product and a-is-product).
                           @prefixed-differences-equal |
                             add(mul(b, q2), add(r2, neg(r1))) = add(mul(b, q2), add(mul(b, q1), neg(mul(b, q2))))
-                            [by rewrite a-is-product-flipped b-is-product]
+                            [by chain b-is-product a-is-product]
                           @cancel-product-on-left |
                             forall c, u, v: Int; add(c, u) = add(c, v) -> u = v
                             [by theorem addCancelLeft]
@@ -1421,29 +1400,14 @@ proof
                           @remainder-difference-equals-product-difference |
                             add(r2, neg(r1)) = add(mul(b, q1), neg(mul(b, q2)))
                             [by modus_ponens differences-equal-if-cancel prefixed-differences-equal]
-                          // fold both sides back to sub form.
-                          @products-difference-folds |
-                            add(mul(b, q1), neg(mul(b, q2))) = sub(mul(b, q1), mul(b, q2))
-                            [by symmetry difference-of-products-unfolds]
-                          @remainder-difference-is-products-difference |
-                            add(r2, neg(r1)) = sub(mul(b, q1), mul(b, q2))
-                            [by rewrite products-difference-folds remainder-difference-equals-product-difference]
-                          @remainders-difference-folds |
-                            add(r2, neg(r1)) = sub(r2, r1)
-                            [by symmetry difference-of-remainders-unfolds]
-                          @remainder-difference-of-products |
-                            sub(r2, r1) = sub(mul(b, q1), mul(b, q2))
-                            [by rewrite remainders-difference-folds remainder-difference-is-products-difference]
-                          // and sub(bq1,bq2) = b*(q1-q2).
+                          // fold both sides back to sub form, and sub(bq1,bq2) = b*(q1-q2).
                           @product-difference-is-multiple |
                             mul(b, sub(q1, q2)) = sub(mul(b, q1), mul(b, q2))
                             [by specialize distributesOverDifference(b, q1, q2)]
-                          @products-difference-is-multiple |
-                            sub(mul(b, q1), mul(b, q2)) = mul(b, sub(q1, q2))
-                            [by symmetry product-difference-is-multiple]
+                          // r2-r1 = r2+(-r1) = bq1+(-bq2) = bq1-bq2 = b*(q1-q2)
                           @conclusion-difference-is-multiple |
                             sub(r2, r1) = mul(b, sub(q1, q2))
-                            [by rewrite products-difference-is-multiple remainder-difference-of-products]
+                            [by chain difference-of-remainders-unfolds remainder-difference-equals-product-difference difference-of-products-unfolds product-difference-is-multiple]
                         }
                       @decompositions-equal-implies |
                         add(mul(b, q1), r1) = add(mul(b, q2), r2) -> sub(r2, r1) = mul(b, sub(q1, q2))
