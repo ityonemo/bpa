@@ -1,0 +1,12 @@
+// transitive fails cleanly when the cited equations do not connect the goal's
+// two sides (no rewrite path from a to z).
+sort T
+const a: T
+const b: T
+const z: T
+axiom ab: a = b
+theorem unreachable: a = z
+proof
+  @a-is-b | a = b [by axiom ab]
+  @c | a = z [by transitive a-is-b]
+qed

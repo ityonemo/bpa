@@ -113,6 +113,33 @@ pub const Pool = struct {
         return self.walk(id, .{ .subst_fvar = .{ .name = name, .term = u } }, 0);
     }
 
+    /// Replace every subterm alpha-equal to `from` with `to` (all occurrences).
+    /// `from`/`to` are locally closed (equation sides), so no depth shifting is
+    /// needed. Mirrors the kernel's `rewriteMatches` acceptance (all-occurrences
+    /// is a valid instance of its "some occurrences" congruence walk), so a step
+    /// justified by rewriting toward this result kernel-checks. Used by the
+    /// `transitive` accelerant to construct each rewrite target.
+    pub fn rewriteAll(self: *Pool, id: TermId, from: TermId, to: TermId) Allocator.Error!TermId {
+        if (self.alphaEq(id, from)) return to;
+        switch (self.get(id)) {
+            .bvar, .fvar => return id,
+            .app => |a| {
+                const new_args = try self.arena.alloc(TermId, a.args_len);
+                for (self.args(a), new_args) |arg, *na| na.* = try self.rewriteAll(arg, from, to);
+                return self.addApp(.app, a.sym, new_args);
+            },
+            .pred => |a| {
+                const new_args = try self.arena.alloc(TermId, a.args_len);
+                for (self.args(a), new_args) |arg, *na| na.* = try self.rewriteAll(arg, from, to);
+                return self.addApp(.pred, a.sym, new_args);
+            },
+            .eq => |p| return self.add(.{ .eq = .{ .lhs = try self.rewriteAll(p.lhs, from, to), .rhs = try self.rewriteAll(p.rhs, from, to) } }),
+            .not => |t| return self.add(.{ .not = try self.rewriteAll(t, from, to) }),
+            .bin => |b| return self.add(.{ .bin = .{ .op = b.op, .lhs = try self.rewriteAll(b.lhs, from, to), .rhs = try self.rewriteAll(b.rhs, from, to) } }),
+            .quant => |q| return self.add(.{ .quant = .{ .q = q.q, .sort = q.sort, .hint = q.hint, .body = try self.rewriteAll(q.body, from, to) } }),
+        }
+    }
+
     /// Does fvar `name` occur (free) anywhere in `id`? (eigenvariable check)
     pub fn occursFree(self: *const Pool, id: TermId, name: StrId) bool {
         switch (self.get(id)) {

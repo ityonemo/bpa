@@ -1,0 +1,38 @@
+// `transitive`: prove A = Z from cited equations, any direction (union-find) +
+// congruence (a=b => f(...a...)=f(...b...)). Unlike simplify's oriented rewriting.
+
+sort T
+const a: T
+const b: T
+const c: T
+const d: T
+func f(x: T): T
+func g(x: T, y: T): T
+axiom ab: a = b
+axiom cb: c = b
+axiom dc: d = c
+axiom cd: c = d
+
+// PURE TRANSITIVITY, mixed orientation: a=b, c=b (backwards), d=c ⟹ a=d
+theorem trans: a = d
+proof
+  @a-is-b | a = b [by axiom ab]
+  @c-is-b | c = b [by axiom cb]
+  @d-is-c | d = c [by axiom dc]
+  @conclusion | a = d [by transitive a-is-b c-is-b d-is-c]
+qed
+
+// CONGRUENCE: from a=b, conclude f(a)=f(b)
+theorem cong: f(a) = f(b)
+proof
+  @a-is-b | a = b [by axiom ab]
+  @conclusion | f(a) = f(b) [by transitive a-is-b]
+qed
+
+// COMBINED: transitivity + congruence in one — g(a, c) = g(b, d) from a=b, c=d
+theorem combined: g(a, c) = g(b, d)
+proof
+  @a-is-b | a = b [by axiom ab]
+  @c-is-d | c = d [by axiom cd]
+  @conclusion | g(a, c) = g(b, d) [by transitive a-is-b c-is-d]
+qed

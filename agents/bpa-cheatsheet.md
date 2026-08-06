@@ -106,7 +106,8 @@ qed
 
 ## Accelerants (tactics) — one-liners; detail at `### TACTIC: <name>` in GUIDE.md
 
-- `simplify` — equational rewriting to a shared normal form (always emits kernel steps).
+- `simplify` — equational rewriting to a shared normal form (always emits kernel steps). ORIENTED (left-to-right rules).
+- `transitive eq1 eq2 …` — prove `A = Z` from cited equations used in ANY direction + congruence (union-find/BFS). For hand-run transitivity chains (`A=B`, `C=B`, `D=C ⊢ A=D`) where simplify's oriented rewriting can't. Emits refl+symmetry+rewrite cert, no taint.
 - `assoc_commut` / `assoc_commut_quantified` — reorder an A/C sum; bare = add/mul, `(assoc,comm,swap)` for a custom op; `_quantified` peels a `forall` prefix.
 - `assoc(assocLemma)` — associativity-ONLY equality (required lemma arg; no commutativity).
 - `polynomial(theory)` — nonlinear `add`/`mul` identity by canonical expansion.

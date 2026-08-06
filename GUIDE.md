@@ -62,6 +62,7 @@ below. The overview tables (`### Justification rules (overview table)`,
 | `RULE: iff_rewrite` | replace `P` by `Q` given `P iff Q` in a target |
 | `RULE: instantiate` | monomorphize a schema |
 | `RULE: specialize` | apply a forall-theorem at args + discharge antecedents, in one step |
+| `RULE: transitive` | prove A = Z from equations used any direction + congruence |
 | `RULE: model` | transfer a theory's theorem through a named model |
 | `TACTIC: simplify` | equational rewriting to a common normal form (documents `simplify_quantified` inline) |
 | `TACTIC: assoc_commut` | associative-commutative reordering of a sum |
@@ -885,6 +886,31 @@ Multi-arg peels several binders; multiple hyps discharge several antecedents in
 order. With NO hyps it is a bare specialization (just the ∀-elim chain). For a
 parameterized SCHEMA (a `prop`-parameter), use `instantiate` instead — `specialize`
 is for ordinary quantified theorems.
+
+### RULE: transitive
+
+`[by transitive eq1 eq2 ...]` — prove an equality goal `A = Z` from the cited
+equations, used in ANY direction and closed under congruence. Each `eqN` is a
+proven step / axiom / theorem of the form `X = Y`; `transitive` searches (BFS) for
+a rewrite path connecting `A` to `Z`, using each equation forward OR backward, and
+because rewriting substitutes congruent SUBTERMS it gets congruence
+(`a = b ⟹ f(…a…) = f(…b…)`) for free.
+
+Where `simplify` orients each equation left-to-right and reduces both sides to a
+normal form (and FAILS when the equations must point in conflicting directions),
+`transitive` is orientation-free — it is the tool for a hand-run transitivity
+chain (`A = B`, `C = B`, `D = C` ⊢ `A = D`). It emits a `reflexivity` +
+`symmetry`/`rewrite` certificate the kernel re-checks (no `--fast` taint).
+
+```bpa
+// A = B, C = B (backwards), D = C ⊢ A = D, plus a congruence in one:
+@a-equals-d |
+  mul(pu(s, k), at(s, k)) = mul(pu(t2, lprev), at(s, k))
+  [by transitive s-succ-product-splits equal-products t2-product-is-l-product tm-equals-sk]
+```
+
+Use `simplify` for oriented normal-form equalities (ring identities), `transitive`
+for stitching a bag of equations (some used backward) into `A = Z`.
 
 **Args and hyps INTERLEAVE by formula structure.** `specialize` walks the cited
 formula: at each `forall` it consumes the next argument, at each leading `->` it
