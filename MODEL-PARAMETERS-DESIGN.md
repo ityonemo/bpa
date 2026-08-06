@@ -31,8 +31,8 @@ Also settled along the way:
   subtyping (SortIds are atomic; the kernel knows only sort equality). That
   atomicity underwrites `tautology`/finite-model soundness. The guarded model is the
   substrate; `sort H` is at most sugar over it, never a real sort.
-- **`parent:` binds just the carrier sort** — so the parent slot is essentially a
-  sort mapping, ~free.
+- **`parent:` is just a sort-mapping overload** — the parent slot maps the source
+  parent sort onto the local group sort, ~free.
 
 ## The two-layer stack: transferring the group corpus onto a subgroup
 
@@ -48,19 +48,23 @@ sort G;
 import group <<< ...
 // whatever axioms/theorems G needs to be a group
 pred inH;
+sort SubH = G where inH             // the subset sort the models map onto
 
-model HSubGroup = G where inH {
+model HSubGroup {
   subgroup.parent: G
   subgroup.op: ...
 }
 
-model HGroup = G where inH {
+model HGroup {
+  group.Grp: SubH                                    // predicated target → guarded by inH
   group.opAssoc: model(HSubGroup) subgroup.opAssoc   // <-- discharge THROUGH another model
 }
 
 // K < H < G  (the iterated-subgroup wrinkle — OPEN, see below)
-model KSubGroup = G where inH where inK? {
-  subgroup.parent: G where inH?
+pred inK;
+sort SubK = G where inK?            // ? = the iterated-nesting question (see below)
+model KSubGroup {
+  subgroup.parent: SubH?            // ? = does K's parent point at H, or flatten to G?
   subgroup.op: ...
 }
 
@@ -83,7 +87,7 @@ This transfer is preferred BECAUSE every discharge is a named, walkable mapping 
 hidden steps (the opaque one-layer alternative was rejected for exactly this: it
 would silently pull in the criteria, un-walkable).
 
-The `?`-marked lines (`KSubGroup = ... where inH where inK?`, `parent: G where inH?`)
+The `?`-marked lines (`sort SubK = G where inK?`, `parent: SubH?`)
 are the ITERATED-SUBGROUP wrinkle K < H < G, left OPEN: two readings —
 - **flatten to G**: K guarded by `inH and inK`, a conjunction over the base group;
   composes on existing machinery but loses the hierarchy;
@@ -103,7 +107,8 @@ entirely — the "second subgroup" is just a second model parameter.
 sort G;
 import group <<< ...
 pred inH
-model HSubGroup = G where inH {
+sort SubH = G where inH
+model HSubGroup {
   subgroup.parent: G
   subgroup.op: ...
   subgroup.filter: ...
@@ -111,7 +116,8 @@ model HSubGroup = G where inH {
 
 // note: K NOT (necessarily) < H — two independent subgroups of the same G
 pred inK
-model KSubGroup = G where inK {
+sort SubK = G where inK
+model KSubGroup {
   subgroup.parent
   subgroup.op
   subgroup.filter: ...
@@ -128,9 +134,13 @@ theorem intersectionHasIdentity(Model1, Model2): Model1.subgroup.filter(E) and M
 }
 theorem intersectionAssoc(Model1, Model2): ...
 
-// usage — the intersection target is a CONJUNCTION-guarded model whose obligations
-// are discharged by APPLYING the parameterized theorems to the two models:
-model HKGroup = G where inH and inK {
+// usage — the intersection target is a CONJUNCTION-guarded model. bpa guards are a
+// SINGLE unary predicate, so the conjunction needs a combined predicate first:
+pred inHK(g)                         // define inHK(g) := inH(g) and inK(g)
+sort SubHK = G where inHK            // the intersection subset sort
+// whose obligations are discharged by APPLYING the parameterized theorems:
+model HKGroup {
+  group.Grp: SubHK                   // predicated target → guarded by inHK
   opAssoc: subgroup.intersectionAssoc(Model1, Model2)
   opIdentityLeft: subgroup.identityLeft(Model1, Model2)
 }
@@ -189,8 +199,12 @@ proof
   @conclusion | M1.filter(E) and M2.filter(E)  [by and_intro identity-in-first identity-in-second]
 qed
 
-// at the use site — apply it to two concrete subgroup models:
-model HKGroup = G where inH and inK {
+// at the use site — apply it to two concrete subgroup models. The intersection
+// target is guarded by a combined predicate (bpa guards are single unary preds):
+pred inHK(g)                         // inHK(g) := inH(g) and inK(g)
+sort SubHK = G where inHK
+model HKGroup {
+  group.Grp: SubHK                   // predicated target → guarded by inHK
   opAssoc: subgroup.intersectionAssoc(HSubGroup, KSubGroup)
   ...
 }
@@ -278,9 +292,9 @@ sites. Medium.
 
 ## Orthogonal prerequisite: conjunction guards
 
-The intersection TARGET `model HKGroup = G where inH and inK` needs a guard that is
-a CONJUNCTION, not a single predicate. Today `Remap.Guard = { pred: SymId, carrier }`
-(term.zig:314) — a single predicate symbol. Options: (a) require a defined
+The intersection TARGET `HKGroup` maps its group sort onto `G where inH and inK`,
+a guard that is a CONJUNCTION, not a single predicate. Today `Remap.Guard = { pred:
+SymId, carrier }` (term.zig:314) — a single predicate symbol. Options: (a) require a defined
 `pred inHK(g) := inH(g) and inK(g)` and guard on that symbol (no guard-machinery
 change; a `define`); (b) generalize `Guard.pred` to a guard FORMULA with one hole.
 (a) is far cheaper and probably sufficient. Independent of the pieces above; needed only for the
@@ -340,7 +354,7 @@ and the projected axiom's statement then MATCH, so the bare `[by axiom z2HasIden
 kernel-checks. Pure unroll — no per-cite move.
 
 Why this is sound HERE and not always: the moves already happened at the MODEL
-DECLARATIONS (`model HSubGroup = ... { subgroup.hasIdentity: z2HasIdentity }`). The
+DECLARATIONS (`model HSubGroup { … subgroup.hasIdentity: z2HasIdentity }`). The
 parameterized theorem doesn't transfer anything; it NAMES facts its supplied models
 already carry. This works because the intersection theorem is UNGUARDED (a statement
 over the base group about two predicates) — so projecting a component yields the

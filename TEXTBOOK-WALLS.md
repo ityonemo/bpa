@@ -173,25 +173,28 @@ Once Gap 2 (definite description) lands, the textbook-faithful move is: a functi
 IS a set of pairs, and that CONCRETE construction is a `model` OF the abstract
 opaque `Fn` theory — so the whole `Fn` corpus (composition-associativity,
 invertible⇒bijective, …) transfers onto the pair representation for free. Same
-shape as group→ring→ℤ, applied to functions. Direction matters: the pair-set is
-the carrier; `Fn` is what it's a model of; the abstract corpus flows DOWN onto the
-concrete objects.
+shape as group→ring→ℤ, applied to functions. Direction matters: the model maps the
+abstract `Fn` theory's sort onto the concrete pair-set sort, and the abstract corpus
+flows DOWN onto the concrete objects.
 
 Build order (each layer additive, no kernel change beyond what Gap 2 needs):
 1. **`std/pair.bpa`** — a `Pair` sort, `pair(a, b)`, `fst`/`snd`, projection axioms.
 2. **Sets of pairs** — alias `set.Element = pair.Pair`; `std/set.bpa` then gives
    `member(Pair, Set)` for free (the shared-`Element` design paying off exactly as
    intended).
-3. **`std/function-pairs.bpa`** — the carrier: `isFunction(S)` (single-valued
+3. **`std/function-pairs.bpa`** — the concrete pair-set layer the model maps onto:
+   `isFunction(S)` (single-valued
    guard), `applyPair(S, a)` = the unique `b` with `pair(a, b) ∈ S` (**this is an
    ι-term — Gap 2 is load-bearing here**), `composePair`, `identityPair`. Prove
    each `Fn` axiom as a LOCAL theorem over pair-sets — notably `funcExtensionality`
    flips from axiom to *theorem*, discharged by set extensionality.
-4. **The model** — `model FunctionAsPairs = Set where isFunction { function.Fn:
-   Set, function.apply: applyPair, … }`. Guarded (`where isFunction`): the
-   relativization threads `isFunction(bound) ->` through every carrier binder, so
-   transferred theorems come back relativized, and you discharge the guards at each
-   cite (needs lemmas like `isFunction(f) ∧ isFunction(g) → isFunction(compose)`).
+4. **The model** — `sort FunctionSubset = Set where isFunction`, then
+   `model FunctionAsPairs { function.Fn: FunctionSubset, function.apply: applyPair,
+   … }`. Guarded because the sort-mapping targets the predicated `FunctionSubset`:
+   the relativization threads `isFunction(bound) ->` through every binder over the
+   mapped sort, so transferred theorems come back relativized, and you discharge the
+   guards at each cite (needs lemmas like `isFunction(f) ∧ isFunction(g) →
+   isFunction(compose)`).
 
 ### Risk assessment (honest)
 

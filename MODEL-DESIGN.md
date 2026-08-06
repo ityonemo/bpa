@@ -7,11 +7,11 @@ the remaining design questions.
 
 ## What it is
 
-A `model` declaration says a target sort **is a** model of an imported abstract
-theory, by giving a mapping from the theory's primitives+axioms to local symbols
-+facts. Once declared, the theory's entire derived-theorem corpus is available at
-the target, remapped, cited through the model. This is the model-theoretic "Int
-is a model of the group axioms" — hence the keyword `model`.
+A `model` declaration is a **named namespace of overloads** mapping an imported
+abstract theory's primitives+axioms onto local symbols+facts. Once declared, the
+theory's entire derived-theorem corpus is available at the target, remapped, cited
+through the model. It names the local facts that play the group axioms — hence the
+keyword `model` (the model-theoretic "Int satisfies the group axioms").
 
 Motivating cases: **ℚ under `+` is a group** (guard-free) and **ℚ∖{0} under `×`
 is a group** (guarded by `nonzero`) — two models of the *same* theory on the
@@ -79,11 +79,15 @@ Concretely, these would BREAK the distinctiveness and are therefore NON-GOALS:
 
 ### Declaration
 
+A `model` is just a **named namespace of overloads** — a bag of `source: target`
+mappings — and nothing more. There is no header, no `= carrier`, no `where` on the
+declaration: only the name and the mappings.
+
 ```
-model <InstanceName> = <carrier> [where <guardPred>] {
-  <source.primitive>: <localSymbol>    // sort + op maps
+model <InstanceName> {
+  <source.entity>: <localTarget>       // a mapping (overload): source → local
   ...
-  <source.axiom>:     <localFact>      // axiom OBLIGATIONS, discharged by naming
+  <source.axiom>:  <localFact>         // an axiom obligation, discharged by naming
   ...                                  //   a local fact of the (remapped) shape
 }
 ```
@@ -94,24 +98,24 @@ model <InstanceName> = <carrier> [where <guardPred>] {
   target) AND makes the completeness check trivial: enumerate the source theory's
   primitives+axioms, verify every one appears as a key exactly once. A missing
   key is a clear error ("model `AdditiveGroup` doesn't map `group.opInverseLeft`").
-- **Uniform lines.** Every line is `source: local`. Primitives map symbols; axiom
+- **Uniform lines.** Every line is `source: local`. There is nothing special about
+  any one mapping — a sort-mapping (`group.Grp: Rat`) is just another overload in
+  the bag, NOT a privileged "carrier header". Symbol mappings remap symbols; axiom
   lines map an obligation to a local FACT (not a proof block) — you *name* a local
   axiom/theorem whose formula already has the remapped shape. No
   `theorem … proof … qed` inside the block.
-- **`model <InstanceName> = <carrier>`** — the head follows bpa's alias/definition
-  shape (`sort Nat = peano.Nat`, `define TWO = …`): the name being declared is on
-  the LEFT of `=`, what it's a model *over* is on the right. No `as` keyword (bpa
-  has none; we don't invent one — same call as dropping `with` on the cite). The
-  instance name is mandatory: two models of one theory coexist on one sort
-  (`AdditiveGroup`, `MultiplicativeGroup`), disambiguated by name.
-- **`where <guardPred>`** — optional carrier relativization, riding on the carrier
-  (right of `=`). `= Rat where nonzero` means the carrier is the `nonzero`
-  subdomain; every source `Grp`-binder picks up a `nonzero(bound) ->` antecedent
-  (see Relativization).
+- **Named, header-free.** The declaration is just `model NAME {`. The name is
+  mandatory: two models over the same source coexist (`AdditiveGroup`,
+  `MultiplicativeGroup`), disambiguated at the cite by name. No `= …`, no `as`.
+- **Guarding is inferred, not declared.** When a source sort is mapped onto a
+  *predicated* (refined) target sort, the model is relativized by that sort's
+  qualifier — every source binder over that sort picks up a `guard(bound) ->`
+  antecedent (see Relativization). It rides on a MAPPING (a predicated target),
+  not on a header.
 
-Example (guard-free):
+Example:
 ```
-model AdditiveGroup = Rat {
+model AdditiveGroup {
   group.Grp:      Rat
   group.E:        ZERO
   group.op:       add
@@ -120,14 +124,15 @@ model AdditiveGroup = Rat {
 }
 ```
 
-Guarded:
+Guarded (the guard is inferred from the predicated target `NonzeroRat`):
 ```
-model MultiplicativeGroup = Rat where nonzero {
-  group.Grp:      Rat
+sort NonzeroRat = Rat where nonzero
+model MultiplicativeGroup {
+  group.Grp:      NonzeroRat          // predicated target → relativized by `nonzero`
   group.E:        ONE
   group.op:       mul
   group.inverse:  inv
-  group.opAssoc:  <a local Rat fact, already guarded by nonzero>
+  group.opAssoc:  <a local fact, already guarded by nonzero>
 }
 ```
 
@@ -152,9 +157,8 @@ Spelling follows bpa's parameterized-tactic convention: the **instance is
 parenthesized** (the mode selector, exactly like `assoc(opAssoc)`,
 `polynomial(theory)`, `forall_elim(t) step`) and the **source theorem is a bare
 ref** (the fact operated on). No `with` particle — the `by` grammar has none
-anywhere; parens carry the configuration/operand distinction. The redundant
-`<carrier> as` before the instance name is dropped since the name alone resolves
-the carrier.
+anywhere; parens carry the configuration/operand distinction. The model name alone
+resolves which namespace of overloads to apply — there is nothing else to name.
 
 ## The engine: `remapFormula`
 
@@ -169,7 +173,7 @@ walk over `term.zig`'s Node union emitting a new tree into the arena with
 - **`SortId` substituted** (Grp→Rat) — including the `sort` field inside `fvar`
   and `quant` nodes, not just top-level;
 - **`SymId` substituted** (op→add, E→ZERO, inverse→neg) in `app`/`pred` nodes;
-- **guard injection** (guarded case): each `quant` over the mapped carrier sort
+- **guard injection** (guarded case): each `quant` over the mapped sort
   gets its body wrapped `guard(bound) -> body`.
 
 This is ONE pass, run in BOTH directions:
@@ -355,15 +359,16 @@ the other accelerants as an opt-in debug mode is the long-range direction.
 
 ## Relativization (the guarded case)
 
-A guarded model (`where nonzero`) makes `remapFormula` inject `guardPred(bound) ->`
-at every quantifier over the mapped carrier — applied UNIFORMLY in both directions:
+A guarded model (its sort-mapping targets `Rat where nonzero`) makes `remapFormula`
+inject `guardPred(bound) ->` at every quantifier over the mapped sort — applied
+UNIFORMLY in both directions:
 
 - **OUT**: `group.cancelLeft`'s `forall a,x,y: Grp; op(a,x)=op(a,y) -> x=y` →
   `forall a,x,y: Rat; nonzero(a) -> nonzero(x) -> nonzero(y) -> mul(a,x)=mul(a,y) -> x=y`.
 - **IN**: the author's discharging fact must ALREADY carry the `nonzero` guards
   (decision (A): the guard lives in the local fact, not synthesized/stripped by the
-  checker). The `where nonzero` on the head is what tells `remapFormula` to inject;
-  the same pass keeps IN and OUT symmetric.
+  checker). The predicated target sort (`Rat where nonzero`) is what tells
+  `remapFormula` to inject; the same pass keeps IN and OUT symmetric.
 
 ## MVP staging (accelerant pattern, as with Cooper-replay/assoc)
 
@@ -395,8 +400,9 @@ at every quantifier over the mapped carrier — applied UNIFORMLY in both direct
   model.
 
 - **ℤ thin model over ring — NEXT (the payoff / three-level chain).** Make
-  `std/integer-ring.bpa` (or a new consumer) `model IntegerRing = Int` over
-  `std/ring.bpa`, so ℤ inherits the ring corpus instead of hand-deriving it, and
+  `std/integer-ring.bpa` (or a new consumer) declare a `model IntegerRing { … }`
+  over `std/ring.bpa` (its ring-sort mapping targeting `Int`), so ℤ inherits the
+  ring corpus instead of hand-deriving it, and
   the ℤ→ring→group THREE-level materialization is exercised. Discharge audit: ℤ
   already has 7 of the 9 ring axioms as facts (addIsAssociative, addZeroLeft,
   addZeroRight axiom, addNegRight, addIsCommutative, mulIsAssociative,
@@ -414,7 +420,9 @@ at every quantifier over the mapped carrier — applied UNIFORMLY in both direct
   (`AdditiveGroup.cancelLeft`) at declaration time, or ONLY reachable via the
   `[by model(…) …]` cite? (Namespace-shadowing was raised then set aside; the
   cite-verb form is what's settled. Materializing would let other tactics see them.)
-- `where <guard>` for guards that aren't a single unary pred (e.g. a conjunction).
-- Multi-sort source theories (a theory with two carrier sorts) — mapping scales,
+- Predicated-sort guards that aren't a single unary pred (e.g. a conjunction) —
+  the guard is inferred from the mapped target sort's qualifier, so this needs a
+  `sort … where <compound>` (a `define`d/`pred`-combined predicate today).
+- Multi-sort source theories (a theory reasoning over two sorts) — mapping scales,
   but not exercised by group/monoid.
 ```

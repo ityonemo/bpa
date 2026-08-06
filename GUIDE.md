@@ -113,7 +113,7 @@ sort Nat
 
 **Predicated sorts (`sort H = G where inH`).**
 A **predicated sort** names `G` restricted to the elements satisfying a unary
-predicate `inH` — the natural way to write a subset carrier (a subgroup, the
+predicate `inH` — the natural way to write a subset (a subgroup, the
 nonnegatives, …). It introduces no new kernel sort: `H` *is* `G`, and every use of
 `H` desugars to `G` with the guard `inH` injected — as a hypothesis, an obligation,
 or a postcondition, depending on position. Pure sugar; everything stays
@@ -346,16 +346,16 @@ discharges the abstract theory's axioms (mapping each primitive and each
 axiom obligation to a local symbol/fact), and in exchange every theorem the
 theory proves becomes citable at your sort via `[by model(NAME) source.thm]`.
 Where an alias
-identifies one entity with another, a `model` identifies a *whole structure* —
-you map each of the theory's primitives (its carrier sort, operations,
-constants) and discharge each of its axioms, and in exchange every theorem the
-theory proves becomes citable at your sort.
+identifies one entity with another, a `model` is a **named namespace of overloads** —
+you map each of the theory's primitives (its sorts, operations, constants) and
+discharge each of its axioms, and in exchange every theorem the theory proves becomes
+citable at your sort.
 
 ```bpa
 import group <<< "std/group.bpa"
 
 model AdditiveGroup {
-  group.Grp:      Rat               // carrier sort
+  group.Grp:      Rat               // a sort-mapping (just another overload)
   group.E:        ZERO              // primitives: source symbol : local symbol
   group.op:       add
   group.inverse:  neg
@@ -364,17 +364,18 @@ model AdditiveGroup {
 }
 ```
 
-There is **no carrier/guard header** — a `model` is just its mappings. Read every
-line **`source : target`** — the abstract theory's entity on the left, the local
-thing that plays it on the right. Primitive lines map symbols; axiom lines discharge
-an obligation by naming a local axiom or theorem whose formula, seen through the
-mapping, *is* that axiom.
+There is **no header of any kind** — a `model` is just its mappings, a bag of
+overloads. Read every line **`source : target`** — the abstract theory's entity on
+the left, the local thing that plays it on the right. Primitive lines map symbols
+(a sort-mapping like `group.Grp: Rat` is just one more overload in the bag, not a
+distinguished one); axiom lines discharge an obligation by naming a local axiom
+or theorem whose formula, seen through the mapping, *is* that axiom.
 
 A model is **GUARDED** (relativized to a subset) exactly when a sort-mapping's
 target is a **predicated sort** — e.g. `group.Grp: GrpH` where
 `sort GrpH = Grp where inH`. That mapping supplies the guard: the transferred
-theorems gain an `inH(x) ->` at each carrier binder, and each closure obligation is
-discharged from the mapped facts.
+theorems gain an `inH(x) ->` at each binder over the mapped sort, and each closure
+obligation is discharged from the mapped facts.
 
 A model **may leave some axioms unmapped** — at the prover's risk. In default
 (strict) mode, citing a transferred theorem whose proof depends on an unmapped
@@ -383,18 +384,21 @@ axiom is **rejected**, naming the missing obligation. Under `--fast` the same ci
 disclosed as accelerated, but a loaded gun: treat a `--fast` pass over a partial
 model as provisional until it also passes strict mode.
 
-The head reads like any bpa alias/definition — the name being declared is left of
-`=`, what it's a model *over* is on the right (`model AdditiveGroup = Rat`). The
-instance is **named** because one sort can model one theory more than one way — ℚ
-is a group under `+` *and* (on ℚ∖{0}) under `×`. Each named model keeps its own
-mapping; a use names which.
+The head is just `model NAME {` — there is NO `=` header or `where` on the head.
+No mapping is distinguished: the sort a source theory reasons over is mapped by an
+ordinary line in the block, and any guard is inferred from a predicated target
+sort (below). The instance is **named** because one sort can model one theory more
+than one way — ℚ is a group under `+` *and* (on ℚ∖{0}) under `×`. Each named model
+keeps its own mapping; a use names which.
 
-**Guarded carriers.** A model may relativize its carrier to a subdomain with
-`where <unaryPred>` (on the carrier, right of `=`):
+**Guarded models.** A model is relativized to a subdomain NOT via a header, but by
+mapping the source theory's sort onto a **predicated (refined) sort** — the guard is
+inferred from that sort's qualifier:
 
 ```bpa
-model MultiplicativeGroup = Rat where nonzero {
-  group.Grp:      Rat
+sort NonzeroRat = Rat where nonzero   // the refined (predicated) sort
+model MultiplicativeGroup {
+  group.Grp:      NonzeroRat          // predicated target → the model is guarded by `nonzero`
   group.op:       mul
   group.E:        ONE
   group.inverse:  reciprocal
@@ -402,12 +406,12 @@ model MultiplicativeGroup = Rat where nonzero {
 }
 ```
 
-`where nonzero` means the carrier is the `nonzero` elements; every transferred
-theorem picks up a `nonzero(...)` guard on each of its bound variables (a
-`forall a: Grp; P(a)` becomes `forall a: Rat; nonzero(a) -> P(a)`), and the
-local facts discharging the axioms must carry the same guards. The guard is a
-**single unary predicate** over the carrier sort; for a compound condition,
-`pred`-declare or `define` it first and name that.
+Mapping `group.Grp` onto the predicated `NonzeroRat` (= `Rat where nonzero`) makes
+the model guarded: every transferred theorem picks up a `nonzero(...)` guard on each
+of its bound variables (a `forall a: Grp; P(a)` becomes `forall a: Rat; nonzero(a)
+-> P(a)`), and the local facts discharging the axioms must carry the same guards.
+The guard is a **single unary predicate** over the mapped sort; for a compound
+condition, `pred`-declare it (and, once where-reification lands, a `define` too).
 
 **Using a transferred theorem** — cite it through the model with the `model`
 justification rule (see *Justification rules* / *Automation*):
