@@ -31,18 +31,12 @@ theorem opIdLeft: forall a: T; op(E, a) = a
 proof
   @generalize-a |
     fix a: T {
-      @commuted |
-        forall x, y: T; op(x, y) = op(y, x)
-        [by axiom opComm]
       @commute |
         op(E, a) = op(a, E)
-        [by forall_elim(E, a) commuted]
-      @right-id |
-        forall x: T; op(x, E) = x
-        [by axiom opIdRight]
+        [by specialize opComm(E, a)]
       @a-op-e |
         op(a, E) = a
-        [by forall_elim(a) right-id]
+        [by specialize opIdRight(a)]
       @conclusion-inner |
         op(E, a) = a
         [by rewrite a-op-e commute]

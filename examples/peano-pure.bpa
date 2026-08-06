@@ -36,24 +36,18 @@ axiom induction(prop: Nat -> Prop):
 theorem addZeroRight: forall n: Nat; add(n, ZERO) = n
 proof
   // base case: addZeroLeft specialized at b := ZERO
-  @add-zero-left |
-    forall b: Nat; add(ZERO, b) = b
-    [by axiom addZeroLeft]
   @base-case |
     add(ZERO, ZERO) = ZERO
-    [by forall_elim(ZERO) add-zero-left]
+    [by specialize addZeroLeft(ZERO)]
 
   // inductive step: unfold add on succ(k), then rewrite with the IH
   @induction-step |
     fix k: Nat {
       @given-inductive-hypothesis |
         assume add(k, ZERO) = k {
-          @add-succ-left |
-            forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
-            [by axiom addSuccLeft]
           @add-succ-left-at-k |
             forall b: Nat; add(succ(k), b) = succ(add(k, b))
-            [by forall_elim(k) add-succ-left]
+            [by specialize addSuccLeft(k)]
           @unfolded |
             add(succ(k), ZERO) = succ(add(k, ZERO))
             [by forall_elim(ZERO) add-succ-left-at-k]
@@ -111,12 +105,9 @@ proof
         fix k: Nat {
           @given-inductive-hypothesis |
             assume add(k, succ(b)) = succ(add(k, b)) {
-              @add-succ-left |
-                forall a, c: Nat; add(succ(a), c) = succ(add(a, c))
-                [by axiom addSuccLeft]
               @add-succ-left-at-k |
                 forall c: Nat; add(succ(k), c) = succ(add(k, c))
-                [by forall_elim(k) add-succ-left]
+                [by specialize addSuccLeft(k)]
               @unfolded |
                 add(succ(k), succ(b)) = succ(add(k, succ(b)))
                 [by forall_elim(succ(b)) add-succ-left-at-k]
@@ -178,18 +169,12 @@ proof
   // base case: add(a, ZERO) = a = add(ZERO, a), chaining the two ZERO facts
   @base-case-proof |
     fix a: Nat {
-      @add-zero-right |
-        forall n: Nat; add(n, ZERO) = n
-        [by theorem addZeroRight]
       @right-zero |
         add(a, ZERO) = a
-        [by forall_elim(a) add-zero-right]
-      @add-zero-left |
-        forall c: Nat; add(ZERO, c) = c
-        [by axiom addZeroLeft]
+        [by specialize addZeroRight(a)]
       @left-zero |
         add(ZERO, a) = a
-        [by forall_elim(a) add-zero-left]
+        [by specialize addZeroLeft(a)]
       @left-zero-refl |
         add(ZERO, a) = add(ZERO, a)
         [by reflexivity]
@@ -211,12 +196,9 @@ proof
         assume forall a: Nat; add(a, k) = add(k, a) {
           @pointwise |
             fix a2: Nat {
-              @add-succ-right |
-                forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
-                [by theorem addSuccRight]
               @left-unfold |
                 add(a2, succ(k)) = succ(add(a2, k))
-                [by forall_elim(a2, k) add-succ-right]
+                [by specialize addSuccRight(a2, k)]
               @inductive-hypothesis |
                 forall a: Nat; add(a, k) = add(k, a)
                 [by hypothesis given-inductive-hypothesis]
@@ -226,12 +208,9 @@ proof
               @swapped |
                 add(a2, succ(k)) = succ(add(k, a2))
                 [by rewrite inductive-hypothesis-at-a2 left-unfold]
-              @add-succ-left |
-                forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
-                [by axiom addSuccLeft]
               @add-succ-left-at-k |
                 forall b: Nat; add(succ(k), b) = succ(add(k, b))
-                [by forall_elim(k) add-succ-left]
+                [by specialize addSuccLeft(k)]
               @right-unfold |
                 add(succ(k), a2) = succ(add(k, a2))
                 [by forall_elim(a2) add-succ-left-at-k]

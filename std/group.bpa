@@ -184,12 +184,9 @@ proof
           @x-times-E-is-E |
             op(x, E) = E
             [by forall_elim(E) x-left-id]
-          @id-right |
-            forall a: Grp; op(a, E) = a
-            [by theorem opIdentityRight]
           @x-times-E-is-x |
             op(x, E) = x
-            [by forall_elim(x) id-right]
+            [by specialize opIdentityRight(x)]
           @x-is-E |
             x = E
             [by rewrite x-times-E-is-x x-times-E-is-E]
@@ -274,39 +271,27 @@ proof
           @rearrange |
             op(op(a, b), op(inverse(b), inverse(a))) = op(a, op(op(b, inverse(b)), inverse(a)))
             [by assoc(opAssoc)]
-          @b-invb |
-            forall g: Grp; op(g, inverse(g)) = E
-            [by theorem opInverseRight]
           @b-invb-is-E |
             op(b, inverse(b)) = E
-            [by forall_elim(b) b-invb]
+            [by specialize opInverseRight(b)]
           @after-bb |
             op(op(a, b), op(inverse(b), inverse(a))) = op(a, op(E, inverse(a)))
             [by rewrite b-invb-is-E rearrange]
-          @id-left |
-            forall g: Grp; op(E, g) = g
-            [by axiom opIdentityLeft]
           @E-inva |
             op(E, inverse(a)) = inverse(a)
-            [by forall_elim(inverse(a)) id-left]
+            [by specialize opIdentityLeft(inverse(a))]
           @after-einva |
             op(op(a, b), op(inverse(b), inverse(a))) = op(a, inverse(a))
             [by rewrite E-inva after-bb]
           @a-inva |
             op(a, inverse(a)) = E
-            [by forall_elim(a) b-invb]
+            [by specialize opInverseRight(a)]
           @product-is-E |
             op(op(a, b), op(inverse(b), inverse(a))) = E
             [by rewrite a-inva after-einva]
-          @inv-unique |
-            forall x, y: Grp; op(x, y) = E -> y = inverse(x)
-            [by theorem inverseUnique]
-          @inverse-unique-at-product |
-            op(op(a, b), op(inverse(b), inverse(a))) = E -> op(inverse(b), inverse(a)) = inverse(op(a, b))
-            [by forall_elim(op(a, b), op(inverse(b), inverse(a))) inv-unique]
           @product-of-inverses-is-inverse |
             op(inverse(b), inverse(a)) = inverse(op(a, b))
-            [by modus_ponens inverse-unique-at-product product-is-E]
+            [by specialize inverseUnique(op(a, b), op(inverse(b), inverse(a))) product-is-E]
           @inverse-of-product-is-inverses-swapped |
             inverse(op(a, b)) = op(inverse(b), inverse(a))
             [by symmetry product-of-inverses-is-inverse]
@@ -355,21 +340,15 @@ proof
           @assoc-step |
             op(op(b, inverse(a)), a) = op(b, op(inverse(a), a))
             [by assoc(opAssoc)]
-          @inv-left |
-            forall g: Grp; op(inverse(g), g) = E
-            [by axiom opInverseLeft]
           @inva-a |
             op(inverse(a), a) = E
-            [by forall_elim(a) inv-left]
+            [by specialize opInverseLeft(a)]
           @with-E |
             op(op(b, inverse(a)), a) = op(b, E)
             [by rewrite inva-a assoc-step]
-          @id-right |
-            forall g: Grp; op(g, E) = g
-            [by theorem opIdentityRight]
           @b-times-identity-is-b |
             op(b, E) = b
-            [by forall_elim(b) id-right]
+            [by specialize opIdentityRight(b)]
           @product-with-inverse-cancels-to-b |
             op(op(b, inverse(a)), a) = b
             [by rewrite b-times-identity-is-b with-E]
@@ -426,16 +405,13 @@ proof
                             [by theorem opInverseRight]
                           @a-inva-is-E |
                             op(a, inverse(a)) = E
-                            [by forall_elim(a) a-inva]
+                            [by specialize opInverseRight(a)]
                           @assoc-x-E |
                             op(op(x, a), inverse(a)) = op(x, E)
                             [by rewrite a-inva-is-E assoc-x]
-                          @id-right |
-                            forall g: Grp; op(g, E) = g
-                            [by theorem opIdentityRight]
                           @x-E-is-x |
                             op(x, E) = x
-                            [by forall_elim(x) id-right]
+                            [by specialize opIdentityRight(x)]
                           @lhs-is-x |
                             op(op(x, a), inverse(a)) = x
                             [by rewrite x-E-is-x assoc-x-E]
@@ -447,7 +423,7 @@ proof
                             [by rewrite a-inva-is-E assoc-y]
                           @y-E-is-y |
                             op(y, E) = y
-                            [by forall_elim(y) id-right]
+                            [by specialize opIdentityRight(y)]
                           @rhs-is-y |
                             op(op(y, a), inverse(a)) = y
                             [by rewrite y-E-is-y assoc-y-E]
@@ -653,15 +629,9 @@ proof
           @aa-is-E |
             op(a, a) = E
             [by forall_elim(a) every-square-is-identity]
-          @inv-unique |
-            forall x, y: Grp; op(x, y) = E -> y = inverse(x)
-            [by theorem inverseUnique]
-          @inverse-unique-at-a-a |
-            op(a, a) = E -> a = inverse(a)
-            [by forall_elim(a, a) inv-unique]
           @a-is-inva |
             a = inverse(a)
-            [by modus_ponens inverse-unique-at-a-a aa-is-E]
+            [by specialize inverseUnique(a, a) aa-is-E]
           @inva-is-a |
             inverse(a) = a
             [by symmetry a-is-inva]
@@ -683,22 +653,16 @@ proof
       @every-square-is-identity |
         forall a: Grp; op(a, a) = E
         [by hypothesis given-every-square-is-identity]
-      @self-inv-thm |
-        (forall a: Grp; op(a, a) = E) -> forall a: Grp; inverse(a) = a
-        [by theorem selfInverse]
       @self-inv |
         forall a: Grp; inverse(a) = a
-        [by modus_ponens self-inv-thm every-square-is-identity]
+        [by specialize selfInverse every-square-is-identity]
       @generalize-x |
         fix x: Grp {
           @generalize-y |
             fix y: Grp {
-              @inv-prod-thm |
-                forall a, b: Grp; inverse(op(a, b)) = op(inverse(b), inverse(a))
-                [by theorem invProduct]
               @inv-xy |
                 inverse(op(x, y)) = op(inverse(y), inverse(x))
-                [by forall_elim(x, y) inv-prod-thm]
+                [by specialize invProduct(x, y)]
               @inv-x |
                 inverse(x) = x
                 [by forall_elim(x) self-inv]

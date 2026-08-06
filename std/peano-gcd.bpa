@@ -56,35 +56,23 @@ proof
             [by hypothesis given-strong-inductive-hypothesis]
           @generalize-a |
             fix a: Nat {
-              @every-nat-is-zero-or-a-successor |
-                forall n: Nat; n = ZERO or (exists mm: Nat; n = succ(mm))
-                [by theorem zeroOrSucc]
               @b-is-zero-or-successor |
                 b = ZERO or (exists mm: Nat; b = succ(mm))
-                [by forall_elim(b) every-nat-is-zero-or-a-successor]
+                [by specialize zeroOrSucc(b)]
               @when-b-is-zero |
                 assume b = ZERO {
                   @b-is-zero |
                     b = ZERO
                     [by hypothesis when-b-is-zero]
-                  @gcd-of-anything-and-zero-is-itself |
-                    forall aa: Nat; gcd(aa, ZERO) = aa
-                    [by axiom gcdZero]
                   @gcd-with-zero-is-itself |
                     gcd(a, ZERO) = a
-                    [by forall_elim(a) gcd-of-anything-and-zero-is-itself]
-                  @everything-divides-itself |
-                    forall d: Nat; divides(d, d)
-                    [by theorem dividesRefl]
+                    [by specialize gcdZero(a)]
                   @a-divides-a |
                     divides(a, a)
-                    [by forall_elim(a) everything-divides-itself]
-                  @everything-divides-zero |
-                    forall d: Nat; divides(d, ZERO)
-                    [by theorem dividesZero]
+                    [by specialize dividesRefl(a)]
                   @a-divides-zero |
                     divides(a, ZERO)
-                    [by forall_elim(a) everything-divides-zero]
+                    [by specialize dividesZero(a)]
                   @a-is-gcd-with-zero |
                     a = gcd(a, ZERO)
                     [by symmetry gcd-with-zero-is-itself]
@@ -93,7 +81,7 @@ proof
                     [by rewrite a-is-gcd-with-zero a-divides-a]
                   @gcd-divides-zero |
                     divides(gcd(a, ZERO), ZERO)
-                    [by forall_elim(gcd(a, ZERO)) everything-divides-zero]
+                    [by specialize dividesZero(gcd(a, ZERO))]
                   @zero-is-b |
                     ZERO = b
                     [by symmetry b-is-zero]
@@ -117,36 +105,21 @@ proof
                       @b-is-successor-of-bp |
                         b = succ(bp)
                         [by hypothesis with-predecessor-bp]
-                      @successors-are-never-zero |
-                        forall x: Nat; succ(x) != ZERO
-                        [by axiom succNotZero]
                       @successor-bp-is-nonzero |
                         succ(bp) != ZERO
-                        [by forall_elim(bp) successors-are-never-zero]
+                        [by specialize succNotZero(bp)]
                       @successor-bp-is-b |
                         succ(bp) = b
                         [by symmetry b-is-successor-of-bp]
                       @b-is-nonzero |
                         b != ZERO
                         [by rewrite successor-bp-is-b successor-bp-is-nonzero]
-                      @gcd-recurses-on-mod |
-                        forall bb, aa: Nat; bb != ZERO -> gcd(aa, bb) = gcd(bb, mod(aa, bb))
-                        [by axiom gcdStep]
-                      @gcd-step-if-nonzero |
-                        b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
-                        [by forall_elim(b, a) gcd-recurses-on-mod]
                       @gcd-recurses |
                         gcd(a, b) = gcd(b, mod(a, b))
-                        [by modus_ponens gcd-step-if-nonzero b-is-nonzero]
-                      @mod-is-below-divisor |
-                        forall bb, aa: Nat; bb != ZERO -> less_than(mod(aa, bb), bb)
-                        [by axiom modBound]
-                      @mod-below-b-if-nonzero |
-                        b != ZERO -> less_than(mod(a, b), b)
-                        [by forall_elim(b, a) mod-is-below-divisor]
+                        [by specialize gcdStep(b, a) b-is-nonzero]
                       @mod-is-below-b |
                         less_than(mod(a, b), b)
-                        [by modus_ponens mod-below-b-if-nonzero b-is-nonzero]
+                        [by specialize modBound(b, a) b-is-nonzero]
                       @inductive-hypothesis-applies-at-mod |
                         less_than(mod(a, b), b) -> (forall aa: Nat; divides(gcd(aa, mod(a, b)), aa) and divides(gcd(aa, mod(a, b)), mod(a, b)))
                         [by forall_elim(mod(a, b)) strong-inductive-hypothesis]
@@ -171,15 +144,9 @@ proof
                       @gcd-divides-mod |
                         divides(gcd(a, b), mod(a, b))
                         [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-mod]
-                      @divisor-crosses-mod |
-                        forall bb, d, aa: Nat; bb != ZERO -> divides(d, bb) -> (divides(d, aa) iff divides(d, mod(aa, bb)))
-                        [by theorem dividesModStep]
-                      @common-divisor-crosses-mod-at-gcd |
-                        b != ZERO -> divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
-                        [by forall_elim(b, gcd(a, b), a) divisor-crosses-mod]
                       @mod-crossing-holds-if-divides-b |
                         divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
-                        [by modus_ponens common-divisor-crosses-mod-at-gcd b-is-nonzero]
+                        [by specialize dividesModStep(b, gcd(a, b), a) b-is-nonzero]
                       @mod-crossing-holds |
                         divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b))
                         [by modus_ponens mod-crossing-holds-if-divides-b gcd-divides-b]
@@ -257,23 +224,17 @@ proof
                           @d-divides-b |
                             divides(d, b)
                             [by hypothesis given-d-divides-b]
-                          @every-nat-is-zero-or-a-successor |
-                            forall n: Nat; n = ZERO or (exists mm: Nat; n = succ(mm))
-                            [by theorem zeroOrSucc]
                           @b-is-zero-or-successor |
                             b = ZERO or (exists mm: Nat; b = succ(mm))
-                            [by forall_elim(b) every-nat-is-zero-or-a-successor]
+                            [by specialize zeroOrSucc(b)]
                           @when-b-is-zero |
                             assume b = ZERO {
                               @b-is-zero |
                                 b = ZERO
                                 [by hypothesis when-b-is-zero]
-                              @gcd-of-anything-and-zero-is-itself |
-                                forall aa: Nat; gcd(aa, ZERO) = aa
-                                [by axiom gcdZero]
                               @gcd-with-zero-is-itself |
                                 gcd(a, ZERO) = a
-                                [by forall_elim(a) gcd-of-anything-and-zero-is-itself]
+                                [by specialize gcdZero(a)]
                               @a-is-gcd-with-zero |
                                 a = gcd(a, ZERO)
                                 [by symmetry gcd-with-zero-is-itself]
@@ -297,36 +258,21 @@ proof
                                   @b-is-successor-of-bp |
                                     b = succ(bp)
                                     [by hypothesis with-predecessor-bp]
-                                  @successors-are-never-zero |
-                                    forall x: Nat; succ(x) != ZERO
-                                    [by axiom succNotZero]
                                   @successor-bp-is-nonzero |
                                     succ(bp) != ZERO
-                                    [by forall_elim(bp) successors-are-never-zero]
+                                    [by specialize succNotZero(bp)]
                                   @successor-bp-is-b |
                                     succ(bp) = b
                                     [by symmetry b-is-successor-of-bp]
                                   @b-is-nonzero |
                                     b != ZERO
                                     [by rewrite successor-bp-is-b successor-bp-is-nonzero]
-                                  @gcd-recurses-on-mod |
-                                    forall bb, aa: Nat; bb != ZERO -> gcd(aa, bb) = gcd(bb, mod(aa, bb))
-                                    [by axiom gcdStep]
-                                  @gcd-step-if-nonzero |
-                                    b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
-                                    [by forall_elim(b, a) gcd-recurses-on-mod]
                                   @gcd-recurses |
                                     gcd(a, b) = gcd(b, mod(a, b))
-                                    [by modus_ponens gcd-step-if-nonzero b-is-nonzero]
-                                  @divisor-crosses-mod |
-                                    forall bb, dd, aa: Nat; bb != ZERO -> divides(dd, bb) -> (divides(dd, aa) iff divides(dd, mod(aa, bb)))
-                                    [by theorem dividesModStep]
-                                  @divisor-crosses-mod-at-d |
-                                    b != ZERO -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
-                                    [by forall_elim(b, d, a) divisor-crosses-mod]
+                                    [by specialize gcdStep(b, a) b-is-nonzero]
                                   @mod-crossing-holds-if-divides-b |
                                     divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
-                                    [by modus_ponens divisor-crosses-mod-at-d b-is-nonzero]
+                                    [by specialize dividesModStep(b, d, a) b-is-nonzero]
                                   @mod-crossing-holds |
                                     divides(d, a) iff divides(d, mod(a, b))
                                     [by modus_ponens mod-crossing-holds-if-divides-b d-divides-b]
@@ -336,15 +282,9 @@ proof
                                   @d-divides-mod |
                                     divides(d, mod(a, b))
                                     [by modus_ponens divides-a-implies-divides-mod d-divides-a]
-                                  @mod-is-below-divisor |
-                                    forall bb, aa: Nat; bb != ZERO -> less_than(mod(aa, bb), bb)
-                                    [by axiom modBound]
-                                  @mod-below-b-if-nonzero |
-                                    b != ZERO -> less_than(mod(a, b), b)
-                                    [by forall_elim(b, a) mod-is-below-divisor]
                                   @mod-is-below-b |
                                     less_than(mod(a, b), b)
-                                    [by modus_ponens mod-below-b-if-nonzero b-is-nonzero]
+                                    [by specialize modBound(b, a) b-is-nonzero]
                                   @inductive-hypothesis-applies-at-mod |
                                     less_than(mod(a, b), b) -> (forall aa, dd: Nat; divides(dd, aa) -> divides(dd, mod(a, b)) -> divides(dd, gcd(aa, mod(a, b))))
                                     [by forall_elim(mod(a, b)) strong-inductive-hypothesis]

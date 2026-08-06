@@ -65,15 +65,9 @@ proof
                     [by exists_intro(mul(q, q)) square-eq]
 
                   // 2 | p
-                  @sq-even-thm |
-                    forall n: Nat; divides(TWO, mul(n, n)) -> divides(TWO, n)
-                    [by theorem evenSquareEven]
-                  @sq-even-at-p |
-                    divides(TWO, mul(p, p)) -> divides(TWO, p)
-                    [by forall_elim(p) sq-even-thm]
                   @two-div-p |
                     divides(TWO, p)
-                    [by modus_ponens sq-even-at-p two-div-psq]
+                    [by specialize evenSquareEven(p) two-div-psq]
 
                   // p = 2k
                   @with-k |
@@ -112,27 +106,15 @@ proof
                       @succ-as-two |
                         succ(add(ZERO, ONE)) = add(ONE, ONE)
                         [by symmetry two-as-succ]
-                      @succ-not-zero |
-                        forall a: Nat; succ(a) != ZERO
-                        [by axiom succNotZero]
                       @succ-form-not-zero |
                         succ(add(ZERO, ONE)) != ZERO
-                        [by forall_elim(add(ZERO, ONE)) succ-not-zero]
+                        [by specialize succNotZero(add(ZERO, ONE))]
                       @two-nonzero |
                         TWO != ZERO
                         [by rewrite succ-as-two succ-form-not-zero]
-                      @cancel |
-                        forall c, a, b: Nat; c != ZERO -> mul(c, a) = mul(c, b) -> a = b
-                        [by theorem mulCancelLeft]
-                      @cancel-at |
-                        TWO != ZERO -> mul(TWO, mul(TWO, mul(k, k))) = mul(TWO, mul(q, q)) -> mul(TWO, mul(k, k)) = mul(q, q)
-                        [by forall_elim(TWO, mul(TWO, mul(k, k)), mul(q, q)) cancel]
-                      @cancel-1 |
-                        mul(TWO, mul(TWO, mul(k, k))) = mul(TWO, mul(q, q)) -> mul(TWO, mul(k, k)) = mul(q, q)
-                        [by modus_ponens cancel-at two-nonzero]
                       @two-ksq-eq-qsq |
                         mul(TWO, mul(k, k)) = mul(q, q)
-                        [by modus_ponens cancel-1 two-two-ksq-eq-two-qsq]
+                        [by specialize mulCancelLeft(TWO, mul(TWO, mul(k, k)), mul(q, q)) two-nonzero two-two-ksq-eq-two-qsq]
                       @qsq-eq-two-ksq |
                         mul(q, q) = mul(TWO, mul(k, k))
                         [by symmetry two-ksq-eq-qsq]
@@ -141,26 +123,14 @@ proof
                       @two-div-qsq |
                         divides(TWO, mul(q, q))
                         [by exists_intro(mul(k, k)) qsq-eq-two-ksq]
-                      @sq-even-at-q |
-                        divides(TWO, mul(q, q)) -> divides(TWO, q)
-                        [by forall_elim(q) sq-even-thm]
                       @two-div-q |
                         divides(TWO, q)
-                        [by modus_ponens sq-even-at-q two-div-qsq]
+                        [by specialize evenSquareEven(q) two-div-qsq]
 
                       // 2 | gcd(p, q) = 1
-                      @greatest |
-                        forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
-                        [by theorem gcdGreatest]
-                      @greatest-at |
-                        divides(TWO, p) -> divides(TWO, q) -> divides(TWO, gcd_of(p, q))
-                        [by forall_elim(TWO, p, q) greatest]
-                      @g1 |
-                        divides(TWO, q) -> divides(TWO, gcd_of(p, q))
-                        [by modus_ponens greatest-at two-div-p]
                       @two-div-gcd |
                         divides(TWO, gcd_of(p, q))
-                        [by modus_ponens g1 two-div-q]
+                        [by specialize gcdGreatest(TWO, p, q) two-div-p two-div-q]
                       @two-div-one |
                         divides(TWO, ONE)
                         [by rewrite coprime two-div-gcd]

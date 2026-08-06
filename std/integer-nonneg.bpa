@@ -31,15 +31,9 @@ proof
   @zero-nonneg |
     nonneg(ZERO)
     [by axiom nonnegZero]
-  @succ-preserves-nonneg |
-    forall n: Int; nonneg(n) -> nonneg(succ(n))
-    [by axiom nonnegSucc]
-  @succ-zero-conditions |
-    nonneg(ZERO) -> nonneg(succ(ZERO))
-    [by forall_elim(ZERO) succ-preserves-nonneg]
   @succ-zero-nonneg |
     nonneg(succ(ZERO))
-    [by modus_ponens succ-zero-conditions zero-nonneg]
+    [by specialize nonnegSucc(ZERO) zero-nonneg]
   @one-is-succ-zero |
     ONE = succ(ZERO)
     [by axiom oneIsSuccZero]

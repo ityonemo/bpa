@@ -37,27 +37,18 @@ theorem grpInverseRight: forall a: Grp; op(a, inverse(a)) = E
 proof
   @generalize-a |
     fix a: Grp {
-      @inv-left |
-        forall g: Grp; op(inverse(g), g) = E
-        [by axiom grpInverseLeft]
-      @id-left |
-        forall g: Grp; op(E, g) = g
-        [by axiom grpIdentityLeft]
-      @assoc-law |
-        forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
-        [by axiom grpAssoc]
       @ia-is-E |
         op(inverse(a), a) = E
-        [by forall_elim(a) inv-left]
+        [by specialize grpInverseLeft(a)]
       @idAtai |
         op(E, op(a, inverse(a))) = op(a, inverse(a))
-        [by forall_elim(op(a, inverse(a))) id-left]
+        [by specialize grpIdentityLeft(op(a, inverse(a)))]
       @ai-eq-e-ai |
         op(a, inverse(a)) = op(E, op(a, inverse(a)))
         [by symmetry idAtai]
       @invi-i-is-E |
         op(inverse(inverse(a)), inverse(a)) = E
-        [by forall_elim(inverse(a)) inv-left]
+        [by specialize grpInverseLeft(inverse(a))]
       @E-is-invi-i |
         E = op(inverse(inverse(a)), inverse(a))
         [by symmetry invi-i-is-E]
@@ -66,13 +57,13 @@ proof
         [by rewrite E-is-invi-i ai-eq-e-ai]
       @assoc1 |
         op(op(inverse(inverse(a)), inverse(a)), op(a, inverse(a))) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
-        [by forall_elim(inverse(inverse(a)), inverse(a), op(a, inverse(a))) assoc-law]
+        [by specialize grpAssoc(inverse(inverse(a)), inverse(a), op(a, inverse(a)))]
       @ai-eq-1 |
         op(a, inverse(a)) = op(inverse(inverse(a)), op(inverse(a), op(a, inverse(a))))
         [by rewrite assoc1 ai-eq-grouped]
       @assoc2 |
         op(op(inverse(a), a), inverse(a)) = op(inverse(a), op(a, inverse(a)))
-        [by forall_elim(inverse(a), a, inverse(a)) assoc-law]
+        [by specialize grpAssoc(inverse(a), a, inverse(a))]
       @inner-flip |
         op(inverse(a), op(a, inverse(a))) = op(op(inverse(a), a), inverse(a))
         [by symmetry assoc2]
@@ -84,7 +75,7 @@ proof
         [by rewrite ia-is-E ai-eq-2]
       @Ei-is-i |
         op(E, inverse(a)) = inverse(a)
-        [by forall_elim(inverse(a)) id-left]
+        [by specialize grpIdentityLeft(inverse(a))]
       @ai-eq-4 |
         op(a, inverse(a)) = op(inverse(inverse(a)), inverse(a))
         [by rewrite Ei-is-i ai-eq-3]
@@ -101,21 +92,9 @@ theorem grpIdentityRight: forall a: Grp; op(a, E) = a
 proof
   @generalize-a |
     fix a: Grp {
-      @inv-left |
-        forall g: Grp; op(inverse(g), g) = E
-        [by axiom grpInverseLeft]
-      @inv-right |
-        forall g: Grp; op(g, inverse(g)) = E
-        [by theorem grpInverseRight]
-      @id-left |
-        forall g: Grp; op(E, g) = g
-        [by axiom grpIdentityLeft]
-      @assoc-law |
-        forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
-        [by axiom grpAssoc]
       @ia-is-E |
         op(inverse(a), a) = E
-        [by forall_elim(a) inv-left]
+        [by specialize grpInverseLeft(a)]
       @E-is-ia |
         E = op(inverse(a), a)
         [by symmetry ia-is-E]
@@ -127,7 +106,7 @@ proof
         [by rewrite E-is-ia reflAE]
       @assoc1 |
         op(op(a, inverse(a)), a) = op(a, op(inverse(a), a))
-        [by forall_elim(a, inverse(a), a) assoc-law]
+        [by specialize grpAssoc(a, inverse(a), a)]
       @flip1 |
         op(a, op(inverse(a), a)) = op(op(a, inverse(a)), a)
         [by symmetry assoc1]
@@ -136,13 +115,13 @@ proof
         [by rewrite flip1 aE-eq-1]
       @aInv-is-E |
         op(a, inverse(a)) = E
-        [by forall_elim(a) inv-right]
+        [by specialize grpInverseRight(a)]
       @aE-eq-3 |
         op(a, E) = op(E, a)
         [by rewrite aInv-is-E aE-eq-2]
       @Ea-is-a |
         op(E, a) = a
-        [by forall_elim(a) id-left]
+        [by specialize grpIdentityLeft(a)]
       @conclusion-aE |
         op(a, E) = a
         [by rewrite Ea-is-a aE-eq-3]
@@ -165,45 +144,33 @@ proof
               @ab-is-E |
                 op(a, b) = E
                 [by hypothesis given-b-is-right-inverse-of-a]
-              @id-left |
-                forall g: Grp; op(E, g) = g
-                [by axiom grpIdentityLeft]
               @b-eq |
                 op(E, b) = b
-                [by forall_elim(b) id-left]
+                [by specialize grpIdentityLeft(b)]
               @b-is-eb |
                 b = op(E, b)
                 [by symmetry b-eq]
-              @inv-left |
-                forall g: Grp; op(inverse(g), g) = E
-                [by axiom grpInverseLeft]
               @inva-a-is-E |
                 op(inverse(a), a) = E
-                [by forall_elim(a) inv-left]
+                [by specialize grpInverseLeft(a)]
               @E-is-inva-a |
                 E = op(inverse(a), a)
                 [by symmetry inva-a-is-E]
               @b-is-inva-a-b |
                 b = op(op(inverse(a), a), b)
                 [by rewrite E-is-inva-a b-is-eb]
-              @assoc-law |
-                forall x, y, z: Grp; op(op(x, y), z) = op(x, op(y, z))
-                [by axiom grpAssoc]
               @assoc-step |
                 op(op(inverse(a), a), b) = op(inverse(a), op(a, b))
-                [by forall_elim(inverse(a), a, b) assoc-law]
+                [by specialize grpAssoc(inverse(a), a, b)]
               @b-is-inva-ab |
                 b = op(inverse(a), op(a, b))
                 [by rewrite assoc-step b-is-inva-a-b]
               @b-is-inva-E |
                 b = op(inverse(a), E)
                 [by rewrite ab-is-E b-is-inva-ab]
-              @id-right |
-                forall g: Grp; op(g, E) = g
-                [by theorem grpIdentityRight]
               @inva-E-is-inva |
                 op(inverse(a), E) = inverse(a)
-                [by forall_elim(inverse(a)) id-right]
+                [by specialize grpIdentityRight(inverse(a))]
               @b-is-inva |
                 b = inverse(a)
                 [by rewrite inva-E-is-inva b-is-inva-E]
@@ -225,21 +192,12 @@ theorem invInvolution: forall a: Grp; inverse(inverse(a)) = a
 proof
   @generalize-a |
     fix a: Grp {
-      @inv-left |
-        forall g: Grp; op(inverse(g), g) = E
-        [by axiom grpInverseLeft]
       @inva-a-is-E |
         op(inverse(a), a) = E
-        [by forall_elim(a) inv-left]
-      @inv-unique |
-        forall x, y: Grp; op(x, y) = E -> y = inverse(x)
-        [by theorem inverseUnique]
-      @inverse-unique-at-inva-a |
-        op(inverse(a), a) = E -> a = inverse(inverse(a))
-        [by forall_elim(inverse(a), a) inv-unique]
+        [by specialize grpInverseLeft(a)]
       @a-is-invinva |
         a = inverse(inverse(a))
-        [by modus_ponens inverse-unique-at-inva-a inva-a-is-E]
+        [by specialize inverseUnique(inverse(a), a) inva-a-is-E]
       @invinva-is-a |
         inverse(inverse(a)) = a
         [by symmetry a-is-invinva]
@@ -271,9 +229,6 @@ sort Sub = Grp where inSubgroup
 // HGroup @-projects to discharge group's axiom obligations onto the subgroup.
 theorem opAssoc: forall a, b, c: Sub; op(op(a, b), c) = op(a, op(b, c))
 proof
-  @grp-law |
-    forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
-    [by axiom grpAssoc]
   @generalize-a |
     fix p: Sub {
       @generalize-b |
@@ -282,7 +237,7 @@ proof
             fix r: Sub {
               @conclusion-at-pqr |
                 op(op(p, q), r) = op(p, op(q, r))
-                [by forall_elim(p, q, r) grp-law]
+                [by specialize grpAssoc(p, q, r)]
             }
           @discharge-c |
             forall c: Sub; op(op(p, q), c) = op(p, op(q, c))
@@ -299,14 +254,11 @@ qed
 
 theorem opIdentityLeft: forall a: Sub; op(E, a) = a
 proof
-  @grp-law |
-    forall a: Grp; op(E, a) = a
-    [by axiom grpIdentityLeft]
   @generalize-a |
     fix p: Sub {
       @conclusion-at-p |
         op(E, p) = p
-        [by forall_elim(p) grp-law]
+        [by specialize grpIdentityLeft(p)]
     }
   @conclusion |
     forall a: Sub; op(E, a) = a
@@ -315,14 +267,11 @@ qed
 
 theorem opIdentityRight: forall a: Sub; op(a, E) = a
 proof
-  @grp-law |
-    forall a: Grp; op(a, E) = a
-    [by theorem grpIdentityRight]
   @generalize-a |
     fix p: Sub {
       @conclusion-at-p |
         op(p, E) = p
-        [by forall_elim(p) grp-law]
+        [by specialize grpIdentityRight(p)]
     }
   @conclusion |
     forall a: Sub; op(a, E) = a
@@ -331,14 +280,11 @@ qed
 
 theorem opInverseLeft: forall a: Sub; op(inverse(a), a) = E
 proof
-  @grp-law |
-    forall a: Grp; op(inverse(a), a) = E
-    [by axiom grpInverseLeft]
   @generalize-a |
     fix p: Sub {
       @conclusion-at-p |
         op(inverse(p), p) = E
-        [by forall_elim(p) grp-law]
+        [by specialize grpInverseLeft(p)]
     }
   @conclusion |
     forall a: Sub; op(inverse(a), a) = E
@@ -347,14 +293,11 @@ qed
 
 theorem opInverseRight: forall a: Sub; op(a, inverse(a)) = E
 proof
-  @grp-law |
-    forall a: Grp; op(a, inverse(a)) = E
-    [by theorem grpInverseRight]
   @generalize-a |
     fix p: Sub {
       @conclusion-at-p |
         op(p, inverse(p)) = E
-        [by forall_elim(p) grp-law]
+        [by specialize grpInverseRight(p)]
     }
   @conclusion |
     forall a: Sub; op(a, inverse(a)) = E
@@ -376,27 +319,12 @@ proof
           @h-is-a-member |
             inSubgroup(h)
             [by predicate generalize-h]
-          @closed-under-inverse |
-            forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(a))
-            [by axiom subgroupClosedInverse]
-          @inverse-in-H-if-h |
-            inSubgroup(h) -> inSubgroup(inverse(h))
-            [by forall_elim(h) closed-under-inverse]
           @inverse-of-h-in-H |
             inSubgroup(inverse(h))
-            [by modus_ponens inverse-in-H-if-h h-is-a-member]
-          @closed-under-op |
-            forall a, b: Grp; inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
-            [by axiom subgroupClosedOp]
-          @product-in-H-if-both |
-            inSubgroup(g) -> inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
-            [by forall_elim(g, inverse(h)) closed-under-op]
-          @product-in-H-if-inverse |
-            inSubgroup(inverse(h)) -> inSubgroup(op(g, inverse(h)))
-            [by modus_ponens product-in-H-if-both g-is-a-member]
+            [by specialize subgroupClosedInverse(h) h-is-a-member]
           @divide-is-a-member |
             inSubgroup(op(g, inverse(h)))
-            [by modus_ponens product-in-H-if-inverse inverse-of-h-in-H]
+            [by specialize subgroupClosedOp(g, inverse(h)) g-is-a-member inverse-of-h-in-H]
         }
       @discharge-h |
         forall h: Sub; inSubgroup(op(g, inverse(h)))
@@ -429,24 +357,12 @@ proof
       @member-in-subset |
         oneStepSubset(g)
         [by hypothesis with-member]
-      @closed-divide |
-        forall a, b: Grp; oneStepSubset(a) -> oneStepSubset(b) -> oneStepSubset(op(a, inverse(b)))
-        [by axiom oneStepClosedDivide]
-      @self-divide-in-subset-if-both |
-        oneStepSubset(g) -> oneStepSubset(g) -> oneStepSubset(op(g, inverse(g)))
-        [by forall_elim(g, g) closed-divide]
-      @self-divide-in-subset-if-member |
-        oneStepSubset(g) -> oneStepSubset(op(g, inverse(g)))
-        [by modus_ponens self-divide-in-subset-if-both member-in-subset]
       @self-divide-in-subset |
         oneStepSubset(op(g, inverse(g)))
-        [by modus_ponens self-divide-in-subset-if-member member-in-subset]
-      @inverse-law |
-        forall a: Grp; op(a, inverse(a)) = E
-        [by theorem grpInverseRight]
+        [by specialize oneStepClosedDivide(g, g) member-in-subset member-in-subset]
       @self-divide-is-identity |
         op(g, inverse(g)) = E
-        [by forall_elim(g) inverse-law]
+        [by specialize grpInverseRight(g)]
       @conclusion-identity-in-subset |
         oneStepSubset(E)
         [by rewrite self-divide-is-identity self-divide-in-subset]
@@ -470,24 +386,12 @@ proof
           @identity-in-subset |
             oneStepSubset(E)
             [by theorem oneStepHasIdentity]
-          @closed-divide |
-            forall a, b: Grp; oneStepSubset(a) -> oneStepSubset(b) -> oneStepSubset(op(a, inverse(b)))
-            [by axiom oneStepClosedDivide]
-          @identity-divide-g-if-both |
-            oneStepSubset(E) -> oneStepSubset(g) -> oneStepSubset(op(E, inverse(g)))
-            [by forall_elim(E, g) closed-divide]
-          @identity-divide-g-if-g |
-            oneStepSubset(g) -> oneStepSubset(op(E, inverse(g)))
-            [by modus_ponens identity-divide-g-if-both identity-in-subset]
           @identity-divide-g-in-subset |
             oneStepSubset(op(E, inverse(g)))
-            [by modus_ponens identity-divide-g-if-g g-in-subset]
-          @identity-law |
-            forall a: Grp; op(E, a) = a
-            [by axiom grpIdentityLeft]
+            [by specialize oneStepClosedDivide(E, g) identity-in-subset g-in-subset]
           @identity-divide-g-is-inverse |
             op(E, inverse(g)) = inverse(g)
-            [by forall_elim(inverse(g)) identity-law]
+            [by specialize grpIdentityLeft(inverse(g))]
           @conclusion-inverse-in-subset |
             oneStepSubset(inverse(g))
             [by rewrite identity-divide-g-is-inverse identity-divide-g-in-subset]
@@ -520,33 +424,15 @@ proof
                   @h2-in-subset |
                     oneStepSubset(h2)
                     [by hypothesis given-h2-in-subset]
-                  @closed-inverse |
-                    forall g: Grp; oneStepSubset(g) -> oneStepSubset(inverse(g))
-                    [by theorem oneStepClosedInverse]
-                  @inverse-h2-in-subset-if-h2 |
-                    oneStepSubset(h2) -> oneStepSubset(inverse(h2))
-                    [by forall_elim(h2) closed-inverse]
                   @inverse-h2-in-subset |
                     oneStepSubset(inverse(h2))
-                    [by modus_ponens inverse-h2-in-subset-if-h2 h2-in-subset]
-                  @closed-divide |
-                    forall a, b: Grp; oneStepSubset(a) -> oneStepSubset(b) -> oneStepSubset(op(a, inverse(b)))
-                    [by axiom oneStepClosedDivide]
-                  @h1-divide-inverse-h2-if-both |
-                    oneStepSubset(h1) -> oneStepSubset(inverse(h2)) -> oneStepSubset(op(h1, inverse(inverse(h2))))
-                    [by forall_elim(h1, inverse(h2)) closed-divide]
-                  @h1-divide-inverse-h2-if-inverse |
-                    oneStepSubset(inverse(h2)) -> oneStepSubset(op(h1, inverse(inverse(h2))))
-                    [by modus_ponens h1-divide-inverse-h2-if-both h1-in-subset]
+                    [by specialize oneStepClosedInverse(h2) h2-in-subset]
                   @h1-divide-inverse-h2-in-subset |
                     oneStepSubset(op(h1, inverse(inverse(h2))))
-                    [by modus_ponens h1-divide-inverse-h2-if-inverse inverse-h2-in-subset]
-                  @double-inverse-law |
-                    forall a: Grp; inverse(inverse(a)) = a
-                    [by theorem invInvolution]
+                    [by specialize oneStepClosedDivide(h1, inverse(h2)) h1-in-subset inverse-h2-in-subset]
                   @double-inverse-h2 |
                     inverse(inverse(h2)) = h2
-                    [by forall_elim(h2) double-inverse-law]
+                    [by specialize invInvolution(h2)]
                   @conclusion-product-in-subset |
                     oneStepSubset(op(h1, h2))
                     [by rewrite double-inverse-h2 h1-divide-inverse-h2-in-subset]
@@ -623,30 +509,12 @@ proof
                   @b-in-second |
                     inSubgroup2(b)
                     [by and_elim_right b-in-both]
-                  @closed-op-first |
-                    forall p, q: Grp; inSubgroup(p) -> inSubgroup(q) -> inSubgroup(op(p, q))
-                    [by axiom subgroupClosedOp]
-                  @product-in-first-if-both |
-                    inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
-                    [by forall_elim(a, b) closed-op-first]
-                  @product-in-first-if-b |
-                    inSubgroup(b) -> inSubgroup(op(a, b))
-                    [by modus_ponens product-in-first-if-both a-in-first]
                   @product-in-first |
                     inSubgroup(op(a, b))
-                    [by modus_ponens product-in-first-if-b b-in-first]
-                  @closed-op-second |
-                    forall p, q: Grp; inSubgroup2(p) -> inSubgroup2(q) -> inSubgroup2(op(p, q))
-                    [by axiom subgroup2ClosedOp]
-                  @product-in-second-if-both |
-                    inSubgroup2(a) -> inSubgroup2(b) -> inSubgroup2(op(a, b))
-                    [by forall_elim(a, b) closed-op-second]
-                  @product-in-second-if-b |
-                    inSubgroup2(b) -> inSubgroup2(op(a, b))
-                    [by modus_ponens product-in-second-if-both a-in-second]
+                    [by specialize subgroupClosedOp(a, b) a-in-first b-in-first]
                   @product-in-second |
                     inSubgroup2(op(a, b))
-                    [by modus_ponens product-in-second-if-b b-in-second]
+                    [by specialize subgroup2ClosedOp(a, b) a-in-second b-in-second]
                   @conclusion-product-in-both |
                     inSubgroup(op(a, b)) and inSubgroup2(op(a, b))
                     [by and_intro product-in-first product-in-second]
@@ -684,24 +552,12 @@ proof
           @a-in-second |
             inSubgroup2(a)
             [by and_elim_right a-in-both]
-          @closed-inverse-first |
-            forall p: Grp; inSubgroup(p) -> inSubgroup(inverse(p))
-            [by axiom subgroupClosedInverse]
-          @inverse-in-first-if-a |
-            inSubgroup(a) -> inSubgroup(inverse(a))
-            [by forall_elim(a) closed-inverse-first]
           @inverse-in-first |
             inSubgroup(inverse(a))
-            [by modus_ponens inverse-in-first-if-a a-in-first]
-          @closed-inverse-second |
-            forall p: Grp; inSubgroup2(p) -> inSubgroup2(inverse(p))
-            [by axiom subgroup2ClosedInverse]
-          @inverse-in-second-if-a |
-            inSubgroup2(a) -> inSubgroup2(inverse(a))
-            [by forall_elim(a) closed-inverse-second]
+            [by specialize subgroupClosedInverse(a) a-in-first]
           @inverse-in-second |
             inSubgroup2(inverse(a))
-            [by modus_ponens inverse-in-second-if-a a-in-second]
+            [by specialize subgroup2ClosedInverse(a) a-in-second]
           @conclusion-inverse-in-both |
             inSubgroup(inverse(a)) and inSubgroup2(inverse(a))
             [by and_intro inverse-in-first inverse-in-second]

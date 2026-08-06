@@ -358,12 +358,9 @@ proof
         fix k: Nat {
           @given-inductive-hypothesis |
             assume mul(k, succ(b)) = add(mul(k, b), k) {
-              @mul-succ-left |
-                forall d, m: Nat; mul(succ(d), m) = add(mul(d, m), m)
-                [by axiom mulSuccLeft]
               @mul-succ-left-at-k |
                 forall m: Nat; mul(succ(k), m) = add(mul(k, m), m)
-                [by forall_elim(k) mul-succ-left]
+                [by specialize mulSuccLeft(k)]
               @lhs-unfolded |
                 mul(succ(k), succ(b)) = add(mul(k, succ(b)), succ(b))
                 [by forall_elim(succ(b)) mul-succ-left-at-k]
@@ -373,30 +370,21 @@ proof
               @lhs-with-inductive-hypothesis |
                 mul(succ(k), succ(b)) = add(add(mul(k, b), k), succ(b))
                 [by rewrite inductive-hypothesis lhs-unfolded]
-              @add-succ-right |
-                forall m, d: Nat; add(m, succ(d)) = succ(add(m, d))
-                [by theorem addSuccRight]
               @pull-succ-b |
                 add(add(mul(k, b), k), succ(b)) = succ(add(add(mul(k, b), k), b))
-                [by forall_elim(add(mul(k, b), k), b) add-succ-right]
+                [by specialize addSuccRight(add(mul(k, b), k), b)]
               @lhs-succ-pulled |
                 mul(succ(k), succ(b)) = succ(add(add(mul(k, b), k), b))
                 [by rewrite pull-succ-b lhs-with-inductive-hypothesis]
-              @add-assoc |
-                forall m, d, e: Nat; add(add(m, d), e) = add(m, add(d, e))
-                [by theorem addIsAssociative]
               @reassociated-lhs |
                 add(add(mul(k, b), k), b) = add(mul(k, b), add(k, b))
-                [by forall_elim(mul(k, b), k, b) add-assoc]
+                [by specialize addIsAssociative(mul(k, b), k, b)]
               @lhs-assoc |
                 mul(succ(k), succ(b)) = succ(add(mul(k, b), add(k, b)))
                 [by rewrite reassociated-lhs lhs-succ-pulled]
-              @add-comm |
-                forall d, e: Nat; add(d, e) = add(e, d)
-                [by theorem addIsCommutative]
               @summands-commuted |
                 add(k, b) = add(b, k)
-                [by forall_elim(k, b) add-comm]
+                [by specialize addIsCommutative(k, b)]
               @lhs-comm |
                 mul(succ(k), succ(b)) = succ(add(mul(k, b), add(b, k)))
                 [by rewrite summands-commuted lhs-assoc]
@@ -412,13 +400,13 @@ proof
                 [by rewrite rhs-unfolded rhs-start-refl]
               @pull-succ-k |
                 add(add(mul(k, b), b), succ(k)) = succ(add(add(mul(k, b), b), k))
-                [by forall_elim(add(mul(k, b), b), k) add-succ-right]
+                [by specialize addSuccRight(add(mul(k, b), b), k)]
               @rhs-succ-pulled |
                 add(mul(succ(k), b), succ(k)) = succ(add(add(mul(k, b), b), k))
                 [by rewrite pull-succ-k rhs-inner]
               @reassociated-rhs |
                 add(add(mul(k, b), b), k) = add(mul(k, b), add(b, k))
-                [by forall_elim(mul(k, b), b, k) add-assoc]
+                [by specialize addIsAssociative(mul(k, b), b, k)]
               @rhs-normal |
                 add(mul(succ(k), b), succ(k)) = succ(add(mul(k, b), add(b, k)))
                 [by rewrite reassociated-rhs rhs-succ-pulled]
@@ -558,24 +546,18 @@ proof
             fix k: Nat {
               @given-inductive-hypothesis |
                 assume mul(add(k, b), c) = add(mul(k, c), mul(b, c)) {
-                  @add-succ-left |
-                    forall d, m: Nat; add(succ(d), m) = succ(add(d, m))
-                    [by axiom addSuccLeft]
                   @add-succ-left-at-k-b |
                     add(succ(k), b) = succ(add(k, b))
-                    [by forall_elim(k, b) add-succ-left]
+                    [by specialize addSuccLeft(k, b)]
                   @start-refl |
                     mul(add(succ(k), b), c) = mul(add(succ(k), b), c)
                     [by reflexivity]
                   @lhs-succ-in |
                     mul(add(succ(k), b), c) = mul(succ(add(k, b)), c)
                     [by rewrite add-succ-left-at-k-b start-refl]
-                  @mul-succ-left |
-                    forall d, m: Nat; mul(succ(d), m) = add(mul(d, m), m)
-                    [by axiom mulSuccLeft]
                   @mul-succ-at-inner-sum |
                     mul(succ(add(k, b)), c) = add(mul(add(k, b), c), c)
-                    [by forall_elim(add(k, b), c) mul-succ-left]
+                    [by specialize mulSuccLeft(add(k, b), c)]
                   @lhs-unfolded |
                     mul(add(succ(k), b), c) = add(mul(add(k, b), c), c)
                     [by rewrite mul-succ-at-inner-sum lhs-succ-in]
@@ -585,27 +567,21 @@ proof
                   @lhs-with-inductive-hypothesis |
                     mul(add(succ(k), b), c) = add(add(mul(k, c), mul(b, c)), c)
                     [by rewrite inductive-hypothesis lhs-unfolded]
-                  @add-assoc |
-                    forall d, e, f: Nat; add(add(d, e), f) = add(d, add(e, f))
-                    [by theorem addIsAssociative]
                   @reassociated |
                     add(add(mul(k, c), mul(b, c)), c) = add(mul(k, c), add(mul(b, c), c))
-                    [by forall_elim(mul(k, c), mul(b, c), c) add-assoc]
+                    [by specialize addIsAssociative(mul(k, c), mul(b, c), c)]
                   @lhs-assoc |
                     mul(add(succ(k), b), c) = add(mul(k, c), add(mul(b, c), c))
                     [by rewrite reassociated lhs-with-inductive-hypothesis]
-                  @add-comm |
-                    forall d, e: Nat; add(d, e) = add(e, d)
-                    [by theorem addIsCommutative]
                   @product-and-c-commuted |
                     add(mul(b, c), c) = add(c, mul(b, c))
-                    [by forall_elim(mul(b, c), c) add-comm]
+                    [by specialize addIsCommutative(mul(b, c), c)]
                   @lhs-comm |
                     mul(add(succ(k), b), c) = add(mul(k, c), add(c, mul(b, c)))
                     [by rewrite product-and-c-commuted lhs-assoc]
                   @reassociated-back |
                     add(add(mul(k, c), c), mul(b, c)) = add(mul(k, c), add(c, mul(b, c)))
-                    [by forall_elim(mul(k, c), c, mul(b, c)) add-assoc]
+                    [by specialize addIsAssociative(mul(k, c), c, mul(b, c))]
                   @reassociated-back-refl |
                     add(add(mul(k, c), c), mul(b, c)) = add(add(mul(k, c), c), mul(b, c))
                     [by reflexivity]
@@ -617,7 +593,7 @@ proof
                     [by rewrite reassociated-back-sym lhs-comm]
                   @mul-succ-at-k-c |
                     mul(succ(k), c) = add(mul(k, c), c)
-                    [by forall_elim(k, c) mul-succ-left]
+                    [by specialize mulSuccLeft(k, c)]
                   @mul-succ-at-k-c-refl |
                     mul(succ(k), c) = mul(succ(k), c)
                     [by reflexivity]
@@ -691,12 +667,9 @@ proof
             fix k: Nat {
               @given-inductive-hypothesis |
                 assume mul(mul(k, b), c) = mul(k, mul(b, c)) {
-                  @mul-succ-left |
-                    forall d, m: Nat; mul(succ(d), m) = add(mul(d, m), m)
-                    [by axiom mulSuccLeft]
                   @mul-succ-left-at-k |
                     forall m: Nat; mul(succ(k), m) = add(mul(k, m), m)
-                    [by forall_elim(k) mul-succ-left]
+                    [by specialize mulSuccLeft(k)]
                   @inner-unfold |
                     mul(succ(k), b) = add(mul(k, b), b)
                     [by forall_elim(b) mul-succ-left-at-k]
@@ -706,12 +679,9 @@ proof
                   @lhs-inner |
                     mul(mul(succ(k), b), c) = mul(add(mul(k, b), b), c)
                     [by rewrite inner-unfold start-refl]
-                  @mul-add-distrib-right |
-                    forall d, e, f: Nat; mul(add(d, e), f) = add(mul(d, f), mul(e, f))
-                    [by theorem mulAddDistribRight]
                   @product-of-sum-expanded |
                     mul(add(mul(k, b), b), c) = add(mul(mul(k, b), c), mul(b, c))
-                    [by forall_elim(mul(k, b), b, c) mul-add-distrib-right]
+                    [by specialize mulAddDistribRight(mul(k, b), b, c)]
                   @lhs-distributed |
                     mul(mul(succ(k), b), c) = add(mul(mul(k, b), c), mul(b, c))
                     [by rewrite product-of-sum-expanded lhs-inner]
@@ -823,30 +793,24 @@ proof
         fix b: Nat {
           @generalize-c |
             fix c: Nat {
-              @mul-comm |
-                forall d, e: Nat; mul(d, e) = mul(e, d)
-                [by theorem mulIsCommutative]
               @swap-outer |
                 mul(a, add(b, c)) = mul(add(b, c), a)
-                [by forall_elim(a, add(b, c)) mul-comm]
-              @mul-add-distrib-right |
-                forall d, e, f: Nat; mul(add(d, e), f) = add(mul(d, f), mul(e, f))
-                [by theorem mulAddDistribRight]
+                [by specialize mulIsCommutative(a, add(b, c))]
               @sum-times-a-distributed |
                 mul(add(b, c), a) = add(mul(b, a), mul(c, a))
-                [by forall_elim(b, c, a) mul-add-distrib-right]
+                [by specialize mulAddDistribRight(b, c, a)]
               @product-of-sum-expanded |
                 mul(a, add(b, c)) = add(mul(b, a), mul(c, a))
                 [by rewrite sum-times-a-distributed swap-outer]
               @b-a-commuted |
                 mul(b, a) = mul(a, b)
-                [by forall_elim(b, a) mul-comm]
+                [by specialize mulIsCommutative(b, a)]
               @left-fixed |
                 mul(a, add(b, c)) = add(mul(a, b), mul(c, a))
                 [by rewrite b-a-commuted product-of-sum-expanded]
               @c-a-commuted |
                 mul(c, a) = mul(a, c)
-                [by forall_elim(c, a) mul-comm]
+                [by specialize mulIsCommutative(c, a)]
               @both-fixed |
                 mul(a, add(b, c)) = add(mul(a, b), mul(a, c))
                 [by rewrite c-a-commuted left-fixed]
@@ -876,12 +840,9 @@ proof
       // base case: add(ZERO, succ(d)) is succ(d), which is not ZERO
       @suppose-base |
         assume add(ZERO, succ(d)) = ZERO {
-          @add-zero-left |
-            forall m: Nat; add(ZERO, m) = m
-            [by axiom addZeroLeft]
           @add-zero-at-succ-d |
             add(ZERO, succ(d)) = succ(d)
-            [by forall_elim(succ(d)) add-zero-left]
+            [by specialize addZeroLeft(succ(d))]
           @add-zero-at-succ-d-refl |
             add(ZERO, succ(d)) = add(ZERO, succ(d))
             [by reflexivity]
@@ -894,12 +855,9 @@ proof
           @to-zero |
             succ(d) = ZERO
             [by rewrite got-h add-zero-at-succ-d-sym]
-          @successors-are-never-zero |
-            forall m: Nat; succ(m) != ZERO
-            [by axiom succNotZero]
           @succ-d-is-nonzero |
             succ(d) != ZERO
-            [by forall_elim(d) successors-are-never-zero]
+            [by specialize succNotZero(d)]
         }
       @base-case |
         add(ZERO, succ(d)) != ZERO
@@ -912,12 +870,9 @@ proof
             assume add(k, succ(d)) != k {
               @suppose-succ |
                 assume add(succ(k), succ(d)) = succ(k) {
-                  @add-succ-left |
-                    forall m, e: Nat; add(succ(m), e) = succ(add(m, e))
-                    [by axiom addSuccLeft]
                   @add-succ-at-k |
                     add(succ(k), succ(d)) = succ(add(k, succ(d)))
-                    [by forall_elim(k, succ(d)) add-succ-left]
+                    [by specialize addSuccLeft(k, succ(d))]
                   @add-succ-at-k-refl |
                     add(succ(k), succ(d)) = add(succ(k), succ(d))
                     [by reflexivity]
@@ -930,15 +885,9 @@ proof
                   @succ-eq |
                     succ(add(k, succ(d))) = succ(k)
                     [by rewrite sum-at-succ-k-collapses add-succ-at-k-sym]
-                  @succ-injective |
-                    forall m, e: Nat; succ(m) = succ(e) -> m = e
-                    [by axiom succInjective]
-                  @strip-succ-if-equal |
-                    succ(add(k, succ(d))) = succ(k) -> add(k, succ(d)) = k
-                    [by forall_elim(add(k, succ(d)), k) succ-injective]
                   @collapsed |
                     add(k, succ(d)) = k
-                    [by modus_ponens strip-succ-if-equal succ-eq]
+                    [by specialize succInjective(add(k, succ(d)), k) succ-eq]
                   @inductive-hypothesis |
                     add(k, succ(d)) != k
                     [by hypothesis given-inductive-hypothesis]
@@ -1080,15 +1029,9 @@ proof
                       @successors-are-equal |
                         succ(add(k, a2)) = succ(add(k, b2))
                         [by rewrite push-b peeled-left]
-                      @successor-is-injective |
-                        forall x, y: Nat; succ(x) = succ(y) -> x = y
-                        [by axiom succInjective]
-                      @successors-equal-implies-sums-equal |
-                        succ(add(k, a2)) = succ(add(k, b2)) -> add(k, a2) = add(k, b2)
-                        [by forall_elim(add(k, a2), add(k, b2)) successor-is-injective]
                       @unpadded-sums-are-equal |
                         add(k, a2) = add(k, b2)
-                        [by modus_ponens successors-equal-implies-sums-equal successors-are-equal]
+                        [by specialize succInjective(add(k, a2), add(k, b2)) successors-are-equal]
                       @inductive-hypothesis |
                         forall a, b: Nat; add(k, a) = add(k, b) -> a = b
                         [by hypothesis given-inductive-hypothesis]
@@ -1140,12 +1083,9 @@ proof
               @reassociated-y-x |
                 add(add(y, x), r) = add(y, add(x, r))
                 [by simplify addIsAssociative]
-              @add-is-commutative |
-                forall m, n: Nat; add(m, n) = add(n, m)
-                [by theorem addIsCommutative]
               @x-y-commuted |
                 add(x, y) = add(y, x)
-                [by forall_elim(x, y) add-is-commutative]
+                [by specialize addIsCommutative(x, y)]
               @grouped-refl |
                 add(add(x, y), r) = add(add(x, y), r)
                 [by reflexivity]
@@ -1187,12 +1127,9 @@ proof
               @reassociated-y-x |
                 mul(mul(y, x), r) = mul(y, mul(x, r))
                 [by simplify mulIsAssociative]
-              @mul-is-commutative |
-                forall m, n: Nat; mul(m, n) = mul(n, m)
-                [by theorem mulIsCommutative]
               @x-y-commuted |
                 mul(x, y) = mul(y, x)
-                [by forall_elim(x, y) mul-is-commutative]
+                [by specialize mulIsCommutative(x, y)]
               @grouped-refl |
                 mul(mul(x, y), r) = mul(mul(x, y), r)
                 [by reflexivity]

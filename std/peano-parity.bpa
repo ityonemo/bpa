@@ -53,12 +53,9 @@ intheory evenSquareEven
 // succ(n) even. TWO = add(ONE,ONE) collapses to succ(succ(ZERO)) by simplify.
 theorem evenOrOdd: forall n: Nat; divides(TWO, n) or divides(TWO, succ(n))
 proof
-  @two-divides-zero |
-    forall d: Nat; divides(d, ZERO)
-    [by theorem dividesZero]
   @base-even |
     divides(TWO, ZERO)
-    [by forall_elim(TWO) two-divides-zero]
+    [by specialize dividesZero(TWO)]
   @base-case |
     divides(TWO, ZERO) or divides(TWO, succ(ZERO))
     [by or_intro_left base-even]
@@ -78,24 +75,12 @@ proof
                   @k-div |
                     divides(TWO, k)
                     [by hypothesis k-even]
-                  @refl |
-                    forall d: Nat; divides(d, d)
-                    [by theorem dividesRefl]
                   @two-divides-two |
                     divides(TWO, TWO)
-                    [by forall_elim(TWO) refl]
-                  @add-closed |
-                    forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
-                    [by theorem dividesAdd]
-                  @add-at |
-                    divides(TWO, k) -> divides(TWO, TWO) -> divides(TWO, add(k, TWO))
-                    [by forall_elim(TWO, k, TWO) add-closed]
-                  @two-divides-two-gives-k-plus-two-even |
-                    divides(TWO, TWO) -> divides(TWO, add(k, TWO))
-                    [by modus_ponens add-at k-div]
+                    [by specialize dividesRefl(TWO)]
                   @k-plus-two-even |
                     divides(TWO, add(k, TWO))
-                    [by modus_ponens two-divides-two-gives-k-plus-two-even two-divides-two]
+                    [by specialize dividesAdd(TWO, k, TWO) k-div two-divides-two]
                   @sum-is-succ-succ |
                     add(k, TWO) = succ(succ(k))
                     [by simplify addSuccRight addZeroRight oneIsSuccZero]
@@ -148,12 +133,9 @@ proof
               @succ-p-is-two-m |
                 succ(p) = mul(TWO, m)
                 [by hypothesis with-m]
-              @zos |
-                forall n: Nat; n = ZERO or (exists mm: Nat; n = succ(mm))
-                [by theorem zeroOrSucc]
               @m-zero-or-succ |
                 m = ZERO or (exists mm: Nat; m = succ(mm))
-                [by forall_elim(m) zos]
+                [by specialize zeroOrSucc(m)]
               @suppose-m-zero |
                 assume m = ZERO {
                   @succ-p-via-m |
@@ -168,12 +150,9 @@ proof
                   @succ-p-zero |
                     succ(p) = ZERO
                     [by simplify succ-p-via-m m-is-zero two-times-zero]
-                  @succ-not-zero |
-                    forall a: Nat; succ(a) != ZERO
-                    [by axiom succNotZero]
                   @succ-p-not-zero |
                     succ(p) != ZERO
-                    [by forall_elim(p) succ-not-zero]
+                    [by specialize succNotZero(p)]
                 }
               @m-not-zero |
                 m != ZERO
@@ -186,12 +165,9 @@ proof
                   @m-is-succ-mp |
                     m = succ(mp)
                     [by hypothesis with-mp]
-                  @two-times-succ |
-                    forall a, b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
-                    [by theorem mulSuccRight]
                   @unfold-mul |
                     mul(TWO, succ(mp)) = add(mul(TWO, mp), TWO)
-                    [by forall_elim(TWO, mp) two-times-succ]
+                    [by specialize mulSuccRight(TWO, mp)]
                   @succ-p-eq1 |
                     succ(p) = mul(TWO, succ(mp))
                     [by rewrite m-is-succ-mp succ-p-is-two-m]
@@ -204,15 +180,9 @@ proof
                   @succ-p-eq3 |
                     succ(p) = succ(succ(mul(TWO, mp)))
                     [by rewrite collapse succ-p-eq2]
-                  @inj |
-                    forall a, b: Nat; succ(a) = succ(b) -> a = b
-                    [by axiom succInjective]
-                  @inj-at |
-                    succ(p) = succ(succ(mul(TWO, mp))) -> p = succ(mul(TWO, mp))
-                    [by forall_elim(p, succ(mul(TWO, mp))) inj]
                   @p-is-odd |
                     p = succ(mul(TWO, mp))
-                    [by modus_ponens inj-at succ-p-eq3]
+                    [by specialize succInjective(p, succ(mul(TWO, mp))) succ-p-eq3]
                   @witness |
                     exists j: Nat; p = succ(mul(TWO, j))
                     [by exists_intro(mp) p-is-odd]
@@ -296,12 +266,9 @@ proof
           @succ-zero-is-zero |
             succ(ZERO) = ZERO
             [by symmetry zero-is-succ-zero]
-          @succ-not-zero |
-            forall a: Nat; succ(a) != ZERO
-            [by axiom succNotZero]
           @succ-zero-not-zero |
             succ(ZERO) != ZERO
-            [by forall_elim(ZERO) succ-not-zero]
+            [by specialize succNotZero(ZERO)]
         }
       @one-eq-zero-is-false |
         ONE != ZERO
@@ -311,12 +278,9 @@ proof
           @one-is-two-x |
             ONE = mul(TWO, x)
             [by hypothesis with-x]
-          @zos |
-            forall n: Nat; n = ZERO or (exists mm: Nat; n = succ(mm))
-            [by theorem zeroOrSucc]
           @x-cases |
             x = ZERO or (exists mm: Nat; x = succ(mm))
-            [by forall_elim(x) zos]
+            [by specialize zeroOrSucc(x)]
           @one-is-zero |
             ONE = ZERO
             case x-cases {
@@ -348,12 +312,9 @@ proof
                         [by hypothesis with-xp]
                       // 2*succ(xp) = succ(succ(2*xp)); ONE = succ(ZERO) so
                       // succ(ZERO) = succ(succ(2xp)) ⇒ ZERO = succ(2xp), absurd
-                      @two-succ |
-                        forall a, b: Nat; mul(a, succ(b)) = add(mul(a, b), a)
-                        [by theorem mulSuccRight]
                       @unfold |
                         mul(TWO, succ(xp)) = add(mul(TWO, xp), TWO)
-                        [by forall_elim(TWO, xp) two-succ]
+                        [by specialize mulSuccRight(TWO, xp)]
                       @one-eq1 |
                         ONE = mul(TWO, succ(xp))
                         [by rewrite x-is-succ one-is-two-x]
@@ -372,21 +333,12 @@ proof
                       @succ-zero-eq |
                         succ(ZERO) = succ(succ(mul(TWO, xp)))
                         [by rewrite one-succ one-eq3]
-                      @inj |
-                        forall a, b: Nat; succ(a) = succ(b) -> a = b
-                        [by axiom succInjective]
-                      @inj-at |
-                        succ(ZERO) = succ(succ(mul(TWO, xp))) -> ZERO = succ(mul(TWO, xp))
-                        [by forall_elim(ZERO, succ(mul(TWO, xp))) inj]
                       @zero-is-succ |
                         ZERO = succ(mul(TWO, xp))
-                        [by modus_ponens inj-at succ-zero-eq]
-                      @succ-not-zero |
-                        forall a: Nat; succ(a) != ZERO
-                        [by axiom succNotZero]
+                        [by specialize succInjective(ZERO, succ(mul(TWO, xp))) succ-zero-eq]
                       @this-succ-not-zero |
                         succ(mul(TWO, xp)) != ZERO
-                        [by forall_elim(mul(TWO, xp)) succ-not-zero]
+                        [by specialize succNotZero(mul(TWO, xp))]
                       @zero-eq-succ |
                         succ(mul(TWO, xp)) = ZERO
                         [by symmetry zero-is-succ]

@@ -28,12 +28,9 @@ proof
         fix b: Nat {
           // gcdDividesBoth is stated `forall a, b`; specialize it at these
           // fixed a, b, then take the left conjunct
-          @gcd-divides-both |
-            forall aa, bb: Nat; divides(gcd_of(aa, bb), aa) and divides(gcd_of(aa, bb), bb)
-            [by theorem gcd.gcdDividesBoth]
           @specialized-to-this-a-b |
             divides(gcd_of(a, b), a) and divides(gcd_of(a, b), b)
-            [by forall_elim(a, b) gcd-divides-both]
+            [by specialize gcd.gcdDividesBoth(a, b)]
           @keep-left-conjunct |
             divides(gcd_of(a, b), a)
             [by and_elim_left specialized-to-this-a-b]
@@ -70,12 +67,9 @@ proof
         fix a: Nat {
           @generalize-b |
             fix b: Nat {
-              @gcd-is-greatest |
-                forall dd, aa, bb: Nat; divides(dd, aa) -> divides(dd, bb) -> divides(dd, gcd_of(aa, bb))
-                [by theorem gcd.gcdGreatest]
               @specialized-to-this-d-a-b |
                 divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))
-                [by forall_elim(d, a, b) gcd-is-greatest]
+                [by specialize gcd.gcdGreatest(d, a, b)]
             }
           @discharge-b |
             forall b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd_of(a, b))

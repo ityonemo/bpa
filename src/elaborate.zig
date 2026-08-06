@@ -33,6 +33,7 @@ const accel_polynomial = @import("accelerant/polynomial.zig");
 const accel_ext = @import("accelerant/ext.zig");
 const accel_model = @import("accelerant/model.zig");
 const accel_tautology = @import("accelerant/tautology.zig");
+const accel_specialize = @import("accelerant/specialize.zig");
 const accel_arithmetic = @import("accelerant/arithmetic.zig");
 
 /// One accelerated tactic, keyed by the `[by <name>]` spelling it owns. Every
@@ -60,6 +61,7 @@ const accelerants = [_]Accelerant{
     .{ .name = "ext", .justify = &accel_ext.justify },
     .{ .name = "ext_quantified", .justify = &accel_ext.justifyQuantified },
     .{ .name = "model", .justify = &accel_model.justify },
+    .{ .name = "specialize", .justify = &accel_specialize.justify },
 };
 
 /// name -> index into `accelerants`, built once at comptime.
@@ -1106,7 +1108,7 @@ pub const Elaborator = struct {
         return .{ .name = fvar, .sort = sort };
     }
 
-    fn resolveStepRef(self: *Elaborator, low: *Lowering, tok: lexer.Token) ElabError!kernel.SRef {
+    pub fn resolveStepRef(self: *Elaborator, low: *Lowering, tok: lexer.Token) ElabError!kernel.SRef {
         const name = try self.internTok(tok);
         const target = low.labels.get(name) orelse {
             // A common mistake is naming an axiom/theorem/schema where a proof
@@ -1540,60 +1542,9 @@ pub const Elaborator = struct {
                 for (c.refs, premises) |r, *out| out.* = try self.resolveStepRef(low, r);
                 return .{ .schema_instance = .{ .instance = inst, .premises = premises } };
             },
-            // `specialize THM(args) hyps…` — apply a forall-quantified axiom/theorem
-            // in one written step: cite it, forall_elim at each arg (peeling the ∀
-            // prefix), then modus_ponens each hyp to discharge a leading antecedent.
-            // Pure sugar over forall_elim + modus_ponens: it EMITS those kernel steps
-            // (a certificate the kernel re-checks), so no trust surface is added.
-            .specialize => {
-                const name_tok = c.schema.?; // parser guarantees presence
-                const stmt_id = try self.resolveStatementRef(name_tok);
-                const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
-                const cited_formula: TermId, const cite_just: kernel.Justification = switch (stmt) {
-                    .axiom => |a| blk: {
-                        if (a.is_hole) try self.inheritHoles(a.holes);
-                        break :blk .{ a.formula, .{ .axiom_ref = .{ .stmt = stmt_id, .loc = name_tok.start } } };
-                    },
-                    .theorem => |t| blk: {
-                        try self.inheritAccelerated(t.accelerated);
-                        try self.inheritHoles(t.holes);
-                        break :blk .{ t.formula, .{ .theorem_ref = .{ .stmt = stmt_id, .loc = name_tok.start } } };
-                    },
-                    .schema => return self.fail(name_tok.start, "'{s}' is a schema; use `instantiate`", .{self.text(name_tok)}),
-                };
-                // cite the theorem as a step, then forall_elim at each arg (peeling
-                // the ∀ prefix — every arg but the last emits an intermediate step).
-                var cur = try self.emitStep(low, block_id, name_tok.start, cited_formula, cite_just);
-                var cur_formula = cited_formula;
-                for (c.args) |arg_expr| {
-                    const node = self.pool.get(cur_formula);
-                    if (node != .quant or node.quant.q != .forall) {
-                        return self.fail(exprLoc(arg_expr), "specialize: '{s}' is not universally quantified here (too many arguments)", .{try self.renderTerm(cur_formula)});
-                    }
-                    const arg = try self.elaborateExpr(arg_expr);
-                    const opened = try self.pool.open(node.quant.body, arg.id);
-                    cur = try self.emitStep(low, block_id, exprLoc(arg_expr), opened, .{ .forall_elim = .{ .step = cur, .with = arg.id, .with_loc = exprLoc(arg_expr) } });
-                    cur_formula = opened;
-                }
-                // no hyps: the specialized formula IS the goal — return its cite/elim
-                // justification directly.
-                if (c.refs.len == 0) return low.steps.items[@intFromEnum(cur.id)].just;
-                // modus_ponens each hypothesis ref against a leading `->` antecedent.
-                for (c.refs, 0..) |ref, i| {
-                    const node = self.pool.get(cur_formula);
-                    if (node != .bin or node.bin.op != .implies) {
-                        return self.fail(ref.start, "specialize: no antecedent left to discharge for '{s}'", .{self.text(ref)});
-                    }
-                    const ant = try self.resolveStepRef(low, ref);
-                    const just: kernel.Justification = .{ .modus_ponens = .{ .implication = cur, .antecedent = ant } };
-                    if (i == c.refs.len - 1) return just; // last discharge = this step
-                    cur = try self.emitStep(low, block_id, ref.start, node.bin.rhs, just);
-                    cur_formula = node.bin.rhs;
-                }
-                unreachable;
-            },
-            // accelerated tactics were dispatched through the registry above.
-            .simplify, .simplify_quantified, .ac, .ac_quantified, .assoc, .assoc_quantified, .polynomial, .polynomial_quantified, .tautology, .arithmetic, .ext, .ext_quantified, .model => unreachable,
+            // accelerated tactics were dispatched through the registry above
+            // (`specialize` among them — it emits a forall_elim+modus_ponens chain).
+            .simplify, .simplify_quantified, .ac, .ac_quantified, .assoc, .assoc_quantified, .polynomial, .polynomial_quantified, .tautology, .arithmetic, .ext, .ext_quantified, .model, .specialize => unreachable,
         }
     }
 
