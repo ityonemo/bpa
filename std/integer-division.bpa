@@ -61,7 +61,7 @@ define FOUR = succ(THREE)
 // -- nonneg, order, divisibility predicates (proofs use these names) --------
 
 pred is_nonneg = nonneg.nonneg
-define below(a: Int, b: Int) = order.less_than(a, b)
+define less_than(a: Int, b: Int) = order.less_than(a, b)
 define at_most(a: Int, b: Int) = order.less_or_equal(a, b)
 define does_divide(d: Int, n: Int) = divides.divides(d, n)
 axiom nonnegInduction = nonneg.nonnegInduction
@@ -71,7 +71,7 @@ theorem lessOrEqualIsGapExistential = order.lessOrEqualIsGapExistential
 
 // -- order / sign / ring lemmas the two proofs cite -------------------------
 
-theorem nonnegNotBelowZero = wellordering.nonnegNotBelowZero
+theorem nonnegNotLessThanZero = wellordering.nonnegNotLessThanZero
 theorem nonnegStrongInduction = wellordering.nonnegStrongInduction
 theorem nonnegWellOrdering = wellordering.nonnegWellOrdering
 theorem trichotomy = order.trichotomy
@@ -94,7 +94,7 @@ theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
 theorem mulIsCommutative = order.mulIsCommutative
 theorem mulIsAssociative = ring.mulIsAssociative
-theorem negBelowZero = order.negBelowZero
+theorem negLessThanZero = order.negLessThanZero
 theorem productOfNonpositiveFactorsIsNonneg = order.productOfNonpositiveFactorsIsNonneg
 theorem negAdd = ring.negAdd
 theorem negNeg = ring.negNeg
@@ -225,36 +225,36 @@ proof
 qed
 
 theorem boundedNonnegMultipleIsZero: forall b, m: Int;
-  below(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> below(m, b) -> m = ZERO
+  less_than(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> less_than(m, b) -> m = ZERO
 proof
   @generalize-b |
     fix b: Int {
       @generalize-m |
         fix m: Int {
           @given-b-positive |
-            assume below(ZERO, b) {
+            assume less_than(ZERO, b) {
               @given-b-divides-m |
                 assume does_divide(b, m) {
                   @given-m-nonneg |
                     assume is_nonneg(m) {
-                      @given-m-below-b |
-                        assume below(m, b) {
+                      @given-m-less_than-b |
+                        assume less_than(m, b) {
                           @b-positive |
-                            below(ZERO, b)
+                            less_than(ZERO, b)
                             [by hypothesis given-b-positive]
                           @m-nonneg |
                             is_nonneg(m)
                             [by hypothesis given-m-nonneg]
-                          @m-below-b |
-                            below(m, b)
-                            [by hypothesis given-m-below-b]
+                          @m-less_than-b |
+                            less_than(m, b)
+                            [by hypothesis given-m-less_than-b]
                           // b > 0 exhibits a nonneg gap succ(d) with 0 + succ(d) = b,
                           // so b = succ(d) is nonneg.
                           @positivity-yields-gap |
-                            forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                            forall x, y: Int; less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
                             [by axiom lessThanElim]
                           @b-gap-exists-if-positive |
-                            below(ZERO, b) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
+                            less_than(ZERO, b) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
                             [by forall_elim(ZERO, b) positivity-yields-gap]
                           @b-gap-exists |
                             exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
@@ -305,27 +305,27 @@ proof
                                 m = mul(b, k)
                                 [by hypothesis with-quotient-k]
                               @signs-of-k |
-                                forall x, y: Int; below(x, y) or x = y or below(y, x)
+                                forall x, y: Int; less_than(x, y) or x = y or less_than(y, x)
                                 [by theorem trichotomy]
                               @k-sign-trichotomy |
-                                below(k, ZERO) or k = ZERO or below(ZERO, k)
+                                less_than(k, ZERO) or k = ZERO or less_than(ZERO, k)
                                 [by forall_elim(k, ZERO) signs-of-k]
                               @multiple-is-zero-by-sign-of-quotient |
                                 m = ZERO
                                 case on k-sign-trichotomy {
                                   @when-k-negative |
-                                    assume below(k, ZERO) {
+                                    assume less_than(k, ZERO) {
                                       // -k is a positive gap, hence nonneg; b*(-k) = -m is
                                       // a product of nonnegatives, so m <= 0. With m >= 0,
                                       // antisymmetry gives m = 0.
                                       @k-negative |
-                                        below(k, ZERO)
+                                        less_than(k, ZERO)
                                         [by hypothesis when-k-negative]
                                       @negative-yields-gap |
-                                        forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                                        forall x, y: Int; less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
                                         [by axiom lessThanElim]
                                       @k-gap-exists-if-negative |
-                                        below(k, ZERO) -> exists d: Int; is_nonneg(d) and add(k, succ(d)) = ZERO
+                                        less_than(k, ZERO) -> exists d: Int; is_nonneg(d) and add(k, succ(d)) = ZERO
                                         [by forall_elim(k, ZERO) negative-yields-gap]
                                       @k-gap-exists |
                                         exists d: Int; is_nonneg(d) and add(k, succ(d)) = ZERO
@@ -418,7 +418,7 @@ proof
                                           @neg-m-witnesses-gap |
                                             is_nonneg(neg(m)) and add(m, neg(m)) = ZERO
                                             [by and_intro neg-m-nonneg m-plus-neg-m-zero]
-                                          @m-below-or-equal-zero-gap |
+                                          @m-less_than-or-equal-zero-gap |
                                             exists d: Int; is_nonneg(d) and add(m, d) = ZERO
                                             [by exists_intro(neg(m)) neg-m-witnesses-gap]
                                           @at-most-is-gap-existential |
@@ -432,7 +432,7 @@ proof
                                             [by iff_elim_backward m-at-most-zero-iff-gap]
                                           @m-at-most-zero |
                                             at_most(m, ZERO)
-                                            [by modus_ponens m-at-most-zero-if-gap m-below-or-equal-zero-gap]
+                                            [by modus_ponens m-at-most-zero-if-gap m-less_than-or-equal-zero-gap]
                                           // 0 <= m: witness m nonneg with add(0, m) = m.
                                           @zero-prefix-is-identity |
                                             forall n: Int; add(ZERO, n) = n
@@ -443,7 +443,7 @@ proof
                                           @m-witnesses-zero-at-most-m |
                                             is_nonneg(m) and add(ZERO, m) = m
                                             [by and_intro m-nonneg zero-plus-m-is-m]
-                                          @zero-below-or-equal-m-gap |
+                                          @zero-less_than-or-equal-m-gap |
                                             exists d: Int; is_nonneg(d) and add(ZERO, d) = m
                                             [by exists_intro(m) m-witnesses-zero-at-most-m]
                                           @zero-at-most-m-iff-gap |
@@ -454,7 +454,7 @@ proof
                                             [by iff_elim_backward zero-at-most-m-iff-gap]
                                           @zero-at-most-m |
                                             at_most(ZERO, m)
-                                            [by modus_ponens zero-at-most-m-if-gap zero-below-or-equal-m-gap]
+                                            [by modus_ponens zero-at-most-m-if-gap zero-less_than-or-equal-m-gap]
                                           @antisymmetry |
                                             forall x, y: Int; at_most(x, y) -> at_most(y, x) -> x = y
                                             [by theorem lessOrEqualAntisymmetric]
@@ -489,18 +489,18 @@ proof
                                         [by rewrite b-times-zero-is-zero m-is-b-times-zero]
                                     }
                                   @when-k-positive |
-                                    assume below(ZERO, k) {
+                                    assume less_than(ZERO, k) {
                                       // k = d+1 (nonneg d), so m = b*k = b*d + b. Then
                                       // m < b forces b*d < 0, impossible for a product of
                                       // nonnegatives.
                                       @k-positive |
-                                        below(ZERO, k)
+                                        less_than(ZERO, k)
                                         [by hypothesis when-k-positive]
                                       @positive-yields-gap |
-                                        forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                                        forall x, y: Int; less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
                                         [by axiom lessThanElim]
                                       @k-gap-exists-if-positive |
-                                        below(ZERO, k) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
+                                        less_than(ZERO, k) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
                                         [by forall_elim(ZERO, k) positive-yields-gap]
                                       @k-gap-exists |
                                         exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
@@ -542,21 +542,21 @@ proof
                                             m = add(mul(b, e), b)
                                             [by rewrite b-times-succ-gap m-is-b-times-succ-gap]
                                           // m < b becomes add(b, b*e) < add(b, 0), cancel b.
-                                          @m-below-b-restated |
-                                            below(m, b)
-                                            [by hypothesis given-m-below-b]
-                                          @product-plus-b-below-b |
-                                            below(add(mul(b, e), b), b)
-                                            [by rewrite m-is-product-plus-b m-below-b-restated]
+                                          @m-less_than-b-restated |
+                                            less_than(m, b)
+                                            [by hypothesis given-m-less_than-b]
+                                          @product-plus-b-less_than-b |
+                                            less_than(add(mul(b, e), b), b)
+                                            [by rewrite m-is-product-plus-b m-less_than-b-restated]
                                           @addition-is-commutative |
                                             forall x, y: Int; add(x, y) = add(y, x)
                                             [by theorem addIsCommutative]
                                           @product-and-b-commute |
                                             add(mul(b, e), b) = add(b, mul(b, e))
                                             [by forall_elim(mul(b, e), b) addition-is-commutative]
-                                          @b-plus-product-below-b |
-                                            below(add(b, mul(b, e)), b)
-                                            [by rewrite product-and-b-commute product-plus-b-below-b]
+                                          @b-plus-product-less_than-b |
+                                            less_than(add(b, mul(b, e)), b)
+                                            [by rewrite product-and-b-commute product-plus-b-less_than-b]
                                           @adding-zero-is-identity |
                                             forall n: Int; add(n, ZERO) = n
                                             [by theorem addZeroRight]
@@ -566,18 +566,18 @@ proof
                                           @b-as-b-plus-zero |
                                             b = add(b, ZERO)
                                             [by symmetry b-plus-zero-is-b]
-                                          @b-plus-product-below-b-plus-zero |
-                                            below(add(b, mul(b, e)), add(b, ZERO))
-                                            [by rewrite b-as-b-plus-zero b-plus-product-below-b]
+                                          @b-plus-product-less_than-b-plus-zero |
+                                            less_than(add(b, mul(b, e)), add(b, ZERO))
+                                            [by rewrite b-as-b-plus-zero b-plus-product-less_than-b]
                                           @common-prefix-cancels-order |
-                                            forall c, x, y: Int; below(add(c, x), add(c, y)) -> below(x, y)
+                                            forall c, x, y: Int; less_than(add(c, x), add(c, y)) -> less_than(x, y)
                                             [by theorem lessThanAddCancelLeft]
-                                          @product-below-zero-if-prefixed |
-                                            below(add(b, mul(b, e)), add(b, ZERO)) -> below(mul(b, e), ZERO)
+                                          @product-less_than-zero-if-prefixed |
+                                            less_than(add(b, mul(b, e)), add(b, ZERO)) -> less_than(mul(b, e), ZERO)
                                             [by forall_elim(b, mul(b, e), ZERO) common-prefix-cancels-order]
-                                          @product-below-zero |
-                                            below(mul(b, e), ZERO)
-                                            [by modus_ponens product-below-zero-if-prefixed b-plus-product-below-b-plus-zero]
+                                          @product-less_than-zero |
+                                            less_than(mul(b, e), ZERO)
+                                            [by modus_ponens product-less_than-zero-if-prefixed b-plus-product-less_than-b-plus-zero]
                                           // but b*e is a product of nonnegatives, hence >= 0.
                                           @product-of-nonnegatives |
                                             forall x, y: Int; is_nonneg(x) -> is_nonneg(y) -> is_nonneg(mul(x, y))
@@ -588,18 +588,18 @@ proof
                                           @b-times-gap-nonneg |
                                             is_nonneg(mul(b, e))
                                             [by tautology b-times-gap-nonneg-if-parts b-is-nonneg gap-nonneg]
-                                          @nonneg-not-below-zero |
-                                            forall n: Int; is_nonneg(n) -> (not below(n, ZERO))
-                                            [by theorem nonnegNotBelowZero]
-                                          @product-not-below-zero |
-                                            is_nonneg(mul(b, e)) -> (not below(mul(b, e), ZERO))
-                                            [by forall_elim(mul(b, e)) nonneg-not-below-zero]
-                                          @product-is-not-below-zero |
-                                            not below(mul(b, e), ZERO)
-                                            [by modus_ponens product-not-below-zero b-times-gap-nonneg]
+                                          @nonneg-not-less_than-zero |
+                                            forall n: Int; is_nonneg(n) -> (not less_than(n, ZERO))
+                                            [by theorem nonnegNotLessThanZero]
+                                          @product-not-less_than-zero |
+                                            is_nonneg(mul(b, e)) -> (not less_than(mul(b, e), ZERO))
+                                            [by forall_elim(mul(b, e)) nonneg-not-less_than-zero]
+                                          @product-is-not-less_than-zero |
+                                            not less_than(mul(b, e), ZERO)
+                                            [by modus_ponens product-not-less_than-zero b-times-gap-nonneg]
                                           @conclusion-m-is-zero |
                                             m = ZERO
-                                            [by absurd product-below-zero product-is-not-below-zero]
+                                            [by absurd product-less_than-zero product-is-not-less_than-zero]
                                         }
                                       @conclusion-m-is-zero |
                                         m = ZERO
@@ -611,54 +611,54 @@ proof
                             m = ZERO
                             [by exists_elim with-quotient-k]
                         }
-                      @m-below-b-implies-zero |
-                        below(m, b) -> m = ZERO
-                        [by implies_intro given-m-below-b]
+                      @m-less_than-b-implies-zero |
+                        less_than(m, b) -> m = ZERO
+                        [by implies_intro given-m-less_than-b]
                     }
                   @m-nonneg-implies-zero |
-                    is_nonneg(m) -> below(m, b) -> m = ZERO
+                    is_nonneg(m) -> less_than(m, b) -> m = ZERO
                     [by implies_intro given-m-nonneg]
                 }
               @b-divides-m-implies-zero |
-                does_divide(b, m) -> is_nonneg(m) -> below(m, b) -> m = ZERO
+                does_divide(b, m) -> is_nonneg(m) -> less_than(m, b) -> m = ZERO
                 [by implies_intro given-b-divides-m]
             }
           @b-positive-implies-zero |
-            below(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> below(m, b) -> m = ZERO
+            less_than(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> less_than(m, b) -> m = ZERO
             [by implies_intro given-b-positive]
         }
       @discharge-m |
-        forall m: Int; below(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> below(m, b) -> m = ZERO
+        forall m: Int; less_than(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> less_than(m, b) -> m = ZERO
         [by forall_intro generalize-m]
     }
   @conclusion |
-    forall b, m: Int; below(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> below(m, b) -> m = ZERO
+    forall b, m: Int; less_than(ZERO, b) -> does_divide(b, m) -> is_nonneg(m) -> less_than(m, b) -> m = ZERO
     [by forall_intro generalize-b]
 qed
 
 theorem productWithPositiveIsPositive: forall b, k: Int;
-  below(ZERO, b) -> below(ZERO, k) -> below(ZERO, mul(b, k))
+  less_than(ZERO, b) -> less_than(ZERO, k) -> less_than(ZERO, mul(b, k))
 proof
   @generalize-b |
     fix b: Int {
       @generalize-k |
         fix k: Int {
           @given-b-positive |
-            assume below(ZERO, b) {
+            assume less_than(ZERO, b) {
               @given-k-positive |
-                assume below(ZERO, k) {
+                assume less_than(ZERO, k) {
                   @b-positive |
-                    below(ZERO, b)
+                    less_than(ZERO, b)
                     [by hypothesis given-b-positive]
                   @k-positive |
-                    below(ZERO, k)
+                    less_than(ZERO, k)
                     [by hypothesis given-k-positive]
                   // b > 0 exhibits b = succ(gap), hence b is nonneg.
                   @positivity-yields-gap |
-                    forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                    forall x, y: Int; less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
                     [by axiom lessThanElim]
                   @b-gap-exists-if-positive |
-                    below(ZERO, b) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
+                    less_than(ZERO, b) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
                     [by forall_elim(ZERO, b) positivity-yields-gap]
                   @b-gap-exists |
                     exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
@@ -701,7 +701,7 @@ proof
                     [by exists_elim with-b-gap]
                   // k > 0 exhibits k = succ(d), so mul(b, k) = mul(b, d) + b.
                   @k-gap-exists-if-positive |
-                    below(ZERO, k) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
+                    less_than(ZERO, k) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
                     [by forall_elim(ZERO, k) positivity-yields-gap]
                   @k-gap-exists |
                     exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
@@ -747,13 +747,13 @@ proof
                         is_nonneg(mul(b, d))
                         [by tautology partial-product-nonneg-if-parts b-is-nonneg gap-nonneg]
                       @addition-preserves-order |
-                        forall x, y, c: Int; below(x, y) -> below(add(c, x), add(c, y))
+                        forall x, y, c: Int; less_than(x, y) -> less_than(add(c, x), add(c, y))
                         [by theorem additionPreservesOrder]
                       @adding-partial-product-preserves |
-                        below(ZERO, b) -> below(add(mul(b, d), ZERO), add(mul(b, d), b))
+                        less_than(ZERO, b) -> less_than(add(mul(b, d), ZERO), add(mul(b, d), b))
                         [by forall_elim(ZERO, b, mul(b, d)) addition-preserves-order]
-                      @partial-plus-zero-below-partial-plus-b |
-                        below(add(mul(b, d), ZERO), add(mul(b, d), b))
+                      @partial-plus-zero-less_than-partial-plus-b |
+                        less_than(add(mul(b, d), ZERO), add(mul(b, d), b))
                         [by modus_ponens adding-partial-product-preserves b-positive]
                       @adding-zero-is-identity |
                         forall n: Int; add(n, ZERO) = n
@@ -761,15 +761,15 @@ proof
                       @partial-plus-zero-is-partial |
                         add(mul(b, d), ZERO) = mul(b, d)
                         [by forall_elim(mul(b, d)) adding-zero-is-identity]
-                      @partial-below-partial-plus-b |
-                        below(mul(b, d), add(mul(b, d), b))
-                        [by rewrite partial-plus-zero-is-partial partial-plus-zero-below-partial-plus-b]
+                      @partial-less_than-partial-plus-b |
+                        less_than(mul(b, d), add(mul(b, d), b))
+                        [by rewrite partial-plus-zero-is-partial partial-plus-zero-less_than-partial-plus-b]
                       @partial-plus-b-is-product |
                         add(mul(b, d), b) = mul(b, k)
                         [by symmetry product-is-partial-plus-b]
-                      @partial-below-product |
-                        below(mul(b, d), mul(b, k))
-                        [by rewrite partial-plus-b-is-product partial-below-partial-plus-b]
+                      @partial-less_than-product |
+                        less_than(mul(b, d), mul(b, k))
+                        [by rewrite partial-plus-b-is-product partial-less_than-partial-plus-b]
                       // split 0 <= mul(b, d): either 0 < mul(b, d) (transit) or 0 = mul(b, d).
                       @zero-plus-partial-is-partial |
                         add(ZERO, mul(b, d)) = mul(b, d)
@@ -777,7 +777,7 @@ proof
                       @partial-witnesses-gap |
                         is_nonneg(mul(b, d)) and add(ZERO, mul(b, d)) = mul(b, d)
                         [by and_intro partial-product-nonneg zero-plus-partial-is-partial]
-                      @zero-below-or-equal-partial-gap |
+                      @zero-less_than-or-equal-partial-gap |
                         exists dd: Int; is_nonneg(dd) and add(ZERO, dd) = mul(b, d)
                         [by exists_intro(mul(b, d)) partial-witnesses-gap]
                       @at-most-is-gap-existential |
@@ -791,33 +791,33 @@ proof
                         [by iff_elim_backward zero-at-most-partial-iff-gap]
                       @zero-at-most-partial |
                         at_most(ZERO, mul(b, d))
-                        [by modus_ponens zero-at-most-partial-if-gap zero-below-or-equal-partial-gap]
+                        [by modus_ponens zero-at-most-partial-if-gap zero-less_than-or-equal-partial-gap]
                       @at-most-splits |
-                        forall x, y: Int; at_most(x, y) -> (below(x, y) or x = y)
+                        forall x, y: Int; at_most(x, y) -> (less_than(x, y) or x = y)
                         [by theorem lessOrEqualSplit]
-                      @zero-below-or-equals-partial-if |
-                        at_most(ZERO, mul(b, d)) -> (below(ZERO, mul(b, d)) or ZERO = mul(b, d))
+                      @zero-less_than-or-equals-partial-if |
+                        at_most(ZERO, mul(b, d)) -> (less_than(ZERO, mul(b, d)) or ZERO = mul(b, d))
                         [by forall_elim(ZERO, mul(b, d)) at-most-splits]
-                      @zero-below-or-equals-partial |
-                        below(ZERO, mul(b, d)) or ZERO = mul(b, d)
-                        [by modus_ponens zero-below-or-equals-partial-if zero-at-most-partial]
+                      @zero-less_than-or-equals-partial |
+                        less_than(ZERO, mul(b, d)) or ZERO = mul(b, d)
+                        [by modus_ponens zero-less_than-or-equals-partial-if zero-at-most-partial]
                       @conclusion-product-positive |
-                        below(ZERO, mul(b, k))
-                        case on zero-below-or-equals-partial {
+                        less_than(ZERO, mul(b, k))
+                        case on zero-less_than-or-equals-partial {
                           @when-partial-positive |
-                            assume below(ZERO, mul(b, d)) {
+                            assume less_than(ZERO, mul(b, d)) {
                               @partial-positive |
-                                below(ZERO, mul(b, d))
+                                less_than(ZERO, mul(b, d))
                                 [by hypothesis when-partial-positive]
                               @order-is-transitive |
-                                forall x, y, z: Int; below(x, y) -> below(y, z) -> below(x, z)
+                                forall x, y, z: Int; less_than(x, y) -> less_than(y, z) -> less_than(x, z)
                                 [by theorem lessThanTransitive]
-                              @zero-below-product-if-chain |
-                                below(ZERO, mul(b, d)) -> below(mul(b, d), mul(b, k)) -> below(ZERO, mul(b, k))
+                              @zero-less_than-product-if-chain |
+                                less_than(ZERO, mul(b, d)) -> less_than(mul(b, d), mul(b, k)) -> less_than(ZERO, mul(b, k))
                                 [by forall_elim(ZERO, mul(b, d), mul(b, k)) order-is-transitive]
                               @conclusion-product-positive |
-                                below(ZERO, mul(b, k))
-                                [by tautology zero-below-product-if-chain partial-positive partial-below-product]
+                                less_than(ZERO, mul(b, k))
+                                [by tautology zero-less_than-product-if-chain partial-positive partial-less_than-product]
                             }
                           @when-partial-zero |
                             assume ZERO = mul(b, d) {
@@ -828,78 +828,78 @@ proof
                                 mul(b, d) = ZERO
                                 [by symmetry partial-is-zero]
                               @conclusion-product-positive |
-                                below(ZERO, mul(b, k))
-                                [by rewrite partial-is-zero-flipped partial-below-product]
+                                less_than(ZERO, mul(b, k))
+                                [by rewrite partial-is-zero-flipped partial-less_than-product]
                             }
                         }
                     }
                   @product-positive |
-                    below(ZERO, mul(b, k))
+                    less_than(ZERO, mul(b, k))
                     [by exists_elim with-k-gap]
                 }
               @k-positive-implies-product-positive |
-                below(ZERO, k) -> below(ZERO, mul(b, k))
+                less_than(ZERO, k) -> less_than(ZERO, mul(b, k))
                 [by implies_intro given-k-positive]
             }
           @b-positive-implies-conditional |
-            below(ZERO, b) -> below(ZERO, k) -> below(ZERO, mul(b, k))
+            less_than(ZERO, b) -> less_than(ZERO, k) -> less_than(ZERO, mul(b, k))
             [by implies_intro given-b-positive]
         }
       @discharge-k |
-        forall k: Int; below(ZERO, b) -> below(ZERO, k) -> below(ZERO, mul(b, k))
+        forall k: Int; less_than(ZERO, b) -> less_than(ZERO, k) -> less_than(ZERO, mul(b, k))
         [by forall_intro generalize-k]
     }
   @conclusion |
-    forall b, k: Int; below(ZERO, b) -> below(ZERO, k) -> below(ZERO, mul(b, k))
+    forall b, k: Int; less_than(ZERO, b) -> less_than(ZERO, k) -> less_than(ZERO, mul(b, k))
     [by forall_intro generalize-b]
 qed
 
 theorem positiveFactorZeroForcesZero: forall b, z: Int;
-  below(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
+  less_than(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
 proof
   @generalize-b |
     fix b: Int {
       @generalize-z |
         fix z: Int {
           @given-b-positive |
-            assume below(ZERO, b) {
+            assume less_than(ZERO, b) {
               @given-product-zero |
                 assume mul(b, z) = ZERO {
                   @b-positive |
-                    below(ZERO, b)
+                    less_than(ZERO, b)
                     [by hypothesis given-b-positive]
                   @product-zero |
                     mul(b, z) = ZERO
                     [by hypothesis given-product-zero]
                   @signs-of-z |
-                    forall x, y: Int; below(x, y) or x = y or below(y, x)
+                    forall x, y: Int; less_than(x, y) or x = y or less_than(y, x)
                     [by theorem trichotomy]
                   @z-sign-trichotomy |
-                    below(z, ZERO) or z = ZERO or below(ZERO, z)
+                    less_than(z, ZERO) or z = ZERO or less_than(ZERO, z)
                     [by forall_elim(z, ZERO) signs-of-z]
                   @multiply-by-positive |
-                    forall x, y: Int; below(ZERO, x) -> below(ZERO, y) -> below(ZERO, mul(x, y))
+                    forall x, y: Int; less_than(ZERO, x) -> less_than(ZERO, y) -> less_than(ZERO, mul(x, y))
                     [by theorem productWithPositiveIsPositive]
                   @order-irreflexive |
-                    forall n: Int; not below(n, n)
+                    forall n: Int; not less_than(n, n)
                     [by theorem lessThanIrreflexive]
-                  @zero-not-below-zero |
-                    not below(ZERO, ZERO)
+                  @zero-not-less_than-zero |
+                    not less_than(ZERO, ZERO)
                     [by forall_elim(ZERO) order-irreflexive]
                   @conclusion-z-is-zero |
                     z = ZERO
                     case on z-sign-trichotomy {
                       @when-z-negative |
-                        assume below(z, ZERO) {
+                        assume less_than(z, ZERO) {
                           // -z > 0, so b*(-z) > 0; but b*(-z) = -(b*z) = -0 = 0. Absurd.
                           @z-negative |
-                            below(z, ZERO)
+                            less_than(z, ZERO)
                             [by hypothesis when-z-negative]
                           @negative-yields-gap |
-                            forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                            forall x, y: Int; less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
                             [by axiom lessThanElim]
                           @z-gap-exists-if-negative |
-                            below(z, ZERO) -> exists d: Int; is_nonneg(d) and add(z, succ(d)) = ZERO
+                            less_than(z, ZERO) -> exists d: Int; is_nonneg(d) and add(z, succ(d)) = ZERO
                             [by forall_elim(z, ZERO) negative-yields-gap]
                           @z-gap-exists |
                             exists d: Int; is_nonneg(d) and add(z, succ(d)) = ZERO
@@ -939,10 +939,10 @@ proof
                                 [by modus_ponens gap-equals-neg-z-if-cancel gap-equals-neg-z-summand]
                               // succ(e) > 0 since 0 + succ(e) = succ(e) with e nonneg.
                               @strict-gap-witnesses-order |
-                                forall x, dd, y: Int; is_nonneg(dd) -> add(x, succ(dd)) = y -> below(x, y)
+                                forall x, dd, y: Int; is_nonneg(dd) -> add(x, succ(dd)) = y -> less_than(x, y)
                                 [by axiom lessThanIntro]
-                              @zero-below-succ-gap-if |
-                                is_nonneg(e) -> add(ZERO, succ(e)) = succ(e) -> below(ZERO, succ(e))
+                              @zero-less_than-succ-gap-if |
+                                is_nonneg(e) -> add(ZERO, succ(e)) = succ(e) -> less_than(ZERO, succ(e))
                                 [by forall_elim(ZERO, e, succ(e)) strict-gap-witnesses-order]
                               @zero-prefix-is-identity |
                                 forall n: Int; add(ZERO, n) = n
@@ -950,19 +950,19 @@ proof
                               @zero-plus-succ-gap |
                                 add(ZERO, succ(e)) = succ(e)
                                 [by forall_elim(succ(e)) zero-prefix-is-identity]
-                              @zero-below-succ-gap |
-                                below(ZERO, succ(e))
-                                [by tautology zero-below-succ-gap-if gap-nonneg zero-plus-succ-gap]
-                              @zero-below-neg-z |
-                                below(ZERO, neg(z))
-                                [by rewrite successor-gap-is-neg-z zero-below-succ-gap]
+                              @zero-less_than-succ-gap |
+                                less_than(ZERO, succ(e))
+                                [by tautology zero-less_than-succ-gap-if gap-nonneg zero-plus-succ-gap]
+                              @zero-less_than-neg-z |
+                                less_than(ZERO, neg(z))
+                                [by rewrite successor-gap-is-neg-z zero-less_than-succ-gap]
                               // b*(-z) > 0.
                               @b-times-negz-positive-if |
-                                below(ZERO, b) -> below(ZERO, neg(z)) -> below(ZERO, mul(b, neg(z)))
+                                less_than(ZERO, b) -> less_than(ZERO, neg(z)) -> less_than(ZERO, mul(b, neg(z)))
                                 [by forall_elim(b, neg(z)) multiply-by-positive]
                               @b-times-negz-positive |
-                                below(ZERO, mul(b, neg(z)))
-                                [by tautology b-times-negz-positive-if b-positive zero-below-neg-z]
+                                less_than(ZERO, mul(b, neg(z)))
+                                [by tautology b-times-negz-positive-if b-positive zero-less_than-neg-z]
                               // b*(-z) = -(b*z) = -0 = 0.
                               @product-negates-on-right |
                                 forall x, y: Int; mul(x, neg(y)) = neg(mul(x, y))
@@ -985,12 +985,12 @@ proof
                               @b-times-negz-is-zero |
                                 mul(b, neg(z)) = ZERO
                                 [by rewrite neg-product-is-zero b-times-negz-is-neg-product]
-                              @zero-below-zero |
-                                below(ZERO, ZERO)
+                              @zero-less_than-zero |
+                                less_than(ZERO, ZERO)
                                 [by rewrite b-times-negz-is-zero b-times-negz-positive]
                               @conclusion-z-is-zero |
                                 z = ZERO
-                                [by absurd zero-below-zero zero-not-below-zero]
+                                [by absurd zero-less_than-zero zero-not-less_than-zero]
                             }
                           @conclusion-z-is-zero |
                             z = ZERO
@@ -1003,23 +1003,23 @@ proof
                             [by hypothesis when-z-zero]
                         }
                       @when-z-positive |
-                        assume below(ZERO, z) {
+                        assume less_than(ZERO, z) {
                           // b*z > 0 contradicts b*z = 0.
                           @z-positive |
-                            below(ZERO, z)
+                            less_than(ZERO, z)
                             [by hypothesis when-z-positive]
                           @b-times-z-positive-if |
-                            below(ZERO, b) -> below(ZERO, z) -> below(ZERO, mul(b, z))
+                            less_than(ZERO, b) -> less_than(ZERO, z) -> less_than(ZERO, mul(b, z))
                             [by forall_elim(b, z) multiply-by-positive]
                           @b-times-z-positive |
-                            below(ZERO, mul(b, z))
+                            less_than(ZERO, mul(b, z))
                             [by tautology b-times-z-positive-if b-positive z-positive]
-                          @zero-below-zero |
-                            below(ZERO, ZERO)
+                          @zero-less_than-zero |
+                            less_than(ZERO, ZERO)
                             [by rewrite product-zero b-times-z-positive]
                           @conclusion-z-is-zero |
                             z = ZERO
-                            [by absurd zero-below-zero zero-not-below-zero]
+                            [by absurd zero-less_than-zero zero-not-less_than-zero]
                         }
                     }
                 }
@@ -1028,20 +1028,20 @@ proof
                 [by implies_intro given-product-zero]
             }
           @b-positive-implies-conditional |
-            below(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
+            less_than(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
             [by implies_intro given-b-positive]
         }
       @discharge-z |
-        forall z: Int; below(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
+        forall z: Int; less_than(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
         [by forall_intro generalize-z]
     }
   @conclusion |
-    forall b, z: Int; below(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
+    forall b, z: Int; less_than(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
     [by forall_intro generalize-b]
 qed
 
-theorem atMostThenBelow: forall x, y, z: Int;
-  at_most(x, y) -> below(y, z) -> below(x, z)
+theorem atMostThenLessThan: forall x, y, z: Int;
+  at_most(x, y) -> less_than(y, z) -> less_than(x, z)
 proof
   @generalize-x |
     fix x: Int {
@@ -1051,40 +1051,40 @@ proof
             fix z: Int {
               @given-x-at-most-y |
                 assume at_most(x, y) {
-                  @given-y-below-z |
-                    assume below(y, z) {
+                  @given-y-less_than-z |
+                    assume less_than(y, z) {
                       @x-at-most-y |
                         at_most(x, y)
                         [by hypothesis given-x-at-most-y]
-                      @y-below-z |
-                        below(y, z)
-                        [by hypothesis given-y-below-z]
+                      @y-less_than-z |
+                        less_than(y, z)
+                        [by hypothesis given-y-less_than-z]
                       @at-most-splits |
-                        forall a, b: Int; at_most(a, b) -> (below(a, b) or a = b)
+                        forall a, b: Int; at_most(a, b) -> (less_than(a, b) or a = b)
                         [by theorem lessOrEqualSplit]
-                      @x-below-or-equals-y-if |
-                        at_most(x, y) -> (below(x, y) or x = y)
+                      @x-less_than-or-equals-y-if |
+                        at_most(x, y) -> (less_than(x, y) or x = y)
                         [by forall_elim(x, y) at-most-splits]
-                      @x-below-or-equals-y |
-                        below(x, y) or x = y
-                        [by modus_ponens x-below-or-equals-y-if x-at-most-y]
-                      @conclusion-x-below-z |
-                        below(x, z)
-                        case on x-below-or-equals-y {
-                          @when-x-below-y |
-                            assume below(x, y) {
-                              @x-below-y |
-                                below(x, y)
-                                [by hypothesis when-x-below-y]
+                      @x-less_than-or-equals-y |
+                        less_than(x, y) or x = y
+                        [by modus_ponens x-less_than-or-equals-y-if x-at-most-y]
+                      @conclusion-x-less_than-z |
+                        less_than(x, z)
+                        case on x-less_than-or-equals-y {
+                          @when-x-less_than-y |
+                            assume less_than(x, y) {
+                              @x-less_than-y |
+                                less_than(x, y)
+                                [by hypothesis when-x-less_than-y]
                               @order-is-transitive |
-                                forall a, b, c: Int; below(a, b) -> below(b, c) -> below(a, c)
+                                forall a, b, c: Int; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
                                 [by theorem lessThanTransitive]
-                              @x-below-z-if-chain |
-                                below(x, y) -> below(y, z) -> below(x, z)
+                              @x-less_than-z-if-chain |
+                                less_than(x, y) -> less_than(y, z) -> less_than(x, z)
                                 [by forall_elim(x, y, z) order-is-transitive]
-                              @conclusion-x-below-z |
-                                below(x, z)
-                                [by tautology x-below-z-if-chain x-below-y y-below-z]
+                              @conclusion-x-less_than-z |
+                                less_than(x, z)
+                                [by tautology x-less_than-z-if-chain x-less_than-y y-less_than-z]
                             }
                           @when-x-equals-y |
                             assume x = y {
@@ -1094,54 +1094,54 @@ proof
                               @y-equals-x |
                                 y = x
                                 [by symmetry x-equals-y]
-                              @conclusion-x-below-z |
-                                below(x, z)
-                                [by rewrite y-equals-x y-below-z]
+                              @conclusion-x-less_than-z |
+                                less_than(x, z)
+                                [by rewrite y-equals-x y-less_than-z]
                             }
                         }
                     }
-                  @y-below-z-implies-x-below-z |
-                    below(y, z) -> below(x, z)
-                    [by implies_intro given-y-below-z]
+                  @y-less_than-z-implies-x-less_than-z |
+                    less_than(y, z) -> less_than(x, z)
+                    [by implies_intro given-y-less_than-z]
                 }
               @x-at-most-y-implies |
-                at_most(x, y) -> below(y, z) -> below(x, z)
+                at_most(x, y) -> less_than(y, z) -> less_than(x, z)
                 [by implies_intro given-x-at-most-y]
             }
           @discharge-z |
-            forall z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
+            forall z: Int; at_most(x, y) -> less_than(y, z) -> less_than(x, z)
             [by forall_intro generalize-z]
         }
       @discharge-y |
-        forall y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
+        forall y, z: Int; at_most(x, y) -> less_than(y, z) -> less_than(x, z)
         [by forall_intro generalize-y]
     }
   @conclusion |
-    forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
+    forall x, y, z: Int; at_most(x, y) -> less_than(y, z) -> less_than(x, z)
     [by forall_intro generalize-x]
 qed
 
-theorem belowGivesNonnegDifference: forall x, y: Int;
-  below(x, y) -> is_nonneg(sub(y, x))
+theorem lessThanGivesNonnegDifference: forall x, y: Int;
+  less_than(x, y) -> is_nonneg(sub(y, x))
 proof
   @generalize-x |
     fix x: Int {
       @generalize-y |
         fix y: Int {
-          @given-x-below-y |
-            assume below(x, y) {
-              @x-below-y |
-                below(x, y)
-                [by hypothesis given-x-below-y]
-              @below-yields-gap |
-                forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
+          @given-x-less_than-y |
+            assume less_than(x, y) {
+              @x-less_than-y |
+                less_than(x, y)
+                [by hypothesis given-x-less_than-y]
+              @less_than-yields-gap |
+                forall a, b: Int; less_than(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
                 [by axiom lessThanElim]
-              @gap-exists-if-below |
-                below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                [by forall_elim(x, y) below-yields-gap]
+              @gap-exists-if-less_than |
+                less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                [by forall_elim(x, y) less_than-yields-gap]
               @gap-exists |
                 exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                [by modus_ponens gap-exists-if-below x-below-y]
+                [by modus_ponens gap-exists-if-less_than x-less_than-y]
               @with-gap |
                 unpack d: Int from gap-exists {
                   @gap-nonneg-and-reaches |
@@ -1217,16 +1217,16 @@ proof
                 is_nonneg(sub(y, x))
                 [by exists_elim with-gap]
             }
-          @x-below-y-implies-nonneg-difference |
-            below(x, y) -> is_nonneg(sub(y, x))
-            [by implies_intro given-x-below-y]
+          @x-less_than-y-implies-nonneg-difference |
+            less_than(x, y) -> is_nonneg(sub(y, x))
+            [by implies_intro given-x-less_than-y]
         }
       @discharge-y |
-        forall y: Int; below(x, y) -> is_nonneg(sub(y, x))
+        forall y: Int; less_than(x, y) -> is_nonneg(sub(y, x))
         [by forall_intro generalize-y]
     }
   @conclusion |
-    forall x, y: Int; below(x, y) -> is_nonneg(sub(y, x))
+    forall x, y: Int; less_than(x, y) -> is_nonneg(sub(y, x))
     [by forall_intro generalize-x]
 qed
 
@@ -1417,7 +1417,7 @@ proof
 qed
 
 theorem boundedRemainderDifferenceIsZero: forall b, small, big: Int;
-  below(ZERO, b) -> is_nonneg(small) -> below(big, b) -> below(small, big) ->
+  less_than(ZERO, b) -> is_nonneg(small) -> less_than(big, b) -> less_than(small, big) ->
   does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
 proof
   @generalize-b |
@@ -1427,40 +1427,40 @@ proof
           @generalize-big |
             fix big: Int {
               @given-b-positive |
-                assume below(ZERO, b) {
+                assume less_than(ZERO, b) {
                   @given-small-nonneg |
                     assume is_nonneg(small) {
-                      @given-big-below-b |
-                        assume below(big, b) {
-                          @given-small-below-big |
-                            assume below(small, big) {
+                      @given-big-less_than-b |
+                        assume less_than(big, b) {
+                          @given-small-less_than-big |
+                            assume less_than(small, big) {
                               @given-b-divides-difference |
                                 assume does_divide(b, sub(big, small)) {
                                   @b-positive |
-                                    below(ZERO, b)
+                                    less_than(ZERO, b)
                                     [by hypothesis given-b-positive]
                                   @small-nonneg |
                                     is_nonneg(small)
                                     [by hypothesis given-small-nonneg]
-                                  @big-below-b |
-                                    below(big, b)
-                                    [by hypothesis given-big-below-b]
-                                  @small-below-big |
-                                    below(small, big)
-                                    [by hypothesis given-small-below-big]
+                                  @big-less_than-b |
+                                    less_than(big, b)
+                                    [by hypothesis given-big-less_than-b]
+                                  @small-less_than-big |
+                                    less_than(small, big)
+                                    [by hypothesis given-small-less_than-big]
                                   @b-divides-difference |
                                     does_divide(b, sub(big, small))
                                     [by hypothesis given-b-divides-difference]
                                   // difference is nonneg (small < big).
-                                  @below-gives-nonneg-difference |
-                                    forall x, y: Int; below(x, y) -> is_nonneg(sub(y, x))
-                                    [by theorem belowGivesNonnegDifference]
-                                  @difference-nonneg-if-below |
-                                    below(small, big) -> is_nonneg(sub(big, small))
-                                    [by forall_elim(small, big) below-gives-nonneg-difference]
+                                  @less_than-gives-nonneg-difference |
+                                    forall x, y: Int; less_than(x, y) -> is_nonneg(sub(y, x))
+                                    [by theorem lessThanGivesNonnegDifference]
+                                  @difference-nonneg-if-less_than |
+                                    less_than(small, big) -> is_nonneg(sub(big, small))
+                                    [by forall_elim(small, big) less_than-gives-nonneg-difference]
                                   @difference-nonneg |
                                     is_nonneg(sub(big, small))
-                                    [by modus_ponens difference-nonneg-if-below small-below-big]
+                                    [by modus_ponens difference-nonneg-if-less_than small-less_than-big]
                                   // difference <= big (subtracting a nonneg), and big < b.
                                   @difference-plus-small-reaches-big |
                                     forall x, y: Int; add(sub(x, y), y) = x
@@ -1471,7 +1471,7 @@ proof
                                   @small-witnesses-difference-at-most-big |
                                     is_nonneg(small) and add(sub(big, small), small) = big
                                     [by and_intro small-nonneg difference-plus-small-is-big]
-                                  @difference-below-or-equal-big-gap |
+                                  @difference-less_than-or-equal-big-gap |
                                     exists d: Int; is_nonneg(d) and add(sub(big, small), d) = big
                                     [by exists_intro(small) small-witnesses-difference-at-most-big]
                                   @at-most-is-gap-existential |
@@ -1485,62 +1485,62 @@ proof
                                     [by iff_elim_backward difference-at-most-big-iff-gap]
                                   @difference-at-most-big |
                                     at_most(sub(big, small), big)
-                                    [by modus_ponens difference-at-most-big-if-gap difference-below-or-equal-big-gap]
-                                  @at-most-then-below |
-                                    forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
-                                    [by theorem atMostThenBelow]
-                                  @difference-below-b-if |
-                                    at_most(sub(big, small), big) -> below(big, b) -> below(sub(big, small), b)
-                                    [by forall_elim(sub(big, small), big, b) at-most-then-below]
-                                  @difference-below-b |
-                                    below(sub(big, small), b)
-                                    [by tautology difference-below-b-if difference-at-most-big big-below-b]
-                                  // a nonneg multiple of b below b is zero.
+                                    [by modus_ponens difference-at-most-big-if-gap difference-less_than-or-equal-big-gap]
+                                  @at-most-then-less_than |
+                                    forall x, y, z: Int; at_most(x, y) -> less_than(y, z) -> less_than(x, z)
+                                    [by theorem atMostThenLessThan]
+                                  @difference-less_than-b-if |
+                                    at_most(sub(big, small), big) -> less_than(big, b) -> less_than(sub(big, small), b)
+                                    [by forall_elim(sub(big, small), big, b) at-most-then-less_than]
+                                  @difference-less_than-b |
+                                    less_than(sub(big, small), b)
+                                    [by tautology difference-less_than-b-if difference-at-most-big big-less_than-b]
+                                  // a nonneg multiple of b less_than b is zero.
                                   @bounded-multiple-is-zero |
-                                    forall bb, m: Int; below(ZERO, bb) -> does_divide(bb, m) -> is_nonneg(m) -> below(m, bb) -> m = ZERO
+                                    forall bb, m: Int; less_than(ZERO, bb) -> does_divide(bb, m) -> is_nonneg(m) -> less_than(m, bb) -> m = ZERO
                                     [by theorem boundedNonnegMultipleIsZero]
                                   @difference-is-zero-if |
-                                    below(ZERO, b) -> does_divide(b, sub(big, small)) -> is_nonneg(sub(big, small)) -> below(sub(big, small), b) -> sub(big, small) = ZERO
+                                    less_than(ZERO, b) -> does_divide(b, sub(big, small)) -> is_nonneg(sub(big, small)) -> less_than(sub(big, small), b) -> sub(big, small) = ZERO
                                     [by forall_elim(b, sub(big, small)) bounded-multiple-is-zero]
                                   @conclusion-difference-is-zero |
                                     sub(big, small) = ZERO
-                                    [by tautology difference-is-zero-if b-positive b-divides-difference difference-nonneg difference-below-b]
+                                    [by tautology difference-is-zero-if b-positive b-divides-difference difference-nonneg difference-less_than-b]
                                 }
                               @divides-implies-zero |
                                 does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
                                 [by implies_intro given-b-divides-difference]
                             }
-                          @small-below-big-implies |
-                            below(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
-                            [by implies_intro given-small-below-big]
+                          @small-less_than-big-implies |
+                            less_than(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
+                            [by implies_intro given-small-less_than-big]
                         }
-                      @big-below-b-implies |
-                        below(big, b) -> below(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
-                        [by implies_intro given-big-below-b]
+                      @big-less_than-b-implies |
+                        less_than(big, b) -> less_than(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
+                        [by implies_intro given-big-less_than-b]
                     }
                   @small-nonneg-implies |
-                    is_nonneg(small) -> below(big, b) -> below(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
+                    is_nonneg(small) -> less_than(big, b) -> less_than(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
                     [by implies_intro given-small-nonneg]
                 }
               @b-positive-implies |
-                below(ZERO, b) -> is_nonneg(small) -> below(big, b) -> below(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
+                less_than(ZERO, b) -> is_nonneg(small) -> less_than(big, b) -> less_than(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
                 [by implies_intro given-b-positive]
             }
           @discharge-big |
-            forall big: Int; below(ZERO, b) -> is_nonneg(small) -> below(big, b) -> below(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
+            forall big: Int; less_than(ZERO, b) -> is_nonneg(small) -> less_than(big, b) -> less_than(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
             [by forall_intro generalize-big]
         }
       @discharge-small |
-        forall small, big: Int; below(ZERO, b) -> is_nonneg(small) -> below(big, b) -> below(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
+        forall small, big: Int; less_than(ZERO, b) -> is_nonneg(small) -> less_than(big, b) -> less_than(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
         [by forall_intro generalize-small]
     }
   @conclusion |
-    forall b, small, big: Int; below(ZERO, b) -> is_nonneg(small) -> below(big, b) -> below(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
+    forall b, small, big: Int; less_than(ZERO, b) -> is_nonneg(small) -> less_than(big, b) -> less_than(small, big) -> does_divide(b, sub(big, small)) -> sub(big, small) = ZERO
     [by forall_intro generalize-b]
 qed
 
 theorem remaindersEqual: forall b, q1, r1, q2, r2: Int;
-  below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) ->
+  less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) ->
   add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
 proof
   @generalize-b |
@@ -1554,32 +1554,32 @@ proof
                   @generalize-r2 |
                     fix r2: Int {
                       @given-b-positive |
-                        assume below(ZERO, b) {
+                        assume less_than(ZERO, b) {
                           @given-r1-nonneg |
                             assume is_nonneg(r1) {
-                              @given-r1-below-b |
-                                assume below(r1, b) {
+                              @given-r1-less_than-b |
+                                assume less_than(r1, b) {
                                   @given-r2-nonneg |
                                     assume is_nonneg(r2) {
-                                      @given-r2-below-b |
-                                        assume below(r2, b) {
+                                      @given-r2-less_than-b |
+                                        assume less_than(r2, b) {
                                           @given-decompositions-equal |
                                             assume add(mul(b, q1), r1) = add(mul(b, q2), r2) {
                                               @b-positive |
-                                                below(ZERO, b)
+                                                less_than(ZERO, b)
                                                 [by hypothesis given-b-positive]
                                               @r1-nonneg |
                                                 is_nonneg(r1)
                                                 [by hypothesis given-r1-nonneg]
-                                              @r1-below-b |
-                                                below(r1, b)
-                                                [by hypothesis given-r1-below-b]
+                                              @r1-less_than-b |
+                                                less_than(r1, b)
+                                                [by hypothesis given-r1-less_than-b]
                                               @r2-nonneg |
                                                 is_nonneg(r2)
                                                 [by hypothesis given-r2-nonneg]
-                                              @r2-below-b |
-                                                below(r2, b)
-                                                [by hypothesis given-r2-below-b]
+                                              @r2-less_than-b |
+                                                less_than(r2, b)
+                                                [by hypothesis given-r2-less_than-b]
                                               @decompositions-equal |
                                                 add(mul(b, q1), r1) = add(mul(b, q2), r2)
                                                 [by hypothesis given-decompositions-equal]
@@ -1590,25 +1590,25 @@ proof
                                                 forall n: Int; add(ZERO, n) = n
                                                 [by axiom addZeroLeft]
                                               @remainders-trichotomous |
-                                                forall x, y: Int; below(x, y) or x = y or below(y, x)
+                                                forall x, y: Int; less_than(x, y) or x = y or less_than(y, x)
                                                 [by theorem trichotomy]
                                               @r1-r2-trichotomy |
-                                                below(r1, r2) or r1 = r2 or below(r2, r1)
+                                                less_than(r1, r2) or r1 = r2 or less_than(r2, r1)
                                                 [by forall_elim(r1, r2) remainders-trichotomous]
                                               @difference-is-multiple |
                                                 forall bb, x1, s1, x2, s2: Int; add(mul(bb, x1), s1) = add(mul(bb, x2), s2) -> sub(s2, s1) = mul(bb, sub(x1, x2))
                                                 [by theorem remainderDifferenceIsMultiple]
                                               @bounded-difference-zero |
-                                                forall bb, s, t: Int; below(ZERO, bb) -> is_nonneg(s) -> below(t, bb) -> below(s, t) -> does_divide(bb, sub(t, s)) -> sub(t, s) = ZERO
+                                                forall bb, s, t: Int; less_than(ZERO, bb) -> is_nonneg(s) -> less_than(t, bb) -> less_than(s, t) -> does_divide(bb, sub(t, s)) -> sub(t, s) = ZERO
                                                 [by theorem boundedRemainderDifferenceIsZero]
                                               @conclusion-remainders-equal |
                                                 r1 = r2
                                                 case on r1-r2-trichotomy {
-                                                  @when-r1-below-r2 |
-                                                    assume below(r1, r2) {
-                                                      @r1-below-r2 |
-                                                        below(r1, r2)
-                                                        [by hypothesis when-r1-below-r2]
+                                                  @when-r1-less_than-r2 |
+                                                    assume less_than(r1, r2) {
+                                                      @r1-less_than-r2 |
+                                                        less_than(r1, r2)
+                                                        [by hypothesis when-r1-less_than-r2]
                                                       // sub(r2,r1) = b*(q1-q2), so b | sub(r2,r1).
                                                       @r2-minus-r1-is-multiple |
                                                         add(mul(b, q1), r1) = add(mul(b, q2), r2) -> sub(r2, r1) = mul(b, sub(q1, q2))
@@ -1620,11 +1620,11 @@ proof
                                                         does_divide(b, sub(r2, r1))
                                                         [by exists_intro(sub(q1, q2)) r2-minus-r1-multiple]
                                                       @r2-minus-r1-zero-if |
-                                                        below(ZERO, b) -> is_nonneg(r1) -> below(r2, b) -> below(r1, r2) -> does_divide(b, sub(r2, r1)) -> sub(r2, r1) = ZERO
+                                                        less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r2, b) -> less_than(r1, r2) -> does_divide(b, sub(r2, r1)) -> sub(r2, r1) = ZERO
                                                         [by forall_elim(b, r1, r2) bounded-difference-zero]
                                                       @r2-minus-r1-zero |
                                                         sub(r2, r1) = ZERO
-                                                        [by tautology r2-minus-r1-zero-if b-positive r1-nonneg r2-below-b r1-below-r2 b-divides-r2-minus-r1]
+                                                        [by tautology r2-minus-r1-zero-if b-positive r1-nonneg r2-less_than-b r1-less_than-r2 b-divides-r2-minus-r1]
                                                       // sub(r2,r1)=0 gives r2 = r1.
                                                       @difference-plus-r1-is-r2 |
                                                         add(sub(r2, r1), r1) = r2
@@ -1645,11 +1645,11 @@ proof
                                                         r1 = r2
                                                         [by hypothesis when-remainders-equal]
                                                     }
-                                                  @when-r2-below-r1 |
-                                                    assume below(r2, r1) {
-                                                      @r2-below-r1 |
-                                                        below(r2, r1)
-                                                        [by hypothesis when-r2-below-r1]
+                                                  @when-r2-less_than-r1 |
+                                                    assume less_than(r2, r1) {
+                                                      @r2-less_than-r1 |
+                                                        less_than(r2, r1)
+                                                        [by hypothesis when-r2-less_than-r1]
                                                       // flip the equation; sub(r1,r2) = b*(q2-q1).
                                                       @decompositions-equal-flipped |
                                                         add(mul(b, q2), r2) = add(mul(b, q1), r1)
@@ -1664,11 +1664,11 @@ proof
                                                         does_divide(b, sub(r1, r2))
                                                         [by exists_intro(sub(q2, q1)) r1-minus-r2-multiple]
                                                       @r1-minus-r2-zero-if |
-                                                        below(ZERO, b) -> is_nonneg(r2) -> below(r1, b) -> below(r2, r1) -> does_divide(b, sub(r1, r2)) -> sub(r1, r2) = ZERO
+                                                        less_than(ZERO, b) -> is_nonneg(r2) -> less_than(r1, b) -> less_than(r2, r1) -> does_divide(b, sub(r1, r2)) -> sub(r1, r2) = ZERO
                                                         [by forall_elim(b, r2, r1) bounded-difference-zero]
                                                       @r1-minus-r2-zero |
                                                         sub(r1, r2) = ZERO
-                                                        [by tautology r1-minus-r2-zero-if b-positive r2-nonneg r1-below-b r2-below-r1 b-divides-r1-minus-r2]
+                                                        [by tautology r1-minus-r2-zero-if b-positive r2-nonneg r1-less_than-b r2-less_than-r1 b-divides-r1-minus-r2]
                                                       @difference-plus-r2-is-r1 |
                                                         add(sub(r1, r2), r2) = r1
                                                         [by forall_elim(r1, r2) difference-is-zero-forces-equal]
@@ -1691,51 +1691,51 @@ proof
                                             add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
                                             [by implies_intro given-decompositions-equal]
                                         }
-                                      @r2-below-b-implies |
-                                        below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
-                                        [by implies_intro given-r2-below-b]
+                                      @r2-less_than-b-implies |
+                                        less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                                        [by implies_intro given-r2-less_than-b]
                                     }
                                   @r2-nonneg-implies |
-                                    is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                                    is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
                                     [by implies_intro given-r2-nonneg]
                                 }
-                              @r1-below-b-implies |
-                                below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
-                                [by implies_intro given-r1-below-b]
+                              @r1-less_than-b-implies |
+                                less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                                [by implies_intro given-r1-less_than-b]
                             }
                           @r1-nonneg-implies |
-                            is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                            is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
                             [by implies_intro given-r1-nonneg]
                         }
                       @b-positive-implies |
-                        below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                        less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
                         [by implies_intro given-b-positive]
                     }
                   @discharge-r2 |
-                    forall r2: Int; below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                    forall r2: Int; less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
                     [by forall_intro generalize-r2]
                 }
               @discharge-q2 |
-                forall q2, r2: Int; below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                forall q2, r2: Int; less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
                 [by forall_intro generalize-q2]
             }
           @discharge-r1 |
-            forall r1, q2, r2: Int; below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+            forall r1, q2, r2: Int; less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
             [by forall_intro generalize-r1]
         }
       @discharge-q1 |
-        forall q1, r1, q2, r2: Int; below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+        forall q1, r1, q2, r2: Int; less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
         [by forall_intro generalize-q1]
     }
   @conclusion |
-    forall b, q1, r1, q2, r2: Int; below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+    forall b, q1, r1, q2, r2: Int; less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
     [by forall_intro generalize-b]
 qed
 
 theorem divisionAlgorithmUnique: forall a, b, q1, r1, q2, r2: Int;
-  below(ZERO, b) ->
-  a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) ->
-  a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) ->
+  less_than(ZERO, b) ->
+  a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) ->
+  a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) ->
   (q1 = q2 and r1 = r2)
 proof
   @generalize-a |
@@ -1751,21 +1751,21 @@ proof
                       @generalize-r2 |
                         fix r2: Int {
                           @given-b-positive |
-                            assume below(ZERO, b) {
+                            assume less_than(ZERO, b) {
                               @given-first-decomposition |
                                 assume a = add(mul(b, q1), r1) {
                                   @given-r1-nonneg |
                                     assume is_nonneg(r1) {
-                                      @given-r1-below-b |
-                                        assume below(r1, b) {
+                                      @given-r1-less_than-b |
+                                        assume less_than(r1, b) {
                                           @given-second-decomposition |
                                             assume a = add(mul(b, q2), r2) {
                                               @given-r2-nonneg |
                                                 assume is_nonneg(r2) {
-                                                  @given-r2-below-b |
-                                                    assume below(r2, b) {
+                                                  @given-r2-less_than-b |
+                                                    assume less_than(r2, b) {
                                                       @b-positive |
-                                                        below(ZERO, b)
+                                                        less_than(ZERO, b)
                                                         [by hypothesis given-b-positive]
                                                       @first-decomposition |
                                                         a = add(mul(b, q1), r1)
@@ -1773,18 +1773,18 @@ proof
                                                       @r1-nonneg |
                                                         is_nonneg(r1)
                                                         [by hypothesis given-r1-nonneg]
-                                                      @r1-below-b |
-                                                        below(r1, b)
-                                                        [by hypothesis given-r1-below-b]
+                                                      @r1-less_than-b |
+                                                        less_than(r1, b)
+                                                        [by hypothesis given-r1-less_than-b]
                                                       @second-decomposition |
                                                         a = add(mul(b, q2), r2)
                                                         [by hypothesis given-second-decomposition]
                                                       @r2-nonneg |
                                                         is_nonneg(r2)
                                                         [by hypothesis given-r2-nonneg]
-                                                      @r2-below-b |
-                                                        below(r2, b)
-                                                        [by hypothesis given-r2-below-b]
+                                                      @r2-less_than-b |
+                                                        less_than(r2, b)
+                                                        [by hypothesis given-r2-less_than-b]
                                                       // the two decompositions of a coincide.
                                                       @first-decomposition-flipped |
                                                         add(mul(b, q1), r1) = a
@@ -1794,14 +1794,14 @@ proof
                                                         [by rewrite second-decomposition first-decomposition-flipped]
                                                       // remainders agree.
                                                       @remainders-are-equal |
-                                                        forall bb, x1, s1, x2, s2: Int; below(ZERO, bb) -> is_nonneg(s1) -> below(s1, bb) -> is_nonneg(s2) -> below(s2, bb) -> add(mul(bb, x1), s1) = add(mul(bb, x2), s2) -> s1 = s2
+                                                        forall bb, x1, s1, x2, s2: Int; less_than(ZERO, bb) -> is_nonneg(s1) -> less_than(s1, bb) -> is_nonneg(s2) -> less_than(s2, bb) -> add(mul(bb, x1), s1) = add(mul(bb, x2), s2) -> s1 = s2
                                                         [by theorem remaindersEqual]
                                                       @remainders-equal-if |
-                                                        below(ZERO, b) -> is_nonneg(r1) -> below(r1, b) -> is_nonneg(r2) -> below(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
+                                                        less_than(ZERO, b) -> is_nonneg(r1) -> less_than(r1, b) -> is_nonneg(r2) -> less_than(r2, b) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> r1 = r2
                                                         [by forall_elim(b, q1, r1, q2, r2) remainders-are-equal]
                                                       @remainders-equal |
                                                         r1 = r2
-                                                        [by tautology remainders-equal-if b-positive r1-nonneg r1-below-b r2-nonneg r2-below-b decompositions-equal]
+                                                        [by tautology remainders-equal-if b-positive r1-nonneg r1-less_than-b r2-nonneg r2-less_than-b decompositions-equal]
                                                       // substitute r2 = r1 and cancel the common remainder.
                                                       @r2-is-r1 |
                                                         r2 = r1
@@ -1863,10 +1863,10 @@ proof
                                                         [by rewrite products-difference-zero product-of-quotient-difference]
                                                       // b > 0 forces the factor sub(q1,q2) to be 0.
                                                       @positive-factor-zero |
-                                                        forall bb, zz: Int; below(ZERO, bb) -> mul(bb, zz) = ZERO -> zz = ZERO
+                                                        forall bb, zz: Int; less_than(ZERO, bb) -> mul(bb, zz) = ZERO -> zz = ZERO
                                                         [by theorem positiveFactorZeroForcesZero]
                                                       @quotient-difference-zero-if |
-                                                        below(ZERO, b) -> mul(b, sub(q1, q2)) = ZERO -> sub(q1, q2) = ZERO
+                                                        less_than(ZERO, b) -> mul(b, sub(q1, q2)) = ZERO -> sub(q1, q2) = ZERO
                                                         [by forall_elim(b, sub(q1, q2)) positive-factor-zero]
                                                       @quotient-difference-zero |
                                                         sub(q1, q2) = ZERO
@@ -1897,56 +1897,56 @@ proof
                                                         q1 = q2 and r1 = r2
                                                         [by and_intro quotients-equal remainders-equal]
                                                     }
-                                                  @r2-below-b-implies |
-                                                    below(r2, b) -> (q1 = q2 and r1 = r2)
-                                                    [by implies_intro given-r2-below-b]
+                                                  @r2-less_than-b-implies |
+                                                    less_than(r2, b) -> (q1 = q2 and r1 = r2)
+                                                    [by implies_intro given-r2-less_than-b]
                                                 }
                                               @r2-nonneg-implies |
-                                                is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                                                is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                                                 [by implies_intro given-r2-nonneg]
                                             }
                                           @second-decomposition-implies |
-                                            a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                                            a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                                             [by implies_intro given-second-decomposition]
                                         }
-                                      @r1-below-b-implies |
-                                        below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
-                                        [by implies_intro given-r1-below-b]
+                                      @r1-less_than-b-implies |
+                                        less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
+                                        [by implies_intro given-r1-less_than-b]
                                     }
                                   @r1-nonneg-implies |
-                                    is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                                    is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                                     [by implies_intro given-r1-nonneg]
                                 }
                               @first-decomposition-implies |
-                                a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                                a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                                 [by implies_intro given-first-decomposition]
                             }
                           @b-positive-implies |
-                            below(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                            less_than(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                             [by implies_intro given-b-positive]
                         }
                       @discharge-r2 |
-                        forall r2: Int; below(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                        forall r2: Int; less_than(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                         [by forall_intro generalize-r2]
                     }
                   @discharge-q2 |
-                    forall q2, r2: Int; below(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                    forall q2, r2: Int; less_than(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                     [by forall_intro generalize-q2]
                 }
               @discharge-r1 |
-                forall r1, q2, r2: Int; below(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+                forall r1, q2, r2: Int; less_than(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
                 [by forall_intro generalize-r1]
             }
           @discharge-q1 |
-            forall q1, r1, q2, r2: Int; below(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+            forall q1, r1, q2, r2: Int; less_than(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
             [by forall_intro generalize-q1]
         }
       @discharge-b |
-        forall b, q1, r1, q2, r2: Int; below(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+        forall b, q1, r1, q2, r2: Int; less_than(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall a, b, q1, r1, q2, r2: Int; below(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> below(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> below(r2, b) -> (q1 = q2 and r1 = r2)
+    forall a, b, q1, r1, q2, r2: Int; less_than(ZERO, b) -> a = add(mul(b, q1), r1) -> is_nonneg(r1) -> less_than(r1, b) -> a = add(mul(b, q2), r2) -> is_nonneg(r2) -> less_than(r2, b) -> (q1 = q2 and r1 = r2)
     [by forall_intro generalize-a]
 qed
 
@@ -2087,26 +2087,26 @@ proof
     [by forall_intro generalize-x]
 qed
 
-theorem belowSelfPlusPositive: forall x, b: Int;
-  below(ZERO, b) -> below(x, add(x, b))
+theorem lessThanSelfPlusPositive: forall x, b: Int;
+  less_than(ZERO, b) -> less_than(x, add(x, b))
 proof
   @generalize-x |
     fix x: Int {
       @generalize-b |
         fix b: Int {
           @given-b-positive |
-            assume below(ZERO, b) {
+            assume less_than(ZERO, b) {
               @b-positive |
-                below(ZERO, b)
+                less_than(ZERO, b)
                 [by hypothesis given-b-positive]
               @addition-preserves-order |
-                forall u, v, c: Int; below(u, v) -> below(add(c, u), add(c, v))
+                forall u, v, c: Int; less_than(u, v) -> less_than(add(c, u), add(c, v))
                 [by theorem additionPreservesOrder]
               @prefixing-x-preserves |
-                below(ZERO, b) -> below(add(x, ZERO), add(x, b))
+                less_than(ZERO, b) -> less_than(add(x, ZERO), add(x, b))
                 [by forall_elim(ZERO, b, x) addition-preserves-order]
-              @x-plus-zero-below-x-plus-b |
-                below(add(x, ZERO), add(x, b))
+              @x-plus-zero-less_than-x-plus-b |
+                less_than(add(x, ZERO), add(x, b))
                 [by modus_ponens prefixing-x-preserves b-positive]
               @adding-zero-is-identity |
                 forall n: Int; add(n, ZERO) = n
@@ -2114,20 +2114,20 @@ proof
               @x-plus-zero-is-x |
                 add(x, ZERO) = x
                 [by forall_elim(x) adding-zero-is-identity]
-              @conclusion-x-below-x-plus-b |
-                below(x, add(x, b))
-                [by rewrite x-plus-zero-is-x x-plus-zero-below-x-plus-b]
+              @conclusion-x-less_than-x-plus-b |
+                less_than(x, add(x, b))
+                [by rewrite x-plus-zero-is-x x-plus-zero-less_than-x-plus-b]
             }
           @b-positive-implies |
-            below(ZERO, b) -> below(x, add(x, b))
+            less_than(ZERO, b) -> less_than(x, add(x, b))
             [by implies_intro given-b-positive]
         }
       @discharge-b |
-        forall b: Int; below(ZERO, b) -> below(x, add(x, b))
+        forall b: Int; less_than(ZERO, b) -> less_than(x, add(x, b))
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall x, b: Int; below(ZERO, b) -> below(x, add(x, b))
+    forall x, b: Int; less_than(ZERO, b) -> less_than(x, add(x, b))
     [by forall_intro generalize-x]
 qed
 
@@ -2156,11 +2156,11 @@ proof
                           @n-nonneg |
                             is_nonneg(n)
                             [by hypothesis given-n-nonneg]
-                          @given-all-below-fail |
-                            assume forall m: Int; is_nonneg(m) -> below(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k)))) {
-                              @all-below-fail |
-                                forall m: Int; is_nonneg(m) -> below(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))
-                                [by hypothesis given-all-below-fail]
+                          @given-all-less_than-fail |
+                            assume forall m: Int; is_nonneg(m) -> less_than(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k)))) {
+                              @all-less_than-fail |
+                                forall m: Int; is_nonneg(m) -> less_than(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))
+                                [by hypothesis given-all-less_than-fail]
                               @given-n-is-member |
                                 assume exists k: Int; n = sub(a, mul(b, k)) {
                                   @n-is-member |
@@ -2179,28 +2179,28 @@ proof
                                                 exists k: Int; m = sub(a, mul(b, k))
                                                 [by hypothesis given-m-is-member]
                                               @trichotomy-n-m |
-                                                forall x, y: Int; below(x, y) or x = y or below(y, x)
+                                                forall x, y: Int; less_than(x, y) or x = y or less_than(y, x)
                                                 [by theorem trichotomy]
                                               @order-n-m |
-                                                below(n, m) or n = m or below(m, n)
+                                                less_than(n, m) or n = m or less_than(m, n)
                                                 [by forall_elim(n, m) trichotomy-n-m]
                                               @n-at-most-m |
                                                 at_most(n, m)
                                                 case on order-n-m {
-                                                  @when-n-below-m |
-                                                    assume below(n, m) {
-                                                      @n-below-m |
-                                                        below(n, m)
-                                                        [by hypothesis when-n-below-m]
+                                                  @when-n-less_than-m |
+                                                    assume less_than(n, m) {
+                                                      @n-less_than-m |
+                                                        less_than(n, m)
+                                                        [by hypothesis when-n-less_than-m]
                                                       @less-than-to-at-most |
-                                                        forall x, y: Int; below(x, y) -> at_most(x, y)
+                                                        forall x, y: Int; less_than(x, y) -> at_most(x, y)
                                                         [by theorem lessThanToLessOrEqual]
-                                                      @n-at-most-m-if-below |
-                                                        below(n, m) -> at_most(n, m)
+                                                      @n-at-most-m-if-less_than |
+                                                        less_than(n, m) -> at_most(n, m)
                                                         [by forall_elim(n, m) less-than-to-at-most]
                                                       @conclusion-n-at-most-m |
                                                         at_most(n, m)
-                                                        [by modus_ponens n-at-most-m-if-below n-below-m]
+                                                        [by modus_ponens n-at-most-m-if-less_than n-less_than-m]
                                                     }
                                                   @when-n-equals-m |
                                                     assume n = m {
@@ -2217,17 +2217,17 @@ proof
                                                         at_most(n, m)
                                                         [by rewrite n-equals-m n-at-most-n]
                                                     }
-                                                  @when-m-below-n |
-                                                    assume below(m, n) {
-                                                      @m-below-n |
-                                                        below(m, n)
-                                                        [by hypothesis when-m-below-n]
-                                                      @m-fails-if-nonneg-below-n |
-                                                        is_nonneg(m) -> below(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))
-                                                        [by forall_elim(m) all-below-fail]
+                                                  @when-m-less_than-n |
+                                                    assume less_than(m, n) {
+                                                      @m-less_than-n |
+                                                        less_than(m, n)
+                                                        [by hypothesis when-m-less_than-n]
+                                                      @m-fails-if-nonneg-less_than-n |
+                                                        is_nonneg(m) -> less_than(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))
+                                                        [by forall_elim(m) all-less_than-fail]
                                                       @m-is-not-member |
                                                         not (exists k: Int; m = sub(a, mul(b, k)))
-                                                        [by tautology m-fails-if-nonneg-below-n m-nonneg m-below-n]
+                                                        [by tautology m-fails-if-nonneg-less_than-n m-nonneg m-less_than-n]
                                                       @conclusion-n-at-most-m |
                                                         at_most(n, m)
                                                         [by absurd m-is-member m-is-not-member]
@@ -2265,16 +2265,16 @@ proof
                                 not (exists k: Int; n = sub(a, mul(b, k)))
                                 [by tautology n-member-implies-not-member]
                             }
-                          @all-below-fail-implies-n-fails |
-                            (forall m: Int; is_nonneg(m) -> below(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))) -> (not (exists k: Int; n = sub(a, mul(b, k))))
-                            [by implies_intro given-all-below-fail]
+                          @all-less_than-fail-implies-n-fails |
+                            (forall m: Int; is_nonneg(m) -> less_than(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))) -> (not (exists k: Int; n = sub(a, mul(b, k))))
+                            [by implies_intro given-all-less_than-fail]
                         }
                       @strong-step-at-n |
-                        is_nonneg(n) -> (forall m: Int; is_nonneg(m) -> below(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))) -> (not (exists k: Int; n = sub(a, mul(b, k))))
+                        is_nonneg(n) -> (forall m: Int; is_nonneg(m) -> less_than(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))) -> (not (exists k: Int; n = sub(a, mul(b, k))))
                         [by implies_intro given-n-nonneg]
                     }
                   @strong-step-forall |
-                    forall n: Int; is_nonneg(n) -> (forall m: Int; is_nonneg(m) -> below(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))) -> (not (exists k: Int; n = sub(a, mul(b, k))))
+                    forall n: Int; is_nonneg(n) -> (forall m: Int; is_nonneg(m) -> less_than(m, n) -> (not (exists k: Int; m = sub(a, mul(b, k))))) -> (not (exists k: Int; n = sub(a, mul(b, k))))
                     [by forall_intro strong-step]
                   @nothing-nonneg-is-member |
                     forall n: Int; is_nonneg(n) -> (not (exists k: Int; n = sub(a, mul(b, k))))
@@ -2435,7 +2435,7 @@ qed
 
 // 0 < n implies 1 <= n: the strict gap succ(d) with add(ZERO, succ d) = n
 // rewrites to add(ONE, d) = n, a nonneg gap witnessing 1 <= n.
-theorem oneAtMostPositive: forall n: Int; below(ZERO, n) -> at_most(ONE, n)
+theorem oneAtMostPositive: forall n: Int; less_than(ZERO, n) -> at_most(ONE, n)
 proof
   @generalize-n |
     fix n: Int {
@@ -2443,19 +2443,19 @@ proof
         forall m: Int; add(ZERO, m) = m
         [by axiom addZeroLeft]
       @less-than-elimination |
-        forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+        forall x, y: Int; less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
         [by axiom lessThanElim]
-      @given-zero-below-n |
-        assume below(ZERO, n) {
-          @zero-below-n |
-            below(ZERO, n)
-            [by hypothesis given-zero-below-n]
+      @given-zero-less_than-n |
+        assume less_than(ZERO, n) {
+          @zero-less_than-n |
+            less_than(ZERO, n)
+            [by hypothesis given-zero-less_than-n]
           @gap-exists-if |
-            below(ZERO, n) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = n
+            less_than(ZERO, n) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = n
             [by forall_elim(ZERO, n) less-than-elimination]
           @gap-exists |
             exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = n
-            [by modus_ponens gap-exists-if zero-below-n]
+            [by modus_ponens gap-exists-if zero-less_than-n]
           @with-gap-d |
             unpack gap: Int from gap-exists {
               @gap-nonneg-and-witnesses-n |
@@ -2483,7 +2483,7 @@ proof
               @gap-witnesses-one-at-most-n |
                 is_nonneg(gap) and add(ONE, gap) = n
                 [by and_intro gap-nonneg one-plus-gap-is-n]
-              @one-below-or-equal-n-gap |
+              @one-less_than-or-equal-n-gap |
                 exists d: Int; is_nonneg(d) and add(ONE, d) = n
                 [by exists_intro(gap) gap-witnesses-one-at-most-n]
               @at-most-is-gap-existential |
@@ -2497,18 +2497,18 @@ proof
                 [by iff_elim_backward one-at-most-n-iff-gap]
               @conclusion-one-at-most-n |
                 at_most(ONE, n)
-                [by modus_ponens one-at-most-n-if-gap one-below-or-equal-n-gap]
+                [by modus_ponens one-at-most-n-if-gap one-less_than-or-equal-n-gap]
             }
           @one-at-most-n |
             at_most(ONE, n)
             [by exists_elim with-gap-d]
         }
-      @zero-below-n-implies-one-at-most-n |
-        below(ZERO, n) -> at_most(ONE, n)
-        [by implies_intro given-zero-below-n]
+      @zero-less_than-n-implies-one-at-most-n |
+        less_than(ZERO, n) -> at_most(ONE, n)
+        [by implies_intro given-zero-less_than-n]
     }
   @conclusion |
-    forall n: Int; below(ZERO, n) -> at_most(ONE, n)
+    forall n: Int; less_than(ZERO, n) -> at_most(ONE, n)
     [by forall_intro generalize-n]
 qed
 
@@ -2557,17 +2557,17 @@ proof
     [by forall_intro generalize-x]
 qed
 
-theorem divisionAlgorithmExists: forall a, b: Int; below(ZERO, b) ->
-  exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+theorem divisionAlgorithmExists: forall a, b: Int; less_than(ZERO, b) ->
+  exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
 proof
   @generalize-a |
     fix a: Int {
       @generalize-b |
         fix b: Int {
           @given-b-positive |
-            assume below(ZERO, b) {
+            assume less_than(ZERO, b) {
               @b-positive |
-                below(ZERO, b)
+                less_than(ZERO, b)
                 [by hypothesis given-b-positive]
               @difference-reaches |
                 forall w, z: Int; add(w, sub(z, w)) = z
@@ -2588,44 +2588,44 @@ proof
                 forall n: Int; add(ZERO, n) = n
                 [by axiom addZeroLeft]
               @positive-shifts-strictly-up |
-                forall x, c: Int; below(ZERO, c) -> below(x, add(x, c))
-                [by theorem belowSelfPlusPositive]
+                forall x, c: Int; less_than(ZERO, c) -> less_than(x, add(x, c))
+                [by theorem lessThanSelfPlusPositive]
               // S is nonempty.  Judson splits on the sign of a.  Trichotomy
               // gives a >= 0 (0 < a or a = 0) or a < 0; we produce a member
               // of S in each branch.
               @sign-trichotomy |
-                forall x, y: Int; below(x, y) or x = y or below(y, x)
+                forall x, y: Int; less_than(x, y) or x = y or less_than(y, x)
                 [by theorem trichotomy]
               @a-sign |
-                below(ZERO, a) or ZERO = a or below(a, ZERO)
+                less_than(ZERO, a) or ZERO = a or less_than(a, ZERO)
                 [by forall_elim(ZERO, a) sign-trichotomy]
               @less-than-elim |
-                forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
+                forall x, y: Int; less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
                 [by axiom lessThanElim]
               @set-is-nonempty |
                 exists n: Int; is_nonneg(n) and (exists k: Int; n = sub(a, mul(b, k)))
                 case on a-sign {
                   @when-a-nonnegative |
-                    assume below(ZERO, a) or ZERO = a {
+                    assume less_than(ZERO, a) or ZERO = a {
                       @a-nonnegative |
-                        below(ZERO, a) or ZERO = a
+                        less_than(ZERO, a) or ZERO = a
                         [by hypothesis when-a-nonnegative]
                       // a >= 0, so a itself is a nonneg member: a = a - b*0.
                       @a-nonneg |
                         is_nonneg(a)
                         case on a-nonnegative {
-                          @when-zero-below-a |
-                            assume below(ZERO, a) {
-                              @zero-below-a |
-                                below(ZERO, a)
-                                [by hypothesis when-zero-below-a]
+                          @when-zero-less_than-a |
+                            assume less_than(ZERO, a) {
+                              @zero-less_than-a |
+                                less_than(ZERO, a)
+                                [by hypothesis when-zero-less_than-a]
                               // 0 < a means a = succ(d) for nonneg d, hence nonneg.
-                              @gap-exists-if-below |
-                                below(ZERO, a) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = a
+                              @gap-exists-if-less_than |
+                                less_than(ZERO, a) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = a
                                 [by forall_elim(ZERO, a) less-than-elim]
                               @gap-exists |
                                 exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = a
-                                [by modus_ponens gap-exists-if-below zero-below-a]
+                                [by modus_ponens gap-exists-if-less_than zero-less_than-a]
                               @with-gap-d |
                                 unpack gap: Int from gap-exists {
                                   @gap-nonneg-and-witnesses-a |
@@ -2712,9 +2712,9 @@ proof
                         [by exists_intro(a) a-nonneg-and-member]
                     }
                   @when-a-negative |
-                    assume below(a, ZERO) {
+                    assume less_than(a, ZERO) {
                       @a-negative |
-                        below(a, ZERO)
+                        less_than(a, ZERO)
                         [by hypothesis when-a-negative]
                       // Judson's witness k = 2a; the member is a - b(2a).
                       // Ring identity: a - b(2a) = a(1 - 2b) (the only elided algebra).
@@ -2737,22 +2737,22 @@ proof
                         sub(a, mul(b, mul(TWO, a))) = mul(a, sub(ONE, mul(TWO, b)))
                         [by rewrite factored-member-expands member-with-a-factored]
                       // First factor a is nonpositive: -a >= 0 since a < 0.
-                      @a-below-zero-gives-neg-a-nonneg |
-                        forall n: Int; below(n, ZERO) -> is_nonneg(neg(n))
-                        [by theorem negBelowZero]
+                      @a-less_than-zero-gives-neg-a-nonneg |
+                        forall n: Int; less_than(n, ZERO) -> is_nonneg(neg(n))
+                        [by theorem negLessThanZero]
                       @neg-a-nonneg-if |
-                        below(a, ZERO) -> is_nonneg(neg(a))
-                        [by forall_elim(a) a-below-zero-gives-neg-a-nonneg]
+                        less_than(a, ZERO) -> is_nonneg(neg(a))
+                        [by forall_elim(a) a-less_than-zero-gives-neg-a-nonneg]
                       @neg-a-nonneg |
                         is_nonneg(neg(a))
                         [by modus_ponens neg-a-nonneg-if a-negative]
                       // Second factor 1 - 2b is nonpositive: 1 < 2b because b > 0.
                       // 1 <= b (b positive) and b < 2b (b positive) give 1 < 2b.
                       @positive-gives-one-at-most |
-                        forall n: Int; below(ZERO, n) -> at_most(ONE, n)
+                        forall n: Int; less_than(ZERO, n) -> at_most(ONE, n)
                         [by theorem oneAtMostPositive]
                       @one-at-most-b-if |
-                        below(ZERO, b) -> at_most(ONE, b)
+                        less_than(ZERO, b) -> at_most(ONE, b)
                         [by forall_elim(b) positive-gives-one-at-most]
                       @one-at-most-b |
                         at_most(ONE, b)
@@ -2763,37 +2763,37 @@ proof
                       @two-b-is-b-plus-b |
                         mul(TWO, b) = add(b, b)
                         [by forall_elim(b) two-times-is-self-plus-self]
-                      @b-below-b-plus-b-if |
-                        below(ZERO, b) -> below(b, add(b, b))
+                      @b-less_than-b-plus-b-if |
+                        less_than(ZERO, b) -> less_than(b, add(b, b))
                         [by forall_elim(b, b) positive-shifts-strictly-up]
-                      @b-below-b-plus-b |
-                        below(b, add(b, b))
-                        [by modus_ponens b-below-b-plus-b-if b-positive]
+                      @b-less_than-b-plus-b |
+                        less_than(b, add(b, b))
+                        [by modus_ponens b-less_than-b-plus-b-if b-positive]
                       @b-plus-b-is-two-b |
                         add(b, b) = mul(TWO, b)
                         [by symmetry two-b-is-b-plus-b]
-                      @b-below-two-b |
-                        below(b, mul(TWO, b))
-                        [by rewrite b-plus-b-is-two-b b-below-b-plus-b]
-                      @at-most-then-below-lemma |
-                        forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
-                        [by theorem atMostThenBelow]
-                      @one-below-two-b-if |
-                        at_most(ONE, b) -> below(b, mul(TWO, b)) -> below(ONE, mul(TWO, b))
-                        [by forall_elim(ONE, b, mul(TWO, b)) at-most-then-below-lemma]
-                      @one-below-two-b |
-                        below(ONE, mul(TWO, b))
-                        [by tautology one-below-two-b-if one-at-most-b b-below-two-b]
+                      @b-less_than-two-b |
+                        less_than(b, mul(TWO, b))
+                        [by rewrite b-plus-b-is-two-b b-less_than-b-plus-b]
+                      @at-most-then-less_than-lemma |
+                        forall x, y, z: Int; at_most(x, y) -> less_than(y, z) -> less_than(x, z)
+                        [by theorem atMostThenLessThan]
+                      @one-less_than-two-b-if |
+                        at_most(ONE, b) -> less_than(b, mul(TWO, b)) -> less_than(ONE, mul(TWO, b))
+                        [by forall_elim(ONE, b, mul(TWO, b)) at-most-then-less_than-lemma]
+                      @one-less_than-two-b |
+                        less_than(ONE, mul(TWO, b))
+                        [by tautology one-less_than-two-b-if one-at-most-b b-less_than-two-b]
                       // 1 < 2b makes 2b - 1 = -(1 - 2b) nonneg.
-                      @below-gives-nonneg-difference |
-                        forall x, y: Int; below(x, y) -> is_nonneg(sub(y, x))
-                        [by theorem belowGivesNonnegDifference]
+                      @less_than-gives-nonneg-difference |
+                        forall x, y: Int; less_than(x, y) -> is_nonneg(sub(y, x))
+                        [by theorem lessThanGivesNonnegDifference]
                       @neg-of-one-minus-two-b-nonneg-if |
-                        below(ONE, mul(TWO, b)) -> is_nonneg(sub(mul(TWO, b), ONE))
-                        [by forall_elim(ONE, mul(TWO, b)) below-gives-nonneg-difference]
+                        less_than(ONE, mul(TWO, b)) -> is_nonneg(sub(mul(TWO, b), ONE))
+                        [by forall_elim(ONE, mul(TWO, b)) less_than-gives-nonneg-difference]
                       @two-b-minus-one-nonneg |
                         is_nonneg(sub(mul(TWO, b), ONE))
-                        [by modus_ponens neg-of-one-minus-two-b-nonneg-if one-below-two-b]
+                        [by modus_ponens neg-of-one-minus-two-b-nonneg-if one-less_than-two-b]
                       @negation-swaps-difference |
                         forall x, y: Int; neg(sub(x, y)) = sub(y, x)
                         [by theorem negOfDifferenceSwaps]
@@ -2885,29 +2885,29 @@ proof
                         a = add(mul(b, quot), rem)
                         [by symmetry bq-plus-remainder-is-a]
                       // rem < b.  Suppose not; derive a smaller member of S.
-                      @suppose-not-below |
-                        assume not below(rem, b) {
-                          @not-below |
-                            not below(rem, b)
-                            [by hypothesis suppose-not-below]
+                      @suppose-not-less_than |
+                        assume not less_than(rem, b) {
+                          @not-less_than |
+                            not less_than(rem, b)
+                            [by hypothesis suppose-not-less_than]
                           @order-trichotomy |
-                            forall x, y: Int; below(x, y) or x = y or below(y, x)
+                            forall x, y: Int; less_than(x, y) or x = y or less_than(y, x)
                             [by theorem trichotomy]
                           @rem-b-trichotomy |
-                            below(rem, b) or rem = b or below(b, rem)
+                            less_than(rem, b) or rem = b or less_than(b, rem)
                             [by forall_elim(rem, b) order-trichotomy]
-                          // not below(rem,b) leaves rem = b or below(b, rem); both give b <= rem.
+                          // not less_than(rem,b) leaves rem = b or less_than(b, rem); both give b <= rem.
                           @b-at-most-rem |
                             at_most(b, rem)
                             case on rem-b-trichotomy {
-                              @when-rem-below-b |
-                                assume below(rem, b) {
-                                  @rem-below-b |
-                                    below(rem, b)
-                                    [by hypothesis when-rem-below-b]
+                              @when-rem-less_than-b |
+                                assume less_than(rem, b) {
+                                  @rem-less_than-b |
+                                    less_than(rem, b)
+                                    [by hypothesis when-rem-less_than-b]
                                   @conclusion-b-at-most-rem |
                                     at_most(b, rem)
-                                    [by absurd rem-below-b not-below]
+                                    [by absurd rem-less_than-b not-less_than]
                                 }
                               @when-rem-equals-b |
                                 assume rem = b {
@@ -2927,20 +2927,20 @@ proof
                                     at_most(b, rem)
                                     [by rewrite b-equals-rem b-at-most-b]
                                 }
-                              @when-b-below-rem |
-                                assume below(b, rem) {
-                                  @b-below-rem |
-                                    below(b, rem)
-                                    [by hypothesis when-b-below-rem]
-                                  @below-gives-at-most |
-                                    forall x, y: Int; below(x, y) -> at_most(x, y)
+                              @when-b-less_than-rem |
+                                assume less_than(b, rem) {
+                                  @b-less_than-rem |
+                                    less_than(b, rem)
+                                    [by hypothesis when-b-less_than-rem]
+                                  @less_than-gives-at-most |
+                                    forall x, y: Int; less_than(x, y) -> at_most(x, y)
                                     [by theorem lessThanToLessOrEqual]
                                   @b-at-most-rem-if |
-                                    below(b, rem) -> at_most(b, rem)
-                                    [by forall_elim(b, rem) below-gives-at-most]
+                                    less_than(b, rem) -> at_most(b, rem)
+                                    [by forall_elim(b, rem) less_than-gives-at-most]
                                   @conclusion-b-at-most-rem |
                                     at_most(b, rem)
-                                    [by modus_ponens b-at-most-rem-if b-below-rem]
+                                    [by modus_ponens b-at-most-rem-if b-less_than-rem]
                                 }
                             }
                           // candidate = sub(rem, b) = sub(a, mul(b, succ quot)); it is in S.
@@ -2991,18 +2991,18 @@ proof
                           @candidate-plus-b-is-rem |
                             add(sub(rem, b), b) = rem
                             [by forall_elim(rem, b) difference-plus-b-reaches-rem]
-                          @self-below-self-plus-positive |
-                            forall x, c: Int; below(ZERO, c) -> below(x, add(x, c))
-                            [by theorem belowSelfPlusPositive]
-                          @candidate-below-candidate-plus-b-if |
-                            below(ZERO, b) -> below(sub(rem, b), add(sub(rem, b), b))
-                            [by forall_elim(sub(rem, b), b) self-below-self-plus-positive]
-                          @candidate-below-candidate-plus-b |
-                            below(sub(rem, b), add(sub(rem, b), b))
-                            [by modus_ponens candidate-below-candidate-plus-b-if b-positive]
-                          @candidate-below-rem |
-                            below(sub(rem, b), rem)
-                            [by rewrite candidate-plus-b-is-rem candidate-below-candidate-plus-b]
+                          @self-less_than-self-plus-positive |
+                            forall x, c: Int; less_than(ZERO, c) -> less_than(x, add(x, c))
+                            [by theorem lessThanSelfPlusPositive]
+                          @candidate-less_than-candidate-plus-b-if |
+                            less_than(ZERO, b) -> less_than(sub(rem, b), add(sub(rem, b), b))
+                            [by forall_elim(sub(rem, b), b) self-less_than-self-plus-positive]
+                          @candidate-less_than-candidate-plus-b |
+                            less_than(sub(rem, b), add(sub(rem, b), b))
+                            [by modus_ponens candidate-less_than-candidate-plus-b-if b-positive]
+                          @candidate-less_than-rem |
+                            less_than(sub(rem, b), rem)
+                            [by rewrite candidate-plus-b-is-rem candidate-less_than-candidate-plus-b]
                           // leastness: rem <= candidate.  Contradiction with candidate < rem.
                           @remainder-at-most-candidate-if |
                             is_nonneg(sub(rem, b)) -> (exists k: Int; sub(rem, b) = sub(a, mul(b, k))) -> at_most(rem, sub(rem, b))
@@ -3010,59 +3010,59 @@ proof
                           @remainder-at-most-candidate |
                             at_most(rem, sub(rem, b))
                             [by tautology remainder-at-most-candidate-if candidate-nonneg candidate-is-member]
-                          @at-most-then-below |
-                            forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
-                            [by theorem atMostThenBelow]
-                          @remainder-below-itself-if |
-                            at_most(rem, sub(rem, b)) -> below(sub(rem, b), rem) -> below(rem, rem)
-                            [by forall_elim(rem, sub(rem, b), rem) at-most-then-below]
-                          @remainder-below-itself |
-                            below(rem, rem)
-                            [by tautology remainder-below-itself-if remainder-at-most-candidate candidate-below-rem]
+                          @at-most-then-less_than |
+                            forall x, y, z: Int; at_most(x, y) -> less_than(y, z) -> less_than(x, z)
+                            [by theorem atMostThenLessThan]
+                          @remainder-less_than-itself-if |
+                            at_most(rem, sub(rem, b)) -> less_than(sub(rem, b), rem) -> less_than(rem, rem)
+                            [by forall_elim(rem, sub(rem, b), rem) at-most-then-less_than]
+                          @remainder-less_than-itself |
+                            less_than(rem, rem)
+                            [by tautology remainder-less_than-itself-if remainder-at-most-candidate candidate-less_than-rem]
                           @order-irreflexive |
-                            forall n: Int; not below(n, n)
+                            forall n: Int; not less_than(n, n)
                             [by theorem lessThanIrreflexive]
-                          @remainder-not-below-itself |
-                            not below(rem, rem)
+                          @remainder-not-less_than-itself |
+                            not less_than(rem, rem)
                             [by forall_elim(rem) order-irreflexive]
                         }
-                      @remainder-below-b-not-absent |
-                        not not below(rem, b)
-                        [by not_intro suppose-not-below remainder-below-itself remainder-not-below-itself]
-                      @remainder-below-b |
-                        below(rem, b)
-                        [by double_negation remainder-below-b-not-absent]
+                      @remainder-less_than-b-not-absent |
+                        not not less_than(rem, b)
+                        [by not_intro suppose-not-less_than remainder-less_than-itself remainder-not-less_than-itself]
+                      @remainder-less_than-b |
+                        less_than(rem, b)
+                        [by double_negation remainder-less_than-b-not-absent]
                       // package quot, rem into the existential.
                       @decomposition-and-remainder-nonneg |
                         a = add(mul(b, quot), rem) and is_nonneg(rem)
                         [by and_intro decomposition-holds remainder-nonneg]
                       @decomposition-and-bounds |
-                        a = add(mul(b, quot), rem) and is_nonneg(rem) and below(rem, b)
-                        [by and_intro decomposition-and-remainder-nonneg remainder-below-b]
+                        a = add(mul(b, quot), rem) and is_nonneg(rem) and less_than(rem, b)
+                        [by and_intro decomposition-and-remainder-nonneg remainder-less_than-b]
                       @remainder-exists |
-                        exists r: Int; a = add(mul(b, quot), r) and is_nonneg(r) and below(r, b)
+                        exists r: Int; a = add(mul(b, quot), r) and is_nonneg(r) and less_than(r, b)
                         [by exists_intro(rem) decomposition-and-bounds]
                       @quotient-and-remainder-exist |
-                        exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+                        exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
                         [by exists_intro(quot) remainder-exists]
                     }
                   @decomposition-exists-for-remainder |
-                    exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+                    exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
                     [by exists_elim with-quotient-q]
                 }
               @decomposition-exists |
-                exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+                exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
                 [by exists_elim conclusion-decomposition-exists]
             }
           @b-positive-implies-decomposition |
-            below(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+            less_than(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
             [by implies_intro given-b-positive]
         }
       @discharge-b |
-        forall b: Int; below(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+        forall b: Int; less_than(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
         [by forall_intro generalize-b]
     }
   @conclusion |
-    forall a, b: Int; below(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and below(r, b)
+    forall a, b: Int; less_than(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
     [by forall_intro generalize-a]
 qed

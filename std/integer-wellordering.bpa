@@ -89,13 +89,13 @@ proof
     [by forall_intro generalize-a]
 qed
 
-// -- nothing nonneg is strictly below ZERO --------------------------------
+// -- nothing nonneg is strictly less_than ZERO --------------------------------
 
 // The nonnegatives have 0 as a least element: no nonneg m satisfies m < 0.
 // If m < 0, lessThanElim gives a nonneg gap d with add(m, succ(d)) = ZERO. But
 // add(m, succ(d)) = succ(add(m, d)), and add(m, d) is nonneg (nonnegAdd), so its
 // successor is != ZERO by nonnegSuccNotZero — contradiction.
-theorem nonnegNotBelowZero: forall m: Int; nonneg(m) -> (not less_than(m, ZERO))
+theorem nonnegNotLessThanZero: forall m: Int; nonneg(m) -> (not less_than(m, ZERO))
 proof
   @generalize-m |
     fix m: Int {
@@ -104,20 +104,20 @@ proof
           @m-nonneg |
             nonneg(m)
             [by hypothesis given-m-nonneg]
-          @given-m-below-zero |
+          @given-m-less_than-zero |
             assume less_than(m, ZERO) {
-              @m-below-zero |
+              @m-less_than-zero |
                 less_than(m, ZERO)
-                [by hypothesis given-m-below-zero]
+                [by hypothesis given-m-less_than-zero]
               @less-than-elim |
                 forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
                 [by axiom lessThanElim]
-              @gap-exists-if-below |
+              @gap-exists-if-less_than |
                 less_than(m, ZERO) -> exists d: Int; nonneg(d) and add(m, succ(d)) = ZERO
                 [by forall_elim(m, ZERO) less-than-elim]
               @gap-exists |
                 exists d: Int; nonneg(d) and add(m, succ(d)) = ZERO
-                [by modus_ponens gap-exists-if-below m-below-zero]
+                [by modus_ponens gap-exists-if-less_than m-less_than-zero]
               @with-gap-d |
                 unpack d0: Int from gap-exists {
                   @gap-nonneg-and-reaches |
@@ -157,16 +157,16 @@ proof
                     not less_than(m, ZERO)
                     [by absurd succ-md-is-zero succ-md-not-zero]
                 }
-              @not-below-zero |
+              @not-less_than-zero |
                 not less_than(m, ZERO)
                 [by exists_elim with-gap-d]
             }
-          @m-nonneg-not-below-zero |
+          @m-nonneg-not-less_than-zero |
             less_than(m, ZERO) -> (not less_than(m, ZERO))
-            [by implies_intro given-m-below-zero]
+            [by implies_intro given-m-less_than-zero]
           @conclusion-m |
             not less_than(m, ZERO)
-            [by tautology m-nonneg-not-below-zero]
+            [by tautology m-nonneg-not-less_than-zero]
         }
       @discharge-m-nonneg |
         nonneg(m) -> (not less_than(m, ZERO))
@@ -177,7 +177,7 @@ proof
     [by forall_intro generalize-m]
 qed
 
-// -- below-successor splits (nonneg-guarded) ------------------------------
+// -- less_than-successor splits (nonneg-guarded) ------------------------------
 
 // For nonneg m, k: m < succ(k) iff m < k or m = k. The gap d from
 // lessThanElim (add(m, succ(d)) = succ(k)) is nonneg, so by nonnegCases it is
@@ -193,20 +193,20 @@ proof
             assume nonneg(m) {
               @given-k-nonneg |
                 assume nonneg(k) {
-                  @given-m-below-succ-k |
+                  @given-m-less_than-succ-k |
                     assume less_than(m, succ(k)) {
-                      @m-below-succ-k |
+                      @m-less_than-succ-k |
                         less_than(m, succ(k))
-                        [by hypothesis given-m-below-succ-k]
+                        [by hypothesis given-m-less_than-succ-k]
                       @less-than-elim |
                         forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
                         [by axiom lessThanElim]
-                      @gap-exists-if-below |
+                      @gap-exists-if-less_than |
                         less_than(m, succ(k)) -> exists d: Int; nonneg(d) and add(m, succ(d)) = succ(k)
                         [by forall_elim(m, succ(k)) less-than-elim]
                       @gap-exists |
                         exists d: Int; nonneg(d) and add(m, succ(d)) = succ(k)
-                        [by modus_ponens gap-exists-if-below m-below-succ-k]
+                        [by modus_ponens gap-exists-if-less_than m-less_than-succ-k]
                       @with-gap-d |
                         unpack d0: Int from gap-exists {
                           @gap-nonneg-and-reaches |
@@ -251,7 +251,7 @@ proof
                               @m-equals-k |
                                 m = k
                                 [by modus_ponens m-equals-k-if-succ-equal succ-m-equals-succ-k]
-                              @conclusion-below-or-equal |
+                              @conclusion-less_than-or-equal |
                                 less_than(m, k) or m = k
                                 [by or_intro_right m-equals-k]
                             }
@@ -294,31 +294,31 @@ proof
                                   @a-gap-witnesses-less-than |
                                     forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
                                     [by axiom lessThanIntro]
-                                  @m-below-k-if-gap |
+                                  @m-less_than-k-if-gap |
                                     nonneg(e0) -> add(m, succ(e0)) = k -> less_than(m, k)
                                     [by forall_elim(m, e0, k) a-gap-witnesses-less-than]
-                                  @m-below-k |
+                                  @m-less_than-k |
                                     less_than(m, k)
-                                    [by tautology m-below-k-if-gap predecessor-nonneg inner-gap-reaches-k]
-                                  @conclusion-below-or-equal |
+                                    [by tautology m-less_than-k-if-gap predecessor-nonneg inner-gap-reaches-k]
+                                  @conclusion-less_than-or-equal |
                                     less_than(m, k) or m = k
-                                    [by or_intro_left m-below-k]
+                                    [by or_intro_left m-less_than-k]
                                 }
-                              @conclusion-below-or-equal |
+                              @conclusion-less_than-or-equal |
                                 less_than(m, k) or m = k
                                 [by exists_elim with-predecessor-e]
                             }
-                          @conclusion-below-or-equal |
+                          @conclusion-less_than-or-equal |
                             less_than(m, k) or m = k
                             [by or_elim gap-is-zero-or-successor when-gap-is-zero when-gap-is-successor]
                         }
-                      @below-or-equal |
+                      @less_than-or-equal |
                         less_than(m, k) or m = k
                         [by exists_elim with-gap-d]
                     }
-                  @below-succ-implies-below-or-equal |
+                  @less_than-succ-implies-less_than-or-equal |
                     less_than(m, succ(k)) -> (less_than(m, k) or m = k)
-                    [by implies_intro given-m-below-succ-k]
+                    [by implies_intro given-m-less_than-succ-k]
                 }
               @discharge-k-nonneg |
                 nonneg(k) -> less_than(m, succ(k)) -> (less_than(m, k) or m = k)
@@ -337,7 +337,7 @@ proof
     [by forall_intro generalize-m]
 qed
 
-// -- every integer is below its successor ---------------------------------
+// -- every integer is less_than its successor ---------------------------------
 
 // n < succ(n): the gap is ZERO (nonneg), and add(n, succ(ZERO)) = succ(n).
 theorem lessThanSelf: forall n: Int; less_than(n, succ(n))
@@ -353,12 +353,12 @@ proof
       @gap-witnesses-less-than |
         forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
         [by axiom lessThanIntro]
-      @n-below-succ-n-if-gap |
+      @n-less_than-succ-n-if-gap |
         nonneg(ZERO) -> add(n, succ(ZERO)) = succ(n) -> less_than(n, succ(n))
         [by forall_elim(n, ZERO, succ(n)) gap-witnesses-less-than]
-      @n-below-succ-n |
+      @n-less_than-succ-n |
         less_than(n, succ(n))
-        [by tautology n-below-succ-n-if-gap zero-nonneg unit-gap-is-succ-n]
+        [by tautology n-less_than-succ-n-if-gap zero-nonneg unit-gap-is-succ-n]
     }
   @conclusion |
     forall n: Int; less_than(n, succ(n))
@@ -370,7 +370,7 @@ qed
 // To prove prop(n) for all nonneg n, it suffices to prove prop(n) from the
 // assumption that prop(m) holds for every nonneg m < n. Derived from ordinary
 // nonneg induction on Q(j) := forall m; nonneg(m) -> m < j -> prop(m). Base
-// Q(ZERO) is vacuous (nonnegNotBelowZero); the step Q(k) -> Q(succ k) uses
+// Q(ZERO) is vacuous (nonnegNotLessThanZero); the step Q(k) -> Q(succ k) uses
 // lessThanSuccSplit to reduce m < succ(k) to m < k (use Q(k)) or m = k (use the
 // strong step at k). Then prop(n) follows from Q(succ n) at m = n via n < succ n.
 theorem nonnegStrongInduction(prop: Int -> Prop):
@@ -388,32 +388,32 @@ proof
         fix m0: Int {
           @given-m-nonneg |
             assume nonneg(m0) {
-              @given-m-below-zero |
+              @given-m-less_than-zero |
                 assume less_than(m0, ZERO) {
-                  @m-below-zero |
+                  @m-less_than-zero |
                     less_than(m0, ZERO)
-                    [by hypothesis given-m-below-zero]
+                    [by hypothesis given-m-less_than-zero]
                   @m-nonneg |
                     nonneg(m0)
                     [by hypothesis given-m-nonneg]
-                  @nothing-nonneg-below-zero |
+                  @nothing-nonneg-less_than-zero |
                     forall m: Int; nonneg(m) -> (not less_than(m, ZERO))
-                    [by theorem nonnegNotBelowZero]
-                  @m-not-below-zero-if-nonneg |
+                    [by theorem nonnegNotLessThanZero]
+                  @m-not-less_than-zero-if-nonneg |
                     nonneg(m0) -> (not less_than(m0, ZERO))
-                    [by forall_elim(m0) nothing-nonneg-below-zero]
-                  @m-not-below-zero |
+                    [by forall_elim(m0) nothing-nonneg-less_than-zero]
+                  @m-not-less_than-zero |
                     not less_than(m0, ZERO)
-                    [by modus_ponens m-not-below-zero-if-nonneg m-nonneg]
+                    [by modus_ponens m-not-less_than-zero-if-nonneg m-nonneg]
                   @prop-holds-vacuously |
                     prop(m0)
-                    [by absurd m-below-zero m-not-below-zero]
+                    [by absurd m-less_than-zero m-not-less_than-zero]
                 }
-              @below-zero-implies-prop |
+              @less_than-zero-implies-prop |
                 less_than(m0, ZERO) -> prop(m0)
-                [by implies_intro given-m-below-zero]
+                [by implies_intro given-m-less_than-zero]
             }
-          @nonneg-below-zero-implies-prop |
+          @nonneg-less_than-zero-implies-prop |
             nonneg(m0) -> less_than(m0, ZERO) -> prop(m0)
             [by implies_intro given-m-nonneg]
         }
@@ -449,31 +449,31 @@ proof
                           @m1-nonneg |
                             nonneg(m1)
                             [by hypothesis given-m1-nonneg]
-                          @given-m-below-succ-k |
+                          @given-m-less_than-succ-k |
                             assume less_than(m1, succ(k)) {
-                              @m-below-succ-k |
+                              @m-less_than-succ-k |
                                 less_than(m1, succ(k))
-                                [by hypothesis given-m-below-succ-k]
-                              @below-succ-splits |
+                                [by hypothesis given-m-less_than-succ-k]
+                              @less_than-succ-splits |
                                 forall mm, kk: Int; nonneg(mm) -> nonneg(kk) -> less_than(mm, succ(kk)) -> (less_than(mm, kk) or mm = kk)
                                 [by theorem lessThanSuccSplit]
-                              @m-below-k-or-equal-if-below-succ |
+                              @m-less_than-k-or-equal-if-less_than-succ |
                                 nonneg(m1) -> nonneg(k) -> less_than(m1, succ(k)) -> (less_than(m1, k) or m1 = k)
-                                [by forall_elim(m1, k) below-succ-splits]
-                              @m-below-k-or-equal |
+                                [by forall_elim(m1, k) less_than-succ-splits]
+                              @m-less_than-k-or-equal |
                                 less_than(m1, k) or m1 = k
-                                [by tautology m-below-k-or-equal-if-below-succ m1-nonneg k-nonneg m-below-succ-k]
-                              @when-m-below-k |
+                                [by tautology m-less_than-k-or-equal-if-less_than-succ m1-nonneg k-nonneg m-less_than-succ-k]
+                              @when-m-less_than-k |
                                 assume less_than(m1, k) {
-                                  @m-below-k |
+                                  @m-less_than-k |
                                     less_than(m1, k)
-                                    [by hypothesis when-m-below-k]
-                                  @prop-m-if-nonneg-below-k |
+                                    [by hypothesis when-m-less_than-k]
+                                  @prop-m-if-nonneg-less_than-k |
                                     nonneg(m1) -> less_than(m1, k) -> prop(m1)
                                     [by forall_elim(m1) inductive-hypothesis]
                                   @prop-m |
                                     prop(m1)
-                                    [by tautology prop-m-if-nonneg-below-k m1-nonneg m-below-k]
+                                    [by tautology prop-m-if-nonneg-less_than-k m1-nonneg m-less_than-k]
                                 }
                               @when-m-equals-k |
                                 assume m1 = k {
@@ -489,17 +489,17 @@ proof
                                 }
                               @prop-m |
                                 prop(m1)
-                                [by or_elim m-below-k-or-equal when-m-below-k when-m-equals-k]
+                                [by or_elim m-less_than-k-or-equal when-m-less_than-k when-m-equals-k]
                             }
-                          @below-succ-k-implies-prop |
+                          @less_than-succ-k-implies-prop |
                             less_than(m1, succ(k)) -> prop(m1)
-                            [by implies_intro given-m-below-succ-k]
+                            [by implies_intro given-m-less_than-succ-k]
                         }
-                      @nonneg-below-succ-k-implies-prop |
+                      @nonneg-less_than-succ-k-implies-prop |
                         nonneg(m1) -> less_than(m1, succ(k)) -> prop(m1)
                         [by implies_intro given-m1-nonneg]
                     }
-                  @prop-holds-below-succ-k |
+                  @prop-holds-less_than-succ-k |
                     forall m: Int; nonneg(m) -> less_than(m, succ(k)) -> prop(m)
                     [by forall_intro generalize-m]
                 }
@@ -516,7 +516,7 @@ proof
         [by forall_intro induction-step]
 
       // forall nonneg n; Q(n), by ordinary nonneg induction on Q
-      @prop-holds-below-every-n |
+      @prop-holds-less_than-every-n |
         forall n: Int; nonneg(n) -> forall m: Int; nonneg(m) -> less_than(m, n) -> prop(m)
         [by instantiate nonnegInduction((fun j: Int => forall m: Int; nonneg(m) -> less_than(m, j) -> prop(m))) base-case induction-step-for-all-k]
 
@@ -537,24 +537,24 @@ proof
               @succ-n-nonneg |
                 nonneg(succ(n1))
                 [by modus_ponens succ-n-nonneg-if-n n-nonneg]
-              @prop-holds-below-succ-n-if-nonneg |
+              @prop-holds-less_than-succ-n-if-nonneg |
                 nonneg(succ(n1)) -> forall m: Int; nonneg(m) -> less_than(m, succ(n1)) -> prop(m)
-                [by forall_elim(succ(n1)) prop-holds-below-every-n]
-              @prop-holds-below-succ-n |
+                [by forall_elim(succ(n1)) prop-holds-less_than-every-n]
+              @prop-holds-less_than-succ-n |
                 forall m: Int; nonneg(m) -> less_than(m, succ(n1)) -> prop(m)
-                [by modus_ponens prop-holds-below-succ-n-if-nonneg succ-n-nonneg]
-              @prop-n-if-nonneg-below-succ-n |
+                [by modus_ponens prop-holds-less_than-succ-n-if-nonneg succ-n-nonneg]
+              @prop-n-if-nonneg-less_than-succ-n |
                 nonneg(n1) -> less_than(n1, succ(n1)) -> prop(n1)
-                [by forall_elim(n1) prop-holds-below-succ-n]
-              @n-below-succ-n-lemma |
+                [by forall_elim(n1) prop-holds-less_than-succ-n]
+              @n-less_than-succ-n-lemma |
                 forall n: Int; less_than(n, succ(n))
                 [by theorem lessThanSelf]
-              @n-below-succ-n |
+              @n-less_than-succ-n |
                 less_than(n1, succ(n1))
-                [by forall_elim(n1) n-below-succ-n-lemma]
+                [by forall_elim(n1) n-less_than-succ-n-lemma]
               @prop-n |
                 prop(n1)
-                [by tautology prop-n-if-nonneg-below-succ-n n-nonneg n-below-succ-n]
+                [by tautology prop-n-if-nonneg-less_than-succ-n n-nonneg n-less_than-succ-n]
             }
           @nonneg-n-implies-prop |
             nonneg(n1) -> prop(n1)
@@ -604,11 +604,11 @@ proof
                   @n-nonneg |
                     nonneg(n)
                     [by hypothesis given-n-nonneg]
-                  @given-all-below-fail |
+                  @given-all-less_than-fail |
                     assume forall m: Int; nonneg(m) -> less_than(m, n) -> (not prop(m)) {
-                      @all-below-fail |
+                      @all-less_than-fail |
                         forall m: Int; nonneg(m) -> less_than(m, n) -> (not prop(m))
-                        [by hypothesis given-all-below-fail]
+                        [by hypothesis given-all-less_than-fail]
                       @given-n-satisfies |
                         assume prop(n) {
                           @n-satisfies |
@@ -642,17 +642,17 @@ proof
                                       @n-le-m-in-all-cases |
                                         less_or_equal(n, m)
                                         case on order-n-m {
-                                          @when-n-below-m |
+                                          @when-n-less_than-m |
                                             assume less_than(n, m) {
-                                              @n-below-m |
+                                              @n-less_than-m |
                                                 less_than(n, m)
-                                                [by hypothesis when-n-below-m]
-                                              @n-le-m-if-below |
+                                                [by hypothesis when-n-less_than-m]
+                                              @n-le-m-if-less_than |
                                                 less_than(n, m) -> less_or_equal(n, m)
                                                 [by forall_elim(n, m) less-than-to-le]
                                               @conclusion-n-le-m |
                                                 less_or_equal(n, m)
-                                                [by modus_ponens n-le-m-if-below n-below-m]
+                                                [by modus_ponens n-le-m-if-less_than n-less_than-m]
                                             }
                                           @when-n-equals-m |
                                             assume n = m {
@@ -666,17 +666,17 @@ proof
                                                 less_or_equal(n, m)
                                                 [by rewrite n-equals-m n-le-n]
                                             }
-                                          @when-m-below-n |
+                                          @when-m-less_than-n |
                                             assume less_than(m, n) {
-                                              @m-below-n |
+                                              @m-less_than-n |
                                                 less_than(m, n)
-                                                [by hypothesis when-m-below-n]
-                                              @m-fails-if-nonneg-below-n |
+                                                [by hypothesis when-m-less_than-n]
+                                              @m-fails-if-nonneg-less_than-n |
                                                 nonneg(m) -> less_than(m, n) -> (not prop(m))
-                                                [by forall_elim(m) all-below-fail]
+                                                [by forall_elim(m) all-less_than-fail]
                                               @m-fails |
                                                 not prop(m)
-                                                [by tautology m-fails-if-nonneg-below-n m-nonneg m-below-n]
+                                                [by tautology m-fails-if-nonneg-less_than-n m-nonneg m-less_than-n]
                                               @conclusion-n-le-m |
                                                 less_or_equal(n, m)
                                                 [by absurd m-satisfies m-fails]
@@ -716,9 +716,9 @@ proof
                         not prop(n)
                         [by tautology n-satisfies-implies-not-prop]
                     }
-                  @all-below-fail-implies-n-fails |
+                  @all-less_than-fail-implies-n-fails |
                     (forall m: Int; nonneg(m) -> less_than(m, n) -> (not prop(m))) -> (not prop(n))
-                    [by implies_intro given-all-below-fail]
+                    [by implies_intro given-all-less_than-fail]
                 }
               @strong-step-at-n |
                 nonneg(n) -> (forall m: Int; nonneg(m) -> less_than(m, n) -> (not prop(m))) -> (not prop(n))

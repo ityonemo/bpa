@@ -5,9 +5,9 @@
 // truncation, unlike Peano) — one defining axiom, and the useful facts
 // (sub(a,a)=0, add(sub(a,b),b)=a, ...) are proven from the ring algebra with no
 // induction. The order `less_than(a, b)` is `∃d; nonneg(d) and b = a + succ(d)`
-// — a is below b iff b exceeds a by a positive amount. Unlike Peano, the gap
+// — a is less_than b iff b exceeds a by a positive amount. Unlike Peano, the gap
 // witness `d` must be pinned NONNEGATIVE: over ℤ an unconstrained `d` may be
-// negative, which would make `succ(d)` reach 0 or below and collapse `less_than`
+// negative, which would make `succ(d)` reach 0 or less_than and collapse `less_than`
 // into the total relation (`less_than(ZERO, ZERO)` would be provable). So we
 // carry `std/integer-nonneg.bpa`'s `nonneg` predicate through the gap.
 
@@ -34,7 +34,7 @@ theorem addNegRight = ring.addNegRight
 theorem addNegLeft = ring.addNegLeft
 axiom induction = integer.induction
 
-// mul recursion + negation axioms/lemmas, for the sign lemmas below.
+// mul recursion + negation axioms/lemmas, for the sign lemmas less_than.
 axiom mulZeroLeft = integer.mulZeroLeft
 axiom mulSuccLeft = integer.mulSuccLeft
 axiom mulPrevLeft = integer.mulPrevLeft
@@ -75,7 +75,7 @@ axiom lessThanElim: forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d
 // The honest definition, built transparently ON TOP of `less_than`.
 // `less_or_equal` is a `define` (nothing pattern-matches on it; Farkas depends
 // only on `less_than`), so a proof sees `less_than(a, b) or a = b` directly.
-// `lessOrEqualIsGapExistential` (below) proves this body is identical to the old
+// `lessOrEqualIsGapExistential` (less_than) proves this body is identical to the old
 // nonnegative-gap-existential characterization `exists d; nonneg(d) and add(a, d) = b`.
 define less_or_equal(a: Int, b: Int) = less_than(a, b) or a = b
 
@@ -374,20 +374,20 @@ theorem lessThanIrreflexive: forall n: Int; not less_than(n, n)
 proof
   @generalize-n |
     fix n: Int {
-      @given-n-below-n |
+      @given-n-less_than-n |
         assume less_than(n, n) {
-          @n-below-n |
+          @n-less_than-n |
             less_than(n, n)
-            [by hypothesis given-n-below-n]
+            [by hypothesis given-n-less_than-n]
           @less-than-elim |
             forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
             [by axiom lessThanElim]
-          @self-gap-exists-if-below |
+          @self-gap-exists-if-less_than |
             less_than(n, n) -> exists d: Int; nonneg(d) and add(n, succ(d)) = n
             [by forall_elim(n, n) less-than-elim]
           @self-gap-exists |
             exists d: Int; nonneg(d) and add(n, succ(d)) = n
-            [by modus_ponens self-gap-exists-if-below n-below-n]
+            [by modus_ponens self-gap-exists-if-less_than n-less_than-n]
           @with-gap-d |
             unpack d0: Int from self-gap-exists {
               @gap-is-nonneg-and-witnesses-self |
@@ -430,20 +430,20 @@ proof
               @succ-gap-is-nonzero |
                 succ(d0) != ZERO
                 [by modus_ponens succ-gap-is-nonzero-if-nonneg gap-is-nonneg]
-              @not-n-below-n |
+              @not-n-less_than-n |
                 not less_than(n, n)
                 [by absurd succ-gap-is-zero succ-gap-is-nonzero]
             }
-          @not-n-below-n |
+          @not-n-less_than-n |
             not less_than(n, n)
             [by exists_elim with-gap-d]
-          @n-below-n-restated |
+          @n-less_than-n-restated |
             less_than(n, n)
-            [by hypothesis given-n-below-n]
+            [by hypothesis given-n-less_than-n]
         }
-      @no-n-below-n |
+      @no-n-less_than-n |
         not less_than(n, n)
-        [by not_intro given-n-below-n n-below-n-restated not-n-below-n]
+        [by not_intro given-n-less_than-n n-less_than-n-restated not-n-less_than-n]
     }
   @conclusion |
     forall n: Int; not less_than(n, n)
@@ -461,31 +461,31 @@ proof
         fix b: Int {
           @generalize-c |
             fix c: Int {
-              @given-a-below-b |
+              @given-a-less_than-b |
                 assume less_than(a, b) {
-                  @given-b-below-c |
+                  @given-b-less_than-c |
                     assume less_than(b, c) {
-                      @a-below-b |
+                      @a-less_than-b |
                         less_than(a, b)
-                        [by hypothesis given-a-below-b]
-                      @b-below-c |
+                        [by hypothesis given-a-less_than-b]
+                      @b-less_than-c |
                         less_than(b, c)
-                        [by hypothesis given-b-below-c]
+                        [by hypothesis given-b-less_than-c]
                       @less-than-elim |
                         forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
                         [by axiom lessThanElim]
-                      @gap-ab-exists-if-below |
+                      @gap-ab-exists-if-less_than |
                         less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
                         [by forall_elim(a, b) less-than-elim]
                       @gap-ab-exists |
                         exists d: Int; nonneg(d) and add(a, succ(d)) = b
-                        [by modus_ponens gap-ab-exists-if-below a-below-b]
-                      @gap-bc-exists-if-below |
+                        [by modus_ponens gap-ab-exists-if-less_than a-less_than-b]
+                      @gap-bc-exists-if-less_than |
                         less_than(b, c) -> exists d: Int; nonneg(d) and add(b, succ(d)) = c
                         [by forall_elim(b, c) less-than-elim]
                       @gap-bc-exists |
                         exists d: Int; nonneg(d) and add(b, succ(d)) = c
-                        [by modus_ponens gap-bc-exists-if-below b-below-c]
+                        [by modus_ponens gap-bc-exists-if-less_than b-less_than-c]
                       @with-gap-u |
                         unpack u: Int from gap-ab-exists {
                           @with-gap-v |
@@ -549,28 +549,28 @@ proof
                               @a-gap-witnesses-less-than |
                                 forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                                 [by axiom lessThanIntro]
-                              @a-below-c-if-gap |
+                              @a-less_than-c-if-gap |
                                 nonneg(add(u, succ(v))) -> add(a, succ(add(u, succ(v)))) = c -> less_than(a, c)
                                 [by forall_elim(a, add(u, succ(v)), c) a-gap-witnesses-less-than]
-                              @a-below-c |
+                              @a-less_than-c |
                                 less_than(a, c)
-                                [by tautology a-below-c-if-gap combined-gap-nonneg successor-gap-reaches-c]
+                                [by tautology a-less_than-c-if-gap combined-gap-nonneg successor-gap-reaches-c]
                             }
-                          @a-below-c |
+                          @a-less_than-c |
                             less_than(a, c)
                             [by exists_elim with-gap-v]
                         }
-                      @a-below-c |
+                      @a-less_than-c |
                         less_than(a, c)
                         [by exists_elim with-gap-u]
                     }
-                  @b-below-c-implies-a-below-c |
+                  @b-less_than-c-implies-a-less_than-c |
                     less_than(b, c) -> less_than(a, c)
-                    [by implies_intro given-b-below-c]
+                    [by implies_intro given-b-less_than-c]
                 }
-              @a-below-b-implies-transitively-below-c |
+              @a-less_than-b-implies-transitively-less_than-c |
                 less_than(a, b) -> less_than(b, c) -> less_than(a, c)
-                [by implies_intro given-a-below-b]
+                [by implies_intro given-a-less_than-b]
             }
           @discharge-c |
             forall c: Int; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
@@ -595,20 +595,20 @@ proof
         fix b: Int {
           @generalize-c |
             fix c: Int {
-              @given-a-below-b |
+              @given-a-less_than-b |
                 assume less_than(a, b) {
-                  @a-below-b |
+                  @a-less_than-b |
                     less_than(a, b)
-                    [by hypothesis given-a-below-b]
+                    [by hypothesis given-a-less_than-b]
                   @less-than-elim |
                     forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
                     [by axiom lessThanElim]
-                  @gap-exists-if-below |
+                  @gap-exists-if-less_than |
                     less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
                     [by forall_elim(a, b) less-than-elim]
                   @gap-exists |
                     exists d: Int; nonneg(d) and add(a, succ(d)) = b
-                    [by modus_ponens gap-exists-if-below a-below-b]
+                    [by modus_ponens gap-exists-if-less_than a-less_than-b]
                   @with-gap-u |
                     unpack u: Int from gap-exists {
                       @gap-nonneg-and-witnesses-b |
@@ -633,20 +633,20 @@ proof
                       @a-gap-witnesses-less-than |
                         forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                         [by axiom lessThanIntro]
-                      @shifted-below-if-gap |
+                      @shifted-less_than-if-gap |
                         nonneg(u) -> add(add(c, a), succ(u)) = add(c, b) -> less_than(add(c, a), add(c, b))
                         [by forall_elim(add(c, a), u, add(c, b)) a-gap-witnesses-less-than]
                       @shifted-preserves-order |
                         less_than(add(c, a), add(c, b))
-                        [by tautology shifted-below-if-gap gap-nonneg shifted-gap-witnesses-c-plus-b]
+                        [by tautology shifted-less_than-if-gap gap-nonneg shifted-gap-witnesses-c-plus-b]
                     }
                   @shifted-preserves-order |
                     less_than(add(c, a), add(c, b))
                     [by exists_elim with-gap-u]
                 }
-              @a-below-b-implies-shifted-below |
+              @a-less_than-b-implies-shifted-less_than |
                 less_than(a, b) -> less_than(add(c, a), add(c, b))
-                [by implies_intro given-a-below-b]
+                [by implies_intro given-a-less_than-b]
             }
           @discharge-c |
             forall c: Int; less_than(a, b) -> less_than(add(c, a), add(c, b))
@@ -672,20 +672,20 @@ proof
         fix a: Int {
           @generalize-b |
             fix b: Int {
-              @given-shifted-below |
+              @given-shifted-less_than |
                 assume less_than(add(c, a), add(c, b)) {
-                  @shifted-below |
+                  @shifted-less_than |
                     less_than(add(c, a), add(c, b))
-                    [by hypothesis given-shifted-below]
+                    [by hypothesis given-shifted-less_than]
                   @less-than-elim |
                     forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
                     [by axiom lessThanElim]
-                  @shifted-gap-exists-if-below |
+                  @shifted-gap-exists-if-less_than |
                     less_than(add(c, a), add(c, b)) -> exists d: Int; nonneg(d) and add(add(c, a), succ(d)) = add(c, b)
                     [by forall_elim(add(c, a), add(c, b)) less-than-elim]
                   @shifted-gap-exists |
                     exists d: Int; nonneg(d) and add(add(c, a), succ(d)) = add(c, b)
-                    [by modus_ponens shifted-gap-exists-if-below shifted-below]
+                    [by modus_ponens shifted-gap-exists-if-less_than shifted-less_than]
                   @with-gap-u |
                     unpack u: Int from shifted-gap-exists {
                       @gap-nonneg-and-witnesses-shifted-b |
@@ -716,20 +716,20 @@ proof
                       @a-gap-witnesses-less-than |
                         forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                         [by axiom lessThanIntro]
-                      @a-below-b-if-gap |
+                      @a-less_than-b-if-gap |
                         nonneg(u) -> add(a, succ(u)) = b -> less_than(a, b)
                         [by forall_elim(a, u, b) a-gap-witnesses-less-than]
-                      @a-below-b |
+                      @a-less_than-b |
                         less_than(a, b)
-                        [by tautology a-below-b-if-gap gap-nonneg gap-witnesses-b]
+                        [by tautology a-less_than-b-if-gap gap-nonneg gap-witnesses-b]
                     }
-                  @a-below-b |
+                  @a-less_than-b |
                     less_than(a, b)
                     [by exists_elim with-gap-u]
                 }
-              @shifted-below-implies-a-below-b |
+              @shifted-less_than-implies-a-less_than-b |
                 less_than(add(c, a), add(c, b)) -> less_than(a, b)
-                [by implies_intro given-shifted-below]
+                [by implies_intro given-shifted-less_than]
             }
           @discharge-b |
             forall b: Int; less_than(add(c, a), add(c, b)) -> less_than(a, b)
@@ -753,21 +753,21 @@ proof
     fix a: Int {
       @generalize-b |
         fix b: Int {
-          @given-a-below-b |
+          @given-a-less_than-b |
             assume less_than(a, b) {
-              @a-below-b |
+              @a-less_than-b |
                 less_than(a, b)
-                [by hypothesis given-a-below-b]
-              @a-below-b-or-equal |
+                [by hypothesis given-a-less_than-b]
+              @a-less_than-b-or-equal |
                 less_than(a, b) or a = b
-                [by or_intro_left a-below-b]
+                [by or_intro_left a-less_than-b]
               @a-at-most-b |
                 less_or_equal(a, b)
-                [by tautology a-below-b-or-equal]
+                [by tautology a-less_than-b-or-equal]
             }
-          @below-b-implies-at-most-b |
+          @less_than-b-implies-at-most-b |
             less_than(a, b) -> less_or_equal(a, b)
-            [by implies_intro given-a-below-b]
+            [by implies_intro given-a-less_than-b]
         }
       @discharge-b |
         forall b: Int; less_than(a, b) -> less_or_equal(a, b)
@@ -786,12 +786,12 @@ proof
       @a-equals-a |
         a = a
         [by reflexivity]
-      @a-below-a-or-equal |
+      @a-less_than-a-or-equal |
         less_than(a, a) or a = a
         [by or_intro_right a-equals-a]
       @a-at-most-a |
         less_or_equal(a, a)
-        [by tautology a-below-a-or-equal]
+        [by tautology a-less_than-a-or-equal]
     }
   @conclusion |
     forall a: Int; less_or_equal(a, a)
@@ -813,64 +813,64 @@ proof
                 assume less_or_equal(a, b) {
                   @given-b-at-most-c |
                     assume less_or_equal(b, c) {
-                      @a-below-b-or-equal |
+                      @a-less_than-b-or-equal |
                         less_than(a, b) or a = b
                         [by hypothesis given-a-at-most-b]
-                      @b-below-c-or-equal |
+                      @b-less_than-c-or-equal |
                         less_than(b, c) or b = c
                         [by hypothesis given-b-at-most-c]
-                      @below-to-at-most |
+                      @less_than-to-at-most |
                         forall x, y: Int; less_than(x, y) -> less_or_equal(x, y)
                         [by theorem lessThanToLessOrEqual]
                       @a-at-most-c |
                         less_or_equal(a, c)
-                        case on a-below-b-or-equal {
-                          @when-a-below-b |
+                        case on a-less_than-b-or-equal {
+                          @when-a-less_than-b |
                             assume less_than(a, b) {
-                              @a-below-b |
+                              @a-less_than-b |
                                 less_than(a, b)
-                                [by hypothesis when-a-below-b]
+                                [by hypothesis when-a-less_than-b]
                               @conclusion-a-at-most-c |
                                 less_or_equal(a, c)
-                                case on b-below-c-or-equal {
-                                  @when-b-below-c |
+                                case on b-less_than-c-or-equal {
+                                  @when-b-less_than-c |
                                     assume less_than(b, c) {
-                                      @b-below-c |
+                                      @b-less_than-c |
                                         less_than(b, c)
-                                        [by hypothesis when-b-below-c]
+                                        [by hypothesis when-b-less_than-c]
                                       @less-than-transitive |
                                         forall x, y, z: Int; less_than(x, y) -> less_than(y, z) -> less_than(x, z)
                                         [by theorem lessThanTransitive]
-                                      @a-below-c-if-below-both |
+                                      @a-less_than-c-if-less_than-both |
                                         less_than(a, b) -> less_than(b, c) -> less_than(a, c)
                                         [by forall_elim(a, b, c) less-than-transitive]
-                                      @a-below-c-if-b-below-c |
+                                      @a-less_than-c-if-b-less_than-c |
                                         less_than(b, c) -> less_than(a, c)
-                                        [by modus_ponens a-below-c-if-below-both a-below-b]
-                                      @a-below-c |
+                                        [by modus_ponens a-less_than-c-if-less_than-both a-less_than-b]
+                                      @a-less_than-c |
                                         less_than(a, c)
-                                        [by modus_ponens a-below-c-if-b-below-c b-below-c]
-                                      @a-at-most-c-if-below |
+                                        [by modus_ponens a-less_than-c-if-b-less_than-c b-less_than-c]
+                                      @a-at-most-c-if-less_than |
                                         less_than(a, c) -> less_or_equal(a, c)
-                                        [by forall_elim(a, c) below-to-at-most]
+                                        [by forall_elim(a, c) less_than-to-at-most]
                                       @conclusion-a-at-most-c |
                                         less_or_equal(a, c)
-                                        [by modus_ponens a-at-most-c-if-below a-below-c]
+                                        [by modus_ponens a-at-most-c-if-less_than a-less_than-c]
                                     }
                                   @when-b-equals-c |
                                     assume b = c {
                                       @b-equals-c |
                                         b = c
                                         [by hypothesis when-b-equals-c]
-                                      @a-below-c |
+                                      @a-less_than-c |
                                         less_than(a, c)
-                                        [by rewrite b-equals-c a-below-b]
-                                      @a-at-most-c-if-below |
+                                        [by rewrite b-equals-c a-less_than-b]
+                                      @a-at-most-c-if-less_than |
                                         less_than(a, c) -> less_or_equal(a, c)
-                                        [by forall_elim(a, c) below-to-at-most]
+                                        [by forall_elim(a, c) less_than-to-at-most]
                                       @conclusion-a-at-most-c |
                                         less_or_equal(a, c)
-                                        [by modus_ponens a-at-most-c-if-below a-below-c]
+                                        [by modus_ponens a-at-most-c-if-less_than a-less_than-c]
                                     }
                                 }
                             }
@@ -922,11 +922,11 @@ proof
         fix b: Int {
           @given-a-at-most-b |
             assume less_or_equal(a, b) {
-              @below-or-equal |
+              @less_than-or-equal |
                 less_than(a, b) or a = b
                 [by hypothesis given-a-at-most-b]
             }
-          @at-most-b-implies-below-or-equal |
+          @at-most-b-implies-less_than-or-equal |
             less_or_equal(a, b) -> (less_than(a, b) or a = b)
             [by implies_intro given-a-at-most-b]
         }
@@ -954,26 +954,26 @@ proof
           // forward: less_than(a, b) or a = b  ->  exists d; nonneg(d) and add(a, d) = b
           @given-a-at-most-b |
             assume less_or_equal(a, b) {
-              @a-below-b-or-equal |
+              @a-less_than-b-or-equal |
                 less_than(a, b) or a = b
                 [by hypothesis given-a-at-most-b]
               @gap-exists |
                 exists d: Int; nonneg(d) and add(a, d) = b
-                case on a-below-b-or-equal {
-                  @when-a-below-b |
+                case on a-less_than-b-or-equal {
+                  @when-a-less_than-b |
                     assume less_than(a, b) {
-                      @a-below-b |
+                      @a-less_than-b |
                         less_than(a, b)
-                        [by hypothesis when-a-below-b]
+                        [by hypothesis when-a-less_than-b]
                       @less-than-elim |
                         forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
                         [by axiom lessThanElim]
-                      @strict-gap-exists-if-below |
+                      @strict-gap-exists-if-less_than |
                         less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
                         [by forall_elim(a, b) less-than-elim]
                       @strict-gap-exists |
                         exists d: Int; nonneg(d) and add(a, succ(d)) = b
-                        [by modus_ponens strict-gap-exists-if-below a-below-b]
+                        [by modus_ponens strict-gap-exists-if-less_than a-less_than-b]
                       @with-strict-gap-d |
                         unpack d0: Int from strict-gap-exists {
                           @strict-gap-nonneg-and-witnesses-b |
@@ -1058,7 +1058,7 @@ proof
                   @gap-is-zero-or-successor |
                     d0 = ZERO or (exists m: Int; nonneg(m) and d0 = succ(m))
                     [by modus_ponens gap-is-zero-or-successor-if-nonneg gap-nonneg]
-                  @a-below-b-or-equal |
+                  @a-less_than-b-or-equal |
                     less_than(a, b) or a = b
                     case on gap-is-zero-or-successor {
                       @when-gap-is-zero |
@@ -1075,7 +1075,7 @@ proof
                           @a-equals-b |
                             a = b
                             [by rewrite zero-gap-is-a zero-gap-reaches-b]
-                          @conclusion-below-or-equal |
+                          @conclusion-less_than-or-equal |
                             less_than(a, b) or a = b
                             [by or_intro_right a-equals-b]
                         }
@@ -1101,24 +1101,24 @@ proof
                               @a-gap-witnesses-less-than |
                                 forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                                 [by axiom lessThanIntro]
-                              @a-below-b-if-gap |
+                              @a-less_than-b-if-gap |
                                 nonneg(m0) -> add(a, succ(m0)) = b -> less_than(a, b)
                                 [by forall_elim(a, m0, b) a-gap-witnesses-less-than]
-                              @a-below-b |
+                              @a-less_than-b |
                                 less_than(a, b)
-                                [by tautology a-below-b-if-gap predecessor-nonneg strict-gap-witnesses-b]
-                              @conclusion-below-or-equal |
+                                [by tautology a-less_than-b-if-gap predecessor-nonneg strict-gap-witnesses-b]
+                              @conclusion-less_than-or-equal |
                                 less_than(a, b) or a = b
-                                [by or_intro_left a-below-b]
+                                [by or_intro_left a-less_than-b]
                             }
-                          @conclusion-below-or-equal |
+                          @conclusion-less_than-or-equal |
                             less_than(a, b) or a = b
                             [by exists_elim with-predecessor-m]
                         }
                     }
                   @a-at-most-b |
                     less_or_equal(a, b)
-                    [by tautology a-below-b-or-equal]
+                    [by tautology a-less_than-b-or-equal]
                 }
               @a-at-most-b |
                 less_or_equal(a, b)
@@ -1163,53 +1163,53 @@ proof
                   @at-most-splits |
                     forall x, y: Int; less_or_equal(x, y) -> (less_than(x, y) or x = y)
                     [by theorem lessOrEqualSplit]
-                  @a-below-b-or-equal-if-at-most |
+                  @a-less_than-b-or-equal-if-at-most |
                     less_or_equal(a, b) -> (less_than(a, b) or a = b)
                     [by forall_elim(a, b) at-most-splits]
-                  @a-below-b-or-equal |
+                  @a-less_than-b-or-equal |
                     less_than(a, b) or a = b
-                    [by modus_ponens a-below-b-or-equal-if-at-most a-at-most-b]
+                    [by modus_ponens a-less_than-b-or-equal-if-at-most a-at-most-b]
                   @a-equals-b |
                     a = b
-                    case on a-below-b-or-equal {
-                      @when-a-below-b |
+                    case on a-less_than-b-or-equal {
+                      @when-a-less_than-b |
                         assume less_than(a, b) {
-                          @a-below-b |
+                          @a-less_than-b |
                             less_than(a, b)
-                            [by hypothesis when-a-below-b]
-                          @b-below-a-or-equal-if-at-most |
+                            [by hypothesis when-a-less_than-b]
+                          @b-less_than-a-or-equal-if-at-most |
                             less_or_equal(b, a) -> (less_than(b, a) or b = a)
                             [by forall_elim(b, a) at-most-splits]
-                          @b-below-a-or-equal |
+                          @b-less_than-a-or-equal |
                             less_than(b, a) or b = a
-                            [by modus_ponens b-below-a-or-equal-if-at-most b-at-most-a]
+                            [by modus_ponens b-less_than-a-or-equal-if-at-most b-at-most-a]
                           @conclusion-a-equals-b |
                             a = b
-                            case on b-below-a-or-equal {
-                              @when-b-below-a |
+                            case on b-less_than-a-or-equal {
+                              @when-b-less_than-a |
                                 assume less_than(b, a) {
-                                  @b-below-a |
+                                  @b-less_than-a |
                                     less_than(b, a)
-                                    [by hypothesis when-b-below-a]
+                                    [by hypothesis when-b-less_than-a]
                                   // a < b and b < a give a < a, impossible.
                                   @less-than-transitive |
                                     forall x, y, z: Int; less_than(x, y) -> less_than(y, z) -> less_than(x, z)
                                     [by theorem lessThanTransitive]
-                                  @a-below-a-if-below-both-ways |
+                                  @a-less_than-a-if-less_than-both-ways |
                                     less_than(a, b) -> less_than(b, a) -> less_than(a, a)
                                     [by forall_elim(a, b, a) less-than-transitive]
-                                  @a-below-a |
+                                  @a-less_than-a |
                                     less_than(a, a)
-                                    [by tautology a-below-a-if-below-both-ways a-below-b b-below-a]
+                                    [by tautology a-less_than-a-if-less_than-both-ways a-less_than-b b-less_than-a]
                                   @less-than-irreflexive |
                                     forall n: Int; not less_than(n, n)
                                     [by theorem lessThanIrreflexive]
-                                  @not-a-below-a |
+                                  @not-a-less_than-a |
                                     not less_than(a, a)
                                     [by forall_elim(a) less-than-irreflexive]
                                   @conclusion-a-equals-b |
                                     a = b
-                                    [by absurd a-below-a not-a-below-a]
+                                    [by absurd a-less_than-a not-a-less_than-a]
                                 }
                               @when-b-equals-a |
                                 assume b = a {
@@ -1347,20 +1347,20 @@ proof
     fix a: Int {
       @generalize-b |
         fix b: Int {
-          @given-a-below-b |
+          @given-a-less_than-b |
             assume less_than(a, b) {
-              @a-below-b |
+              @a-less_than-b |
                 less_than(a, b)
-                [by hypothesis given-a-below-b]
+                [by hypothesis given-a-less_than-b]
               @less-than-elim |
                 forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
                 [by axiom lessThanElim]
-              @gap-exists-if-below |
+              @gap-exists-if-less_than |
                 less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
                 [by forall_elim(a, b) less-than-elim]
               @gap-exists |
                 exists d: Int; nonneg(d) and add(a, succ(d)) = b
-                [by modus_ponens gap-exists-if-below a-below-b]
+                [by modus_ponens gap-exists-if-less_than a-less_than-b]
               @with-gap-d |
                 unpack d0: Int from gap-exists {
                   @gap-nonneg-and-witnesses-b |
@@ -1394,20 +1394,20 @@ proof
                   @a-gap-witnesses-less-than |
                     forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                     [by axiom lessThanIntro]
-                  @a-below-succ-b-if-gap |
+                  @a-less_than-succ-b-if-gap |
                     nonneg(succ(d0)) -> add(a, succ(succ(d0))) = succ(b) -> less_than(a, succ(b))
                     [by forall_elim(a, succ(d0), succ(b)) a-gap-witnesses-less-than]
-                  @a-below-succ-b |
+                  @a-less_than-succ-b |
                     less_than(a, succ(b))
-                    [by tautology a-below-succ-b-if-gap grown-gap-nonneg grown-gap-reaches-succ-b]
+                    [by tautology a-less_than-succ-b-if-gap grown-gap-nonneg grown-gap-reaches-succ-b]
                 }
-              @a-below-succ-b |
+              @a-less_than-succ-b |
                 less_than(a, succ(b))
                 [by exists_elim with-gap-d]
             }
-          @a-below-b-implies-a-below-succ-b |
+          @a-less_than-b-implies-a-less_than-succ-b |
             less_than(a, b) -> less_than(a, succ(b))
-            [by implies_intro given-a-below-b]
+            [by implies_intro given-a-less_than-b]
         }
       @discharge-b |
         forall b: Int; less_than(a, b) -> less_than(a, succ(b))
@@ -1425,20 +1425,20 @@ theorem lessThanZeroSuccSplit: forall k: Int; less_than(k, ZERO) -> (less_than(s
 proof
   @generalize-k |
     fix k: Int {
-      @given-k-below-zero |
+      @given-k-less_than-zero |
         assume less_than(k, ZERO) {
-          @k-below-zero |
+          @k-less_than-zero |
             less_than(k, ZERO)
-            [by hypothesis given-k-below-zero]
+            [by hypothesis given-k-less_than-zero]
           @less-than-elim |
             forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
             [by axiom lessThanElim]
-          @gap-exists-if-below |
+          @gap-exists-if-less_than |
             less_than(k, ZERO) -> exists d: Int; nonneg(d) and add(k, succ(d)) = ZERO
             [by forall_elim(k, ZERO) less-than-elim]
           @gap-exists |
             exists d: Int; nonneg(d) and add(k, succ(d)) = ZERO
-            [by modus_ponens gap-exists-if-below k-below-zero]
+            [by modus_ponens gap-exists-if-less_than k-less_than-zero]
           @with-gap-d |
             unpack d0: Int from gap-exists {
               @gap-nonneg-and-witnesses-zero |
@@ -1459,7 +1459,7 @@ proof
               @gap-is-zero-or-successor |
                 d0 = ZERO or (exists m: Int; nonneg(m) and d0 = succ(m))
                 [by modus_ponens gap-is-zero-or-successor-if-nonneg gap-nonneg]
-              @succ-below-or-equal-zero |
+              @succ-less_than-or-equal-zero |
                 less_than(succ(k), ZERO) or succ(k) = ZERO
                 case on gap-is-zero-or-successor {
                   @when-gap-is-zero |
@@ -1488,7 +1488,7 @@ proof
                       @succ-k-is-zero |
                         succ(k) = ZERO
                         [by rewrite succ-of-k-plus-zero-is-succ-k succ-k-witnesses-zero]
-                      @conclusion-succ-below-or-equal-zero |
+                      @conclusion-succ-less_than-or-equal-zero |
                         less_than(succ(k), ZERO) or succ(k) = ZERO
                         [by or_intro_right succ-k-is-zero]
                     }
@@ -1538,29 +1538,29 @@ proof
                           @a-gap-witnesses-less-than |
                             forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                             [by axiom lessThanIntro]
-                          @succ-k-below-zero-if-gap |
+                          @succ-k-less_than-zero-if-gap |
                             nonneg(m0) -> add(succ(k), succ(m0)) = ZERO -> less_than(succ(k), ZERO)
                             [by forall_elim(succ(k), m0, ZERO) a-gap-witnesses-less-than]
-                          @succ-k-below-zero |
+                          @succ-k-less_than-zero |
                             less_than(succ(k), ZERO)
-                            [by tautology succ-k-below-zero-if-gap predecessor-nonneg succ-k-gap-witnesses-zero]
-                          @conclusion-succ-below-or-equal-zero |
+                            [by tautology succ-k-less_than-zero-if-gap predecessor-nonneg succ-k-gap-witnesses-zero]
+                          @conclusion-succ-less_than-or-equal-zero |
                             less_than(succ(k), ZERO) or succ(k) = ZERO
-                            [by or_intro_left succ-k-below-zero]
+                            [by or_intro_left succ-k-less_than-zero]
                         }
-                      @conclusion-succ-below-or-equal-zero |
+                      @conclusion-succ-less_than-or-equal-zero |
                         less_than(succ(k), ZERO) or succ(k) = ZERO
                         [by exists_elim with-predecessor-m]
                     }
                 }
             }
-          @succ-below-or-equal-zero |
+          @succ-less_than-or-equal-zero |
             less_than(succ(k), ZERO) or succ(k) = ZERO
             [by exists_elim with-gap-d]
         }
-      @k-below-zero-implies-succ-split |
+      @k-less_than-zero-implies-succ-split |
         less_than(k, ZERO) -> (less_than(succ(k), ZERO) or succ(k) = ZERO)
-        [by implies_intro given-k-below-zero]
+        [by implies_intro given-k-less_than-zero]
     }
   @conclusion |
     forall k: Int; less_than(k, ZERO) -> (less_than(succ(k), ZERO) or succ(k) = ZERO)
@@ -1574,20 +1574,20 @@ theorem lessThanZeroPrevSplit: forall k: Int; less_than(ZERO, k) -> (less_than(Z
 proof
   @generalize-k |
     fix k: Int {
-      @given-zero-below-k |
+      @given-zero-less_than-k |
         assume less_than(ZERO, k) {
-          @zero-below-k |
+          @zero-less_than-k |
             less_than(ZERO, k)
-            [by hypothesis given-zero-below-k]
+            [by hypothesis given-zero-less_than-k]
           @less-than-elim |
             forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
             [by axiom lessThanElim]
-          @gap-exists-if-below |
+          @gap-exists-if-less_than |
             less_than(ZERO, k) -> exists d: Int; nonneg(d) and add(ZERO, succ(d)) = k
             [by forall_elim(ZERO, k) less-than-elim]
           @gap-exists |
             exists d: Int; nonneg(d) and add(ZERO, succ(d)) = k
-            [by modus_ponens gap-exists-if-below zero-below-k]
+            [by modus_ponens gap-exists-if-less_than zero-less_than-k]
           @with-gap-d |
             unpack d0: Int from gap-exists {
               @gap-nonneg-and-witnesses-k |
@@ -1626,7 +1626,7 @@ proof
               @gap-is-zero-or-successor |
                 d0 = ZERO or (exists m: Int; nonneg(m) and d0 = succ(m))
                 [by modus_ponens gap-is-zero-or-successor-if-nonneg gap-nonneg]
-              @zero-below-or-equal-prev |
+              @zero-less_than-or-equal-prev |
                 less_than(ZERO, prev(k)) or prev(k) = ZERO
                 case on gap-is-zero-or-successor {
                   @when-gap-is-zero |
@@ -1637,7 +1637,7 @@ proof
                       @prev-k-is-zero |
                         prev(k) = ZERO
                         [by rewrite gap-is-zero prev-k-is-d]
-                      @conclusion-zero-below-or-equal-prev |
+                      @conclusion-zero-less_than-or-equal-prev |
                         less_than(ZERO, prev(k)) or prev(k) = ZERO
                         [by or_intro_right prev-k-is-zero]
                     }
@@ -1672,29 +1672,29 @@ proof
                           @a-gap-witnesses-less-than |
                             forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                             [by axiom lessThanIntro]
-                          @zero-below-prev-k-if-gap |
+                          @zero-less_than-prev-k-if-gap |
                             nonneg(m0) -> add(ZERO, succ(m0)) = prev(k) -> less_than(ZERO, prev(k))
                             [by forall_elim(ZERO, m0, prev(k)) a-gap-witnesses-less-than]
-                          @zero-below-prev-k |
+                          @zero-less_than-prev-k |
                             less_than(ZERO, prev(k))
-                            [by tautology zero-below-prev-k-if-gap predecessor-nonneg zero-gap-reaches-prev-k]
-                          @conclusion-zero-below-or-equal-prev |
+                            [by tautology zero-less_than-prev-k-if-gap predecessor-nonneg zero-gap-reaches-prev-k]
+                          @conclusion-zero-less_than-or-equal-prev |
                             less_than(ZERO, prev(k)) or prev(k) = ZERO
-                            [by or_intro_left zero-below-prev-k]
+                            [by or_intro_left zero-less_than-prev-k]
                         }
-                      @conclusion-zero-below-or-equal-prev |
+                      @conclusion-zero-less_than-or-equal-prev |
                         less_than(ZERO, prev(k)) or prev(k) = ZERO
                         [by exists_elim with-predecessor-m]
                     }
                 }
             }
-          @zero-below-or-equal-prev |
+          @zero-less_than-or-equal-prev |
             less_than(ZERO, prev(k)) or prev(k) = ZERO
             [by exists_elim with-gap-d]
         }
-      @zero-below-k-implies-prev-split |
+      @zero-less_than-k-implies-prev-split |
         less_than(ZERO, k) -> (less_than(ZERO, prev(k)) or prev(k) = ZERO)
-        [by implies_intro given-zero-below-k]
+        [by implies_intro given-zero-less_than-k]
     }
   @conclusion |
     forall k: Int; less_than(ZERO, k) -> (less_than(ZERO, prev(k)) or prev(k) = ZERO)
@@ -1702,7 +1702,7 @@ proof
 qed
 
 // prev(n) < n: the gap 0 suffices, since add(prev n, succ 0) = succ(prev n) = n.
-theorem prevBelowSelf: forall n: Int; less_than(prev(n), n)
+theorem prevLessThanSelf: forall n: Int; less_than(prev(n), n)
 proof
   @generalize-n |
     fix n: Int {
@@ -1736,12 +1736,12 @@ proof
       @a-gap-witnesses-less-than |
         forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
         [by axiom lessThanIntro]
-      @prev-below-n-if-gap |
+      @prev-less_than-n-if-gap |
         nonneg(ZERO) -> add(prev(n), succ(ZERO)) = n -> less_than(prev(n), n)
         [by forall_elim(prev(n), ZERO, n) a-gap-witnesses-less-than]
-      @prev-below-n |
+      @prev-less_than-n |
         less_than(prev(n), n)
-        [by tautology prev-below-n-if-gap zero-is-nonneg gap-reaches-n]
+        [by tautology prev-less_than-n-if-gap zero-is-nonneg gap-reaches-n]
     }
   @conclusion |
     forall n: Int; less_than(prev(n), n)
@@ -1753,7 +1753,7 @@ qed
 // of k determine the sign of succ(k), using lessThanSuccRight (positive stays
 // positive), a direct gap for 0 < succ(0), and lessThanZeroSuccSplit (negative k
 // gives succ(k) < 0 or succ(k) = 0). Prev step is the mirror image, using
-// prevBelowSelf/lessThanTransitive (negative stays negative), a direct gap for
+// prevLessThanSelf/lessThanTransitive (negative stays negative), a direct gap for
 // prev(0) < 0, and lessThanZeroPrevSplit (positive k gives 0 < prev(k) or = 0).
 theorem signTrichotomy: forall n: Int; less_than(ZERO, n) or n = ZERO or less_than(n, ZERO)
 proof
@@ -1761,12 +1761,12 @@ proof
   @zero-equals-zero |
     ZERO = ZERO
     [by reflexivity]
-  @base-below-or-equal |
+  @base-less_than-or-equal |
     less_than(ZERO, ZERO) or ZERO = ZERO
     [by or_intro_right zero-equals-zero]
   @base-case |
     less_than(ZERO, ZERO) or ZERO = ZERO or less_than(ZERO, ZERO)
-    [by or_intro_left base-below-or-equal]
+    [by or_intro_left base-less_than-or-equal]
 
   // succ step: from prop(k) derive prop(succ k).
   @induction-step |
@@ -1792,21 +1792,21 @@ proof
                           @k-positive |
                             less_than(ZERO, k)
                             [by hypothesis when-k-positive]
-                          @below-succ-preserves |
+                          @less_than-succ-preserves |
                             forall a, b: Int; less_than(a, b) -> less_than(a, succ(b))
                             [by theorem lessThanSuccRight]
-                          @zero-below-succ-k-if-below-k |
+                          @zero-less_than-succ-k-if-less_than-k |
                             less_than(ZERO, k) -> less_than(ZERO, succ(k))
-                            [by forall_elim(ZERO, k) below-succ-preserves]
-                          @zero-below-succ-k |
+                            [by forall_elim(ZERO, k) less_than-succ-preserves]
+                          @zero-less_than-succ-k |
                             less_than(ZERO, succ(k))
-                            [by modus_ponens zero-below-succ-k-if-below-k k-positive]
-                          @below-or-equal |
+                            [by modus_ponens zero-less_than-succ-k-if-less_than-k k-positive]
+                          @less_than-or-equal |
                             less_than(ZERO, succ(k)) or succ(k) = ZERO
-                            [by or_intro_left zero-below-succ-k]
+                            [by or_intro_left zero-less_than-succ-k]
                           @conclusion-sign-of-succ-k |
                             less_than(ZERO, succ(k)) or succ(k) = ZERO or less_than(succ(k), ZERO)
-                            [by or_intro_left below-or-equal]
+                            [by or_intro_left less_than-or-equal]
                         }
                       @when-k-zero |
                         assume k = ZERO {
@@ -1825,24 +1825,24 @@ proof
                           @a-gap-witnesses-less-than |
                             forall x, d, y: Int; nonneg(d) -> add(x, succ(d)) = y -> less_than(x, y)
                             [by axiom lessThanIntro]
-                          @zero-below-succ-zero-if-gap |
+                          @zero-less_than-succ-zero-if-gap |
                             nonneg(ZERO) -> add(ZERO, succ(ZERO)) = succ(ZERO) -> less_than(ZERO, succ(ZERO))
                             [by forall_elim(ZERO, ZERO, succ(ZERO)) a-gap-witnesses-less-than]
-                          @zero-below-succ-zero |
+                          @zero-less_than-succ-zero |
                             less_than(ZERO, succ(ZERO))
-                            [by tautology zero-below-succ-zero-if-gap zero-is-nonneg zero-plus-succ-zero]
+                            [by tautology zero-less_than-succ-zero-if-gap zero-is-nonneg zero-plus-succ-zero]
                           @zero-equals-k |
                             ZERO = k
                             [by symmetry k-is-zero]
-                          @zero-below-succ-k |
+                          @zero-less_than-succ-k |
                             less_than(ZERO, succ(k))
-                            [by rewrite zero-equals-k zero-below-succ-zero]
-                          @below-or-equal |
+                            [by rewrite zero-equals-k zero-less_than-succ-zero]
+                          @less_than-or-equal |
                             less_than(ZERO, succ(k)) or succ(k) = ZERO
-                            [by or_intro_left zero-below-succ-k]
+                            [by or_intro_left zero-less_than-succ-k]
                           @conclusion-sign-of-succ-k |
                             less_than(ZERO, succ(k)) or succ(k) = ZERO or less_than(succ(k), ZERO)
-                            [by or_intro_left below-or-equal]
+                            [by or_intro_left less_than-or-equal]
                         }
                     }
                 }
@@ -1857,12 +1857,12 @@ proof
                   @succ-k-split-if-k-negative |
                     less_than(k, ZERO) -> (less_than(succ(k), ZERO) or succ(k) = ZERO)
                     [by forall_elim(k) succ-split]
-                  @succ-k-below-or-equal-zero |
+                  @succ-k-less_than-or-equal-zero |
                     less_than(succ(k), ZERO) or succ(k) = ZERO
                     [by modus_ponens succ-k-split-if-k-negative k-negative]
                   @sign-of-succ-k |
                     less_than(ZERO, succ(k)) or succ(k) = ZERO or less_than(succ(k), ZERO)
-                    case on succ-k-below-or-equal-zero {
+                    case on succ-k-less_than-or-equal-zero {
                       @when-succ-k-negative |
                         assume less_than(succ(k), ZERO) {
                           @succ-k-negative |
@@ -1877,12 +1877,12 @@ proof
                           @succ-k-is-zero |
                             succ(k) = ZERO
                             [by hypothesis when-succ-k-zero]
-                          @below-or-equal |
+                          @less_than-or-equal |
                             less_than(ZERO, succ(k)) or succ(k) = ZERO
                             [by or_intro_right succ-k-is-zero]
                           @conclusion-sign-of-succ-k |
                             less_than(ZERO, succ(k)) or succ(k) = ZERO or less_than(succ(k), ZERO)
-                            [by or_intro_left below-or-equal]
+                            [by or_intro_left less_than-or-equal]
                         }
                     }
                 }
@@ -1938,24 +1938,24 @@ proof
                           @k-is-zero |
                             k = ZERO
                             [by hypothesis when-k-zero]
-                          @prev-below-self |
+                          @prev-less_than-self |
                             forall x: Int; less_than(prev(x), x)
-                            [by theorem prevBelowSelf]
-                          @prev-zero-below-zero |
+                            [by theorem prevLessThanSelf]
+                          @prev-zero-less_than-zero |
                             less_than(prev(ZERO), ZERO)
-                            [by forall_elim(ZERO) prev-below-self]
+                            [by forall_elim(ZERO) prev-less_than-self]
                           @prev-k-reflexive |
                             prev(k) = prev(k)
                             [by reflexivity]
                           @prev-zero-is-prev-k |
                             prev(ZERO) = prev(k)
                             [by rewrite k-is-zero prev-k-reflexive]
-                          @prev-k-below-zero |
+                          @prev-k-less_than-zero |
                             less_than(prev(k), ZERO)
-                            [by rewrite prev-zero-is-prev-k prev-zero-below-zero]
+                            [by rewrite prev-zero-is-prev-k prev-zero-less_than-zero]
                           @conclusion-sign-of-prev-k |
                             less_than(ZERO, prev(k)) or prev(k) = ZERO or less_than(prev(k), ZERO)
-                            [by or_intro_right prev-k-below-zero]
+                            [by or_intro_right prev-k-less_than-zero]
                         }
                     }
                 }
@@ -1964,24 +1964,24 @@ proof
                   @k-negative |
                     less_than(k, ZERO)
                     [by hypothesis when-k-negative]
-                  @prev-below-self |
+                  @prev-less_than-self |
                     forall x: Int; less_than(prev(x), x)
-                    [by theorem prevBelowSelf]
-                  @prev-k-below-k |
+                    [by theorem prevLessThanSelf]
+                  @prev-k-less_than-k |
                     less_than(prev(k), k)
-                    [by forall_elim(k) prev-below-self]
+                    [by forall_elim(k) prev-less_than-self]
                   @transitive |
                     forall a, b, c: Int; less_than(a, b) -> less_than(b, c) -> less_than(a, c)
                     [by theorem lessThanTransitive]
-                  @prev-k-below-zero-if-chain |
+                  @prev-k-less_than-zero-if-chain |
                     less_than(prev(k), k) -> less_than(k, ZERO) -> less_than(prev(k), ZERO)
                     [by forall_elim(prev(k), k, ZERO) transitive]
-                  @prev-k-below-zero |
+                  @prev-k-less_than-zero |
                     less_than(prev(k), ZERO)
-                    [by tautology prev-k-below-zero-if-chain prev-k-below-k k-negative]
+                    [by tautology prev-k-less_than-zero-if-chain prev-k-less_than-k k-negative]
                   @conclusion-sign-of-prev-k |
                     less_than(ZERO, prev(k)) or prev(k) = ZERO or less_than(prev(k), ZERO)
-                    [by or_intro_right prev-k-below-zero]
+                    [by or_intro_right prev-k-less_than-zero]
                 }
             }
         }
@@ -2048,21 +2048,21 @@ proof
                           @lift-positive |
                             less_than(ZERO, sub(b, a)) -> less_than(add(a, ZERO), add(a, sub(b, a)))
                             [by forall_elim(ZERO, sub(b, a), a) addition-preserves-order]
-                          @a-plus-zero-below-a-plus-difference |
+                          @a-plus-zero-less_than-a-plus-difference |
                             less_than(add(a, ZERO), add(a, sub(b, a)))
                             [by modus_ponens lift-positive difference-positive]
-                          @a-below-a-plus-difference |
+                          @a-less_than-a-plus-difference |
                             less_than(a, add(a, sub(b, a)))
-                            [by rewrite a-plus-zero-is-a a-plus-zero-below-a-plus-difference]
-                          @a-below-b |
+                            [by rewrite a-plus-zero-is-a a-plus-zero-less_than-a-plus-difference]
+                          @a-less_than-b |
                             less_than(a, b)
-                            [by rewrite a-plus-difference-is-b a-below-a-plus-difference]
-                          @below-or-equal |
+                            [by rewrite a-plus-difference-is-b a-less_than-a-plus-difference]
+                          @less_than-or-equal |
                             less_than(a, b) or a = b
-                            [by or_intro_left a-below-b]
+                            [by or_intro_left a-less_than-b]
                           @conclusion-trichotomy-at-a-b |
                             less_than(a, b) or a = b or less_than(b, a)
-                            [by or_intro_left below-or-equal]
+                            [by or_intro_left less_than-or-equal]
                         }
                       @when-difference-zero |
                         assume sub(b, a) = ZERO {
@@ -2075,12 +2075,12 @@ proof
                           @a-is-b |
                             a = b
                             [by rewrite a-plus-zero-is-a a-plus-zero-is-b]
-                          @below-or-equal |
+                          @less_than-or-equal |
                             less_than(a, b) or a = b
                             [by or_intro_right a-is-b]
                           @conclusion-trichotomy-at-a-b |
                             less_than(a, b) or a = b or less_than(b, a)
-                            [by or_intro_left below-or-equal]
+                            [by or_intro_left less_than-or-equal]
                         }
                     }
                 }
@@ -2092,18 +2092,18 @@ proof
                   @lift-negative |
                     less_than(sub(b, a), ZERO) -> less_than(add(a, sub(b, a)), add(a, ZERO))
                     [by forall_elim(sub(b, a), ZERO, a) addition-preserves-order]
-                  @a-plus-difference-below-a-plus-zero |
+                  @a-plus-difference-less_than-a-plus-zero |
                     less_than(add(a, sub(b, a)), add(a, ZERO))
                     [by modus_ponens lift-negative difference-negative]
-                  @a-plus-difference-below-a |
+                  @a-plus-difference-less_than-a |
                     less_than(add(a, sub(b, a)), a)
-                    [by rewrite a-plus-zero-is-a a-plus-difference-below-a-plus-zero]
-                  @b-below-a |
+                    [by rewrite a-plus-zero-is-a a-plus-difference-less_than-a-plus-zero]
+                  @b-less_than-a |
                     less_than(b, a)
-                    [by rewrite a-plus-difference-is-b a-plus-difference-below-a]
+                    [by rewrite a-plus-difference-is-b a-plus-difference-less_than-a]
                   @conclusion-trichotomy-at-a-b |
                     less_than(a, b) or a = b or less_than(b, a)
-                    [by or_intro_right b-below-a]
+                    [by or_intro_right b-less_than-a]
                 }
             }
         }
@@ -2322,24 +2322,24 @@ qed
 // n < 0 implies -n is nonnegative. The strict-order witness gives a nonneg d
 // with add(n, succ(d)) = ZERO = add(n, neg(n)); cancelling n on the left pins
 // neg(n) = succ(d), which is nonneg since d is (nonnegSucc).
-theorem negBelowZero: forall n: Int; less_than(n, ZERO) -> nonneg(neg(n))
+theorem negLessThanZero: forall n: Int; less_than(n, ZERO) -> nonneg(neg(n))
 proof
   @generalize-n |
     fix n: Int {
-      @given-n-below-zero |
+      @given-n-less_than-zero |
         assume less_than(n, ZERO) {
-          @n-below-zero |
+          @n-less_than-zero |
             less_than(n, ZERO)
-            [by hypothesis given-n-below-zero]
+            [by hypothesis given-n-less_than-zero]
           @less-than-elim |
             forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
             [by axiom lessThanElim]
-          @gap-exists-if-below |
+          @gap-exists-if-less_than |
             less_than(n, ZERO) -> exists d: Int; nonneg(d) and add(n, succ(d)) = ZERO
             [by forall_elim(n, ZERO) less-than-elim]
           @gap-exists |
             exists d: Int; nonneg(d) and add(n, succ(d)) = ZERO
-            [by modus_ponens gap-exists-if-below n-below-zero]
+            [by modus_ponens gap-exists-if-less_than n-less_than-zero]
           @with-gap-d |
             unpack d0: Int from gap-exists {
               @gap-nonneg-and-witnesses-zero |
@@ -2390,9 +2390,9 @@ proof
             nonneg(neg(n))
             [by exists_elim with-gap-d]
         }
-      @below-zero-implies-negation-nonneg |
+      @less_than-zero-implies-negation-nonneg |
         less_than(n, ZERO) -> nonneg(neg(n))
-        [by implies_intro given-n-below-zero]
+        [by implies_intro given-n-less_than-zero]
     }
   @conclusion |
     forall n: Int; less_than(n, ZERO) -> nonneg(neg(n))
