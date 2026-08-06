@@ -55,16 +55,16 @@ axiom modBound: forall b, a: Nat; b != ZERO -> less_than(mod(a, b), b)
 
 // -- forwarded theorems -----------------------------------------------------
 
-forward dividesRefl
-forward dividesZero
-forward dividesTransitive
-forward dividesAdd
-forward dividesSub
-forward dividesMul
-forward dividesModStep
-forward quotientCannotBeLess
-forward quotientUnique
-forward modIntro
+intheory dividesRefl
+intheory dividesZero
+intheory dividesTransitive
+intheory dividesAdd
+intheory dividesSub
+intheory dividesMul
+intheory dividesModStep
+intheory quotientCannotBeLess
+intheory quotientUnique
+intheory modIntro
 
 // -- theorems ---------------------------------------------------------------
 

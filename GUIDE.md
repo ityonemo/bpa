@@ -33,7 +33,7 @@ below. The overview tables (`### Justification rules (overview table)`,
 | `KEYWORD: theorem` | assert a formula with a checked `proof … qed` |
 | `KEYWORD: hole` | aspirational placeholder (the "sorry"); `--draft` |
 | `KEYWORD: schematic` | parameterized `axiom`/`theorem` (schemas) |
-| `KEYWORD: forward` | promise a later theorem (verified TOC) |
+| `KEYWORD: intheory` | forward-declare a theorem (verified TOC) |
 | `KEYWORD: import` | load another file under a namespace |
 | `KEYWORD: alias` | local kind-checked view of an imported entity |
 | `KEYWORD: model` | declare a local structure models an abstract theory |
@@ -298,14 +298,15 @@ care about assistant speed is a design smell, so any such cache would have to
 earn its keep without expanding what must be trusted. For now, caching stays
 in the language, as named theorems.)
 
-### KEYWORD: forward
+### KEYWORD: intheory
 
-Promises that a name will be defined later in this file as a theorem — a
-verified table of contents. A missing or wrongly-kinded definition is an
-error at the `forward` line.
+Forward-declares a theorem: `intheory <name>` promises that `<name>` will be
+proved later in this file — a verified table of contents. (The name reads as
+"in theory it holds — you're on the hook to prove it later.") A missing or
+wrongly-kinded definition is an error at the `intheory` line.
 
 ```bpa
-forward addIsCommutative
+intheory addIsCommutative
 ```
 
 ### KEYWORD: import

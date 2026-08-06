@@ -42,12 +42,12 @@ axiom subZeroLeft: forall b: Nat; sub(ZERO, b) = ZERO
 
 // -- forwarded theorems -----------------------------------------------------
 
-forward subSelf
-forward subAddCancel
-forward addSubCancel
-forward subStrictlyDecreases
-forward subAddSameRight
-forward mulSubDistribLeft
+intheory subSelf
+intheory subAddCancel
+intheory addSubCancel
+intheory subStrictlyDecreases
+intheory subAddSameRight
+intheory mulSubDistribLeft
 
 // -- theorems ---------------------------------------------------------------
 

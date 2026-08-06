@@ -81,7 +81,7 @@ pub const Token = struct {
                 .kebab_identifier => "identifier",
                 .at_label => "@label",
                 .keyword_import => "import",
-                .keyword_forward => "forward",
+                .keyword_forward => "intheory",
                 .keyword_sort => "sort",
                 .keyword_const => "const",
                 .keyword_define => "define",
@@ -136,7 +136,7 @@ pub const Token = struct {
 
 const keywords = std.StaticStringMap(Token.Tag).initComptime(.{
     .{ "import", .keyword_import },
-    .{ "forward", .keyword_forward },
+    .{ "intheory", .keyword_forward },
     .{ "sort", .keyword_sort },
     .{ "const", .keyword_const },
     .{ "define", .keyword_define },

@@ -62,8 +62,8 @@ theorem is expected to be imported, however, note that this is not a promise.
 
 ```
 // -- forwarded theorems ----
-forward addZeroRight
-forward addIsCommutative
+intheory addZeroRight
+intheory addIsCommutative
 ```
 
 ## Comments carry the "why"

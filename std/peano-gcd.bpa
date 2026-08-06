@@ -38,8 +38,8 @@ axiom gcdStep: forall b, a: Nat; b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
 
 // -- forwarded theorems -----------------------------------------------------
 
-forward gcdDividesBoth
-forward gcdGreatest
+intheory gcdDividesBoth
+intheory gcdGreatest
 
 // -- correctness ------------------------------------------------------------
 

@@ -25,9 +25,9 @@ axiom addSuccLeft: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
 
 // -- forwarded theorems -----------------------------------------------------
 
-forward addZeroRight
-forward addSuccRight
-forward addIsCommutative
+intheory addZeroRight
+intheory addSuccRight
+intheory addIsCommutative
 
 // -- the induction schema (an axiom family: parameterized, no proof) --------
 

@@ -41,11 +41,11 @@ define TWO = add(ONE, ONE)
 
 // -- forwarded theorems -----------------------------------------------------
 
-forward evenOrOdd
-forward oddForm
-forward oddSquare
-forward twoNotDivideOne
-forward evenSquareEven
+intheory evenOrOdd
+intheory oddForm
+intheory oddSquare
+intheory twoNotDivideOne
+intheory evenSquareEven
 
 // -- even/odd dichotomy (pure, by induction) --------------------------------
 

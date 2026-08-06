@@ -46,27 +46,27 @@ axiom oneIsSuccZero: ONE = succ(ZERO)
 
 // -- forwarded theorems -----------------------------------------------------
 
-forward addZeroRight
-forward addSuccRight
-forward addIsCommutative
-forward addIsAssociative
+intheory addZeroRight
+intheory addSuccRight
+intheory addIsCommutative
+intheory addIsAssociative
 
 // multiplication
-forward mulZeroRight
-forward mulSuccRight
-forward mulIsCommutative
-forward mulAddDistribRight
-forward mulIsAssociative
-forward mulOneLeft
-forward mulOneRight
-forward mulAddDistribLeft
+intheory mulZeroRight
+intheory mulSuccRight
+intheory mulIsCommutative
+intheory mulAddDistribRight
+intheory mulIsAssociative
+intheory mulOneLeft
+intheory mulOneRight
+intheory mulAddDistribLeft
 
 // ordering
-forward addSuccNeverSelf
-forward zeroOrSucc
-forward addCancelLeft
-forward addLeftSwap
-forward mulLeftSwap
+intheory addSuccNeverSelf
+intheory zeroOrSucc
+intheory addCancelLeft
+intheory addLeftSwap
+intheory mulLeftSwap
 
 // -- the induction schema (an axiom family: parameterized, no proof) --------
 axiom induction(prop: Nat -> Prop):

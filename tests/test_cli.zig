@@ -184,8 +184,8 @@ pub fn addTests(
 
     // the forward manifest is checked: promised theorems must exist
     ctx.fail(&.{ "check", "tests/cases/forward_bad.bpa" },
-        \\tests/cases/forward_bad.bpa:3:9: error: forwarded theorem 'missingTheorem' is never defined
-        \\tests/cases/forward_bad.bpa:4:9: error: 'onlyAxiom' is forwarded as a theorem but defined as an axiom
+        \\tests/cases/forward_bad.bpa:3:10: error: forwarded theorem 'missingTheorem' is never defined
+        \\tests/cases/forward_bad.bpa:4:10: error: 'onlyAxiom' is forwarded as a theorem but defined as an axiom
         \\
     );
 

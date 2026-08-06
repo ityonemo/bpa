@@ -99,10 +99,13 @@ qed
 
 ## Declaration keywords — one-liners; detail at `### KEYWORD: <name>` in GUIDE.md
 
-`sort` (a type; `sort H = G where inH` is a refined subsort), `const` (0-ary), `func` (returns a term-sort, never Prop), `pred` (opaque predicate; no `:=` body), `axiom`, `theorem`, `hole` (aspirational placeholder — a top-level DECLARATION, NOT a `[by hole]` step; default rejects, `--draft` allows), `forward` (declare-before-prove), `import X <<< "path"`, aliases (`sort A = X.B`, `func f = X.g`), `model NAME { src: tgt … }` (discharge an abstract theory's axioms so its theorems transfer; cite `[by model(NAME) src.thm]`).
+`sort` (a type; `sort H = G where inH` is a refined subsort), `const` (0-ary), `func` (returns a term-sort, never Prop), `pred` (opaque predicate; no `:=` body), `axiom`, `theorem`, `hole` (aspirational placeholder — a top-level DECLARATION, NOT a `[by hole]` step; default rejects, `--draft` allows), `intheory <name>` (forward-declare a theorem — "in theory it holds; you owe the proof later"), `import X <<< "path"`, aliases (`sort A = X.B`, `func f = X.g`), `model NAME { src: tgt … }` (discharge an abstract theory's axioms so its theorems transfer; cite `[by model(NAME) src.thm]`).
 
 ## Gotchas that bite (memorize)
 
+- **`fix` takes ONE binder.** `fix a, b: Nat {` is a PARSE ERROR — nest them: `fix a: Nat { fix b: Nat { … } }`, discharging with one `forall_intro` per level (inner discharges `forall b; …`, outer `forall a, b; …`).
+- **Literate `.md` fence discipline**: bpa code lives in ` ```bpa … ``` ` blocks; every block must be CLOSED before prose. A missing/misplaced ``` fence makes the checker try to parse prose as bpa ("expected a declaration, got 'The'"). When inserting a new theorem in an `.md`, keep it inside one fenced block (or open+close its own).
+- **Gate counts after edits**: in `tests/test_*.zig`, THEOREM counts must stay FIXED (a changed theorem count = you broke a proof); DECLARATION counts DRIFT (drop as axioms/steps vanish, rise as you add helpers) — update those to match the new `OK:` line. Run `bpa fmt <file>` before `fmt --check` gates.
 - `[by hole]` is INVALID — `hole` is a top-level declaration, not a justification. Every obligation must really be proved (or the theorem itself is a `hole`).
 - `or_elim` is BINARY. 3-way → `case on`.
 - Cite a theorem/axiom as a `[by theorem X]` / `[by axiom X]` STEP before a later `forall_elim` refs that step.

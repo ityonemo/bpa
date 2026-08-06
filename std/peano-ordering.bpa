@@ -51,29 +51,29 @@ define less_or_equal(a: Nat, b: Nat) = less_than(a, b) or a = b
 // -- forwarded theorems -----------------------------------------------------
 
 // addition
-forward succPreservesOrder
-forward succReflectsOrder
-forward lessThanTransitive
-forward lessThanIrreflexive
-forward additionPreservesOrder
-forward multiplicationPreservesOrder
-forward oneCoversZero
-forward trichotomy
-forward notLessThanZero
-forward lessThanSuccRight
-forward lessThanAddCancelLeft
-forward lessOrEqualToLessThanSucc
-forward lessThanSuccToLessOrEqual
-forward lessOrEqualRefl
-forward lessThanToLessOrEqual
-forward lessOrEqualTransitive
-forward lessOrEqualSplit
-forward lessOrEqualAntisymmetric
-forward lessThanSelf
-forward lessThanSuccSplit
-forward strongInduction
-forward mulCancelLeft
-forward lessOrEqualIsGapExistential
+intheory succPreservesOrder
+intheory succReflectsOrder
+intheory lessThanTransitive
+intheory lessThanIrreflexive
+intheory additionPreservesOrder
+intheory multiplicationPreservesOrder
+intheory oneCoversZero
+intheory trichotomy
+intheory notLessThanZero
+intheory lessThanSuccRight
+intheory lessThanAddCancelLeft
+intheory lessOrEqualToLessThanSucc
+intheory lessThanSuccToLessOrEqual
+intheory lessOrEqualRefl
+intheory lessThanToLessOrEqual
+intheory lessOrEqualTransitive
+intheory lessOrEqualSplit
+intheory lessOrEqualAntisymmetric
+intheory lessThanSelf
+intheory lessThanSuccSplit
+intheory strongInduction
+intheory mulCancelLeft
+intheory lessOrEqualIsGapExistential
 
 // -- order theory ----------------------------------------------------------
 
