@@ -1,0 +1,15 @@
+// specialize with a hyp ref but the specialized formula has no antecedent left to
+// discharge — the extra ref has nothing to apply to.
+sort Nat
+const ZERO: Nat
+pred p(n: Nat)
+axiom noAnt: forall x: Nat; p(x)
+theorem t: p(ZERO) -> p(ZERO)
+proof
+  @given |
+    assume p(ZERO) {
+      @ph | p(ZERO) [by hypothesis given]
+      @c | p(ZERO) [by specialize noAnt(ZERO) ph]
+    }
+  @conclusion | p(ZERO) -> p(ZERO) [by implies_intro given]
+qed

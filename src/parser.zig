@@ -389,9 +389,13 @@ pub const Parser = struct {
                     .identifier, .keyword_axiom, .keyword_theorem, .keyword_model => self.advance(),
                     else => return self.fail("expected a rule name, got '{s}'", .{self.describe()}),
                 };
-                // `instantiate NAME(args)` cites a schema by name
+                // `instantiate NAME(args)` cites a schema by name; `specialize
+                // NAME(args)` cites a forall-quantified THEOREM by name the same way
+                // (the theorem to specialize goes in the `schema` slot).
                 var schema: ?Token = null;
-                if (std.mem.eql(u8, self.text(rule), "instantiate")) {
+                if (std.mem.eql(u8, self.text(rule), "instantiate") or
+                    std.mem.eql(u8, self.text(rule), "specialize"))
+                {
                     schema = try self.expect(.identifier);
                 }
                 // Theory-parameterized tactics take `(theory)`: the named

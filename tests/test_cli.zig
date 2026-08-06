@@ -209,6 +209,16 @@ pub fn addTests(
     // defines share the declaration namespace
     ctx.fail(&.{ "check", "tests/cases/define_bad.bpa" }, "tests/cases/define_bad.bpa:5:8: error: duplicate declaration of 'TWO'\n");
 
+    // `specialize THM(args) hyps…` applies a forall-theorem (∀-elim + modus_ponens
+    // chain, emitted + kernel-checked) in one step. Positive: single/multi-arg,
+    // multi-hyp, no-hyp all check strict.
+    ctx.okSilent(&.{ "check", "tests/cases/specialize.bpa" });
+    // over-args (∀ prefix exhausted), extra hyp with no antecedent, and a schema
+    // (redirect to instantiate) each fail cleanly.
+    ctx.fail(&.{ "check", "tests/cases/specialize_overargs_bad.bpa" }, "tests/cases/specialize_overargs_bad.bpa:7:44: error: specialize: 'p(ZERO)' is not universally quantified here (too many arguments)\n");
+    ctx.fail(&.{ "check", "tests/cases/specialize_nohyp_bad.bpa" }, "tests/cases/specialize_nohyp_bad.bpa:12:47: error: specialize: no antecedent left to discharge for 'ph'\n");
+    ctx.fail(&.{ "check", "tests/cases/specialize_schema_bad.bpa" }, "tests/cases/specialize_schema_bad.bpa:7:42: error: 'sch' is a schema; use `instantiate`\n");
+
     // the outline fixture is itself a valid proof
     ctx.okSilent(&.{ "check", "tests/cases/outline.bpa" });
 

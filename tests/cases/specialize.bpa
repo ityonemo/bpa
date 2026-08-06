@@ -1,0 +1,77 @@
+// specialize: apply a forall-quantified theorem at args + discharge its leading
+// antecedents with hypothesis refs, in ONE step (vs forall_elim + modus_ponens).
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+pred p(n: Nat)
+pred q(n: Nat)
+
+// a lemma of the shape `forall x; p(x) -> q(x)` — the apply-a-lemma target.
+axiom pImpliesQ: forall x: Nat; p(x) -> q(x)
+
+// applying it the OLD way is 3 steps; specialize does it in one.
+theorem applyOldWay: p(ZERO) -> q(ZERO)
+proof
+  @given-p |
+    assume p(ZERO) {
+      @p-holds |
+        p(ZERO)
+        [by hypothesis given-p]
+      @rule |
+        forall x: Nat; p(x) -> q(x)
+        [by axiom pImpliesQ]
+      @at-zero |
+        p(ZERO) -> q(ZERO)
+        [by forall_elim(ZERO) rule]
+      @q-holds |
+        q(ZERO)
+        [by modus_ponens at-zero p-holds]
+    }
+  @conclusion |
+    p(ZERO) -> q(ZERO)
+    [by implies_intro given-p]
+qed
+
+// the SAME, via specialize: cite the theorem, give the arg, discharge with the hyp.
+theorem applyViaSpecialize: p(ZERO) -> q(ZERO)
+proof
+  @given-p |
+    assume p(ZERO) {
+      @p-holds |
+        p(ZERO)
+        [by hypothesis given-p]
+      @q-holds |
+        q(ZERO)
+        [by specialize pImpliesQ(ZERO) p-holds]
+    }
+  @conclusion |
+    p(ZERO) -> q(ZERO)
+    [by implies_intro given-p]
+qed
+
+// multi-arg + multi-hyp: forall x, y; p(x) -> p(y) -> q(x)  applied at (ZERO, ZERO)
+axiom twoArgs: forall x: Nat; forall y: Nat; p(x) -> p(y) -> q(x)
+theorem multiArgHyp: p(ZERO) -> q(ZERO)
+proof
+  @given |
+    assume p(ZERO) {
+      @ph |
+        p(ZERO)
+        [by hypothesis given]
+      @q |
+        q(ZERO)
+        [by specialize twoArgs(ZERO, ZERO) ph ph]
+    }
+  @conclusion |
+    p(ZERO) -> q(ZERO)
+    [by implies_intro given]
+qed
+
+// no-hyp form: specialize a plain forall down to a quantifier-free instance
+axiom refl2: forall x: Nat; p(x) -> p(x)
+theorem noHyp: p(ZERO) -> p(ZERO)
+proof
+  @conclusion |
+    p(ZERO) -> p(ZERO)
+    [by specialize refl2(ZERO)]
+qed

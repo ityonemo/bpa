@@ -61,6 +61,7 @@ below. The overview tables (`### Justification rules (overview table)`,
 | `RULE: rewrite` | replace an equation's LHS by its RHS in a target |
 | `RULE: iff_rewrite` | replace `P` by `Q` given `P iff Q` in a target |
 | `RULE: instantiate` | monomorphize a schema |
+| `RULE: specialize` | apply a forall-theorem at args + discharge antecedents, in one step |
 | `RULE: model` | transfer a theory's theorem through a named model |
 | `TACTIC: simplify` | equational rewriting to a common normal form (documents `simplify_quantified` inline) |
 | `TACTIC: assoc_commut` | associative-commutative reordering of a sum |
@@ -858,6 +859,32 @@ expensive instance? Realize it into a named theorem and cite that instead.
   (not q) -> (not p)
   [by instantiate contrapositive(fun => p, fun => q) have-p-imp-q]
 ```
+
+### RULE: specialize
+
+`[by specialize THM(args) hyps...]` — apply a `forall`-quantified THEOREM (or
+axiom) `THM` in ONE step: it ∀-elims `THM` at each written-out `args` (peeling the
+universal prefix), then modus_ponens each trailing hyp ref against a leading `->`
+antecedent, left to right. The result must be the goal.
+
+This is pure sugar over `forall_elim` + `modus_ponens` — it EMITS those kernel
+steps as a certificate the kernel re-checks, so it is fully verified and carries no
+`--fast` taint. It exists to collapse the ubiquitous three-step "apply a lemma"
+ritual (`@rule | ∀…; P->Q [by theorem L]` / `@at-a | P(a)->Q(a) [by forall_elim(a)
+rule]` / `@got | Q(a) [by modus_ponens at-a hyp]`) into a single step with no
+throwaway `-rule`/`-at-args` labels.
+
+```bpa
+// forall a, d; d>0 -> exists q,r; a = dq+r ∧ 0≤r<d, applied at (a, d):
+@decomposed |
+  exists q: Int; exists r: Int; a = add(mul(d, q), r) and (is_nonneg(r) and less_than(r, d))
+  [by specialize divisionAlgorithmExists(a, d) d-is-positive]
+```
+
+Multi-arg peels several binders; multiple hyps discharge several antecedents in
+order. With NO hyps it is a bare specialization (just the ∀-elim chain). For a
+parameterized SCHEMA (a `prop`-parameter), use `instantiate` instead — `specialize`
+is for ordinary quantified theorems.
 
 ### RULE: model
 
