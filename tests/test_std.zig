@@ -135,14 +135,14 @@ pub fn addTests(
     // Plus the CROSS-LEVEL operations set.bpa lacks — bigUnion/bigIntersection
     // (collapse a collection to a set), a universe, and the partition apparatus
     // (covers / pairwiseDisjoint / isPartition) a quotient needs.
-    ctx.ok(&.{ "check", "std/collection.bpa" }, "OK: 68 declarations, 22 theorems proven\n");
+    ctx.ok(&.{ "check", "std/collection.bpa" }, "OK: 65 declarations, 22 theorems proven\n");
 
     // the function theory (std/function.bpa): axioms only, no theorems — a
     // declarations-only DEPENDENCY. A direct check has nothing to prove, which is
     // the correct outcome: an informational note, exit 0 (NOT a warning — the
     // warning is reserved for a file that DECLARES theorems but proves none).
     ctx.ok(&.{ "check", "std/function.bpa" },
-        \\OK: 18 declarations, 0 theorems proven
+        \\OK: 16 declarations, 0 theorems proven
         \\  — note: no theorems to check (a declarations-only file: axioms/defs/schemas — a dependency, not a proof file).
         \\
     );
@@ -153,5 +153,5 @@ pub fn addTests(
     // inverse laws + closure under compose/inverse), then the group corpus (identity/
     // inverse uniqueness, involution, cancellation) transfers onto them for free.
     // Exercises cross-sort guarded weakening (group.Grp -> Fn where invertible).
-    ctx.ok(&.{ "check", "std/function-invertible.bpa" }, "OK: 66 declarations, 23 theorems proven\n");
+    ctx.ok(&.{ "check", "std/function-invertible.bpa" }, "OK: 64 declarations, 23 theorems proven\n");
 }

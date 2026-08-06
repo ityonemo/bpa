@@ -11,16 +11,15 @@
 // exactly when they agree pointwise (funcExtensionality) — the mapping analogue
 // of set extensionality.
 //
-// Each defining biconditional (injective, surjective, invertible) is written
-// with `iff`.
+// injective / surjective are transparent `define`s (their body IS their meaning);
+// invertible stays an opaque `pred` (+ `iff` axiom) because it guards a refined
+// carrier `Fn where invertible` in std/function-invertible.bpa.
 
 sort Element
 sort Fn
 const identityFn: Fn
 func apply(f: Fn, x: Element): Element
 func compose(g: Fn, f: Fn): Fn
-pred injective(f: Fn)
-pred surjective(f: Fn)
 pred invertible(f: Fn)
 
 // (g ∘ f)(x) = g(f(x)) — the defining law of composition.
@@ -34,15 +33,12 @@ axiom identityApply: forall x: Element; apply(identityFn, x) = x
 axiom funcExtensionality: forall f, g: Fn;
   (forall x: Element; apply(f, x) = apply(g, x)) -> f = g
 
-// injective (one-to-one): f(a) = f(b) implies a = b (and conversely, equal
-// inputs give equal outputs — the trivial direction, included so the predicate
-// unfolds to a full biconditional).
-axiom injectiveDef: forall f: Fn;
-  injective(f) iff (forall a, b: Element; apply(f, a) = apply(f, b) -> a = b)
+// injective (one-to-one): f(a) = f(b) implies a = b. Transparent (macro):
+// injective(f) IS this body, so a proof gets it for free (no injectiveDef unfold).
+define injective(f: Fn) = forall a, b: Element; apply(f, a) = apply(f, b) -> a = b
 
-// surjective (onto): every codomain element y is hit by some x.
-axiom surjectiveDef: forall f: Fn;
-  surjective(f) iff (forall y: Element; exists x: Element; apply(f, x) = y)
+// surjective (onto): every codomain element y is hit by some x. Transparent.
+define surjective(f: Fn) = forall y: Element; exists x: Element; apply(f, x) = y
 
 // invertible: there is a two-sided inverse g (g∘f = id and f∘g = id).
 axiom invertibleDef: forall f: Fn;

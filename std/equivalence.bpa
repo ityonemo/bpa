@@ -32,16 +32,15 @@ axiom intersectionMember = set.intersectionMember
 axiom emptysetMember = set.emptysetMember
 axiom extensionality = set.extensionality
 
-// re-exported relation vocabulary (the SAME relation as std/relation.bpa)
+// re-exported relation vocabulary (the SAME relation as std/relation.bpa).
+// `related` is an opaque pred (the theory parameter); the four properties are
+// now transparent `define`s — re-aliased as defines, and their old `*Def`
+// axioms are GONE (the body is transparent, so there is nothing to cite).
 pred related = relation.related
-pred reflexive = relation.reflexive
-pred symmetric = relation.symmetric
-pred transitive = relation.transitive
-pred equivalence = relation.equivalence
-axiom reflexiveDef = relation.reflexiveDef
-axiom symmetricDef = relation.symmetricDef
-axiom transitiveDef = relation.transitiveDef
-axiom equivalenceDef = relation.equivalenceDef
+define reflexive = relation.reflexive
+define symmetric = relation.symmetric
+define transitive = relation.transitive
+define equivalence = relation.equivalence
 
 // -- equivalence classes as sets --------------------------------------------
 

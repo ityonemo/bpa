@@ -37,12 +37,12 @@ pub fn addTests(
     // inverse by definite description (the `functionFromGraph` axiom-schema — the
     // total+unique preimage graph realized as a function). Verified; the one
     // theorem resting on that disclosed axiom.
-    ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 49 declarations, 12 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.2-functions.md" }, "OK: 45 declarations, 12 theorems proven\n");
 
     // AATA relations: the FOL-tractable part of Chapter 1 §1.2.3 — the three
     // equivalence-projections + the "reflexivity is redundant" exercise. The
     // equivalence⇔partition correspondence is deferred (needs sets-of-sets).
-    ctx.ok(&.{ "check", "aata/1.2.3-relations.md" }, "OK: 27 declarations, 4 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.3-relations.md" }, "OK: 19 declarations, 4 theorems proven\n");
 
     // AATA equivalence classes/partitions (§1.2.3): classes are nonempty, [x]=[y]
     // iff x~y, any two are equal-or-disjoint, AND the classes FORM A PARTITION —
@@ -50,7 +50,7 @@ pub fn addTests(
     // isPartition. The partition packaging (a set of sets) is now stateable via
     // std/collection.bpa (a Collection = a set of Sets, modeling std/set.bpa one
     // level up). Fully proven, no holes.
-    ctx.ok(&.{ "check", "aata/1.2.3-partitions.md" }, "OK: 145 declarations, 28 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/1.2.3-partitions.md" }, "OK: 127 declarations, 28 theorems proven\n");
 
     // AATA Chapter 2 "The Integers", §2.1 Mathematical Induction, fully proven —
     // the base case AND the ∀n≥0 3|(4ⁿ−1) nonneg-induction (its inductive step

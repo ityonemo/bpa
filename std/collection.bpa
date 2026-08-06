@@ -107,18 +107,12 @@ axiom universeMember: forall x: Element; member(x, universe)
 
 // ── partition apparatus (the payoff Gap 1 unlocks) ───────────────────────────
 // `covers(c)` — the collection's sets cover the universe: ⋃c = universe.
-pred covers(c: Collection)
-axiom coversDef: forall c: Collection;
-  covers(c) iff bigUnion(c) = universe
+define covers(c: Collection) = bigUnion(c) = universe
 
 // `pairwiseDisjoint(c)` — distinct member sets share no element (their pairwise
 // intersection is empty).
-pred pairwiseDisjoint(c: Collection)
-axiom pairwiseDisjointDef: forall c: Collection;
-  pairwiseDisjoint(c) iff (forall s, t: Set; contains(s, c) -> contains(t, c) -> s != t -> set.intersection(s, t) = set.emptyset)
+define pairwiseDisjoint(c: Collection) = (forall s, t: Set; contains(s, c) -> contains(t, c) -> s != t -> set.intersection(s, t) = set.emptyset)
 
 // `isPartition(c)` — a partition: covers the universe, pairwise-disjoint, and no
 // member is empty.
-pred isPartition(c: Collection)
-axiom isPartitionDef: forall c: Collection;
-  isPartition(c) iff (covers(c) and pairwiseDisjoint(c) and (forall s: Set; contains(s, c) -> s != set.emptyset))
+define isPartition(c: Collection) = (covers(c) and pairwiseDisjoint(c) and (forall s: Set; contains(s, c) -> s != set.emptyset))
