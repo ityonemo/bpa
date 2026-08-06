@@ -116,6 +116,19 @@ axiom seqPrependExists: forall x: Int; forall s: Seq;
   at(u, ZERO) = x
   and (forall i: Int; is_nonneg(i) -> at(u, succ(i)) = at(s, i))
 
+// The sequence g reindexed past a threshold m: every entry below m is copied,
+// every entry ≥ m is bumped up by one (succ). This is the index-inverse of
+// seqRemoveExists's deletion — "un-removing" the index m in an index map — and is
+// what the FTA-uniqueness permutation σ threads its recursive witness through:
+// after removing entry m from t, the sub-map's target indices (into the shortened
+// t2) must be lifted back to indices into the original t, which is exactly this
+// shift. Obviously true of finite integer sequences; no product constraint.
+axiom seqShiftPastExists: forall g: Seq; forall k: Int; forall m: Int;
+  is_nonneg(k) -> is_nonneg(m) ->
+  exists r: Seq;
+  (forall i: Int; is_nonneg(i) -> less_than(i, k) -> less_than(at(g, i), m) -> at(r, i) = at(g, i))
+  and (forall i: Int; is_nonneg(i) -> less_than(i, k) -> at_most(m, at(g, i)) -> at(r, i) = succ(at(g, i)))
+
 // The sequence s with the entry at index m (0 ≤ m ≤ k) deleted: its length-k
 // product times the removed entry recovers s's length-(k+1) product, and its
 // entries are those of s with index m skipped (unchanged less_than m, shifted up by
