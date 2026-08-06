@@ -192,6 +192,11 @@ pub fn addTests(
     // `define` abbreviations expand transparently; certificates unaffected
     ctx.ok(&.{ "check", "tests/cases/define.bpa" }, "OK: 9 declarations, 1 theorems proven\n");
 
+    // a PARAMETERIZED, Prop-valued `define` — a transparent (macro) predicate.
+    // `even(n)` expands to its body at elaboration (the kernel never sees `even`),
+    // so a proof that needs the body gets it for free — no unfold/cite step.
+    ctx.ok(&.{ "check", "tests/cases/define_pred.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
+
     // defines share the declaration namespace
     ctx.fail(&.{ "check", "tests/cases/define_bad.bpa" }, "tests/cases/define_bad.bpa:5:8: error: duplicate declaration of 'TWO'\n");
 

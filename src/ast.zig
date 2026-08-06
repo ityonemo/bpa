@@ -107,9 +107,11 @@ pub const Decl = union(enum) {
     alias: struct { kind: AliasKind, name: Token, target: Token, guard: ?Token = null },
     sort: struct { name: Token },
     constant: struct { name: Token, sort: Token },
-    /// `define NAME = expr` — a transparent abbreviation: every use expands
-    /// to the term at elaboration; the kernel never sees the name
-    define: struct { name: Token, value: *const Expr },
+    /// `define NAME[(params)] = expr` — a transparent (macro) abbreviation: every
+    /// use expands to the body at elaboration (with actual args substituted for the
+    /// params); the kernel never sees the name. The body may be a term (a defined
+    /// const/function) or a prop (a defined predicate). `params` empty = nullary.
+    define: struct { name: Token, params: []const Binder, value: *const Expr },
     func: struct { name: Token, params: []const Binder, result: Token, requires: ?*const Expr },
     pred: struct { name: Token, params: []const Binder },
     axiom: struct { name: Token, formula: *const Expr },

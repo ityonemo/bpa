@@ -1,0 +1,26 @@
+// A parameterized, Prop-valued `define` — a transparent (macro) predicate.
+// `even(n)` expands to its body at elaboration; the kernel never sees `even`,
+// so a proof that needs the body gets it for FREE (no unfold/cite step).
+
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+define TWO = succ(succ(ZERO))
+
+// the transparent predicate: even(n) IS `exists k; n = mul(TWO, k)`.
+define even(n: Nat) = exists k: Nat; n = mul(TWO, k)
+
+// witnessing evenness is just exists_intro on the expanded body — no unfold of
+// `even` needed, because `even(mul(TWO, ZERO))` already IS the existential.
+axiom mulTwoZero: mul(TWO, ZERO) = mul(TWO, ZERO)
+
+theorem twoTimesZeroIsEven: even(mul(TWO, ZERO))
+proof
+  @witness |
+    mul(TWO, ZERO) = mul(TWO, ZERO)
+    [by reflexivity]
+  @conclusion |
+    even(mul(TWO, ZERO))
+    [by exists_intro(ZERO) witness]
+qed

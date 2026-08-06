@@ -399,19 +399,29 @@ pub const Elaborator = struct {
             .define => |d| {
                 const name = try self.internTok(d.name);
                 try self.checkFreshName(name, d.name);
+                // a `define` is a MACRO: its body is elaborated ONCE here (with the
+                // params in scope as fvars named after themselves), stored, and every
+                // use expands to it with actuals substituted. The body may be a term
+                // (a defined const/function) or a prop (a defined predicate) — the
+                // kind is the body's sort. `params` empty = a nullary abbreviation.
+                const arg_sorts, const param_names = try self.resolveParams(d.params);
+                for (param_names, arg_sorts) |pn, ps| {
+                    try self.scope.append(self.arena, .{ .name = pn, .sort = ps, .fvar = pn });
+                }
                 const tcc_start = self.pending_tccs.items.len;
                 const value = try self.elaborateExpr(d.value);
                 // guards inside the definition are owed once, here; uses
-                // expand to the already-vetted term
+                // expand to the already-vetted body
                 try self.dischargeTccs(null, @enumFromInt(0), tcc_start);
+                self.scope.clearRetainingCapacity();
                 _ = try self.env.addSym(self.file, .{
                     .name = name,
-                    .kind = .app,
-                    .arg_sorts = &.{},
+                    .kind = if (value.sort == .prop) .pred else .app,
+                    .arg_sorts = arg_sorts,
                     .result = value.sort,
                     .guard = null,
                     .definition = value.id,
-                    .param_names = &.{},
+                    .param_names = param_names,
                     .loc = d.name.start,
                 });
             },
@@ -3593,6 +3603,18 @@ pub const Elaborator = struct {
                 g = try self.pool.substFvar(g, fr, actual);
             }
             try self.pending_tccs.append(self.arena, .{ .formula = g, .loc = c.callee.start });
+        }
+        // a `define` is a MACRO: expand the call to its stored body with each
+        // actual substituted for the corresponding param fvar (like a schema-lambda
+        // beta-reduction). The kernel never sees the define'd symbol. Simultaneous
+        // by construction — the body's param fvars are distinct and the actuals are
+        // already-elaborated closed terms.
+        if (sym.definition) |body| {
+            var expanded = body;
+            for (sym.param_names, arg_ids) |pn, actual| {
+                expanded = try self.pool.substFvar(expanded, pn, actual);
+            }
+            return .{ .id = expanded, .sort = sym.result };
         }
         const id = try self.pool.addApp(if (sym.kind == .pred) .pred else .app, sym_id, arg_ids);
         // a predicated-result func (`op(...): H`) surfaces `inH(op(args))` — the same

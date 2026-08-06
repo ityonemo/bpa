@@ -155,8 +155,11 @@ pub const Parser = struct {
             .keyword_define => {
                 _ = self.advance();
                 const name = try self.expect(.identifier);
+                // optional `(params)` — a parameterized define is a macro function
+                // or predicate; no parens = a nullary term/prop abbreviation.
+                const params = try self.parseParams();
                 _ = try self.expect(.equal);
-                return .{ .define = .{ .name = name, .value = try self.parseExpr() } };
+                return .{ .define = .{ .name = name, .params = params, .value = try self.parseExpr() } };
             },
             .keyword_func => {
                 _ = self.advance();
