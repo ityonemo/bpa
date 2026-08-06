@@ -396,30 +396,19 @@ proof
                     divides(TWO, succ(p))
                     [by hypothesis p-odd]
                   // p = succ(2j)
-                  @odd-form-thm |
-                    forall q: Nat; divides(TWO, succ(q)) -> exists j: Nat; q = succ(mul(TWO, j))
-                    [by theorem oddForm]
-                  @odd-form-at |
-                    divides(TWO, succ(p)) -> exists j: Nat; p = succ(mul(TWO, j))
-                    [by forall_elim(p) odd-form-thm]
                   @p-odd-exists |
                     exists j: Nat; p = succ(mul(TWO, j))
-                    [by modus_ponens odd-form-at succ-p-even]
+                    [by specialize oddForm(p) succ-p-even]
                   @with-j |
                     unpack j: Nat from p-odd-exists {
                       @p-is-odd |
                         p = succ(mul(TWO, j))
                         [by hypothesis with-j]
                       // p² = succ(2·M),  M = 2j²+2j
-                      @odd-sq-thm |
-                        forall jj: Nat;
-                          mul(succ(mul(TWO, jj)), succ(mul(TWO, jj)))
-                          = succ(mul(TWO, add(mul(TWO, mul(jj, jj)), mul(TWO, jj))))
-                        [by theorem oddSquare]
                       @odd-sq-at |
                         mul(succ(mul(TWO, j)), succ(mul(TWO, j)))
                           = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        [by forall_elim(j) odd-sq-thm]
+                        [by specialize oddSquare(j)]
                       // rewrite p into the square, then apply the odd-square identity
                       @sq-is-odd |
                         mul(p, p) = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))

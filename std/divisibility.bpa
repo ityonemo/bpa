@@ -34,12 +34,9 @@ theorem dividesRefl: forall d: Dividable; divides(d, d)
 proof
   @generalize-d |
     fix d: Dividable {
-      @mul-one |
-        forall n: Dividable; mul(n, ONE) = n
-        [by axiom mulOneRight]
       @d-is-d-times-one |
         mul(d, ONE) = d
-        [by forall_elim(d) mul-one]
+        [by specialize mulOneRight(d)]
       @d-eq |
         d = mul(d, ONE)
         [by symmetry d-is-d-times-one]
@@ -79,12 +76,9 @@ proof
                       @product-with-a-expanded |
                         mul(a, c) = mul(mul(d, k), c)
                         [by rewrite a-equals-d-times-k product-refl]
-                      @mul-associative |
-                        forall x, y, z: Dividable; mul(mul(x, y), z) = mul(x, mul(y, z))
-                        [by axiom mulIsAssociative]
                       @product-reassociates |
                         mul(mul(d, k), c) = mul(d, mul(k, c))
-                        [by forall_elim(d, k, c) mul-associative]
+                        [by specialize mulIsAssociative(d, k, c)]
                       @product-is-d-multiple |
                         mul(a, c) = mul(d, mul(k, c))
                         [by rewrite product-reassociates product-with-a-expanded]
@@ -144,12 +138,9 @@ proof
                               @b-equals-d-times-k |
                                 b = mul(d, k)
                                 [by hypothesis with-quotient-k]
-                              @distribute-over-sum |
-                                forall x, y, z: Dividable; mul(x, add(y, z)) = add(mul(x, y), mul(x, z))
-                                [by axiom mulAddDistribLeft]
                               @sum-of-multiples-distributes |
                                 mul(d, add(j, k)) = add(mul(d, j), mul(d, k))
-                                [by forall_elim(d, j, k) distribute-over-sum]
+                                [by specialize mulAddDistribLeft(d, j, k)]
                               @sum-of-products-collects |
                                 add(mul(d, j), mul(d, k)) = mul(d, add(j, k))
                                 [by symmetry sum-of-multiples-distributes]

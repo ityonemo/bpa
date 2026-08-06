@@ -48,36 +48,27 @@ proof
         fix m: Nat {
           // base case: add(m, ZERO) = m, and op(pow(g, m), pow(g, ZERO))
           // collapses to pow(g, m) via powZero + opIdentityRight.
-          @add-zero-on-the-right |
-            forall n: Nat; add(n, ZERO) = n
-            [by theorem addZeroRight]
           @add-m-zero |
             add(m, ZERO) = m
-            [by forall_elim(m) add-zero-on-the-right]
+            [by specialize addZeroRight(m)]
           @exponent-refl |
             pow(g, add(m, ZERO)) = pow(g, add(m, ZERO))
             [by reflexivity]
           @exponent-is-m |
             pow(g, add(m, ZERO)) = pow(g, m)
             [by rewrite add-m-zero exponent-refl]
-          @pow-at-zero |
-            forall a: Grp; pow(a, ZERO) = E
-            [by axiom powZero]
           @pow-g-zero-is-identity |
             pow(g, ZERO) = E
-            [by forall_elim(g) pow-at-zero]
+            [by specialize powZero(g)]
           @right-factor-refl |
             op(pow(g, m), pow(g, ZERO)) = op(pow(g, m), pow(g, ZERO))
             [by reflexivity]
           @right-factor-is-identity |
             op(pow(g, m), pow(g, ZERO)) = op(pow(g, m), E)
             [by rewrite pow-g-zero-is-identity right-factor-refl]
-          @op-identity-on-the-right |
-            forall a: Grp; op(a, E) = a
-            [by theorem opIdentityRight]
           @op-with-identity |
             op(pow(g, m), E) = pow(g, m)
-            [by forall_elim(pow(g, m)) op-identity-on-the-right]
+            [by specialize opIdentityRight(pow(g, m))]
           @right-factor-is-pow-m |
             op(pow(g, m), pow(g, ZERO)) = pow(g, m)
             [by rewrite op-with-identity right-factor-is-identity]
@@ -100,17 +91,10 @@ proof
                   @pow-at-successor |
                     forall a: Grp; forall n: Nat; pow(a, succ(n)) = op(pow(a, n), a)
                     [by axiom powSucc]
-                  @op-is-associative |
-                    forall a, b, c: Grp; op(op(a, b), c) = op(a, op(b, c))
-                    [by axiom opAssoc]
-
                   // rewrite the exponent add(m, succ k) as succ(add(m, k)).
-                  @add-succ-on-the-right |
-                    forall a, b: Nat; add(a, succ(b)) = succ(add(a, b))
-                    [by theorem addSuccRight]
                   @exponent-unfolds |
                     add(m, succ(k)) = succ(add(m, k))
-                    [by forall_elim(m, k) add-succ-on-the-right]
+                    [by specialize addSuccRight(m, k)]
                   @lhs-exponent-refl |
                     pow(g, add(m, succ(k))) = pow(g, add(m, succ(k)))
                     [by reflexivity]
@@ -129,7 +113,7 @@ proof
                   // reassociate op(op(g^m, g^k), g) = op(g^m, op(g^k, g)).
                   @reassociates |
                     op(op(pow(g, m), pow(g, k)), g) = op(pow(g, m), op(pow(g, k), g))
-                    [by forall_elim(pow(g, m), pow(g, k), g) op-is-associative]
+                    [by specialize opAssoc(pow(g, m), pow(g, k), g)]
                   @lhs-reassociated |
                     pow(g, succ(add(m, k))) = op(pow(g, m), op(pow(g, k), g))
                     [by rewrite reassociates lhs-with-hypothesis]

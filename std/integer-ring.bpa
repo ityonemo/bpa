@@ -233,15 +233,12 @@ theorem addIsCommutative: forall a, b: Int; add(a, b) = add(b, a)
 proof
   @generalize-a |
     fix a: Int {
-      @add-zero-right |
-        forall x: Int; add(x, ZERO) = x
-        [by theorem addZeroRight]
       @add-zero-left |
         forall n: Int; add(ZERO, n) = n
         [by axiom addZeroLeft]
       @lhs-at-zero |
         add(a, ZERO) = a
-        [by forall_elim(a) add-zero-right]
+        [by specialize addZeroRight(a)]
       @rhs-at-zero |
         add(ZERO, a) = a
         [by forall_elim(a) add-zero-left]
@@ -1616,9 +1613,6 @@ proof
       @neg-add |
         forall x, y: Int; neg(add(x, y)) = add(neg(x), neg(y))
         [by theorem negAdd]
-      @neg-neg |
-        forall n: Int; neg(neg(n)) = n
-        [by theorem negNeg]
       // base case: b = ZERO — both sides are ZERO.
       @neg-of-zero |
         neg(ZERO) = ZERO
@@ -1748,7 +1742,7 @@ proof
                 [by rewrite distribute-neg rhs-mul-unfolded]
               @cancel-double-neg |
                 neg(neg(a)) = a
-                [by forall_elim(a) neg-neg]
+                [by specialize negNeg(a)]
               @rhs-normal |
                 neg(mul(a, prev(b))) = add(neg(mul(a, b)), a)
                 [by rewrite cancel-double-neg rhs-distributed]
@@ -1797,9 +1791,6 @@ proof
           @mul-add-distrib |
             forall x, y, z: Int; mul(x, add(y, z)) = add(mul(x, y), mul(x, z))
             [by theorem mulAddDistribLeft]
-          @mul-neg-right |
-            forall x, y: Int; mul(x, neg(y)) = neg(mul(x, y))
-            [by theorem mulNegRight]
           // base case: c = ZERO — both sides are ZERO.
           @lhs-at-zero |
             mul(mul(a, b), ZERO) = ZERO
@@ -1899,7 +1890,7 @@ proof
                     [by rewrite distribute rhs-inner-unfolded]
                   @pull-neg-out |
                     mul(a, neg(b)) = neg(mul(a, b))
-                    [by forall_elim(a, b) mul-neg-right]
+                    [by specialize mulNegRight(a, b)]
                   @rhs-normal |
                     mul(a, mul(b, prev(c))) = add(mul(a, mul(b, c)), neg(mul(a, b)))
                     [by rewrite pull-neg-out rhs-distributed]
@@ -1942,12 +1933,9 @@ proof
       @neg-plus-n-commutes |
         add(neg(n), n) = add(n, neg(n))
         [by forall_elim(neg(n), n) commute]
-      @n-plus-neg |
-        forall m: Int; add(m, neg(m)) = ZERO
-        [by theorem addNegRight]
       @n-plus-neg-is-zero |
         add(n, neg(n)) = ZERO
-        [by forall_elim(n) n-plus-neg]
+        [by specialize addNegRight(n)]
       @conclusion-neg-left |
         add(neg(n), n) = ZERO
         [by rewrite n-plus-neg-is-zero neg-plus-n-commutes]

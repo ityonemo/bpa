@@ -1043,15 +1043,9 @@ proof
               @x-less_than-y |
                 less_than(x, y)
                 [by hypothesis given-x-less_than-y]
-              @less_than-yields-gap |
-                forall a, b: Int; less_than(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
-                [by axiom lessThanElim]
-              @gap-exists-if-less_than |
-                less_than(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                [by forall_elim(x, y) less_than-yields-gap]
               @gap-exists |
                 exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                [by modus_ponens gap-exists-if-less_than x-less_than-y]
+                [by specialize lessThanElim(x, y) x-less_than-y]
               @with-gap |
                 unpack d: Int from gap-exists {
                   @gap-nonneg-and-reaches |
@@ -1512,15 +1506,9 @@ proof
                                     does_divide(b, sub(big, small))
                                     [by hypothesis given-b-divides-difference]
                                   // difference is nonneg (small < big).
-                                  @less_than-gives-nonneg-difference |
-                                    forall x, y: Int; less_than(x, y) -> is_nonneg(sub(y, x))
-                                    [by theorem lessThanGivesNonnegDifference]
-                                  @difference-nonneg-if-less_than |
-                                    less_than(small, big) -> is_nonneg(sub(big, small))
-                                    [by forall_elim(small, big) less_than-gives-nonneg-difference]
                                   @difference-nonneg |
                                     is_nonneg(sub(big, small))
-                                    [by modus_ponens difference-nonneg-if-less_than small-less_than-big]
+                                    [by specialize lessThanGivesNonnegDifference(small, big) small-less_than-big]
                                   // difference <= big (subtracting a nonneg), and big < b.
                                   @difference-plus-small-is-big |
                                     add(sub(big, small), small) = big
@@ -2707,15 +2695,9 @@ proof
                         sub(a, mul(b, mul(TWO, a))) = mul(a, sub(ONE, mul(TWO, b)))
                         [by rewrite factored-member-expands member-with-a-factored]
                       // First factor a is nonpositive: -a >= 0 since a < 0.
-                      @a-less_than-zero-gives-neg-a-nonneg |
-                        forall n: Int; less_than(n, ZERO) -> is_nonneg(neg(n))
-                        [by theorem negLessThanZero]
-                      @neg-a-nonneg-if |
-                        less_than(a, ZERO) -> is_nonneg(neg(a))
-                        [by forall_elim(a) a-less_than-zero-gives-neg-a-nonneg]
                       @neg-a-nonneg |
                         is_nonneg(neg(a))
-                        [by modus_ponens neg-a-nonneg-if a-negative]
+                        [by specialize negLessThanZero(a) a-negative]
                       // Second factor 1 - 2b is nonpositive: 1 < 2b because b > 0.
                       // 1 <= b (b positive) and b < 2b (b positive) give 1 < 2b.
                       @one-at-most-b |
@@ -2733,31 +2715,16 @@ proof
                       @b-less_than-two-b |
                         less_than(b, mul(TWO, b))
                         [by rewrite b-plus-b-is-two-b b-less_than-b-plus-b]
-                      @at-most-then-less_than-lemma |
-                        forall x, y, z: Int; at_most(x, y) -> less_than(y, z) -> less_than(x, z)
-                        [by theorem atMostThenLessThan]
-                      @one-less_than-two-b-if |
-                        at_most(ONE, b) -> less_than(b, mul(TWO, b)) -> less_than(ONE, mul(TWO, b))
-                        [by forall_elim(ONE, b, mul(TWO, b)) at-most-then-less_than-lemma]
                       @one-less_than-two-b |
                         less_than(ONE, mul(TWO, b))
-                        [by tautology one-less_than-two-b-if one-at-most-b b-less_than-two-b]
+                        [by specialize atMostThenLessThan(ONE, b, mul(TWO, b)) one-at-most-b b-less_than-two-b]
                       // 1 < 2b makes 2b - 1 = -(1 - 2b) nonneg.
-                      @less_than-gives-nonneg-difference |
-                        forall x, y: Int; less_than(x, y) -> is_nonneg(sub(y, x))
-                        [by theorem lessThanGivesNonnegDifference]
-                      @neg-of-one-minus-two-b-nonneg-if |
-                        less_than(ONE, mul(TWO, b)) -> is_nonneg(sub(mul(TWO, b), ONE))
-                        [by forall_elim(ONE, mul(TWO, b)) less_than-gives-nonneg-difference]
                       @two-b-minus-one-nonneg |
                         is_nonneg(sub(mul(TWO, b), ONE))
-                        [by modus_ponens neg-of-one-minus-two-b-nonneg-if one-less_than-two-b]
-                      @negation-swaps-difference |
-                        forall x, y: Int; neg(sub(x, y)) = sub(y, x)
-                        [by theorem negOfDifferenceSwaps]
+                        [by specialize lessThanGivesNonnegDifference(ONE, mul(TWO, b)) one-less_than-two-b]
                       @neg-of-one-minus-two-b-is-two-b-minus-one |
                         neg(sub(ONE, mul(TWO, b))) = sub(mul(TWO, b), ONE)
-                        [by forall_elim(ONE, mul(TWO, b)) negation-swaps-difference]
+                        [by specialize negOfDifferenceSwaps(ONE, mul(TWO, b))]
                       @two-b-minus-one-is-neg |
                         sub(mul(TWO, b), ONE) = neg(sub(ONE, mul(TWO, b)))
                         [by symmetry neg-of-one-minus-two-b-is-two-b-minus-one]
@@ -2877,15 +2844,9 @@ proof
                                   @b-less_than-rem |
                                     less_than(b, rem)
                                     [by hypothesis when-b-less_than-rem]
-                                  @less_than-gives-at-most |
-                                    forall x, y: Int; less_than(x, y) -> at_most(x, y)
-                                    [by theorem lessThanToLessOrEqual]
-                                  @b-at-most-rem-if |
-                                    less_than(b, rem) -> at_most(b, rem)
-                                    [by forall_elim(b, rem) less_than-gives-at-most]
                                   @conclusion-b-at-most-rem |
                                     at_most(b, rem)
-                                    [by modus_ponens b-at-most-rem-if b-less_than-rem]
+                                    [by specialize lessThanToLessOrEqual(b, rem) b-less_than-rem]
                                 }
                             }
                           // candidate = sub(rem, b) = sub(a, mul(b, succ quot)); it is in S.
