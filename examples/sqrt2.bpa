@@ -28,10 +28,8 @@ func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
 func gcd_of = gcd.gcd
-pred divides = division.divides
+define divides(d: Nat, n: Nat) = division.divides(d, n)
 
-axiom dividesIntro = division.dividesIntro
-axiom dividesElim = division.dividesElim
 axiom succNotZero = peano.succNotZero
 axiom oneIsSuccZero = peano.oneIsSuccZero
 axiom addSuccLeft = peano.addSuccLeft
@@ -62,15 +60,9 @@ proof
                     [by hypothesis suppose-square]
 
                   // 2 | p²  (witness q²)
-                  @intro |
-                    forall n, d, k: Nat; n = mul(d, k) -> divides(d, n)
-                    [by axiom dividesIntro]
-                  @intro-psq |
-                    mul(p, p) = mul(TWO, mul(q, q)) -> divides(TWO, mul(p, p))
-                    [by forall_elim(mul(p, p), TWO, mul(q, q)) intro]
                   @two-div-psq |
                     divides(TWO, mul(p, p))
-                    [by modus_ponens intro-psq square-eq]
+                    [by exists_intro(mul(q, q)) square-eq]
 
                   // 2 | p
                   @sq-even-thm |
@@ -84,17 +76,8 @@ proof
                     [by modus_ponens sq-even-at-p two-div-psq]
 
                   // p = 2k
-                  @elim |
-                    forall d, n: Nat; divides(d, n) -> exists k: Nat; n = mul(d, k)
-                    [by axiom dividesElim]
-                  @elim-at-p |
-                    divides(TWO, p) -> exists k: Nat; p = mul(TWO, k)
-                    [by forall_elim(TWO, p) elim]
-                  @p-even-exists |
-                    exists k: Nat; p = mul(TWO, k)
-                    [by modus_ponens elim-at-p two-div-p]
                   @with-k |
-                    unpack k: Nat from p-even-exists {
+                    unpack k: Nat from two-div-p {
                       @p-is-2k |
                         p = mul(TWO, k)
                         [by hypothesis with-k]
@@ -155,12 +138,9 @@ proof
                         [by symmetry two-ksq-eq-qsq]
 
                       // 2 | q²  (witness k²), then 2 | q
-                      @intro-qsq |
-                        mul(q, q) = mul(TWO, mul(k, k)) -> divides(TWO, mul(q, q))
-                        [by forall_elim(mul(q, q), TWO, mul(k, k)) intro]
                       @two-div-qsq |
                         divides(TWO, mul(q, q))
-                        [by modus_ponens intro-qsq qsq-eq-two-ksq]
+                        [by exists_intro(mul(k, k)) qsq-eq-two-ksq]
                       @sq-even-at-q |
                         divides(TWO, mul(q, q)) -> divides(TWO, q)
                         [by forall_elim(q) sq-even-thm]

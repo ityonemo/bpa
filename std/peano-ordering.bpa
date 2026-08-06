@@ -32,15 +32,14 @@ theorem addIsCommutative = peano.addIsCommutative
 theorem addSuccNeverSelf = peano.addSuccNeverSelf
 theorem zeroOrSucc = peano.zeroOrSucc
 
-pred less_than(a: Nat, b: Nat)
-axiom lessThanIntro: forall a, d, b: Nat; add(a, succ(d)) = b -> less_than(a, b)
-axiom lessThanElim: forall a, b: Nat; less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
+// a < b iff b is a plus a nonzero (succ) amount. Transparent: less_than(a, b)
+// IS the existential gap statement, so a proof produces it with exists_intro
+// and consumes it with unpack — no separate intro/elim axioms.
+define less_than(a: Nat, b: Nat) = exists d: Nat; add(a, succ(d)) = b
 
 // a <= b iff b is a plus SOME amount (the gap d may be ZERO, unlike
-// less_than's succ(d)). Same intro/elim shape as less_than.
-pred less_or_equal(a: Nat, b: Nat)
-axiom lessOrEqualIntro: forall a, d, b: Nat; add(a, d) = b -> less_or_equal(a, b)
-axiom lessOrEqualElim: forall a, b: Nat; less_or_equal(a, b) -> exists d: Nat; add(a, d) = b
+// less_than's succ(d)). Same transparent shape as less_than.
+define less_or_equal(a: Nat, b: Nat) = exists d: Nat; add(a, d) = b
 
 // -- forwarded theorems -----------------------------------------------------
 
@@ -78,18 +77,9 @@ proof
         fix b: Nat {
           @given-a-below-b |
             assume less_than(a, b) {
-              @less-than-elim |
-                forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-                [by axiom lessThanElim]
-              @gap-exists-if-below |
-                less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                [by forall_elim(a, b) less-than-elim]
-              @a-below-b |
+              @gap-exists |
                 less_than(a, b)
                 [by hypothesis given-a-below-b]
-              @gap-exists |
-                exists w: Nat; add(a, succ(w)) = b
-                [by modus_ponens gap-exists-if-below a-below-b]
               @with-gap-u |
                 unpack u: Nat from gap-exists {
                   @gap-witnesses-b |
@@ -98,15 +88,9 @@ proof
                   @successor-gap-witnesses-succ-b |
                     add(succ(a), succ(u)) = succ(b)
                     [by simplify addSuccLeft gap-witnesses-b]
-                  @a-gap-witnesses-less-than |
-                    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                    [by axiom lessThanIntro]
-                  @successors-below-if-gap |
-                    add(succ(a), succ(u)) = succ(b) -> less_than(succ(a), succ(b))
-                    [by forall_elim(succ(a), u, succ(b)) a-gap-witnesses-less-than]
                   @successors-preserve-order |
                     less_than(succ(a), succ(b))
-                    [by modus_ponens successors-below-if-gap successor-gap-witnesses-succ-b]
+                    [by exists_intro(u) successor-gap-witnesses-succ-b]
                 }
               @successors-preserve-order |
                 less_than(succ(a), succ(b))
@@ -135,18 +119,9 @@ proof
         fix b: Nat {
           @given-successors-below |
             assume less_than(succ(a), succ(b)) {
-              @successors-below |
+              @successor-gap-exists |
                 less_than(succ(a), succ(b))
                 [by hypothesis given-successors-below]
-              @less-than-elim |
-                forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
-                [by axiom lessThanElim]
-              @successor-gap-exists-if-below |
-                less_than(succ(a), succ(b)) -> exists d: Nat; add(succ(a), succ(d)) = succ(b)
-                [by forall_elim(succ(a), succ(b)) less-than-elim]
-              @successor-gap-exists |
-                exists d: Nat; add(succ(a), succ(d)) = succ(b)
-                [by modus_ponens successor-gap-exists-if-below successors-below]
               @with-gap-d |
                 unpack d0: Nat from successor-gap-exists {
                   @successor-gap-witnesses-succ-b |
@@ -167,15 +142,9 @@ proof
                   @gap-witnesses-b |
                     add(a, succ(d0)) = b
                     [by modus_ponens gap-is-b-if-succ-equal succ-of-gap-is-succ-b]
-                  @a-gap-witnesses-less-than |
-                    forall x, d, y: Nat; add(x, succ(d)) = y -> less_than(x, y)
-                    [by axiom lessThanIntro]
-                  @a-below-b-if-gap |
-                    add(a, succ(d0)) = b -> less_than(a, b)
-                    [by forall_elim(a, d0, b) a-gap-witnesses-less-than]
                   @a-below-b |
                     less_than(a, b)
-                    [by modus_ponens a-below-b-if-gap gap-witnesses-b]
+                    [by exists_intro(d0) gap-witnesses-b]
                 }
               @a-below-b |
                 less_than(a, b)
@@ -208,27 +177,12 @@ proof
                 assume less_than(a, b) {
                   @given-b-below-c |
                     assume less_than(b, c) {
-                      @less-than-elim |
-                        forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-                        [by axiom lessThanElim]
-                      @gap-ab-exists-if-below |
-                        less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                        [by forall_elim(a, b) less-than-elim]
-                      @a-below-b |
+                      @gap-ab-exists |
                         less_than(a, b)
                         [by hypothesis given-a-below-b]
-                      @gap-ab-exists |
-                        exists w: Nat; add(a, succ(w)) = b
-                        [by modus_ponens gap-ab-exists-if-below a-below-b]
-                      @gap-bc-exists-if-below |
-                        less_than(b, c) -> exists w: Nat; add(b, succ(w)) = c
-                        [by forall_elim(b, c) less-than-elim]
-                      @b-below-c |
+                      @gap-bc-exists |
                         less_than(b, c)
                         [by hypothesis given-b-below-c]
-                      @gap-bc-exists |
-                        exists w: Nat; add(b, succ(w)) = c
-                        [by modus_ponens gap-bc-exists-if-below b-below-c]
                       @with-gap-u |
                         unpack u: Nat from gap-ab-exists {
                           @with-gap-v |
@@ -257,15 +211,9 @@ proof
                               @successor-gap-reaches-c |
                                 add(a, succ(add(u, succ(v)))) = c
                                 [by rewrite combined-gap-is-successor combined-gap-reaches-c]
-                              @a-gap-witnesses-less-than |
-                                forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                                [by axiom lessThanIntro]
-                              @a-below-c-if-gap |
-                                add(a, succ(add(u, succ(v)))) = c -> less_than(a, c)
-                                [by forall_elim(a, add(u, succ(v)), c) a-gap-witnesses-less-than]
                               @a-below-c |
                                 less_than(a, c)
-                                [by modus_ponens a-below-c-if-gap successor-gap-reaches-c]
+                                [by exists_intro(add(u, succ(v))) successor-gap-reaches-c]
                             }
                           @a-below-c |
                             less_than(a, c)
@@ -304,18 +252,9 @@ proof
     fix n: Nat {
       @given-n-below-n |
         assume less_than(n, n) {
-          @less-than-elim |
-            forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-            [by axiom lessThanElim]
-          @self-gap-exists-if-below |
-            less_than(n, n) -> exists w: Nat; add(n, succ(w)) = n
-            [by forall_elim(n, n) less-than-elim]
-          @n-below-n |
+          @self-gap-exists |
             less_than(n, n)
             [by hypothesis given-n-below-n]
-          @self-gap-exists |
-            exists w: Nat; add(n, succ(w)) = n
-            [by modus_ponens self-gap-exists-if-below n-below-n]
           @with-gap-u |
             unpack u: Nat from self-gap-exists {
               @gap-witnesses-self |
@@ -359,18 +298,9 @@ proof
             fix c: Nat {
               @given-a-below-b |
                 assume less_than(a, b) {
-                  @less-than-elim |
-                    forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-                    [by axiom lessThanElim]
-                  @gap-exists-if-below |
-                    less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                    [by forall_elim(a, b) less-than-elim]
-                  @a-below-b |
+                  @gap-exists |
                     less_than(a, b)
                     [by hypothesis given-a-below-b]
-                  @gap-exists |
-                    exists w: Nat; add(a, succ(w)) = b
-                    [by modus_ponens gap-exists-if-below a-below-b]
                   @with-gap-u |
                     unpack u: Nat from gap-exists {
                       @gap-witnesses-b |
@@ -379,15 +309,9 @@ proof
                       @shifted-gap-witnesses-c-plus-b |
                         add(add(c, a), succ(u)) = add(c, b)
                         [by simplify addIsAssociative gap-witnesses-b]
-                      @a-gap-witnesses-less-than |
-                        forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                        [by axiom lessThanIntro]
-                      @shifted-below-if-gap |
-                        add(add(c, a), succ(u)) = add(c, b) -> less_than(add(c, a), add(c, b))
-                        [by forall_elim(add(c, a), u, add(c, b)) a-gap-witnesses-less-than]
                       @shifted-preserves-order |
                         less_than(add(c, a), add(c, b))
-                        [by modus_ponens shifted-below-if-gap shifted-gap-witnesses-c-plus-b]
+                        [by exists_intro(u) shifted-gap-witnesses-c-plus-b]
                     }
                   @shifted-preserves-order |
                     less_than(add(c, a), add(c, b))
@@ -422,18 +346,9 @@ proof
             fix c: Nat {
               @given-a-below-b |
                 assume less_than(a, b) {
-                  @less-than-elim |
-                    forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-                    [by axiom lessThanElim]
-                  @gap-exists-if-below |
-                    less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                    [by forall_elim(a, b) less-than-elim]
-                  @a-below-b |
+                  @gap-exists |
                     less_than(a, b)
                     [by hypothesis given-a-below-b]
-                  @gap-exists |
-                    exists w: Nat; add(a, succ(w)) = b
-                    [by modus_ponens gap-exists-if-below a-below-b]
                   @with-gap-u |
                     unpack u: Nat from gap-exists {
                       @gap-witnesses-b |
@@ -451,18 +366,12 @@ proof
                       @scaled-b-has-successor-gap |
                         mul(succ(c), b) = add(mul(succ(c), a), succ(add(mul(c, succ(u)), u)))
                         [by rewrite scaled-gap-total scaled-b-distributed]
-                      @a-gap-witnesses-less-than |
-                        forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                        [by axiom lessThanIntro]
-                      @scaled-below-if-gap |
-                        add(mul(succ(c), a), succ(add(mul(c, succ(u)), u))) = mul(succ(c), b) -> less_than(mul(succ(c), a), mul(succ(c), b))
-                        [by forall_elim(mul(succ(c), a), add(mul(c, succ(u)), u), mul(succ(c), b)) a-gap-witnesses-less-than]
                       @scaled-gap-witnesses-scaled-b |
                         add(mul(succ(c), a), succ(add(mul(c, succ(u)), u))) = mul(succ(c), b)
                         [by symmetry scaled-b-has-successor-gap]
                       @scaling-preserves-order |
                         less_than(mul(succ(c), a), mul(succ(c), b))
-                        [by modus_ponens scaled-below-if-gap scaled-gap-witnesses-scaled-b]
+                        [by exists_intro(add(mul(c, succ(u)), u)) scaled-gap-witnesses-scaled-b]
                     }
                   @scaling-preserves-order |
                     less_than(mul(succ(c), a), mul(succ(c), b))
@@ -493,15 +402,9 @@ proof
   @zero-gap-reaches-one |
     add(ZERO, succ(ZERO)) = ONE
     [by simplify addZeroLeft oneIsSuccZero]
-  @a-gap-witnesses-less-than |
-    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-    [by axiom lessThanIntro]
-  @zero-below-one-if-gap |
-    add(ZERO, succ(ZERO)) = ONE -> less_than(ZERO, ONE)
-    [by forall_elim(ZERO, ZERO, ONE) a-gap-witnesses-less-than]
   @part-one |
     less_than(ZERO, ONE)
-    [by modus_ponens zero-below-one-if-gap zero-gap-reaches-one]
+    [by exists_intro(ZERO) zero-gap-reaches-one]
 
   // part 2: no n strictly between ZERO and ONE
   @generalize-n |
@@ -517,23 +420,8 @@ proof
           @n-below-one |
             less_than(n, ONE)
             [by and_elim_right n-is-strictly-between]
-          @less-than-elim |
-            forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-            [by axiom lessThanElim]
-          @lower-gap-exists-if-below |
-            less_than(ZERO, n) -> exists w: Nat; add(ZERO, succ(w)) = n
-            [by forall_elim(ZERO, n) less-than-elim]
-          @lower-gap-exists |
-            exists w: Nat; add(ZERO, succ(w)) = n
-            [by modus_ponens lower-gap-exists-if-below zero-below-n]
-          @upper-gap-exists-if-below |
-            less_than(n, ONE) -> exists w: Nat; add(n, succ(w)) = ONE
-            [by forall_elim(n, ONE) less-than-elim]
-          @upper-gap-exists |
-            exists w: Nat; add(n, succ(w)) = ONE
-            [by modus_ponens upper-gap-exists-if-below n-below-one]
           @with-lower-gap-u |
-            unpack u: Nat from lower-gap-exists {
+            unpack u: Nat from zero-below-n {
               @lower-gap-witnesses-n |
                 add(ZERO, succ(u)) = n
                 [by hypothesis with-lower-gap-u]
@@ -544,7 +432,7 @@ proof
                 n = succ(u)
                 [by simplify n-is-lower-gap addZeroLeft]
               @with-upper-gap-v |
-                unpack v: Nat from upper-gap-exists {
+                unpack v: Nat from n-below-one {
                   @upper-gap-witnesses-one |
                     add(n, succ(v)) = ONE
                     [by hypothesis with-upper-gap-v]
@@ -658,15 +546,9 @@ proof
               @zero-gap-reaches-succ-m |
                 add(ZERO, succ(m0)) = succ(m0)
                 [by simplify addZeroLeft]
-              @a-gap-witnesses-less-than |
-                forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                [by axiom lessThanIntro]
-              @zero-below-succ-m-if-gap |
-                add(ZERO, succ(m0)) = succ(m0) -> less_than(ZERO, succ(m0))
-                [by forall_elim(ZERO, m0, succ(m0)) a-gap-witnesses-less-than]
               @zero-below-succ-m |
                 less_than(ZERO, succ(m0))
-                [by modus_ponens zero-below-succ-m-if-gap zero-gap-reaches-succ-m]
+                [by exists_intro(m0) zero-gap-reaches-succ-m]
               @succ-m-equals-b |
                 succ(m0) = bb
                 [by symmetry b-is-succ-m]
@@ -710,15 +592,9 @@ proof
                   @zero-gap-reaches-succ-k |
                     add(ZERO, succ(k)) = succ(k)
                     [by simplify addZeroLeft]
-                  @a-gap-witnesses-less-than |
-                    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                    [by axiom lessThanIntro]
-                  @zero-below-succ-k-if-gap |
-                    add(ZERO, succ(k)) = succ(k) -> less_than(ZERO, succ(k))
-                    [by forall_elim(ZERO, k, succ(k)) a-gap-witnesses-less-than]
                   @zero-below-succ-k |
                     less_than(ZERO, succ(k))
-                    [by modus_ponens zero-below-succ-k-if-gap zero-gap-reaches-succ-k]
+                    [by exists_intro(k) zero-gap-reaches-succ-k]
                   @b-is-zero |
                     b2 = ZERO
                     [by hypothesis when-b-is-zero]
@@ -866,18 +742,9 @@ proof
     fix a: Nat {
       @given-a-below-zero |
         assume less_than(a, ZERO) {
-          @less-than-elim |
-            forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-            [by axiom lessThanElim]
-          @gap-to-zero-exists-if-below |
-            less_than(a, ZERO) -> exists w: Nat; add(a, succ(w)) = ZERO
-            [by forall_elim(a, ZERO) less-than-elim]
-          @a-below-zero |
+          @gap-to-zero-exists |
             less_than(a, ZERO)
             [by hypothesis given-a-below-zero]
-          @gap-to-zero-exists |
-            exists w: Nat; add(a, succ(w)) = ZERO
-            [by modus_ponens gap-to-zero-exists-if-below a-below-zero]
           @with-gap-u |
             unpack u: Nat from gap-to-zero-exists {
               @gap-reaches-zero |
@@ -924,18 +791,9 @@ proof
         fix b: Nat {
           @given-a-below-b |
             assume less_than(a, b) {
-              @less-than-elim |
-                forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-                [by axiom lessThanElim]
-              @gap-exists-if-below |
-                less_than(a, b) -> exists w: Nat; add(a, succ(w)) = b
-                [by forall_elim(a, b) less-than-elim]
-              @a-below-b |
+              @gap-exists |
                 less_than(a, b)
                 [by hypothesis given-a-below-b]
-              @gap-exists |
-                exists w: Nat; add(a, succ(w)) = b
-                [by modus_ponens gap-exists-if-below a-below-b]
               @with-gap-u |
                 unpack u: Nat from gap-exists {
                   @gap-witnesses-b |
@@ -947,15 +805,9 @@ proof
                   @grown-gap-reaches-succ-b |
                     add(a, succ(succ(u))) = succ(b)
                     [by rewrite gap-witnesses-b grown-gap-is-successor]
-                  @a-gap-witnesses-less-than |
-                    forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                    [by axiom lessThanIntro]
-                  @a-below-succ-b-if-gap |
-                    add(a, succ(succ(u))) = succ(b) -> less_than(a, succ(b))
-                    [by forall_elim(a, succ(u), succ(b)) a-gap-witnesses-less-than]
                   @a-below-succ-b |
                     less_than(a, succ(b))
-                    [by modus_ponens a-below-succ-b-if-gap grown-gap-reaches-succ-b]
+                    [by exists_intro(succ(u)) grown-gap-reaches-succ-b]
                 }
               @a-below-succ-b |
                 less_than(a, succ(b))
@@ -987,18 +839,9 @@ proof
             fix b: Nat {
               @given-shifted-below |
                 assume less_than(add(c, a), add(c, b)) {
-                  @less-than-elim |
-                    forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-                    [by axiom lessThanElim]
-                  @shifted-gap-exists-if-below |
-                    less_than(add(c, a), add(c, b)) -> exists w: Nat; add(add(c, a), succ(w)) = add(c, b)
-                    [by forall_elim(add(c, a), add(c, b)) less-than-elim]
-                  @shifted-below |
+                  @shifted-gap-exists |
                     less_than(add(c, a), add(c, b))
                     [by hypothesis given-shifted-below]
-                  @shifted-gap-exists |
-                    exists w: Nat; add(add(c, a), succ(w)) = add(c, b)
-                    [by modus_ponens shifted-gap-exists-if-below shifted-below]
                   @with-gap-u |
                     unpack u: Nat from shifted-gap-exists {
                       @shifted-gap-witnesses-c-plus-b |
@@ -1019,15 +862,9 @@ proof
                       @gap-witnesses-b |
                         add(a, succ(u)) = b
                         [by modus_ponens gap-witnesses-b-if-cancelled c-plus-gap-is-c-plus-b]
-                      @a-gap-witnesses-less-than |
-                        forall x, w, y: Nat; add(x, succ(w)) = y -> less_than(x, y)
-                        [by axiom lessThanIntro]
-                      @a-below-b-if-gap |
-                        add(a, succ(u)) = b -> less_than(a, b)
-                        [by forall_elim(a, u, b) a-gap-witnesses-less-than]
                       @a-below-b |
                         less_than(a, b)
-                        [by modus_ponens a-below-b-if-gap gap-witnesses-b]
+                        [by exists_intro(u) gap-witnesses-b]
                     }
                   @a-below-b |
                     less_than(a, b)
@@ -1059,19 +896,13 @@ theorem lessThanSelf: forall n: Nat; less_than(n, succ(n))
 proof
   @generalize-n |
     fix n: Nat {
-      // add(n, succ(ZERO)) = succ(n), so lessThanIntro gives n < succ(n)
+      // add(n, succ(ZERO)) = succ(n), the gap witnessing n < succ(n)
       @unit-gap-reaches-succ-n |
         add(n, succ(ZERO)) = succ(n)
         [by simplify addSuccRight addZeroRight]
-      @a-gap-witnesses-less-than |
-        forall a, d, b: Nat; add(a, succ(d)) = b -> less_than(a, b)
-        [by axiom lessThanIntro]
-      @n-below-succ-n-if-gap |
-        add(n, succ(ZERO)) = succ(n) -> less_than(n, succ(n))
-        [by forall_elim(n, ZERO, succ(n)) a-gap-witnesses-less-than]
       @n-below-succ-n |
         less_than(n, succ(n))
-        [by modus_ponens n-below-succ-n-if-gap unit-gap-reaches-succ-n]
+        [by exists_intro(ZERO) unit-gap-reaches-succ-n]
     }
   @conclusion |
     forall n: Nat; less_than(n, succ(n))
@@ -1089,18 +920,9 @@ proof
         fix k: Nat {
           @given-m-below-succ-k |
             assume less_than(m, succ(k)) {
-              @m-below-succ-k |
+              @gap-exists |
                 less_than(m, succ(k))
                 [by hypothesis given-m-below-succ-k]
-              @less-than-elim |
-                forall a, b: Nat; less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
-                [by axiom lessThanElim]
-              @gap-exists-if-below |
-                less_than(m, succ(k)) -> exists d: Nat; add(m, succ(d)) = succ(k)
-                [by forall_elim(m, succ(k)) less-than-elim]
-              @gap-exists |
-                exists d: Nat; add(m, succ(d)) = succ(k)
-                [by modus_ponens gap-exists-if-below m-below-succ-k]
               @with-gap-d |
                 unpack d0: Nat from gap-exists {
                   @gap-reaches-succ-k |
@@ -1169,15 +991,9 @@ proof
                           @inner-gap-reaches-k |
                             add(m, succ(e0)) = k
                             [by modus_ponens inner-gap-is-k-if-succ-equal succ-of-inner-gap-is-succ-k]
-                          @a-gap-witnesses-less-than |
-                            forall a, d, b: Nat; add(a, succ(d)) = b -> less_than(a, b)
-                            [by axiom lessThanIntro]
-                          @m-below-k-if-gap |
-                            add(m, succ(e0)) = k -> less_than(m, k)
-                            [by forall_elim(m, e0, k) a-gap-witnesses-less-than]
                           @m-below-k |
                             less_than(m, k)
-                            [by modus_ponens m-below-k-if-gap inner-gap-reaches-k]
+                            [by exists_intro(e0) inner-gap-reaches-k]
                           @below-or-equal |
                             less_than(m, k) or m = k
                             [by or_intro_left m-below-k]
@@ -1371,18 +1187,9 @@ proof
         fix b: Nat {
           @given-a-at-most-b |
             assume less_or_equal(a, b) {
-              @a-at-most-b |
+              @gap-exists |
                 less_or_equal(a, b)
                 [by hypothesis given-a-at-most-b]
-              @less-or-equal-elim |
-                forall aa, bb: Nat; less_or_equal(aa, bb) -> exists d: Nat; add(aa, d) = bb
-                [by axiom lessOrEqualElim]
-              @gap-exists-if-at-most |
-                less_or_equal(a, b) -> exists d: Nat; add(a, d) = b
-                [by forall_elim(a, b) less-or-equal-elim]
-              @gap-exists |
-                exists d: Nat; add(a, d) = b
-                [by modus_ponens gap-exists-if-at-most a-at-most-b]
               @with-gap-d |
                 unpack d0: Nat from gap-exists {
                   @gap-witnesses-b |
@@ -1392,15 +1199,9 @@ proof
                   @grown-gap-reaches-succ-b |
                     add(a, succ(d0)) = succ(b)
                     [by simplify addSuccRight gap-witnesses-b]
-                  @a-gap-witnesses-less-than |
-                    forall x, d, y: Nat; add(x, succ(d)) = y -> less_than(x, y)
-                    [by axiom lessThanIntro]
-                  @a-below-succ-b-if-gap |
-                    add(a, succ(d0)) = succ(b) -> less_than(a, succ(b))
-                    [by forall_elim(a, d0, succ(b)) a-gap-witnesses-less-than]
                   @a-below-succ-b |
                     less_than(a, succ(b))
-                    [by modus_ponens a-below-succ-b-if-gap grown-gap-reaches-succ-b]
+                    [by exists_intro(d0) grown-gap-reaches-succ-b]
                 }
               @a-below-succ-b |
                 less_than(a, succ(b))
@@ -1420,7 +1221,7 @@ proof
 qed
 
 // Bridge 2 (reverse): less_than(a, succ b) -> le(a, b).
-// From lessThanElim: add(a, succ d) = succ b; succInjective-ish? No: succ b so add(a,succ d)=succ b.
+// Unpack the gap add(a, succ d) = succ b; succ b so add(a,succ d)=succ b.
 // add(a, succ d) = succ(add(a,d)) [addSuccRight]; = succ b; succInjective => add(a,d) = b; leIntro.
 theorem lessThanSuccToLessOrEqual: forall a, b: Nat; less_than(a, succ(b)) -> less_or_equal(a, b)
 proof
@@ -1430,18 +1231,9 @@ proof
         fix b: Nat {
           @given-a-below-succ-b |
             assume less_than(a, succ(b)) {
-              @a-below-succ-b |
+              @gap-exists |
                 less_than(a, succ(b))
                 [by hypothesis given-a-below-succ-b]
-              @less-than-elim |
-                forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
-                [by axiom lessThanElim]
-              @gap-exists-if-below |
-                less_than(a, succ(b)) -> exists d: Nat; add(a, succ(d)) = succ(b)
-                [by forall_elim(a, succ(b)) less-than-elim]
-              @gap-exists |
-                exists d: Nat; add(a, succ(d)) = succ(b)
-                [by modus_ponens gap-exists-if-below a-below-succ-b]
               @with-gap-d |
                 unpack d0: Nat from gap-exists {
                   @gap-reaches-succ-b |
@@ -1462,15 +1254,9 @@ proof
                   @lesser-gap-witnesses-b |
                     add(a, d0) = b
                     [by modus_ponens lesser-gap-is-b-if-succ-equal succ-of-lesser-gap-is-succ-b]
-                  @a-gap-witnesses-at-most |
-                    forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
-                    [by axiom lessOrEqualIntro]
-                  @a-at-most-b-if-gap |
-                    add(a, d0) = b -> less_or_equal(a, b)
-                    [by forall_elim(a, d0, b) a-gap-witnesses-at-most]
                   @a-at-most-b |
                     less_or_equal(a, b)
-                    [by modus_ponens a-at-most-b-if-gap lesser-gap-witnesses-b]
+                    [by exists_intro(d0) lesser-gap-witnesses-b]
                 }
               @a-at-most-b |
                 less_or_equal(a, b)
@@ -1497,15 +1283,9 @@ proof
       @zero-gap-reaches-a |
         add(a, ZERO) = a
         [by simplify addZeroRight]
-      @a-gap-witnesses-at-most |
-        forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
-        [by axiom lessOrEqualIntro]
-      @a-at-most-a-if-gap |
-        add(a, ZERO) = a -> less_or_equal(a, a)
-        [by forall_elim(a, ZERO, a) a-gap-witnesses-at-most]
       @a-at-most-a |
         less_or_equal(a, a)
-        [by modus_ponens a-at-most-a-if-gap zero-gap-reaches-a]
+        [by exists_intro(ZERO) zero-gap-reaches-a]
     }
   @conclusion |
     forall a: Nat; less_or_equal(a, a)
@@ -1521,33 +1301,18 @@ proof
         fix b: Nat {
           @given-a-below-b |
             assume less_than(a, b) {
-              @a-below-b |
+              // a < b gives a strict gap add(a, succ d) = b, which is also an at-most gap
+              @gap-exists |
                 less_than(a, b)
                 [by hypothesis given-a-below-b]
-              // a < b gives a strict gap add(a, succ d) = b, which is also an at-most gap
-              @less-than-elim |
-                forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
-                [by axiom lessThanElim]
-              @gap-exists-if-below |
-                less_than(a, b) -> exists d: Nat; add(a, succ(d)) = b
-                [by forall_elim(a, b) less-than-elim]
-              @gap-exists |
-                exists d: Nat; add(a, succ(d)) = b
-                [by modus_ponens gap-exists-if-below a-below-b]
               @with-gap-d |
                 unpack d0: Nat from gap-exists {
                   @gap-witnesses-b |
                     add(a, succ(d0)) = b
                     [by hypothesis with-gap-d]
-                  @a-gap-witnesses-at-most |
-                    forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
-                    [by axiom lessOrEqualIntro]
-                  @a-at-most-b-if-gap |
-                    add(a, succ(d0)) = b -> less_or_equal(a, b)
-                    [by forall_elim(a, succ(d0), b) a-gap-witnesses-at-most]
                   @a-at-most-b |
                     less_or_equal(a, b)
-                    [by modus_ponens a-at-most-b-if-gap gap-witnesses-b]
+                    [by exists_intro(succ(d0)) gap-witnesses-b]
                 }
               @a-at-most-b |
                 less_or_equal(a, b)
@@ -1580,27 +1345,12 @@ proof
                 assume less_or_equal(a, b) {
                   @given-b-at-most-c |
                     assume less_or_equal(b, c) {
-                      @a-at-most-b |
+                      @gap-ab-exists |
                         less_or_equal(a, b)
                         [by hypothesis given-a-at-most-b]
-                      @b-at-most-c |
+                      @gap-bc-exists |
                         less_or_equal(b, c)
                         [by hypothesis given-b-at-most-c]
-                      @less-or-equal-elim |
-                        forall aa, bb: Nat; less_or_equal(aa, bb) -> exists d: Nat; add(aa, d) = bb
-                        [by axiom lessOrEqualElim]
-                      @gap-ab-exists-if-at-most |
-                        less_or_equal(a, b) -> exists d: Nat; add(a, d) = b
-                        [by forall_elim(a, b) less-or-equal-elim]
-                      @gap-ab-exists |
-                        exists d: Nat; add(a, d) = b
-                        [by modus_ponens gap-ab-exists-if-at-most a-at-most-b]
-                      @gap-bc-exists-if-at-most |
-                        less_or_equal(b, c) -> exists d: Nat; add(b, d) = c
-                        [by forall_elim(b, c) less-or-equal-elim]
-                      @gap-bc-exists |
-                        exists d: Nat; add(b, d) = c
-                        [by modus_ponens gap-bc-exists-if-at-most b-at-most-c]
                       @with-gap-d1 |
                         unpack d1: Nat from gap-ab-exists {
                           @gap-d1-witnesses-b |
@@ -1625,15 +1375,9 @@ proof
                               @combined-gap-reaches-c |
                                 add(a, add(d1, d2)) = c
                                 [by rewrite nested-gaps-regroup nested-gaps-reach-c]
-                              @a-gap-witnesses-at-most |
-                                forall aa, d, bb: Nat; add(aa, d) = bb -> less_or_equal(aa, bb)
-                                [by axiom lessOrEqualIntro]
-                              @a-at-most-c-if-gap |
-                                add(a, add(d1, d2)) = c -> less_or_equal(a, c)
-                                [by forall_elim(a, add(d1, d2), c) a-gap-witnesses-at-most]
                               @a-at-most-c |
                                 less_or_equal(a, c)
-                                [by modus_ponens a-at-most-c-if-gap combined-gap-reaches-c]
+                                [by exists_intro(add(d1, d2)) combined-gap-reaches-c]
                             }
                           @a-at-most-c |
                             less_or_equal(a, c)

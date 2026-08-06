@@ -19,16 +19,14 @@ const ZERO = order.ZERO
 func succ = order.succ
 func add = order.add
 func prev = integer.prev
-pred less_than = order.less_than
-pred less_or_equal = order.less_or_equal
+define less_than(a: Int, b: Int) = order.less_than(a, b)
+define less_or_equal(a: Int, b: Int) = order.less_or_equal(a, b)
 pred nonneg = order.nonneg
 
 axiom nonnegZero = order.nonnegZero
 axiom nonnegSucc = order.nonnegSucc
 axiom nonnegInduction = order.nonnegInduction
 axiom nonnegSuccNotZero = order.nonnegSuccNotZero
-axiom lessThanIntro = order.lessThanIntro
-axiom lessThanElim = order.lessThanElim
 theorem nonnegCases = order.nonnegCases
 theorem nonnegAdd = order.nonnegAdd
 theorem addSuccRight = order.addSuccRight
@@ -92,7 +90,7 @@ qed
 // -- nothing nonneg is strictly below ZERO --------------------------------
 
 // The nonnegatives have 0 as a least element: no nonneg m satisfies m < 0.
-// If m < 0, lessThanElim gives a nonneg gap d with add(m, succ(d)) = ZERO. But
+// If m < 0, unpacking the gap gives a nonneg d with add(m, succ(d)) = ZERO. But
 // add(m, succ(d)) = succ(add(m, d)), and add(m, d) is nonneg (nonnegAdd), so its
 // successor is != ZERO by nonnegSuccNotZero — contradiction.
 theorem nonnegNotBelowZero: forall m: Int; nonneg(m) -> (not less_than(m, ZERO))
@@ -106,18 +104,9 @@ proof
             [by hypothesis given-m-nonneg]
           @given-m-below-zero |
             assume less_than(m, ZERO) {
-              @m-below-zero |
+              @gap-exists |
                 less_than(m, ZERO)
                 [by hypothesis given-m-below-zero]
-              @less-than-elim |
-                forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
-                [by axiom lessThanElim]
-              @gap-exists-if-below |
-                less_than(m, ZERO) -> exists d: Int; nonneg(d) and add(m, succ(d)) = ZERO
-                [by forall_elim(m, ZERO) less-than-elim]
-              @gap-exists |
-                exists d: Int; nonneg(d) and add(m, succ(d)) = ZERO
-                [by modus_ponens gap-exists-if-below m-below-zero]
               @with-gap-d |
                 unpack d0: Int from gap-exists {
                   @gap-nonneg-and-reaches |
@@ -180,7 +169,7 @@ qed
 // -- below-successor splits (nonneg-guarded) ------------------------------
 
 // For nonneg m, k: m < succ(k) iff m < k or m = k. The gap d from
-// lessThanElim (add(m, succ(d)) = succ(k)) is nonneg, so by nonnegCases it is
+// the unpacked gap (add(m, succ(d)) = succ(k)) is nonneg, so by nonnegCases it is
 // ZERO — giving succ(m) = succ(k), hence m = k — or succ(e) for nonneg e —
 // giving add(m, succ(e)) = k, hence m < k.
 theorem lessThanSuccSplit: forall m, k: Int; nonneg(m) -> nonneg(k) -> less_than(m, succ(k)) -> (less_than(m, k) or m = k)
@@ -195,18 +184,9 @@ proof
                 assume nonneg(k) {
                   @given-m-below-succ-k |
                     assume less_than(m, succ(k)) {
-                      @m-below-succ-k |
+                      @gap-exists |
                         less_than(m, succ(k))
                         [by hypothesis given-m-below-succ-k]
-                      @less-than-elim |
-                        forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d) and add(a, succ(d)) = b
-                        [by axiom lessThanElim]
-                      @gap-exists-if-below |
-                        less_than(m, succ(k)) -> exists d: Int; nonneg(d) and add(m, succ(d)) = succ(k)
-                        [by forall_elim(m, succ(k)) less-than-elim]
-                      @gap-exists |
-                        exists d: Int; nonneg(d) and add(m, succ(d)) = succ(k)
-                        [by modus_ponens gap-exists-if-below m-below-succ-k]
                       @with-gap-d |
                         unpack d0: Int from gap-exists {
                           @gap-nonneg-and-reaches |
@@ -291,15 +271,12 @@ proof
                                   @inner-gap-reaches-k |
                                     add(m, succ(e0)) = k
                                     [by modus_ponens inner-gap-is-k-if-succ-equal succ-of-inner-gap-is-succ-k]
-                                  @a-gap-witnesses-less-than |
-                                    forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
-                                    [by axiom lessThanIntro]
-                                  @m-below-k-if-gap |
-                                    nonneg(e0) -> add(m, succ(e0)) = k -> less_than(m, k)
-                                    [by forall_elim(m, e0, k) a-gap-witnesses-less-than]
+                                  @inner-gap-is-nonneg-and-reaches-k |
+                                    nonneg(e0) and add(m, succ(e0)) = k
+                                    [by and_intro predecessor-nonneg inner-gap-reaches-k]
                                   @m-below-k |
                                     less_than(m, k)
-                                    [by tautology m-below-k-if-gap predecessor-nonneg inner-gap-reaches-k]
+                                    [by exists_intro(e0) inner-gap-is-nonneg-and-reaches-k]
                                   @conclusion-below-or-equal |
                                     less_than(m, k) or m = k
                                     [by or_intro_left m-below-k]
@@ -350,15 +327,12 @@ proof
       @unit-gap-is-succ-n |
         add(n, succ(ZERO)) = succ(n)
         [by simplify addSuccRight addZeroRight]
-      @gap-witnesses-less-than |
-        forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
-        [by axiom lessThanIntro]
-      @n-below-succ-n-if-gap |
-        nonneg(ZERO) -> add(n, succ(ZERO)) = succ(n) -> less_than(n, succ(n))
-        [by forall_elim(n, ZERO, succ(n)) gap-witnesses-less-than]
+      @unit-gap-is-nonneg-and-reaches-succ-n |
+        nonneg(ZERO) and add(n, succ(ZERO)) = succ(n)
+        [by and_intro zero-nonneg unit-gap-is-succ-n]
       @n-below-succ-n |
         less_than(n, succ(n))
-        [by tautology n-below-succ-n-if-gap zero-nonneg unit-gap-is-succ-n]
+        [by exists_intro(ZERO) unit-gap-is-nonneg-and-reaches-succ-n]
     }
   @conclusion |
     forall n: Int; less_than(n, succ(n))

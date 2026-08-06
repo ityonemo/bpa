@@ -21,9 +21,7 @@ func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
 axiom induction = peano.induction
-axiom lessThanIntro = ordering.lessThanIntro
-axiom lessThanElim = ordering.lessThanElim
-pred less_than = ordering.less_than
+define less_than(a: Nat, b: Nat) = ordering.less_than(a, b)
 theorem addZeroRight = peano.addZeroRight
 theorem addSuccRight = peano.addSuccRight
 theorem mulZeroRight = peano.mulZeroRight
@@ -326,17 +324,8 @@ proof
                   @cancel-recovers-a |
                     add(sub(a, b), b) = a
                     [by modus_ponens cancel-a-b-if-below b-below-succ-a]
-                  @less-than-gives-gap |
-                    forall x, y: Nat; less_than(x, y) -> exists d: Nat; add(x, succ(d)) = y
-                    [by axiom lessThanElim]
-                  @zero-below-b-gives-gap |
-                    less_than(ZERO, b) -> exists d: Nat; add(ZERO, succ(d)) = b
-                    [by forall_elim(ZERO, b) less-than-gives-gap]
-                  @gap-exists |
-                    exists d: Nat; add(ZERO, succ(d)) = b
-                    [by modus_ponens zero-below-b-gives-gap b-positive]
                   @with-gap-d |
-                    unpack d0: Nat from gap-exists {
+                    unpack d0: Nat from b-positive {
                       @gap-sums-to-b |
                         add(ZERO, succ(d0)) = b
                         [by hypothesis with-gap-d]
@@ -352,15 +341,9 @@ proof
                       @cancel-recovers-a-via-gap |
                         add(sub(a, b), succ(d0)) = a
                         [by rewrite b-is-succ-d cancel-recovers-a]
-                      @gap-witnesses-less-than |
-                        forall x, d, y: Nat; add(x, succ(d)) = y -> less_than(x, y)
-                        [by axiom lessThanIntro]
-                      @sub-below-a-if-gap |
-                        add(sub(a, b), succ(d0)) = a -> less_than(sub(a, b), a)
-                        [by forall_elim(sub(a, b), d0, a) gap-witnesses-less-than]
                       @sub-is-below-a |
                         less_than(sub(a, b), a)
-                        [by modus_ponens sub-below-a-if-gap cancel-recovers-a-via-gap]
+                        [by exists_intro(d0) cancel-recovers-a-via-gap]
                     }
                   @sub-is-below-a-exported |
                     less_than(sub(a, b), a)

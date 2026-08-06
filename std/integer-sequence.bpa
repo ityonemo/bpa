@@ -28,9 +28,9 @@ func sub = order.sub
 func neg = integer.neg
 
 pred is_nonneg = order.nonneg
-pred below = order.less_than
-pred at_most = order.less_or_equal
-pred does_divide = divides.divides
+define below(a: Int, b: Int) = order.less_than(a, b)
+define at_most(a: Int, b: Int) = order.less_or_equal(a, b)
+define does_divide(d: Int, n: Int) = divides.divides(d, n)
 
 theorem nonnegNotBelowZero = wellordering.nonnegNotBelowZero
 theorem lessThanSuccSplit = wellordering.lessThanSuccSplit
@@ -44,8 +44,6 @@ theorem negNeg = order.negNeg
 theorem dividesRefl = divides.dividesRefl
 theorem dividesMul = divides.dividesMul
 theorem dividesAdd = divides.dividesAdd
-axiom dividesIntro = divides.dividesIntro
-axiom dividesElim = divides.dividesElim
 axiom subDef = order.subDef
 theorem trichotomy = order.trichotomy
 theorem signTrichotomy = order.signTrichotomy
@@ -61,9 +59,6 @@ theorem addDiffReaches = order.addDiffReaches
 theorem addNegRight = order.addNegRight
 theorem oneAtMostPositive = division.oneAtMostPositive
 theorem atMostGivesNonnegDifference = division.atMostGivesNonnegDifference
-axiom lessOrEqualIntro = order.lessOrEqualIntro
-axiom lessThanIntro = order.lessThanIntro
-axiom lessThanElim = order.lessThanElim
 axiom addZeroLeft = order.addZeroLeft
 axiom oneIsSuccZero = integer.oneIsSuccZero
 axiom nonnegZero = order.nonnegZero
@@ -371,11 +366,9 @@ qed
 // at(s, i) = x. We give it an intro/elim pair over the defining existential so
 // the infinitude-of-primes argument can produce a witness index (elim) and, in
 // its completeness hypothesis, assert membership from one (intro).
-pred inSeqBelow(x: Int, s: Seq, k: Int)
-axiom inSeqBelowIntro: forall x: Int; forall s: Seq; forall k: Int; forall i: Int;
-  is_nonneg(i) -> below(i, k) -> at(s, i) = x -> inSeqBelow(x, s, k)
-axiom inSeqBelowElim: forall x: Int; forall s: Seq; forall k: Int;
-  inSeqBelow(x, s, k) -> exists i: Int; is_nonneg(i) and below(i, k) and at(s, i) = x
+// Transparent: inSeqBelow(x, s, k) IS the witness-index existential, produced
+// with exists_intro (of the and_intro of nonneg/below/at) and consumed with unpack.
+define inSeqBelow(x: Int, s: Seq, k: Int) = exists i: Int; is_nonneg(i) and below(i, k) and at(s, i) = x
 
 // -- a member of the first k entries divides their product ------------------
 
@@ -396,17 +389,8 @@ proof
                   @x-in-sequence |
                     inSeqBelow(x, s, k)
                     [by hypothesis given-x-in-sequence]
-                  @membership-elim |
-                    forall y: Int; forall t: Seq; forall j: Int; inSeqBelow(y, t, j) -> exists i: Int; is_nonneg(i) and below(i, j) and at(t, i) = y
-                    [by axiom inSeqBelowElim]
-                  @membership-of-x-elim |
-                    inSeqBelow(x, s, k) -> exists i: Int; is_nonneg(i) and below(i, k) and at(s, i) = x
-                    [by forall_elim(x, s, k) membership-elim]
-                  @witness-index-exists |
-                    exists i: Int; is_nonneg(i) and below(i, k) and at(s, i) = x
-                    [by modus_ponens membership-of-x-elim x-in-sequence]
                   @with-witness-index |
-                    unpack i: Int from witness-index-exists {
+                    unpack i: Int from x-in-sequence {
                       @index-nonneg-below-and-hits-x |
                         is_nonneg(i) and below(i, k) and at(s, i) = x
                         [by hypothesis with-witness-index]
@@ -430,17 +414,8 @@ proof
                       // k is nonneg: a nonneg index below k means k exceeds a
                       // nonneg, so k is positive hence nonneg. We get it from the
                       // gap i < k directly: below(i, k) with is_nonneg(i).
-                      @less-than-elim |
-                        forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
-                        [by axiom lessThanElim]
-                      @index-gap-exists |
-                        below(i, k) -> exists d: Int; is_nonneg(d) and add(i, succ(d)) = k
-                        [by forall_elim(i, k) less-than-elim]
-                      @gap-to-k-exists |
-                        exists d: Int; is_nonneg(d) and add(i, succ(d)) = k
-                        [by modus_ponens index-gap-exists index-below-k]
                       @with-gap-to-k |
-                        unpack gap: Int from gap-to-k-exists {
+                        unpack gap: Int from index-below-k {
                           @gap-nonneg-and-reaches-k |
                             is_nonneg(gap) and add(i, succ(gap)) = k
                             [by hypothesis with-gap-to-k]
@@ -512,8 +487,8 @@ qed
 // -- divisibility is transitive ---------------------------------------------
 
 // a | b and b | c give a | c: unpack b = mul(a, j) and c = mul(b, k), so
-// c = mul(mul(a, j), k) = mul(a, mul(j, k)) (mulIsAssociative), and dividesIntro
-// reads a | c off that.
+// c = mul(mul(a, j), k) = mul(a, mul(j, k)) (mulIsAssociative), and exists_intro
+// on the quotient mul(j, k) reads a | c off that.
 theorem dividesTransitive: forall a, b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
 proof
   @generalize-a |
@@ -532,28 +507,13 @@ proof
                       @b-divides-c |
                         does_divide(b, c)
                         [by hypothesis given-b-divides-c]
-                      @divides-elim |
-                        forall d, n: Int; does_divide(d, n) -> exists k: Int; n = mul(d, k)
-                        [by axiom dividesElim]
-                      @a-divides-b-quotient-exists |
-                        does_divide(a, b) -> exists k: Int; b = mul(a, k)
-                        [by forall_elim(a, b) divides-elim]
-                      @b-is-a-multiple |
-                        exists k: Int; b = mul(a, k)
-                        [by modus_ponens a-divides-b-quotient-exists a-divides-b]
                       @with-a-quotient |
-                        unpack j: Int from b-is-a-multiple {
+                        unpack j: Int from a-divides-b {
                           @b-is-a-times-j |
                             b = mul(a, j)
                             [by hypothesis with-a-quotient]
-                          @b-divides-c-quotient-exists |
-                            does_divide(b, c) -> exists k: Int; c = mul(b, k)
-                            [by forall_elim(b, c) divides-elim]
-                          @c-is-b-multiple |
-                            exists k: Int; c = mul(b, k)
-                            [by modus_ponens b-divides-c-quotient-exists b-divides-c]
                           @with-b-quotient |
-                            unpack k: Int from c-is-b-multiple {
+                            unpack k: Int from b-divides-c {
                               @c-is-b-times-k |
                                 c = mul(b, k)
                                 [by hypothesis with-b-quotient]
@@ -569,15 +529,9 @@ proof
                               @c-is-a-times-jk |
                                 c = mul(a, mul(j, k))
                                 [by rewrite a-j-times-k-regroups c-is-a-j-times-k]
-                              @divides-intro |
-                                forall n, d, m: Int; n = mul(d, m) -> does_divide(d, n)
-                                [by axiom dividesIntro]
-                              @a-divides-c-if-product |
-                                c = mul(a, mul(j, k)) -> does_divide(a, c)
-                                [by forall_elim(c, a, mul(j, k)) divides-intro]
                               @a-divides-c |
                                 does_divide(a, c)
-                                [by modus_ponens a-divides-c-if-product c-is-a-times-jk]
+                                [by exists_intro(mul(j, k)) c-is-a-times-jk]
                             }
                           @a-divides-c |
                             does_divide(a, c)
@@ -715,14 +669,11 @@ proof
     add(ZERO, succ(ZERO)) = ONE
     [by rewrite succ-zero-is-one zero-plus-succ-zero-is-succ-zero]
   @gap-witnesses-less-than |
-    forall a, d, b: Int; is_nonneg(d) -> add(a, succ(d)) = b -> below(a, b)
-    [by axiom lessThanIntro]
-  @zero-below-one-if-gap |
-    is_nonneg(ZERO) -> add(ZERO, succ(ZERO)) = ONE -> below(ZERO, ONE)
-    [by forall_elim(ZERO, ZERO, ONE) gap-witnesses-less-than]
+    is_nonneg(ZERO) and add(ZERO, succ(ZERO)) = ONE
+    [by and_intro zero-nonneg zero-plus-succ-zero-is-one]
   @conclusion |
     below(ZERO, ONE)
-    [by tautology zero-below-one-if-gap zero-nonneg zero-plus-succ-zero-is-one]
+    [by exists_intro(ZERO) gap-witnesses-less-than]
 qed
 
 // A positive integer is nonnegative: unfold below(ZERO, x) to a gap succ(d) = x
@@ -737,17 +688,8 @@ proof
           @x-positive |
             below(ZERO, x)
             [by hypothesis given-x-positive]
-          @less-than-elim |
-            forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
-            [by axiom lessThanElim]
-          @gap-below-zero-x |
-            below(ZERO, x) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = x
-            [by forall_elim(ZERO, x) less-than-elim]
-          @gap-exists |
-            exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = x
-            [by modus_ponens gap-below-zero-x x-positive]
           @with-gap-d |
-            unpack d: Int from gap-exists {
+            unpack d: Int from x-positive {
               @gap-nonneg-and-reaches-x |
                 is_nonneg(d) and add(ZERO, succ(d)) = x
                 [by hypothesis with-gap-d]
@@ -798,7 +740,7 @@ qed
 // positive: k = 0 makes n = 0, and k < 0 makes n = −(d·|k|) negative, both
 // against n > 0. With k ≥ 1, the difference k − 1 is nonneg, so the gap
 // g = d·(k−1) is nonneg (nonnegMul), and add(d, g) = d·(1 + (k−1)) = d·k = n,
-// which lessOrEqualIntro reads as d ≤ n.
+// so exists_intro on the gap g reads d ≤ n.
 theorem divisorAtMost: forall d, n: Int; below(ZERO, d) -> below(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
 proof
   @generalize-d |
@@ -820,17 +762,8 @@ proof
                       @d-divides-n |
                         does_divide(d, n)
                         [by hypothesis given-d-divides-n]
-                      @divides-elim |
-                        forall x, y: Int; does_divide(x, y) -> exists k: Int; y = mul(x, k)
-                        [by axiom dividesElim]
-                      @n-is-d-multiple-if |
-                        does_divide(d, n) -> exists k: Int; n = mul(d, k)
-                        [by forall_elim(d, n) divides-elim]
-                      @n-is-d-multiple |
-                        exists k: Int; n = mul(d, k)
-                        [by modus_ponens n-is-d-multiple-if d-divides-n]
                       @with-quotient-k |
-                        unpack k: Int from n-is-d-multiple {
+                        unpack k: Int from d-divides-n {
                           @n-is-d-times-k |
                             n = mul(d, k)
                             [by hypothesis with-quotient-k]
@@ -943,15 +876,12 @@ proof
                                   @add-n-neg-n-is-zero |
                                     add(n, neg(n)) = ZERO
                                     [by forall_elim(n) sum-with-negation-right]
-                                  @at-most-intro |
-                                    forall a, g, b: Int; is_nonneg(g) -> add(a, g) = b -> at_most(a, b)
-                                    [by axiom lessOrEqualIntro]
-                                  @n-at-most-zero-if |
-                                    is_nonneg(neg(n)) -> add(n, neg(n)) = ZERO -> at_most(n, ZERO)
-                                    [by forall_elim(n, neg(n), ZERO) at-most-intro]
+                                  @n-plus-neg-n-witnesses |
+                                    is_nonneg(neg(n)) and add(n, neg(n)) = ZERO
+                                    [by and_intro neg-n-nonneg add-n-neg-n-is-zero]
                                   @n-at-most-zero |
                                     at_most(n, ZERO)
-                                    [by tautology n-at-most-zero-if neg-n-nonneg add-n-neg-n-is-zero]
+                                    [by exists_intro(neg(n)) n-plus-neg-n-witnesses]
                                   @below-gives-at-most |
                                     forall a, b: Int; below(a, b) -> at_most(a, b)
                                     [by theorem lessThanToLessOrEqual]
@@ -1043,15 +973,12 @@ proof
                           @d-plus-gap-is-n |
                             add(d, mul(d, sub(k, ONE))) = n
                             [by symmetry n-splits-into-d-plus-gap]
-                          @at-most-intro |
-                            forall a, g, b: Int; is_nonneg(g) -> add(a, g) = b -> at_most(a, b)
-                            [by axiom lessOrEqualIntro]
-                          @d-at-most-n-if |
-                            is_nonneg(mul(d, sub(k, ONE))) -> add(d, mul(d, sub(k, ONE))) = n -> at_most(d, n)
-                            [by forall_elim(d, mul(d, sub(k, ONE)), n) at-most-intro]
+                          @gap-witnesses-at-most |
+                            is_nonneg(mul(d, sub(k, ONE))) and add(d, mul(d, sub(k, ONE))) = n
+                            [by and_intro gap-nonneg d-plus-gap-is-n]
                           @d-at-most-n |
                             at_most(d, n)
-                            [by tautology d-at-most-n-if gap-nonneg d-plus-gap-is-n]
+                            [by exists_intro(mul(d, sub(k, ONE))) gap-witnesses-at-most]
                         }
                       @d-at-most-n |
                         at_most(d, n)

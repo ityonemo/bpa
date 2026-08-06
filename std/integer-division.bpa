@@ -61,12 +61,10 @@ define FOUR = succ(THREE)
 // -- nonneg, order, divisibility predicates (proofs use these names) --------
 
 pred is_nonneg = nonneg.nonneg
-pred below = order.less_than
-pred at_most = order.less_or_equal
-pred does_divide = divides.divides
+define below(a: Int, b: Int) = order.less_than(a, b)
+define at_most(a: Int, b: Int) = order.less_or_equal(a, b)
+define does_divide(d: Int, n: Int) = divides.divides(d, n)
 axiom nonnegInduction = nonneg.nonnegInduction
-axiom dividesIntro = divides.dividesIntro
-axiom dividesElim = divides.dividesElim
 
 // -- order / sign / ring lemmas the two proofs cite -------------------------
 
@@ -77,9 +75,6 @@ theorem trichotomy = order.trichotomy
 theorem nonnegAdd = order.nonnegAdd
 theorem lessThanAddCancelLeft = order.lessThanAddCancelLeft
 theorem lessOrEqualAntisymmetric = order.lessOrEqualAntisymmetric
-axiom lessOrEqualIntro = order.lessOrEqualIntro
-axiom lessThanIntro = order.lessThanIntro
-axiom lessThanElim = order.lessThanElim
 axiom nonnegZero = nonneg.nonnegZero
 axiom nonnegSucc = nonneg.nonnegSucc
 theorem addNegRight = ring.addNegRight
@@ -94,7 +89,6 @@ theorem addDiffReaches = order.addDiffReaches
 theorem subAddCancel = order.subAddCancel
 theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
-axiom lessOrEqualElim = order.lessOrEqualElim
 theorem mulIsCommutative = order.mulIsCommutative
 theorem mulIsAssociative = ring.mulIsAssociative
 theorem negBelowZero = order.negBelowZero
@@ -253,17 +247,8 @@ proof
                             [by hypothesis given-m-below-b]
                           // b > 0 exhibits a nonneg gap succ(d) with 0 + succ(d) = b,
                           // so b = succ(d) is nonneg.
-                          @positivity-yields-gap |
-                            forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                            [by axiom lessThanElim]
-                          @b-gap-exists-if-positive |
-                            below(ZERO, b) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
-                            [by forall_elim(ZERO, b) positivity-yields-gap]
-                          @b-gap-exists |
-                            exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
-                            [by modus_ponens b-gap-exists-if-positive b-positive]
                           @with-b-gap |
-                            unpack e: Int from b-gap-exists {
+                            unpack e: Int from b-positive {
                               @gap-nonneg-and-reaches-b |
                                 is_nonneg(e) and add(ZERO, succ(e)) = b
                                 [by hypothesis with-b-gap]
@@ -299,18 +284,9 @@ proof
                             is_nonneg(b)
                             [by exists_elim with-b-gap]
                           // m = b*k for some k.
-                          @divides-elim |
-                            forall d, n: Int; does_divide(d, n) -> exists k: Int; n = mul(d, k)
-                            [by axiom dividesElim]
-                          @b-divides-m |
+                          @quotient-exists |
                             does_divide(b, m)
                             [by hypothesis given-b-divides-m]
-                          @quotient-exists-if-divides |
-                            does_divide(b, m) -> exists k: Int; m = mul(b, k)
-                            [by forall_elim(b, m) divides-elim]
-                          @quotient-exists |
-                            exists k: Int; m = mul(b, k)
-                            [by modus_ponens quotient-exists-if-divides b-divides-m]
                           @with-quotient-k |
                             unpack k: Int from quotient-exists {
                               @m-is-b-times-k |
@@ -333,17 +309,8 @@ proof
                                       @k-negative |
                                         below(k, ZERO)
                                         [by hypothesis when-k-negative]
-                                      @negative-yields-gap |
-                                        forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                                        [by axiom lessThanElim]
-                                      @k-gap-exists-if-negative |
-                                        below(k, ZERO) -> exists d: Int; is_nonneg(d) and add(k, succ(d)) = ZERO
-                                        [by forall_elim(k, ZERO) negative-yields-gap]
-                                      @k-gap-exists |
-                                        exists d: Int; is_nonneg(d) and add(k, succ(d)) = ZERO
-                                        [by modus_ponens k-gap-exists-if-negative k-negative]
                                       @with-k-gap |
-                                        unpack e: Int from k-gap-exists {
+                                        unpack e: Int from k-negative {
                                           @gap-nonneg-and-reaches-zero |
                                             is_nonneg(e) and add(k, succ(e)) = ZERO
                                             [by hypothesis with-k-gap]
@@ -421,21 +388,18 @@ proof
                                             is_nonneg(neg(m))
                                             [by rewrite b-times-negk-is-neg-m b-times-negk-nonneg]
                                           // m <= 0: witness neg(m) nonneg with add(m, neg m) = 0.
-                                          @less-or-equal-intro |
-                                            forall x, d, y: Int; is_nonneg(d) -> add(x, d) = y -> at_most(x, y)
-                                            [by axiom lessOrEqualIntro]
                                           @m-plus-negm-is-zero |
                                             forall n: Int; add(n, neg(n)) = ZERO
                                             [by theorem addNegRight]
                                           @m-plus-neg-m-zero |
                                             add(m, neg(m)) = ZERO
                                             [by forall_elim(m) m-plus-negm-is-zero]
-                                          @m-at-most-zero-if-witness |
-                                            is_nonneg(neg(m)) -> add(m, neg(m)) = ZERO -> at_most(m, ZERO)
-                                            [by forall_elim(m, neg(m), ZERO) less-or-equal-intro]
+                                          @neg-m-witnesses-gap |
+                                            is_nonneg(neg(m)) and add(m, neg(m)) = ZERO
+                                            [by and_intro neg-m-nonneg m-plus-neg-m-zero]
                                           @m-at-most-zero |
                                             at_most(m, ZERO)
-                                            [by tautology m-at-most-zero-if-witness neg-m-nonneg m-plus-neg-m-zero]
+                                            [by exists_intro(neg(m)) neg-m-witnesses-gap]
                                           // 0 <= m: witness m nonneg with add(0, m) = m.
                                           @zero-prefix-is-identity |
                                             forall n: Int; add(ZERO, n) = n
@@ -443,12 +407,12 @@ proof
                                           @zero-plus-m-is-m |
                                             add(ZERO, m) = m
                                             [by forall_elim(m) zero-prefix-is-identity]
-                                          @zero-at-most-m-if-witness |
-                                            is_nonneg(m) -> add(ZERO, m) = m -> at_most(ZERO, m)
-                                            [by forall_elim(ZERO, m, m) less-or-equal-intro]
+                                          @m-witnesses-zero-at-most-m |
+                                            is_nonneg(m) and add(ZERO, m) = m
+                                            [by and_intro m-nonneg zero-plus-m-is-m]
                                           @zero-at-most-m |
                                             at_most(ZERO, m)
-                                            [by tautology zero-at-most-m-if-witness m-nonneg zero-plus-m-is-m]
+                                            [by exists_intro(m) m-witnesses-zero-at-most-m]
                                           @antisymmetry |
                                             forall x, y: Int; at_most(x, y) -> at_most(y, x) -> x = y
                                             [by theorem lessOrEqualAntisymmetric]
@@ -490,17 +454,8 @@ proof
                                       @k-positive |
                                         below(ZERO, k)
                                         [by hypothesis when-k-positive]
-                                      @positive-yields-gap |
-                                        forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                                        [by axiom lessThanElim]
-                                      @k-gap-exists-if-positive |
-                                        below(ZERO, k) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
-                                        [by forall_elim(ZERO, k) positive-yields-gap]
-                                      @k-gap-exists |
-                                        exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
-                                        [by modus_ponens k-gap-exists-if-positive k-positive]
                                       @with-k-gap |
-                                        unpack e: Int from k-gap-exists {
+                                        unpack e: Int from k-positive {
                                           @gap-nonneg-and-reaches-k |
                                             is_nonneg(e) and add(ZERO, succ(e)) = k
                                             [by hypothesis with-k-gap]
@@ -648,17 +603,8 @@ proof
                     below(ZERO, k)
                     [by hypothesis given-k-positive]
                   // b > 0 exhibits b = succ(gap), hence b is nonneg.
-                  @positivity-yields-gap |
-                    forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                    [by axiom lessThanElim]
-                  @b-gap-exists-if-positive |
-                    below(ZERO, b) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
-                    [by forall_elim(ZERO, b) positivity-yields-gap]
-                  @b-gap-exists |
-                    exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = b
-                    [by modus_ponens b-gap-exists-if-positive b-positive]
                   @with-b-gap |
-                    unpack e: Int from b-gap-exists {
+                    unpack e: Int from b-positive {
                       @gap-nonneg-and-reaches-b |
                         is_nonneg(e) and add(ZERO, succ(e)) = b
                         [by hypothesis with-b-gap]
@@ -694,14 +640,8 @@ proof
                     is_nonneg(b)
                     [by exists_elim with-b-gap]
                   // k > 0 exhibits k = succ(d), so mul(b, k) = mul(b, d) + b.
-                  @k-gap-exists-if-positive |
-                    below(ZERO, k) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
-                    [by forall_elim(ZERO, k) positivity-yields-gap]
-                  @k-gap-exists |
-                    exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = k
-                    [by modus_ponens k-gap-exists-if-positive k-positive]
                   @with-k-gap |
-                    unpack d: Int from k-gap-exists {
+                    unpack d: Int from k-positive {
                       @gap-nonneg-and-reaches-k |
                         is_nonneg(d) and add(ZERO, succ(d)) = k
                         [by hypothesis with-k-gap]
@@ -765,18 +705,15 @@ proof
                         below(mul(b, d), mul(b, k))
                         [by rewrite partial-plus-b-is-product partial-below-partial-plus-b]
                       // split 0 <= mul(b, d): either 0 < mul(b, d) (transit) or 0 = mul(b, d).
-                      @zero-at-most-partial-witness |
-                        forall x, dd, y: Int; is_nonneg(dd) -> add(x, dd) = y -> at_most(x, y)
-                        [by axiom lessOrEqualIntro]
-                      @zero-at-most-partial-if |
-                        is_nonneg(mul(b, d)) -> add(ZERO, mul(b, d)) = mul(b, d) -> at_most(ZERO, mul(b, d))
-                        [by forall_elim(ZERO, mul(b, d), mul(b, d)) zero-at-most-partial-witness]
                       @zero-plus-partial-is-partial |
                         add(ZERO, mul(b, d)) = mul(b, d)
                         [by forall_elim(mul(b, d)) zero-prefix-is-identity]
+                      @partial-witnesses-gap |
+                        is_nonneg(mul(b, d)) and add(ZERO, mul(b, d)) = mul(b, d)
+                        [by and_intro partial-product-nonneg zero-plus-partial-is-partial]
                       @zero-at-most-partial |
                         at_most(ZERO, mul(b, d))
-                        [by tautology zero-at-most-partial-if partial-product-nonneg zero-plus-partial-is-partial]
+                        [by exists_intro(mul(b, d)) partial-witnesses-gap]
                       @at-most-splits |
                         forall x, y: Int; at_most(x, y) -> (below(x, y) or x = y)
                         [by theorem lessOrEqualSplit]
@@ -880,17 +817,8 @@ proof
                           @z-negative |
                             below(z, ZERO)
                             [by hypothesis when-z-negative]
-                          @negative-yields-gap |
-                            forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                            [by axiom lessThanElim]
-                          @z-gap-exists-if-negative |
-                            below(z, ZERO) -> exists d: Int; is_nonneg(d) and add(z, succ(d)) = ZERO
-                            [by forall_elim(z, ZERO) negative-yields-gap]
-                          @z-gap-exists |
-                            exists d: Int; is_nonneg(d) and add(z, succ(d)) = ZERO
-                            [by modus_ponens z-gap-exists-if-negative z-negative]
                           @with-z-gap |
-                            unpack e: Int from z-gap-exists {
+                            unpack e: Int from z-negative {
                               @gap-nonneg-and-reaches-zero |
                                 is_nonneg(e) and add(z, succ(e)) = ZERO
                                 [by hypothesis with-z-gap]
@@ -923,21 +851,18 @@ proof
                                 succ(e) = neg(z)
                                 [by modus_ponens gap-equals-neg-z-if-cancel gap-equals-neg-z-summand]
                               // succ(e) > 0 since 0 + succ(e) = succ(e) with e nonneg.
-                              @strict-gap-witnesses-order |
-                                forall x, dd, y: Int; is_nonneg(dd) -> add(x, succ(dd)) = y -> below(x, y)
-                                [by axiom lessThanIntro]
-                              @zero-below-succ-gap-if |
-                                is_nonneg(e) -> add(ZERO, succ(e)) = succ(e) -> below(ZERO, succ(e))
-                                [by forall_elim(ZERO, e, succ(e)) strict-gap-witnesses-order]
                               @zero-prefix-is-identity |
                                 forall n: Int; add(ZERO, n) = n
                                 [by axiom addZeroLeft]
                               @zero-plus-succ-gap |
                                 add(ZERO, succ(e)) = succ(e)
                                 [by forall_elim(succ(e)) zero-prefix-is-identity]
+                              @gap-witnesses-zero-below-succ |
+                                is_nonneg(e) and add(ZERO, succ(e)) = succ(e)
+                                [by and_intro gap-nonneg zero-plus-succ-gap]
                               @zero-below-succ-gap |
                                 below(ZERO, succ(e))
-                                [by tautology zero-below-succ-gap-if gap-nonneg zero-plus-succ-gap]
+                                [by exists_intro(e) gap-witnesses-zero-below-succ]
                               @zero-below-neg-z |
                                 below(ZERO, neg(z))
                                 [by rewrite successor-gap-is-neg-z zero-below-succ-gap]
@@ -1118,17 +1043,8 @@ proof
               @x-below-y |
                 below(x, y)
                 [by hypothesis given-x-below-y]
-              @below-yields-gap |
-                forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
-                [by axiom lessThanElim]
-              @gap-exists-if-below |
-                below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                [by forall_elim(x, y) below-yields-gap]
-              @gap-exists |
-                exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                [by modus_ponens gap-exists-if-below x-below-y]
               @with-gap |
-                unpack d: Int from gap-exists {
+                unpack d: Int from x-below-y {
                   @gap-nonneg-and-reaches |
                     is_nonneg(d) and add(x, succ(d)) = y
                     [by hypothesis with-gap]
@@ -1453,15 +1369,12 @@ proof
                                   @difference-plus-small-is-big |
                                     add(sub(big, small), small) = big
                                     [by forall_elim(big, small) difference-plus-small-reaches-big]
-                                  @at-most-from-witness |
-                                    forall x, dd, y: Int; is_nonneg(dd) -> add(x, dd) = y -> at_most(x, y)
-                                    [by axiom lessOrEqualIntro]
-                                  @difference-at-most-big-if |
-                                    is_nonneg(small) -> add(sub(big, small), small) = big -> at_most(sub(big, small), big)
-                                    [by forall_elim(sub(big, small), small, big) at-most-from-witness]
+                                  @small-witnesses-difference-at-most-big |
+                                    is_nonneg(small) and add(sub(big, small), small) = big
+                                    [by and_intro small-nonneg difference-plus-small-is-big]
                                   @difference-at-most-big |
                                     at_most(sub(big, small), big)
-                                    [by tautology difference-at-most-big-if small-nonneg difference-plus-small-is-big]
+                                    [by exists_intro(small) small-witnesses-difference-at-most-big]
                                   @at-most-then-below |
                                     forall x, y, z: Int; at_most(x, y) -> below(y, z) -> below(x, z)
                                     [by theorem atMostThenBelow]
@@ -1574,9 +1487,6 @@ proof
                                               @difference-is-multiple |
                                                 forall bb, x1, s1, x2, s2: Int; add(mul(bb, x1), s1) = add(mul(bb, x2), s2) -> sub(s2, s1) = mul(bb, sub(x1, x2))
                                                 [by theorem remainderDifferenceIsMultiple]
-                                              @intro-divides |
-                                                forall n, d, k: Int; n = mul(d, k) -> does_divide(d, n)
-                                                [by axiom dividesIntro]
                                               @bounded-difference-zero |
                                                 forall bb, s, t: Int; below(ZERO, bb) -> is_nonneg(s) -> below(t, bb) -> below(s, t) -> does_divide(bb, sub(t, s)) -> sub(t, s) = ZERO
                                                 [by theorem boundedRemainderDifferenceIsZero]
@@ -1595,12 +1505,9 @@ proof
                                                       @r2-minus-r1-multiple |
                                                         sub(r2, r1) = mul(b, sub(q1, q2))
                                                         [by modus_ponens r2-minus-r1-is-multiple decompositions-equal]
-                                                      @b-divides-r2-minus-r1-if |
-                                                        sub(r2, r1) = mul(b, sub(q1, q2)) -> does_divide(b, sub(r2, r1))
-                                                        [by forall_elim(sub(r2, r1), b, sub(q1, q2)) intro-divides]
                                                       @b-divides-r2-minus-r1 |
                                                         does_divide(b, sub(r2, r1))
-                                                        [by modus_ponens b-divides-r2-minus-r1-if r2-minus-r1-multiple]
+                                                        [by exists_intro(sub(q1, q2)) r2-minus-r1-multiple]
                                                       @r2-minus-r1-zero-if |
                                                         below(ZERO, b) -> is_nonneg(r1) -> below(r2, b) -> below(r1, r2) -> does_divide(b, sub(r2, r1)) -> sub(r2, r1) = ZERO
                                                         [by forall_elim(b, r1, r2) bounded-difference-zero]
@@ -1642,12 +1549,9 @@ proof
                                                       @r1-minus-r2-multiple |
                                                         sub(r1, r2) = mul(b, sub(q2, q1))
                                                         [by modus_ponens r1-minus-r2-is-multiple decompositions-equal-flipped]
-                                                      @b-divides-r1-minus-r2-if |
-                                                        sub(r1, r2) = mul(b, sub(q2, q1)) -> does_divide(b, sub(r1, r2))
-                                                        [by forall_elim(sub(r1, r2), b, sub(q2, q1)) intro-divides]
                                                       @b-divides-r1-minus-r2 |
                                                         does_divide(b, sub(r1, r2))
-                                                        [by modus_ponens b-divides-r1-minus-r2-if r1-minus-r2-multiple]
+                                                        [by exists_intro(sub(q2, q1)) r1-minus-r2-multiple]
                                                       @r1-minus-r2-zero-if |
                                                         below(ZERO, b) -> is_nonneg(r2) -> below(r1, b) -> below(r2, r1) -> does_divide(b, sub(r1, r2)) -> sub(r1, r2) = ZERO
                                                         [by forall_elim(b, r2, r1) bounded-difference-zero]
@@ -2003,17 +1907,8 @@ proof
               @x-at-most-y |
                 at_most(x, y)
                 [by hypothesis given-x-at-most-y]
-              @at-most-yields-gap |
-                forall a, b: Int; at_most(a, b) -> exists d: Int; is_nonneg(d) and add(a, d) = b
-                [by axiom lessOrEqualElim]
-              @gap-exists-if-at-most |
-                at_most(x, y) -> exists d: Int; is_nonneg(d) and add(x, d) = y
-                [by forall_elim(x, y) at-most-yields-gap]
-              @gap-exists |
-                exists d: Int; is_nonneg(d) and add(x, d) = y
-                [by modus_ponens gap-exists-if-at-most x-at-most-y]
               @with-gap |
-                unpack d: Int from gap-exists {
+                unpack d: Int from x-at-most-y {
                   @gap-nonneg-and-reaches |
                     is_nonneg(d) and add(x, d) = y
                     [by hypothesis with-gap]
@@ -2421,9 +2316,6 @@ theorem oneAtMostPositive: forall n: Int; below(ZERO, n) -> at_most(ONE, n)
 proof
   @generalize-n |
     fix n: Int {
-      @less-than-elimination |
-        forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-        [by axiom lessThanElim]
       @zero-prefix-identity |
         forall m: Int; add(ZERO, m) = m
         [by axiom addZeroLeft]
@@ -2432,14 +2324,8 @@ proof
           @zero-below-n |
             below(ZERO, n)
             [by hypothesis given-zero-below-n]
-          @gap-exists-if |
-            below(ZERO, n) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = n
-            [by forall_elim(ZERO, n) less-than-elimination]
-          @gap-exists |
-            exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = n
-            [by modus_ponens gap-exists-if zero-below-n]
           @with-gap-d |
-            unpack gap: Int from gap-exists {
+            unpack gap: Int from zero-below-n {
               @gap-nonneg-and-witnesses-n |
                 is_nonneg(gap) and add(ZERO, succ(gap)) = n
                 [by hypothesis with-gap-d]
@@ -2462,15 +2348,12 @@ proof
               @one-plus-gap-is-n |
                 add(ONE, gap) = n
                 [by rewrite succ-gap-is-n one-plus-gap-is-succ-gap]
-              @at-most-intro |
-                forall x, d, y: Int; is_nonneg(d) -> add(x, d) = y -> at_most(x, y)
-                [by axiom lessOrEqualIntro]
-              @one-at-most-n-if |
-                is_nonneg(gap) -> add(ONE, gap) = n -> at_most(ONE, n)
-                [by forall_elim(ONE, gap, n) at-most-intro]
+              @gap-witnesses-one-at-most-n |
+                is_nonneg(gap) and add(ONE, gap) = n
+                [by and_intro gap-nonneg one-plus-gap-is-n]
               @conclusion-one-at-most-n |
                 at_most(ONE, n)
-                [by tautology one-at-most-n-if gap-nonneg one-plus-gap-is-n]
+                [by exists_intro(gap) gap-witnesses-one-at-most-n]
             }
           @one-at-most-n |
             at_most(ONE, n)
@@ -2557,9 +2440,6 @@ proof
               @adding-zero-is-identity |
                 forall n: Int; add(n, ZERO) = n
                 [by theorem addZeroRight]
-              @less-than-elim |
-                forall x, y: Int; below(x, y) -> exists d: Int; is_nonneg(d) and add(x, succ(d)) = y
-                [by axiom lessThanElim]
               @zero-prefix-is-identity |
                 forall n: Int; add(ZERO, n) = n
                 [by axiom addZeroLeft]
@@ -2593,14 +2473,8 @@ proof
                                 below(ZERO, a)
                                 [by hypothesis when-zero-below-a]
                               // 0 < a means a = succ(d) for nonneg d, hence nonneg.
-                              @gap-exists-if-below |
-                                below(ZERO, a) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = a
-                                [by forall_elim(ZERO, a) less-than-elim]
-                              @gap-exists |
-                                exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = a
-                                [by modus_ponens gap-exists-if-below zero-below-a]
                               @with-gap-d |
-                                unpack gap: Int from gap-exists {
+                                unpack gap: Int from zero-below-a {
                                   @gap-nonneg-and-witnesses-a |
                                     is_nonneg(gap) and add(ZERO, succ(gap)) = a
                                     [by hypothesis with-gap-d]

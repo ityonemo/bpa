@@ -24,7 +24,7 @@ func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
 func sub = subtraction.sub
-pred less_than = ordering.less_than
+define less_than(a: Nat, b: Nat) = ordering.less_than(a, b)
 theorem mulOneRight = peano.mulOneRight
 theorem mulZeroRight = peano.mulZeroRight
 theorem mulIsAssociative = peano.mulIsAssociative
@@ -42,10 +42,9 @@ theorem notLessThanZero = ordering.notLessThanZero
 
 // -- divisibility -----------------------------------------------------------
 
-// divides(d, n) iff n = d * k for some k.
-pred divides(d: Nat, n: Nat)
-axiom dividesIntro: forall n, d, k: Nat; n = mul(d, k) -> divides(d, n)
-axiom dividesElim: forall d, n: Nat; divides(d, n) -> exists k: Nat; n = mul(d, k)
+// divides(d, n) iff n = d * k for some k. Transparent: divides(d, n) IS this
+// existential, produced with exists_intro and consumed with unpack.
+define divides(d: Nat, n: Nat) = exists k: Nat; n = mul(d, k)
 
 // -- guarded Euclidean division ---------------------------------------------
 
@@ -83,15 +82,9 @@ proof
       @d-is-d-times-one |
         d = mul(d, ONE)
         [by symmetry mul-by-one-is-identity]
-      @a-multiple-divides |
-        forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
-        [by axiom dividesIntro]
-      @d-times-one-witnesses-self-division |
-        d = mul(d, ONE) -> divides(d, d)
-        [by forall_elim(d, d, ONE) a-multiple-divides]
       @d-divides-itself |
         divides(d, d)
-        [by modus_ponens d-times-one-witnesses-self-division d-is-d-times-one]
+        [by exists_intro(ONE) d-is-d-times-one]
     }
   @conclusion |
     forall d: Nat; divides(d, d)
@@ -112,15 +105,9 @@ proof
       @zero-is-d-times-zero |
         ZERO = mul(d, ZERO)
         [by symmetry d-times-zero-is-zero]
-      @a-multiple-divides |
-        forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
-        [by axiom dividesIntro]
-      @zero-witnesses-d-divides-zero |
-        ZERO = mul(d, ZERO) -> divides(d, ZERO)
-        [by forall_elim(ZERO, d, ZERO) a-multiple-divides]
       @d-divides-zero |
         divides(d, ZERO)
-        [by modus_ponens zero-witnesses-d-divides-zero zero-is-d-times-zero]
+        [by exists_intro(ZERO) zero-is-d-times-zero]
     }
   @conclusion |
     forall d: Nat; divides(d, ZERO)
@@ -146,43 +133,22 @@ proof
                       @b-divides-c |
                         divides(b, c)
                         [by hypothesis given-b-divides-c]
-                      @a-divisor-yields-witness |
-                        forall dd, n: Nat; divides(dd, n) -> exists k: Nat; n = mul(dd, k)
-                        [by axiom dividesElim]
-                      @b-is-a-multiple-if-a-divides |
-                        divides(a, b) -> exists k: Nat; b = mul(a, k)
-                        [by forall_elim(a, b) a-divisor-yields-witness]
-                      @b-is-a-multiple |
-                        exists k: Nat; b = mul(a, k)
-                        [by modus_ponens b-is-a-multiple-if-a-divides a-divides-b]
-                      @c-is-b-multiple-if-b-divides |
-                        divides(b, c) -> exists k: Nat; c = mul(b, k)
-                        [by forall_elim(b, c) a-divisor-yields-witness]
-                      @c-is-b-multiple |
-                        exists k: Nat; c = mul(b, k)
-                        [by modus_ponens c-is-b-multiple-if-b-divides b-divides-c]
                       @with-b-quotient-j |
-                        unpack j: Nat from b-is-a-multiple {
+                        unpack j: Nat from a-divides-b {
                           @b-equals-a-times-j |
                             b = mul(a, j)
                             [by hypothesis with-b-quotient-j]
                           @with-c-quotient-k |
-                            unpack kk: Nat from c-is-b-multiple {
+                            unpack kk: Nat from b-divides-c {
                               @c-equals-b-times-k |
                                 c = mul(b, kk)
                                 [by hypothesis with-c-quotient-k]
                               @c-is-a-times-jk |
                                 c = mul(a, mul(j, kk))
                                 [by simplify b-equals-a-times-j c-equals-b-times-k mulIsAssociative]
-                              @a-multiple-divides |
-                                forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
-                                [by axiom dividesIntro]
-                              @jk-witnesses-a-divides-c |
-                                c = mul(a, mul(j, kk)) -> divides(a, c)
-                                [by forall_elim(c, a, mul(j, kk)) a-multiple-divides]
                               @a-divides-c-under-witnesses |
                                 divides(a, c)
-                                [by modus_ponens jk-witnesses-a-divides-c c-is-a-times-jk]
+                                [by exists_intro(mul(j, kk)) c-is-a-times-jk]
                             }
                           @a-divides-c-after-k |
                             divides(a, c)
@@ -232,43 +198,22 @@ proof
                       @d-divides-b |
                         divides(d, b)
                         [by hypothesis given-d-divides-b]
-                      @a-divisor-yields-witness |
-                        forall dd, n: Nat; divides(dd, n) -> exists k: Nat; n = mul(dd, k)
-                        [by axiom dividesElim]
-                      @a-is-d-multiple-if-d-divides |
-                        divides(d, a) -> exists k: Nat; a = mul(d, k)
-                        [by forall_elim(d, a) a-divisor-yields-witness]
-                      @a-is-d-multiple |
-                        exists k: Nat; a = mul(d, k)
-                        [by modus_ponens a-is-d-multiple-if-d-divides d-divides-a]
-                      @b-is-d-multiple-if-d-divides |
-                        divides(d, b) -> exists k: Nat; b = mul(d, k)
-                        [by forall_elim(d, b) a-divisor-yields-witness]
-                      @b-is-d-multiple |
-                        exists k: Nat; b = mul(d, k)
-                        [by modus_ponens b-is-d-multiple-if-d-divides d-divides-b]
                       @with-a-quotient-j |
-                        unpack j: Nat from a-is-d-multiple {
+                        unpack j: Nat from d-divides-a {
                           @a-equals-d-times-j |
                             a = mul(d, j)
                             [by hypothesis with-a-quotient-j]
                           @with-b-quotient-k |
-                            unpack kk: Nat from b-is-d-multiple {
+                            unpack kk: Nat from d-divides-b {
                               @b-equals-d-times-k |
                                 b = mul(d, kk)
                                 [by hypothesis with-b-quotient-k]
                               @sum-is-d-multiple |
                                 add(a, b) = mul(d, add(j, kk))
                                 [by simplify a-equals-d-times-j b-equals-d-times-k mulAddDistribLeft]
-                              @a-multiple-divides |
-                                forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
-                                [by axiom dividesIntro]
-                              @sum-witness-yields-d-divides-sum |
-                                add(a, b) = mul(d, add(j, kk)) -> divides(d, add(a, b))
-                                [by forall_elim(add(a, b), d, add(j, kk)) a-multiple-divides]
                               @d-divides-sum-under-witness |
                                 divides(d, add(a, b))
-                                [by modus_ponens sum-witness-yields-d-divides-sum sum-is-d-multiple]
+                                [by exists_intro(add(j, kk)) sum-is-d-multiple]
                             }
                           @d-divides-sum-after-k |
                             divides(d, add(a, b))
@@ -318,43 +263,22 @@ proof
                       @d-divides-b |
                         divides(d, b)
                         [by hypothesis given-d-divides-b]
-                      @a-divisor-yields-witness |
-                        forall dd, n: Nat; divides(dd, n) -> exists k: Nat; n = mul(dd, k)
-                        [by axiom dividesElim]
-                      @a-is-d-multiple-if-d-divides |
-                        divides(d, a) -> exists k: Nat; a = mul(d, k)
-                        [by forall_elim(d, a) a-divisor-yields-witness]
-                      @a-is-d-multiple |
-                        exists k: Nat; a = mul(d, k)
-                        [by modus_ponens a-is-d-multiple-if-d-divides d-divides-a]
-                      @b-is-d-multiple-if-d-divides |
-                        divides(d, b) -> exists k: Nat; b = mul(d, k)
-                        [by forall_elim(d, b) a-divisor-yields-witness]
-                      @b-is-d-multiple |
-                        exists k: Nat; b = mul(d, k)
-                        [by modus_ponens b-is-d-multiple-if-d-divides d-divides-b]
                       @with-a-quotient-j |
-                        unpack j: Nat from a-is-d-multiple {
+                        unpack j: Nat from d-divides-a {
                           @a-equals-d-times-j |
                             a = mul(d, j)
                             [by hypothesis with-a-quotient-j]
                           @with-b-quotient-k |
-                            unpack kk: Nat from b-is-d-multiple {
+                            unpack kk: Nat from d-divides-b {
                               @b-equals-d-times-k |
                                 b = mul(d, kk)
                                 [by hypothesis with-b-quotient-k]
                               @difference-is-d-multiple |
                                 sub(a, b) = mul(d, sub(j, kk))
                                 [by simplify a-equals-d-times-j b-equals-d-times-k mulSubDistribLeft]
-                              @a-multiple-divides |
-                                forall n, dd, k: Nat; n = mul(dd, k) -> divides(dd, n)
-                                [by axiom dividesIntro]
-                              @difference-witness-yields-d-divides |
-                                sub(a, b) = mul(d, sub(j, kk)) -> divides(d, sub(a, b))
-                                [by forall_elim(sub(a, b), d, sub(j, kk)) a-multiple-divides]
                               @d-divides-difference-under-witness |
                                 divides(d, sub(a, b))
-                                [by modus_ponens difference-witness-yields-d-divides difference-is-d-multiple]
+                                [by exists_intro(sub(j, kk)) difference-is-d-multiple]
                             }
                           @d-divides-difference-after-k |
                             divides(d, sub(a, b))
@@ -399,32 +323,17 @@ proof
                   @d-divides-a |
                     divides(d, a)
                     [by hypothesis given-d-divides-a]
-                  @a-divisor-yields-witness |
-                    forall dd, n: Nat; divides(dd, n) -> exists kk: Nat; n = mul(dd, kk)
-                    [by axiom dividesElim]
-                  @a-is-d-multiple-if-d-divides |
-                    divides(d, a) -> exists kk: Nat; a = mul(d, kk)
-                    [by forall_elim(d, a) a-divisor-yields-witness]
-                  @a-is-d-multiple |
-                    exists kk: Nat; a = mul(d, kk)
-                    [by modus_ponens a-is-d-multiple-if-d-divides d-divides-a]
                   @with-a-quotient-j |
-                    unpack j: Nat from a-is-d-multiple {
+                    unpack j: Nat from d-divides-a {
                       @a-equals-d-times-j |
                         a = mul(d, j)
                         [by hypothesis with-a-quotient-j]
                       @scaled-product-is-d-multiple |
                         mul(a, k) = mul(d, mul(j, k))
                         [by simplify a-equals-d-times-j mulIsAssociative]
-                      @a-multiple-divides |
-                        forall n, dd, kk: Nat; n = mul(dd, kk) -> divides(dd, n)
-                        [by axiom dividesIntro]
-                      @scaled-witness-yields-d-divides |
-                        mul(a, k) = mul(d, mul(j, k)) -> divides(d, mul(a, k))
-                        [by forall_elim(mul(a, k), d, mul(j, k)) a-multiple-divides]
                       @d-divides-scaled-under-witness |
                         divides(d, mul(a, k))
-                        [by modus_ponens scaled-witness-yields-d-divides scaled-product-is-d-multiple]
+                        [by exists_intro(mul(j, k)) scaled-product-is-d-multiple]
                     }
                   @d-divides-scaled |
                     divides(d, mul(a, k))
@@ -625,19 +534,10 @@ proof
                                       @decompositions-equal |
                                         add(mul(b, q1), r1) = add(mul(b, q2), r2)
                                         [by hypothesis given-decompositions-equal]
-                                      @q1-below-q2 |
+                                      // q1 < q2 IS exists k: add(q1, succ(k)) = q2
+                                      @gap-exists |
                                         less_than(q1, q2)
                                         [by hypothesis given-q1-below-q2]
-                                      // q1 < q2 -> exists k: add(q1, succ(k)) = q2
-                                      @below-yields-gap |
-                                        forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
-                                        [by axiom ordering.lessThanElim]
-                                      @q1-below-q2-yields-gap |
-                                        less_than(q1, q2) -> exists w: Nat; add(q1, succ(w)) = q2
-                                        [by forall_elim(q1, q2) below-yields-gap]
-                                      @gap-exists |
-                                        exists w: Nat; add(q1, succ(w)) = q2
-                                        [by modus_ponens q1-below-q2-yields-gap q1-below-q2]
                                       @with-gap-k |
                                         unpack k: Nat from gap-exists {
                                           @q2-is-q1-plus-successor-gap |

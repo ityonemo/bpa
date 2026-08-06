@@ -33,9 +33,10 @@ axiom induction = integer.induction
 
 // -- divisibility -----------------------------------------------------------
 
-pred divides(d: Int, n: Int)
-axiom dividesIntro: forall n, d, k: Int; n = mul(d, k) -> divides(d, n)
-axiom dividesElim: forall d, n: Int; divides(d, n) -> exists k: Int; n = mul(d, k)
+// Transparent: divides(d, n) IS the multiple existential (matching the abstract
+// theory's own define). Since it is a define, it is NOT a model source/target —
+// it rides along on `mul` (already mapped) when divisibility's theorems transfer.
+define divides(d: Int, n: Int) = exists k: Int; n = mul(d, k)
 
 // ℤ is a model of the abstract divisibility theory: its mul is associative with
 // right identity ONE and left-distributes over add, so the basic divisibility
@@ -45,9 +46,6 @@ model IntegerDivisibility {
   divisibility.ONE: ONE
   divisibility.mul: mul
   divisibility.add: add
-  divisibility.divides: divides
-  divisibility.dividesIntro: dividesIntro
-  divisibility.dividesElim: dividesElim
   divisibility.mulOneRight: mulOneRight
   divisibility.mulIsAssociative: mulIsAssociative
   divisibility.mulAddDistribLeft: mulAddDistribLeft
@@ -71,7 +69,7 @@ qed
 
 // d | a  =>  d | a·c: if a = d·k, then a·c = (d·k)·c = d·(k·c), so d divides a·c.
 // Unpack the quotient k from d | a, reassociate the triple product with
-// mulIsAssociative, then repackage via dividesIntro with witness k·c.
+// mulIsAssociative, then repackage via exists_intro with witness k·c.
 theorem dividesMul: forall d, a, c: Int; divides(d, a) -> divides(d, mul(a, c))
 proof
   @conclusion |
@@ -81,7 +79,7 @@ qed
 
 // d | a  and  d | b  =>  d | a+b: if a = d·j and b = d·k, then a+b = d·(j+k) by
 // left-distributivity, so d divides a+b. Unpack both quotients, collect the sum
-// with mulAddDistribLeft, then repackage via dividesIntro with witness j+k.
+// with mulAddDistribLeft, then repackage via exists_intro with witness j+k.
 theorem dividesAdd: forall d, a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
 proof
   @conclusion |

@@ -196,7 +196,7 @@ pub fn addTests(
     ctx.ok(&.{ "query", "whereis", "std/peano-parity.bpa", "sub" },
         \\sub
         \\  std/peano-parity.bpa:19:  func sub = subtraction.sub
-        \\  std/peano-subtraction.bpa:38:  func sub(a: Nat, b: Nat): Nat  [origin]
+        \\  std/peano-subtraction.bpa:36:  func sub(a: Nat, b: Nat): Nat  [origin]
         \\
     );
 

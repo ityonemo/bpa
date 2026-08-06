@@ -17,7 +17,7 @@ func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
 func sub = subtraction.sub
-pred divides = division.divides
+define divides(d: Nat, n: Nat) = division.divides(d, n)
 
 axiom induction = peano.induction
 axiom succInjective = peano.succInjective
@@ -29,8 +29,6 @@ theorem mulZeroRight = peano.mulZeroRight
 theorem addSuccRight = peano.addSuccRight
 theorem addZeroRight = peano.addZeroRight
 theorem addIsCommutative = peano.addIsCommutative
-axiom dividesIntro = division.dividesIntro
-axiom dividesElim = division.dividesElim
 theorem dividesZero = division.dividesZero
 theorem dividesRefl = division.dividesRefl
 theorem dividesAdd = division.dividesAdd
@@ -142,18 +140,9 @@ proof
     fix p: Nat {
       @given-succ-even |
         assume divides(TWO, succ(p)) {
-          @succ-even |
+          @m-exists |
             divides(TWO, succ(p))
             [by hypothesis given-succ-even]
-          @elim |
-            forall d, n: Nat; divides(d, n) -> exists k: Nat; n = mul(d, k)
-            [by axiom dividesElim]
-          @elim-at |
-            divides(TWO, succ(p)) -> exists k: Nat; succ(p) = mul(TWO, k)
-            [by forall_elim(TWO, succ(p)) elim]
-          @m-exists |
-            exists k: Nat; succ(p) = mul(TWO, k)
-            [by modus_ponens elim-at succ-even]
           @with-m |
             unpack m: Nat from m-exists {
               @succ-p-is-two-m |
@@ -289,18 +278,9 @@ theorem twoNotDivideOne: not divides(TWO, ONE)
 proof
   @suppose |
     assume divides(TWO, ONE) {
-      @div |
+      @x-exists |
         divides(TWO, ONE)
         [by hypothesis suppose]
-      @elim |
-        forall d, n: Nat; divides(d, n) -> exists k: Nat; n = mul(d, k)
-        [by axiom dividesElim]
-      @elim-at |
-        divides(TWO, ONE) -> exists k: Nat; ONE = mul(TWO, k)
-        [by forall_elim(TWO, ONE) elim]
-      @x-exists |
-        exists k: Nat; ONE = mul(TWO, k)
-        [by modus_ponens elim-at div]
       // ONE != ZERO, derived at suppose level for the final not_intro
       @suppose-one-zero |
         assume ONE = ZERO {
@@ -493,19 +473,12 @@ proof
                         mul(p, p) = succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
                         [by simplify p-is-odd odd-sq-at]
                       // now 2 | succ(2M) with M = ...; subtract 2M ⇒ 2 | 1
-                      @intro |
-                        forall n, d, k: Nat; n = mul(d, k) -> divides(d, n)
-                        [by axiom dividesIntro]
                       @two-m-refl |
                         mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))) = mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))
                         [by reflexivity]
-                      @intro-at |
-                        mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))) = mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j)))
-                          -> divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        [by forall_elim(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))), TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))) intro]
                       @two-m-even |
                         divides(TWO, mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))
-                        [by modus_ponens intro-at two-m-refl]
+                        [by exists_intro(add(mul(TWO, mul(j, j)), mul(TWO, j))) two-m-refl]
                       // hypothesis 2 | p² becomes 2 | succ(2M) = 2 | add(2M, ONE)
                       @succ-as-add |
                         succ(mul(TWO, add(mul(TWO, mul(j, j)), mul(TWO, j))))

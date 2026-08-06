@@ -451,5 +451,5 @@ pub fn addTests(
     ctx.fail(&.{ "check", "tests/cases/smt_bad.bpa" }, "tests/cases/smt_bad.bpa:12:9: error: arithmetic: false at a := 0, p := false\n");
 
     // instantiating strongInduction re-checks its full stored proof
-    ctx.ok(&.{ "check", "tests/cases/strong_induction.bpa" }, "OK: 126 declarations, 40 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/strong_induction.bpa" }, "OK: 122 declarations, 40 theorems proven\n");
 }
