@@ -60,6 +60,15 @@ equalities: the moves a human reader also skips.
 (Contrast `std/*.bpa`, where the rule is the opposite: collapse to the shortest
 kernel-checked proof, accelerants everywhere — no demonstrative value needed.)
 
+## No `hole`s in transliterations
+
+AATA proofs are WELL-KNOWN — Judson proves them; the job is to transcribe. So do
+**not** use `hole` here: a hole is unfinished work dressed up as done, and a
+transliteration whose proof is left as a hole hasn't been transcribed. Finish the
+proof (or, if it genuinely exceeds the kernel, defer it in prose — see below —
+never as a `hole`). `hole` is for *research/exploration* (spiking a construction,
+sketching a skeleton), not for a proof that is known and expected to be completed.
+
 ## When something is beyond the kernel
 
 Where a stated result exceeds what bpa's first-order kernel can express, keep the
