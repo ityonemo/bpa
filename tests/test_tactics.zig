@@ -381,26 +381,26 @@ pub fn addTests(
 
     // Milestone C2b: universal linear goals replay as kernel-checked certificates
     // (sorted-sum normalization + synthesized order witnesses)
-    ctx.ok(&.{ "check", "tests/cases/arithmetic_cert2.bpa" }, "OK: 147 declarations, 44 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/arithmetic_cert2.bpa" }, "OK: 147 declarations, 45 theorems proven\n");
 
     // Farkas: difference-logic infeasibility (combine several order
     // hypotheses into a transitivity cycle) certifies purely under the
     // DEFAULT, via `arithmetic(<theory>)` resolving the order lemmas
     // against the named module — no local aliasing of the vocabulary.
-    ctx.ok(&.{ "check", "tests/cases/farkas.bpa" }, "OK: 123 declarations, 40 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/farkas.bpa" }, "OK: 123 declarations, 41 theorems proven\n");
 
     // Farkas extensions: order composition (a<b -> b<c -> a<c, no cycle)
     // and the infeasibility cap (contradictory order hyps prove an
     // arbitrary conclusion via lessThanIrreflexive + absurd).
-    ctx.ok(&.{ "check", "tests/cases/farkas_ext.bpa" }, "OK: 125 declarations, 41 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/farkas_ext.bpa" }, "OK: 125 declarations, 42 theorems proven\n");
 
     // Farkas coefficient scaling: a hypothesis scaled by a literal
     // via multiplicationPreservesOrder before the infeasibility fold.
-    ctx.ok(&.{ "check", "tests/cases/farkas_scale.bpa" }, "OK: 126 declarations, 39 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/farkas_scale.bpa" }, "OK: 126 declarations, 40 theorems proven\n");
 
     // Farkas sum path: sum two order hypotheses over distinct
     // variables via additionPreservesOrder + commutativity + transitivity.
-    ctx.ok(&.{ "check", "tests/cases/farkas_sum.bpa" }, "OK: 123 declarations, 39 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/farkas_sum.bpa" }, "OK: 123 declarations, 40 theorems proven\n");
 
     // Milestone C2a: ground goals replay as kernel-checked simplify certificates
     // over the well-known peano axioms — the default check accepts them
@@ -445,11 +445,11 @@ pub fn addTests(
     ctx.ok(&.{ "check", "tests/cases/cooper_gap.bpa" }, "OK: 17 declarations, 3 theorems proven\n");
 
     // Milestone D2: mixed skeletons replay as kernel-checked certificates
-    ctx.ok(&.{ "check", "tests/cases/smt_cert.bpa" }, "OK: 144 declarations, 40 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/smt_cert.bpa" }, "OK: 144 declarations, 41 theorems proven\n");
 
     // mixed countermodel: arithmetic values plus opaque truth values
     ctx.fail(&.{ "check", "tests/cases/smt_bad.bpa" }, "tests/cases/smt_bad.bpa:12:9: error: arithmetic: false at a := 0, p := false\n");
 
     // instantiating strongInduction re-checks its full stored proof
-    ctx.ok(&.{ "check", "tests/cases/strong_induction.bpa" }, "OK: 122 declarations, 40 theorems proven\n");
+    ctx.ok(&.{ "check", "tests/cases/strong_induction.bpa" }, "OK: 126 declarations, 41 theorems proven\n");
 }

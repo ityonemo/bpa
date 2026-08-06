@@ -58,11 +58,11 @@ pub fn addTests(
     // Second Principle (strong induction) and the Principle of Well-Ordering,
     // both aliased from std/integer-wellordering.bpa (proved there from ordinary
     // induction). No hole; the file checks WITHOUT --draft.
-    ctx.ok(&.{ "check", "aata/2.1-induction.md" }, "OK: 259 declarations, 56 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/2.1-induction.md" }, "OK: 264 declarations, 57 theorems proven\n");
     // §2.2 The Division Algorithm: Ch1-style — the proofs now live in
     // std/integer-division.bpa; this file aliases them and narrates. Existence
     // over all of ℤ + uniqueness.
-    ctx.ok(&.{ "check", "aata/2.2-division-algorithm.md" }, "OK: 312 declarations, 73 theorems proven\n");
+    ctx.ok(&.{ "check", "aata/2.2-division-algorithm.md" }, "OK: 320 declarations, 74 theorems proven\n");
     // §2.3 Primes: stub for the GCD/Bézout/Euclid/FTA material to come; imports
     // the division library and aliases the two headline theorems.
     ctx.ok(&.{ "check", "aata/2.3-primes.md" }, "OK: 481 declarations, 98 theorems proven\n");

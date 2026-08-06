@@ -534,10 +534,19 @@ proof
                                       @decompositions-equal |
                                         add(mul(b, q1), r1) = add(mul(b, q2), r2)
                                         [by hypothesis given-decompositions-equal]
-                                      // q1 < q2 IS exists k: add(q1, succ(k)) = q2
-                                      @gap-exists |
+                                      @q1-below-q2 |
                                         less_than(q1, q2)
                                         [by hypothesis given-q1-below-q2]
+                                      // q1 < q2 -> exists k: add(q1, succ(k)) = q2
+                                      @below-yields-gap |
+                                        forall x, y: Nat; less_than(x, y) -> exists w: Nat; add(x, succ(w)) = y
+                                        [by axiom ordering.lessThanElim]
+                                      @q1-below-q2-yields-gap |
+                                        less_than(q1, q2) -> exists w: Nat; add(q1, succ(w)) = q2
+                                        [by forall_elim(q1, q2) below-yields-gap]
+                                      @gap-exists |
+                                        exists w: Nat; add(q1, succ(w)) = q2
+                                        [by modus_ponens q1-below-q2-yields-gap q1-below-q2]
                                       @with-gap-k |
                                         unpack k: Nat from gap-exists {
                                           @q2-is-q1-plus-successor-gap |

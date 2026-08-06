@@ -54,12 +54,12 @@ pub fn addTests(
 
     // Euclid's algorithm from a consumer's view: import the verified gcd
     // library and cite its correctness theorems to derive concrete facts
-    ctx.ok(&.{ "check", "examples/euclid.bpa" }, "OK: 229 declarations, 59 theorems proven\n");
+    ctx.ok(&.{ "check", "examples/euclid.bpa" }, "OK: 235 declarations, 60 theorems proven\n");
 
-    ctx.ok(&.{ "check", "examples/euclid-compute.bpa" }, "OK: 252 declarations, 61 theorems proven\n");
+    ctx.ok(&.{ "check", "examples/euclid-compute.bpa" }, "OK: 258 declarations, 62 theorems proven\n");
 
     // √2 is irrational (stated over ℕ), proven — the headline result.
-    ctx.ok(&.{ "check", "examples/sqrt2.bpa" }, "OK: 280 declarations, 62 theorems proven\n");
+    ctx.ok(&.{ "check", "examples/sqrt2.bpa" }, "OK: 286 declarations, 63 theorems proven\n");
 
     // literate: `check` on a .md checks its ```bpa blocks (prose masked).
     ctx.ok(&.{ "check", "examples/literate.md" }, "OK: 6 declarations, 1 theorems proven\n");

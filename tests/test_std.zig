@@ -18,22 +18,22 @@ pub fn addTests(
 
     // the order theory + strong induction + well-ordering, split into its own
     // layer; proven, and --recursive re-verifies the imported peano proofs too
-    ctx.ok(&.{ "check", "std/peano-ordering.bpa" }, "OK: 114 declarations, 38 theorems proven\n");
+    ctx.ok(&.{ "check", "std/peano-ordering.bpa" }, "OK: 118 declarations, 39 theorems proven\n");
 
-    ctx.ok(&.{ "check", "std/peano-ordering.bpa" }, "OK: 114 declarations, 38 theorems proven\n");
+    ctx.ok(&.{ "check", "std/peano-ordering.bpa" }, "OK: 118 declarations, 39 theorems proven\n");
 
     // truncated subtraction + the gcd measure lemma (Euclid foundation)
-    ctx.ok(&.{ "check", "std/peano-subtraction.bpa" }, "OK: 147 declarations, 44 theorems proven\n");
+    ctx.ok(&.{ "check", "std/peano-subtraction.bpa" }, "OK: 153 declarations, 45 theorems proven\n");
 
     // divisibility + guarded Euclidean div/mod + the gcd bridge lemma
-    ctx.ok(&.{ "check", "std/peano-division.bpa" }, "OK: 197 declarations, 54 theorems proven\n");
+    ctx.ok(&.{ "check", "std/peano-division.bpa" }, "OK: 203 declarations, 55 theorems proven\n");
 
     // THE PAYOFF: Euclid's algorithm, proved correct (common divisor +
     // greatest), by strong induction on the decreasing modulus
-    ctx.ok(&.{ "check", "std/peano-gcd.bpa" }, "OK: 220 declarations, 56 theorems proven\n");
+    ctx.ok(&.{ "check", "std/peano-gcd.bpa" }, "OK: 226 declarations, 57 theorems proven\n");
 
     // parity: even/odd + the crux 2|p² → 2|p, proven (no accelerated tactic)
-    ctx.ok(&.{ "check", "std/peano-parity.bpa" }, "OK: 235 declarations, 59 theorems proven\n");
+    ctx.ok(&.{ "check", "std/peano-parity.bpa" }, "OK: 241 declarations, 60 theorems proven\n");
 
     // the integers ℤ ring algebra (std/integer-ring.bpa): left/right recursion,
     // commutativity, associativity, the additive-inverse law n+(-n)=0, and the
@@ -48,7 +48,7 @@ pub fn addTests(
     // irreflexivity/transitivity/trichotomy (bidirectional induction on the
     // difference), addition preserves/cancels order, less_or_equal refl/trans/
     // split/antisymmetric. subSelf/subAddCancel from the inverse law, no induction.
-    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 138 declarations, 43 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-order.bpa" }, "OK: 141 declarations, 44 theorems proven\n");
 
     // strong induction + the Principle of Well-Ordering over the NONNEGATIVE
     // integers (std/integer-wellordering.bpa), layered above the ℤ order (it can't
@@ -56,7 +56,7 @@ pub fn addTests(
     // nonnegStrongInduction (course-of-values) and nonnegWellOrdering (every
     // nonempty nonneg subset has a least element) — nonneg-guarded ports of the
     // peano-ordering proofs; the Division Algorithm's existence half runs on these.
-    ctx.ok(&.{ "check", "std/integer-wellordering.bpa" }, "OK: 167 declarations, 47 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-wellordering.bpa" }, "OK: 172 declarations, 48 theorems proven\n");
 
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
     // and the divides predicate; dividesRefl/dividesMul/dividesAdd proved once,
@@ -72,7 +72,7 @@ pub fn addTests(
     // ℤ (via well-ordering on {a−bk≥0}) + uniqueness, with the supporting
     // product-of-nonnegatives / bounded-multiple-is-zero / remainder-difference
     // machinery. The reusable foundation for GCD / Bézout / the FTA.
-    ctx.ok(&.{ "check", "std/integer-division.bpa" }, "OK: 294 declarations, 73 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-division.bpa" }, "OK: 302 declarations, 74 theorems proven\n");
 
     // finite integer sequences + products (std/integer-sequence.bpa): a `Seq` sort
     // with an `at(s,i)` accessor and a recursive `productUpTo(s,k)` (bpa has no
@@ -81,7 +81,7 @@ pub fn addTests(
     // bound divides the product — is the lemma the infinitude/FTA arguments need.
     // Plus the reification-existence axioms (seqSingletonExists/seqConcatExists/
     // seqRemoveExists) that let FTA witness/splice/cancel factorization sequences.
-    ctx.ok(&.{ "check", "std/integer-sequence.bpa" }, "OK: 363 declarations, 82 theorems proven\n");
+    ctx.ok(&.{ "check", "std/integer-sequence.bpa" }, "OK: 374 declarations, 83 theorems proven\n");
 
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
     // + LEFT inverse) + an opt-in `opCommutative`; the right-sided laws and the

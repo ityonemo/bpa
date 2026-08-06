@@ -45,6 +45,9 @@ theorem dividesRefl = divides.dividesRefl
 theorem dividesMul = divides.dividesMul
 theorem dividesAdd = divides.dividesAdd
 axiom subDef = order.subDef
+axiom lessThanIntro = order.lessThanIntro
+axiom lessThanElim = order.lessThanElim
+theorem lessOrEqualIsGapExistential = order.lessOrEqualIsGapExistential
 theorem trichotomy = order.trichotomy
 theorem signTrichotomy = order.signTrichotomy
 theorem nonnegMul = order.nonnegMul
@@ -414,8 +417,17 @@ proof
                       // k is nonneg: a nonneg index below k means k exceeds a
                       // nonneg, so k is positive hence nonneg. We get it from the
                       // gap i < k directly: below(i, k) with is_nonneg(i).
+                      @less-than-elim |
+                        forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
+                        [by axiom lessThanElim]
+                      @index-gap-exists |
+                        below(i, k) -> exists d: Int; is_nonneg(d) and add(i, succ(d)) = k
+                        [by forall_elim(i, k) less-than-elim]
+                      @gap-to-k-exists |
+                        exists d: Int; is_nonneg(d) and add(i, succ(d)) = k
+                        [by modus_ponens index-gap-exists index-below-k]
                       @with-gap-to-k |
-                        unpack gap: Int from index-below-k {
+                        unpack gap: Int from gap-to-k-exists {
                           @gap-nonneg-and-reaches-k |
                             is_nonneg(gap) and add(i, succ(gap)) = k
                             [by hypothesis with-gap-to-k]
@@ -669,11 +681,14 @@ proof
     add(ZERO, succ(ZERO)) = ONE
     [by rewrite succ-zero-is-one zero-plus-succ-zero-is-succ-zero]
   @gap-witnesses-less-than |
-    is_nonneg(ZERO) and add(ZERO, succ(ZERO)) = ONE
-    [by and_intro zero-nonneg zero-plus-succ-zero-is-one]
+    forall a, d, b: Int; is_nonneg(d) -> add(a, succ(d)) = b -> below(a, b)
+    [by axiom lessThanIntro]
+  @zero-below-one-if-gap |
+    is_nonneg(ZERO) -> add(ZERO, succ(ZERO)) = ONE -> below(ZERO, ONE)
+    [by forall_elim(ZERO, ZERO, ONE) gap-witnesses-less-than]
   @conclusion |
     below(ZERO, ONE)
-    [by exists_intro(ZERO) gap-witnesses-less-than]
+    [by tautology zero-below-one-if-gap zero-nonneg zero-plus-succ-zero-is-one]
 qed
 
 // A positive integer is nonnegative: unfold below(ZERO, x) to a gap succ(d) = x
@@ -688,8 +703,17 @@ proof
           @x-positive |
             below(ZERO, x)
             [by hypothesis given-x-positive]
+          @less-than-elim |
+            forall a, b: Int; below(a, b) -> exists d: Int; is_nonneg(d) and add(a, succ(d)) = b
+            [by axiom lessThanElim]
+          @gap-below-zero-x |
+            below(ZERO, x) -> exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = x
+            [by forall_elim(ZERO, x) less-than-elim]
+          @gap-exists |
+            exists d: Int; is_nonneg(d) and add(ZERO, succ(d)) = x
+            [by modus_ponens gap-below-zero-x x-positive]
           @with-gap-d |
-            unpack d: Int from x-positive {
+            unpack d: Int from gap-exists {
               @gap-nonneg-and-reaches-x |
                 is_nonneg(d) and add(ZERO, succ(d)) = x
                 [by hypothesis with-gap-d]
@@ -879,9 +903,21 @@ proof
                                   @n-plus-neg-n-witnesses |
                                     is_nonneg(neg(n)) and add(n, neg(n)) = ZERO
                                     [by and_intro neg-n-nonneg add-n-neg-n-is-zero]
+                                  @at-most-is-gap-existential |
+                                    forall a, b: Int; at_most(a, b) iff (exists g: Int; is_nonneg(g) and add(a, g) = b)
+                                    [by theorem lessOrEqualIsGapExistential]
+                                  @n-at-most-zero-iff-gap |
+                                    at_most(n, ZERO) iff (exists g: Int; is_nonneg(g) and add(n, g) = ZERO)
+                                    [by forall_elim(n, ZERO) at-most-is-gap-existential]
+                                  @gap-gives-n-at-most-zero |
+                                    (exists g: Int; is_nonneg(g) and add(n, g) = ZERO) -> at_most(n, ZERO)
+                                    [by iff_elim_backward n-at-most-zero-iff-gap]
+                                  @n-reaches-zero-gap-exists |
+                                    exists g: Int; is_nonneg(g) and add(n, g) = ZERO
+                                    [by exists_intro(neg(n)) n-plus-neg-n-witnesses]
                                   @n-at-most-zero |
                                     at_most(n, ZERO)
-                                    [by exists_intro(neg(n)) n-plus-neg-n-witnesses]
+                                    [by modus_ponens gap-gives-n-at-most-zero n-reaches-zero-gap-exists]
                                   @below-gives-at-most |
                                     forall a, b: Int; below(a, b) -> at_most(a, b)
                                     [by theorem lessThanToLessOrEqual]
@@ -976,9 +1012,21 @@ proof
                           @gap-witnesses-at-most |
                             is_nonneg(mul(d, sub(k, ONE))) and add(d, mul(d, sub(k, ONE))) = n
                             [by and_intro gap-nonneg d-plus-gap-is-n]
+                          @at-most-is-gap-existential |
+                            forall a, b: Int; at_most(a, b) iff (exists g: Int; is_nonneg(g) and add(a, g) = b)
+                            [by theorem lessOrEqualIsGapExistential]
+                          @d-at-most-n-iff-gap |
+                            at_most(d, n) iff (exists g: Int; is_nonneg(g) and add(d, g) = n)
+                            [by forall_elim(d, n) at-most-is-gap-existential]
+                          @gap-gives-d-at-most-n |
+                            (exists g: Int; is_nonneg(g) and add(d, g) = n) -> at_most(d, n)
+                            [by iff_elim_backward d-at-most-n-iff-gap]
+                          @d-reaches-n-gap-exists |
+                            exists g: Int; is_nonneg(g) and add(d, g) = n
+                            [by exists_intro(mul(d, sub(k, ONE))) gap-witnesses-at-most]
                           @d-at-most-n |
                             at_most(d, n)
-                            [by exists_intro(mul(d, sub(k, ONE))) gap-witnesses-at-most]
+                            [by modus_ponens gap-gives-d-at-most-n d-reaches-n-gap-exists]
                         }
                       @d-at-most-n |
                         at_most(d, n)
