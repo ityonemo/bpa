@@ -118,19 +118,25 @@ pub const Pool = struct {
     /// needed. Mirrors the kernel's `rewriteMatches` acceptance (all-occurrences
     /// is a valid instance of its "some occurrences" congruence walk), so a step
     /// justified by rewriting toward this result kernel-checks. Used by the
-    /// `transitive` accelerant to construct each rewrite target.
+    /// `chain` accelerant to construct each rewrite target.
     pub fn rewriteAll(self: *Pool, id: TermId, from: TermId, to: TermId) Allocator.Error!TermId {
         if (self.alphaEq(id, from)) return to;
         switch (self.get(id)) {
             .bvar, .fvar => return id,
             .app => |a| {
+                // Snapshot the arg ids FIRST: each recursive rewriteAll appends to
+                // `self.extra` (via addApp) and may reallocate it, invalidating the
+                // `self.args(a)` slice mid-iteration. Copy into the arena-stable
+                // `new_args`, then rewrite in place.
                 const new_args = try self.arena.alloc(TermId, a.args_len);
-                for (self.args(a), new_args) |arg, *na| na.* = try self.rewriteAll(arg, from, to);
+                @memcpy(new_args, self.args(a));
+                for (new_args) |*na| na.* = try self.rewriteAll(na.*, from, to);
                 return self.addApp(.app, a.sym, new_args);
             },
             .pred => |a| {
                 const new_args = try self.arena.alloc(TermId, a.args_len);
-                for (self.args(a), new_args) |arg, *na| na.* = try self.rewriteAll(arg, from, to);
+                @memcpy(new_args, self.args(a));
+                for (new_args) |*na| na.* = try self.rewriteAll(na.*, from, to);
                 return self.addApp(.pred, a.sym, new_args);
             },
             .eq => |p| return self.add(.{ .eq = .{ .lhs = try self.rewriteAll(p.lhs, from, to), .rhs = try self.rewriteAll(p.rhs, from, to) } }),
