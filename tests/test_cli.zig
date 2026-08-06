@@ -217,11 +217,11 @@ pub fn addTests(
     // `forall k; guard(k) -> forall s,t; …` applied in one step).
     ctx.okSilent(&.{ "check", "tests/cases/specialize_interleave.bpa" });
 
-    // `transitive`: prove A = Z from cited equations used in any direction +
+    // `chain`: prove A = Z from cited equations used in any direction +
     // congruence (union-find + BFS, emits a rewrite/symmetry certificate).
     // Positive (transitivity, congruence, combined); negative (no path).
-    ctx.okSilent(&.{ "check", "tests/cases/transitive.bpa" });
-    ctx.fail(&.{ "check", "tests/cases/transitive_bad.bpa" }, "tests/cases/transitive_bad.bpa:11:18: error: transitive: cannot connect 'a' to 'z' from the cited equations\n");
+    ctx.okSilent(&.{ "check", "tests/cases/chain.bpa" });
+    ctx.fail(&.{ "check", "tests/cases/chain_bad.bpa" }, "tests/cases/chain_bad.bpa:11:18: error: chain: cannot connect 'a' to 'z' from the cited equations\n");
     // over-args (∀ prefix exhausted), extra hyp with no antecedent, and a schema
     // (redirect to instantiate) each fail cleanly.
     ctx.fail(&.{ "check", "tests/cases/specialize_overargs_bad.bpa" }, "tests/cases/specialize_overargs_bad.bpa:7:44: error: specialize: 'p(ZERO)' is not universally quantified here (too many arguments)\n");

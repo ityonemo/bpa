@@ -1,9 +1,9 @@
-//! The `transitive` accelerant (module `chain`): prove an equality goal `A = Z`
+//! The `chain` accelerant (module `chain`): prove an equality goal `A = Z`
 //! from a bag of cited equations used in ANY direction, closed under congruence.
 //!
 //! Where `simplify` orients each cited equation left-to-right and reduces both
 //! sides to a normal form (and fails when the equations must be used in
-//! conflicting directions), `transitive` treats each cited `X = Y` as an
+//! conflicting directions), `chain` treats each cited `X = Y` as an
 //! undirected edge and does a breadth-first search for a rewrite path connecting
 //! `A` to `Z`. Because the kernel `rewrite` rule already rewrites congruent
 //! SUBTERMS, applying an equation `p = q` (or its `symmetry` flip `q = p`)
@@ -37,17 +37,17 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
     const loc = c.rule.start;
     const gnode = self.pool.get(goal);
     if (gnode != .eq) {
-        return self.fail(loc, "transitive proves an equation 'A = Z'; the goal is '{s}'", .{try self.renderTerm(goal)});
+        return self.fail(loc, "chain proves an equation 'A = Z'; the goal is '{s}'", .{try self.renderTerm(goal)});
     }
     const start = gnode.eq.lhs;
     const target = gnode.eq.rhs;
 
-    if (c.refs.len == 0) return self.fail(loc, "transitive needs at least one cited equation", .{});
+    if (c.refs.len == 0) return self.fail(loc, "chain needs at least one cited equation", .{});
     const eqs = try self.arena.alloc(Equation, c.refs.len);
     for (c.refs, eqs) |ref, *e| {
         const s = try self.resolveStepRef(low, ref);
         const n = self.pool.get(low.steps.items[@intFromEnum(s.id)].formula);
-        if (n != .eq) return self.fail(ref.start, "transitive: '{s}' is not an equation", .{self.text(ref)});
+        if (n != .eq) return self.fail(ref.start, "chain: '{s}' is not an equation", .{self.text(ref)});
         e.* = .{ .step = s, .lhs = n.eq.lhs, .rhs = n.eq.rhs };
     }
 
@@ -102,7 +102,7 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         }
     }
     if (!found) {
-        return self.fail(loc, "transitive: cannot connect '{s}' to '{s}' from the cited equations", .{ try self.renderTerm(start), try self.renderTerm(target) });
+        return self.fail(loc, "chain: cannot connect '{s}' to '{s}' from the cited equations", .{ try self.renderTerm(start), try self.renderTerm(target) });
     }
 
     // reconstruct the path start → target (list of terms, target last).
@@ -111,7 +111,7 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         var t = target;
         while (!self.pool.alphaEq(t, start)) {
             try path.append(self.arena, t);
-            const edge = came_from.get(t) orelse return self.fail(loc, "transitive: internal path reconstruction failed at '{s}'", .{try self.renderTerm(t)});
+            const edge = came_from.get(t) orelse return self.fail(loc, "chain: internal path reconstruction failed at '{s}'", .{try self.renderTerm(t)});
             t = edge.result;
         }
     }

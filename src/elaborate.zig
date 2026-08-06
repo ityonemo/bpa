@@ -63,7 +63,7 @@ const accelerants = [_]Accelerant{
     .{ .name = "ext_quantified", .justify = &accel_ext.justifyQuantified },
     .{ .name = "model", .justify = &accel_model.justify },
     .{ .name = "specialize", .justify = &accel_specialize.justify },
-    .{ .name = "transitive", .justify = &accel_chain.justify },
+    .{ .name = "chain", .justify = &accel_chain.justify },
 };
 
 /// name -> index into `accelerants`, built once at comptime.
@@ -1230,7 +1230,7 @@ pub const Elaborator = struct {
         iff_rewrite,
         instantiate,
         specialize,
-        transitive,
+        chain,
         simplify,
         simplify_quantified,
         ac,
@@ -1275,7 +1275,7 @@ pub const Elaborator = struct {
         .{ "iff_rewrite", .iff_rewrite },
         .{ "instantiate", .instantiate },
         .{ "specialize", .specialize },
-        .{ "transitive", .transitive },
+        .{ "chain", .chain },
         .{ "simplify", .simplify },
         .{ "simplify_quantified", .simplify_quantified },
         .{ "assoc_commut", .ac },
@@ -1548,7 +1548,7 @@ pub const Elaborator = struct {
             },
             // accelerated tactics were dispatched through the registry above
             // (`specialize` among them — it emits a forall_elim+modus_ponens chain).
-            .simplify, .simplify_quantified, .ac, .ac_quantified, .assoc, .assoc_quantified, .polynomial, .polynomial_quantified, .tautology, .arithmetic, .ext, .ext_quantified, .model, .specialize, .transitive => unreachable,
+            .simplify, .simplify_quantified, .ac, .ac_quantified, .assoc, .assoc_quantified, .polynomial, .polynomial_quantified, .tautology, .arithmetic, .ext, .ext_quantified, .model, .specialize, .chain => unreachable,
         }
     }
 
