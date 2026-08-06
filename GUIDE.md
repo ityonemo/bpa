@@ -886,6 +886,20 @@ order. With NO hyps it is a bare specialization (just the ∀-elim chain). For a
 parameterized SCHEMA (a `prop`-parameter), use `instantiate` instead — `specialize`
 is for ordinary quantified theorems.
 
+**Args and hyps INTERLEAVE by formula structure.** `specialize` walks the cited
+formula: at each `forall` it consumes the next argument, at each leading `->` it
+consumes the next hypothesis, in the order the formula dictates. So the common
+guarded-induction shape `forall k; guard(k) -> forall s, t; …` is applied in one
+step — the args `(k, s, t)` and the hyps thread through the interleaved binders and
+antecedents automatically:
+
+```bpa
+// forall k; is_nonneg(k) -> forall s,t,l; is_nonneg(l) -> … -> k = l
+@k-equals-l |
+  k = l
+  [by specialize factorizationLengthUnique(k, s, t, l) k-nonneg l-nonneg s-primes t-primes eq]
+```
+
 ### RULE: model
 
 `[by model(INSTANCE) source.theorem]` — transfer an abstract theory's proven theorem

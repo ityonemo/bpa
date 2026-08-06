@@ -213,6 +213,9 @@ pub fn addTests(
     // chain, emitted + kernel-checked) in one step. Positive: single/multi-arg,
     // multi-hyp, no-hyp all check strict.
     ctx.okSilent(&.{ "check", "tests/cases/specialize.bpa" });
+    // args + hyps interleave by formula structure (the guarded-induction shape
+    // `forall k; guard(k) -> forall s,t; …` applied in one step).
+    ctx.okSilent(&.{ "check", "tests/cases/specialize_interleave.bpa" });
     // over-args (∀ prefix exhausted), extra hyp with no antecedent, and a schema
     // (redirect to instantiate) each fail cleanly.
     ctx.fail(&.{ "check", "tests/cases/specialize_overargs_bad.bpa" }, "tests/cases/specialize_overargs_bad.bpa:7:44: error: specialize: 'p(ZERO)' is not universally quantified here (too many arguments)\n");

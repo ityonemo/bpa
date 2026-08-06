@@ -43,29 +43,46 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
     // prefix — every arg but the last emits an intermediate step).
     var cur = try self.emitStep(low, block_id, name_tok.start, cited_formula, cite_just);
     var cur_formula = cited_formula;
-    for (c.args) |arg_expr| {
+    // Walk the cited formula by STRUCTURE, threading args and hyps in order: at a
+    // `forall` consume the next arg (forall_elim); at a leading `->` consume the
+    // next hyp (modus_ponens). This handles the interleaved guarded shape
+    // `∀k; guard(k) -> ∀s,t; …` that a strict args-then-hyps split cannot — and
+    // it is still just an emitted elim+mp chain the kernel re-checks (no trust
+    // surface: the accelerant is only choosing the emission order).
+    var ai: usize = 0; // next arg index
+    var hi: usize = 0; // next hyp (ref) index
+    while (ai < c.args.len or hi < c.refs.len) {
+        // is this the FINAL consumption? If so, its justification is returned as
+        // this step's own (no intermediate step emitted). Otherwise emit and advance.
+        const is_last = (ai + 1 >= c.args.len) and (hi >= c.refs.len) or (ai >= c.args.len) and (hi + 1 >= c.refs.len);
         const node = self.pool.get(cur_formula);
-        if (node != .quant or node.quant.q != .forall) {
-            return self.fail(Elaborator.exprLoc(arg_expr), "specialize: '{s}' is not universally quantified here (too many arguments)", .{try self.renderTerm(cur_formula)});
+        if (node == .quant and node.quant.q == .forall and ai < c.args.len) {
+            const arg_expr = c.args[ai];
+            ai += 1;
+            const arg = try self.elaborateExpr(arg_expr);
+            const opened = try self.pool.open(node.quant.body, arg.id);
+            const j: kernel.Justification = .{ .forall_elim = .{ .step = cur, .with = arg.id, .with_loc = Elaborator.exprLoc(arg_expr) } };
+            if (is_last) return j;
+            cur = try self.emitStep(low, block_id, Elaborator.exprLoc(arg_expr), opened, j);
+            cur_formula = opened;
+        } else if (node == .bin and node.bin.op == .implies and hi < c.refs.len) {
+            const ref = c.refs[hi];
+            hi += 1;
+            const ant = try self.resolveStepRef(low, ref);
+            const j: kernel.Justification = .{ .modus_ponens = .{ .implication = cur, .antecedent = ant } };
+            if (is_last) return j;
+            cur = try self.emitStep(low, block_id, ref.start, node.bin.rhs, j);
+            cur_formula = node.bin.rhs;
+        } else {
+            // structure doesn't match the remaining inputs.
+            if (node == .quant and node.quant.q == .forall) {
+                // a binder remains but only hyps left — a hyp can't skip a binder.
+                return self.fail(c.refs[hi].start, "specialize: '{s}' is still universally quantified — supply an argument before this hypothesis", .{try self.renderTerm(cur_formula)});
+            }
+            if (ai < c.args.len) return self.fail(Elaborator.exprLoc(c.args[ai]), "specialize: '{s}' is not universally quantified here (too many arguments)", .{try self.renderTerm(cur_formula)});
+            return self.fail(c.refs[hi].start, "specialize: no antecedent left to discharge for '{s}'", .{self.text(c.refs[hi])});
         }
-        const arg = try self.elaborateExpr(arg_expr);
-        const opened = try self.pool.open(node.quant.body, arg.id);
-        cur = try self.emitStep(low, block_id, Elaborator.exprLoc(arg_expr), opened, .{ .forall_elim = .{ .step = cur, .with = arg.id, .with_loc = Elaborator.exprLoc(arg_expr) } });
-        cur_formula = opened;
     }
-    // no hyps: the specialized formula IS the goal — return its cite/elim just.
-    if (c.refs.len == 0) return low.steps.items[@intFromEnum(cur.id)].just;
-    // modus_ponens each hypothesis ref against a leading `->` antecedent.
-    for (c.refs, 0..) |ref, i| {
-        const node = self.pool.get(cur_formula);
-        if (node != .bin or node.bin.op != .implies) {
-            return self.fail(ref.start, "specialize: no antecedent left to discharge for '{s}'", .{self.text(ref)});
-        }
-        const ant = try self.resolveStepRef(low, ref);
-        const j: kernel.Justification = .{ .modus_ponens = .{ .implication = cur, .antecedent = ant } };
-        if (i == c.refs.len - 1) return j; // last discharge = this step
-        cur = try self.emitStep(low, block_id, ref.start, node.bin.rhs, j);
-        cur_formula = node.bin.rhs;
-    }
-    unreachable;
+    // nothing consumed (bare `specialize THM`): the cite itself is the justification.
+    return low.steps.items[@intFromEnum(cur.id)].just;
 }

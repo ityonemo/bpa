@@ -84,7 +84,7 @@ qed
 | `rewrite EQ TARGET` | 2 | replace EQ's lhs by rhs in TARGET |
 | `iff_rewrite BICOND TARGET` | 2 | from `P iff Q`, replace sub-prop P by Q in TARGET (any position). Kernel-checked, no taint |
 | `instantiate NAME(args) refs…` | schema + premise refs | monomorphize a schema; refs discharge its leading antecedents |
-| `specialize THM(args) hyps…` | theorem + hyp refs | apply a `forall`-THEOREM (or axiom) in ONE step: ∀-elim at each arg, then modus_ponens each hyp against a leading `->` antecedent. Kernel-checked (emits the elim+mp chain), no taint. Collapses the `@rule`/`@at-args`/`@result` 3-step ritual. No hyps = a bare specialization |
+| `specialize THM(args) hyps…` | theorem + hyp refs | apply a `forall`-THEOREM (or axiom) in ONE step. Args + hyps INTERLEAVE by formula structure: walks the formula, ∀-elim at each `forall` (next arg), modus_ponens at each leading `->` (next hyp) — so `forall k; guard(k) -> forall s,t; …` applies in one step. Kernel-checked (emits the elim+mp chain), no taint. No hyps = a bare specialization |
 
 `case <disj-step> { @when-left| assume A { … } @when-right| assume B { … } }` — the 3-way (or N-way) disjunction eliminator. Use this instead of trying to give `or_elim` more than 2 arms.
 

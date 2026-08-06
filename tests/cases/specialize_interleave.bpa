@@ -1,0 +1,32 @@
+// specialize threading args and hyps by FORMULA STRUCTURE: a lemma of shape
+// `forall k; guard(k) -> forall s; body(k,s)` interleaves a binder, an antecedent,
+// then more binders. specialize walks the formula: peel an arg at each forall,
+// discharge a hyp at each leading `->`, in order.
+sort Nat
+const Z: Nat
+pred guard(n: Nat)
+pred p(a: Nat, b: Nat)
+
+// the dominant guarded-induction shape: ∀k; guard(k) -> ∀s,t; p(k,s) -> body
+axiom lem: forall k: Nat; guard(k) -> forall s: Nat; forall t: Nat; p(s, t) -> p(k, s)
+
+theorem interleaved: forall k: Nat; guard(k) -> p(Z, Z) -> p(k, Z)
+proof
+  @generalize-k |
+    fix k: Nat {
+      @given-guard |
+        assume guard(k) {
+          @g | guard(k) [by hypothesis given-guard]
+          @given-pzz |
+            assume p(Z, Z) {
+              @pzz | p(Z, Z) [by hypothesis given-pzz]
+              // args: k (for ∀k), Z, Z (for ∀s,∀t); hyps: g (for guard(k)), pzz (for p(s,t))
+              // interleaved: ∀k → guard(k) → ∀s → ∀t → p(s,t) → p(k,s)
+              @result | p(k, Z) [by specialize lem(k, Z, Z) g pzz]
+            }
+          @pzz-imp | p(Z, Z) -> p(k, Z) [by implies_intro given-pzz]
+        }
+      @guard-imp | guard(k) -> p(Z, Z) -> p(k, Z) [by implies_intro given-guard]
+    }
+  @conclusion | forall k: Nat; guard(k) -> p(Z, Z) -> p(k, Z) [by forall_intro generalize-k]
+qed
