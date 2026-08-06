@@ -1256,6 +1256,180 @@ proof
     [by forall_intro generalize-b]
 qed
 
+// Left cancellation for a positive factor: a·x = a·y with a > 0 forces x = y.
+// a·(x−y) = a·x − a·y = 0 (distribute over the difference, use the hypothesis),
+// so by positiveFactorZeroForcesZero x − y = 0, whence x = y.
+theorem mulCancelLeft: forall a, x, y: Int;
+  less_than(ZERO, a) -> mul(a, x) = mul(a, y) -> x = y
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-x |
+        fix x: Int {
+          @generalize-y |
+            fix y: Int {
+              @given-a-positive |
+                assume less_than(ZERO, a) {
+                  @given-products-equal |
+                    assume mul(a, x) = mul(a, y) {
+                      @a-positive |
+                        less_than(ZERO, a)
+                        [by hypothesis given-a-positive]
+                      @products-equal |
+                        mul(a, x) = mul(a, y)
+                        [by hypothesis given-products-equal]
+                      // a·(x−y) = a·x − a·y
+                      @distribute-over-difference |
+                        forall b, q1, q2: Int; mul(b, sub(q1, q2)) = sub(mul(b, q1), mul(b, q2))
+                        [by theorem distributesOverDifference]
+                      @product-of-difference |
+                        mul(a, sub(x, y)) = sub(mul(a, x), mul(a, y))
+                        [by forall_elim(a, x, y) distribute-over-difference]
+                      // a·x − a·y = a·y − a·y, using a·x = a·y
+                      @reflexivity-of-collapse |
+                        sub(mul(a, x), mul(a, y)) = sub(mul(a, x), mul(a, y))
+                        [by reflexivity]
+                      @difference-collapses |
+                        sub(mul(a, x), mul(a, y)) = sub(mul(a, y), mul(a, y))
+                        [by rewrite products-equal reflexivity-of-collapse]
+                      // a·y − a·y = 0
+                      @self-difference-rule |
+                        forall n: Int; sub(n, n) = ZERO
+                        [by theorem subSelf]
+                      @collapsed-difference-is-zero |
+                        sub(mul(a, y), mul(a, y)) = ZERO
+                        [by forall_elim(mul(a, y)) self-difference-rule]
+                      @product-difference-collapses |
+                        mul(a, sub(x, y)) = sub(mul(a, y), mul(a, y))
+                        [by rewrite difference-collapses product-of-difference]
+                      @product-of-difference-is-zero |
+                        mul(a, sub(x, y)) = ZERO
+                        [by rewrite collapsed-difference-is-zero product-difference-collapses]
+                      // a > 0 and a·(x−y) = 0 force x−y = 0
+                      @positive-factor-zero |
+                        forall b, z: Int; less_than(ZERO, b) -> mul(b, z) = ZERO -> z = ZERO
+                        [by theorem positiveFactorZeroForcesZero]
+                      @difference-forced-zero-if |
+                        less_than(ZERO, a) -> mul(a, sub(x, y)) = ZERO -> sub(x, y) = ZERO
+                        [by forall_elim(a, sub(x, y)) positive-factor-zero]
+                      @difference-is-zero |
+                        sub(x, y) = ZERO
+                        [by tautology difference-forced-zero-if a-positive product-of-difference-is-zero]
+                      // x − y = 0 gives x = y: (x−y)+y = x and (x−y)+y = 0+y = y
+                      @sub-add-cancel-rule |
+                        forall a2, b: Int; add(sub(a2, b), b) = a2
+                        [by theorem subAddCancel]
+                      @difference-plus-y-is-x |
+                        add(sub(x, y), y) = x
+                        [by forall_elim(x, y) sub-add-cancel-rule]
+                      @zero-plus-y-is-x |
+                        add(ZERO, y) = x
+                        [by rewrite difference-is-zero difference-plus-y-is-x]
+                      @add-zero-left-rule |
+                        forall b: Int; add(ZERO, b) = b
+                        [by axiom addZeroLeft]
+                      @zero-plus-y-is-y |
+                        add(ZERO, y) = y
+                        [by forall_elim(y) add-zero-left-rule]
+                      // y = add(ZERO, y) = x
+                      @y-is-zero-plus-y |
+                        y = add(ZERO, y)
+                        [by symmetry zero-plus-y-is-y]
+                      @y-equals-x |
+                        y = x
+                        [by rewrite zero-plus-y-is-x y-is-zero-plus-y]
+                      @conclusion-x-equals-y |
+                        x = y
+                        [by symmetry y-equals-x]
+                    }
+                  @products-equal-gives-equal |
+                    mul(a, x) = mul(a, y) -> x = y
+                    [by implies_intro given-products-equal]
+                }
+              @positive-gives-cancel |
+                less_than(ZERO, a) -> mul(a, x) = mul(a, y) -> x = y
+                [by implies_intro given-a-positive]
+            }
+          @discharge-y |
+            forall y: Int; less_than(ZERO, a) -> mul(a, x) = mul(a, y) -> x = y
+            [by forall_intro generalize-y]
+        }
+      @discharge-x |
+        forall x, y: Int; less_than(ZERO, a) -> mul(a, x) = mul(a, y) -> x = y
+        [by forall_intro generalize-x]
+    }
+  @conclusion |
+    forall a, x, y: Int; less_than(ZERO, a) -> mul(a, x) = mul(a, y) -> x = y
+    [by forall_intro generalize-a]
+qed
+
+// Right cancellation: x·a = y·a with a > 0 forces x = y. Commute both products
+// to a·x = a·y and apply mulCancelLeft.
+theorem mulCancelRight: forall a, x, y: Int;
+  less_than(ZERO, a) -> mul(x, a) = mul(y, a) -> x = y
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-x |
+        fix x: Int {
+          @generalize-y |
+            fix y: Int {
+              @given-a-positive |
+                assume less_than(ZERO, a) {
+                  @given-products-equal |
+                    assume mul(x, a) = mul(y, a) {
+                      @a-positive |
+                        less_than(ZERO, a)
+                        [by hypothesis given-a-positive]
+                      @products-equal |
+                        mul(x, a) = mul(y, a)
+                        [by hypothesis given-products-equal]
+                      @commute-rule |
+                        forall p, q: Int; mul(p, q) = mul(q, p)
+                        [by theorem mulIsCommutative]
+                      @x-times-a-commutes |
+                        mul(x, a) = mul(a, x)
+                        [by forall_elim(x, a) commute-rule]
+                      @y-times-a-commutes |
+                        mul(y, a) = mul(a, y)
+                        [by forall_elim(y, a) commute-rule]
+                      @left-products-equal-step |
+                        mul(a, x) = mul(y, a)
+                        [by rewrite x-times-a-commutes products-equal]
+                      @left-products-equal |
+                        mul(a, x) = mul(a, y)
+                        [by rewrite y-times-a-commutes left-products-equal-step]
+                      @cancel-left-rule |
+                        forall a2, x2, y2: Int; less_than(ZERO, a2) -> mul(a2, x2) = mul(a2, y2) -> x2 = y2
+                        [by theorem mulCancelLeft]
+                      @cancel-at-a-x-y |
+                        less_than(ZERO, a) -> mul(a, x) = mul(a, y) -> x = y
+                        [by forall_elim(a, x, y) cancel-left-rule]
+                      @conclusion-x-equals-y |
+                        x = y
+                        [by tautology cancel-at-a-x-y a-positive left-products-equal]
+                    }
+                  @products-equal-gives-equal |
+                    mul(x, a) = mul(y, a) -> x = y
+                    [by implies_intro given-products-equal]
+                }
+              @positive-gives-cancel |
+                less_than(ZERO, a) -> mul(x, a) = mul(y, a) -> x = y
+                [by implies_intro given-a-positive]
+            }
+          @discharge-y |
+            forall y: Int; less_than(ZERO, a) -> mul(x, a) = mul(y, a) -> x = y
+            [by forall_intro generalize-y]
+        }
+      @discharge-x |
+        forall x, y: Int; less_than(ZERO, a) -> mul(x, a) = mul(y, a) -> x = y
+        [by forall_intro generalize-x]
+    }
+  @conclusion |
+    forall a, x, y: Int; less_than(ZERO, a) -> mul(x, a) = mul(y, a) -> x = y
+    [by forall_intro generalize-a]
+qed
+
 theorem remainderDifferenceIsMultiple: forall b, q1, r1, q2, r2: Int;
   add(mul(b, q1), r1) = add(mul(b, q2), r2) -> sub(r2, r1) = mul(b, sub(q1, q2))
 proof
