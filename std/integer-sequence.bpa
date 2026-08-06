@@ -106,6 +106,16 @@ axiom seqConcatExists: forall s: Seq; forall t: Seq; forall j: Int; forall k: In
   and (forall i: Int; is_nonneg(i) -> less_than(i, k) -> at(u, add(j, i)) = at(t, i))
   and productUpTo(u, add(j, k)) = mul(productUpTo(s, j), productUpTo(t, k))
 
+// The prepend x :: s: a sequence whose head is x and whose tail (indices shifted
+// up by one) is s. Unlike seqConcatExists this is a pure ENTRY-graph builder (no
+// product clause): at(result, 0) = x, and at(result, succ i) = at(s, i) for i ≥ 0.
+// The cons the FTA-uniqueness index map σ is built from — prepend the matched
+// index, recurse on the shorter factorization.
+axiom seqPrependExists: forall x: Int; forall s: Seq;
+  exists u: Seq;
+  at(u, ZERO) = x
+  and (forall i: Int; is_nonneg(i) -> at(u, succ(i)) = at(s, i))
+
 // The sequence s with the entry at index m (0 ≤ m ≤ k) deleted: its length-k
 // product times the removed entry recovers s's length-(k+1) product, and its
 // entries are those of s with index m skipped (unchanged less_than m, shifted up by
