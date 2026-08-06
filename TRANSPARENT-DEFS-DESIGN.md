@@ -32,6 +32,68 @@ this extends transparency to **predicates**.
   overturns that: a model MAY remap a transparent pred's name, and soundness then
   requires a **definition-agreement check** — see "Models and remodeling".
 
+## `define` IS A MACRO (framing that decides much of the design)
+
+`define` should be understood as a **macro**: meaning-preserving expansion, invisible
+to semantics. `define foo = body` means "wherever you write `foo`, you mean `body`" —
+nothing more. Its ONLY purposes are **legibility** (write `prime(p)`, not the 60-char
+conjunction) and **proof evaluation** (the checker works with whichever form is
+cheaper). It adds ZERO logical content and ZERO trust surface — `foo` is not a new
+symbol the theory reasons about; it is shorthand. This framing makes several things
+fall out for free: the HARD RULE below (a macro carries no axioms), writer-
+obliviousness (you reason about the expansion, never the macro), and — see "Models" —
+the ride-along-only model story (a macro pre-expands, so it is never a model entity).
+
+Open consequence to settle: a pure macro is EAGER (no surviving symbol; gone after
+expansion, like today's term-`define`). This pulls AGAINST the earlier "lazy for
+remodeling" decision — but the model audit showed remodeling needs the BODY's
+primitives remappable, not the define'd NAME, which an eager macro already gives. So
+"macro" argues for EAGER + a separate fold-for-DISPLAY pass (re-fold `prime(p)` in
+errors/outline) instead of lazy+kernel-defeq. Eager is much smaller (no kernel
+definitional equality, no foldable-symbol survival). Tradeoff: eager makes proofs
+shorter (no unfold steps — the FTA win) but interned terms bigger. NOT yet finalized
+eager-vs-lazy, but macro-framing leans eager. [decide before building]
+
+## GUARD REQUIREMENT: `define` produces a VALUE, never a NAME
+
+Because a `define` is a macro expanding to a **term** or a **prop**, it is legal ONLY
+where a term/prop is legal, and MUST BE REJECTED in every position that expects the
+NAME of a declared entity. "You can't `define` a model" is one instance of this
+general guard. A define'd name in a name-position is a category error and — as the
+model-source case showed (silently accepted until guarded) — the danger is SILENT
+acceptance, not a clean error. So every name-taking position must be audited to
+REJECT a define with a clear message.
+
+LEGAL (value positions): inside a term, a function argument, either side of `=`; a
+proof goal, under connectives, an `assume` body, the RHS of an axiom/theorem.
+
+FORBIDDEN (name positions) — the guards to add/verify:
+1. **model** — a define is not a model name (`model D { }`), not a mapping SOURCE
+   (LANDED guard), and not citable as `[by model(D) …]`.
+2. **sort position** — `forall x: D; …` / any `: D` binder. A define is a term/prop,
+   not a sort. ("expected a sort, got a define'd term".)
+3. **declaration head / redeclaration** — can't `func`/`pred`/`sort`/`axiom` a name
+   already `define`d, nor `define` a taken name. (Likely `checkFreshName`; verify
+   BOTH directions.)
+4. **refinement guard** — `sort H = G where D`. A `where` guard must be a predicate
+   SYMBOL; a define (macro, no stable symbol) cannot be referenced here.
+5. **citation slot** — `[by axiom D]` / `[by theorem D]`. A define is not a statement.
+6. any other position expecting a declaration NAME rather than a value.
+
+Test: does the position want a *value* (accept) or a *name of a declared entity*
+(reject)? A define inherits the same prohibitions as any term/prop-producing symbol
+(func/const), PLUS it can't be a guard-pred-name (it's not even a stable symbol).
+DEFERRED: the position-by-position audit (probe a define'd name in each slot; guard
+wherever it silently accepts) — do it when the pred-shaped `define` is built. Only the
+model-source guard is landed so far.
+
+**Negative-test suite (once built):** the guards are proven by a SERIES OF NEGATIVE
+TESTS — one RED fixture per forbidden position (a define'd name used as a sort binder,
+a model name, a `where` guard, an `[by axiom D]` citation, a redeclaration, …), each
+gating the exact rejection error. Mirrors the landed `model_define_source_bad.bpa`
+pattern. Write these as the acceptance gate for the guard work; a silently-accepting
+position (no error) is a suite failure.
+
 ## HARD RULE: two axioms → cannot be a `define`
 
 A predicate characterized by TWO (or more) separate `axiom` declarations CANNOT be
