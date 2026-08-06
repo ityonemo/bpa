@@ -323,13 +323,12 @@ pub const Elaborator = struct {
                             const gsym = self.env.findSym(self.file, gname) orelse
                                 return self.fail(g.start, "predicated-sort guard '{s}' is not a predicate in scope", .{self.text(g)});
                             const sym = self.env.sym(gsym);
-                            // INTERIM (until where-reification lands, task #125): a
-                            // `where` guard naming a transparent (`define`d) pred must
-                            // reify into a synthetic opaque pred + iff axiom. Not built
-                            // yet — reject cleanly rather than carry an incoherent guard.
-                            if (sym.definition != null) {
-                                return self.fail(g.start, "predicated-sort guard '{s}' is a transparent (`define`d) predicate; `where`-reification of defines is not yet implemented — use an opaque `pred` for the guard", .{self.text(g)});
-                            }
+                            // A `where` guard naming a transparent (`define`d) pred is
+                            // REIFIED (task #125): the guard is the define's inlined
+                            // body (see qualifierApp), so the define rides along as a
+                            // qualifier symbol exactly like an opaque pred — its uses
+                            // expand. The unary-pred check below still applies (a
+                            // define'd pred has kind == .pred and its declared arity).
                             // the guard must be a unary predicate over the target's
                             // CARRIER (a pred's arg sorts are stored lowered, so a
                             // pred over a refined target `B` has arg-sort = carrier).
@@ -471,7 +470,7 @@ pub const Elaborator = struct {
                     const carrier = self.env.carrierOf(refined);
                     const pfv = try self.pool.add(.{ .fvar = .{ .name = pn, .sort = carrier } });
                     for (quals) |qpred| {
-                        const app = try self.pool.addApp(.pred, qpred, &.{pfv});
+                        const app = try self.qualifierApp(qpred, pfv);
                         guard = if (guard) |prev| try self.pool.add(.{ .bin = .{ .op = .and_op, .lhs = prev, .rhs = app } }) else app;
                     }
                 }
@@ -3190,11 +3189,9 @@ pub const Elaborator = struct {
         const gsym = self.env.findSym(self.file, gname) orelse
             return self.fail(g.start, "sort refinement '{s}' is not a predicate in scope", .{self.text(g)});
         const sym = self.env.sym(gsym);
-        // INTERIM (until where-reification lands, task #125): a define'd guard must
-        // reify into a synthetic opaque pred + iff axiom. Not built yet — reject.
-        if (sym.definition != null) {
-            return self.fail(g.start, "sort refinement '{s}' is a transparent (`define`d) predicate; `where`-reification of defines is not yet implemented — use an opaque `pred` for the guard", .{self.text(g)});
-        }
+        // A define'd guard is REIFIED (task #125): it rides along as a qualifier
+        // symbol and its uses expand to the inlined body (see qualifierApp). The
+        // unary-pred check below still applies.
         const arg_ok = sym.arg_sorts.len == 1 and
             self.env.carrierOf(sym.arg_sorts[0]) == self.env.carrierOf(base);
         if (sym.kind != .pred or !arg_ok) {
@@ -3209,6 +3206,21 @@ pub const Elaborator = struct {
         return self.env.addAnonymousRefinedSort(nm, b.sort.start, base, quals) catch return error.OutOfMemory;
     }
 
+    /// Apply a unary qualifier predicate `qpred` to argument `arg`, yielding the
+    /// guard proposition `qpred(arg)`. If `qpred` is a transparent (`define`d)
+    /// predicate, this EXPANDS its body with `arg` substituted for the sole param
+    /// (`where`-reification, task #125) — a define carries no kernel symbol, so the
+    /// guard must be its inlined body, exactly as a call-site expansion. An opaque
+    /// pred builds the ordinary application.
+    fn qualifierApp(self: *Elaborator, qpred: term.SymId, arg: TermId) ElabError!TermId {
+        const sym = self.env.sym(qpred);
+        if (sym.definition) |body| {
+            // a where-guard pred is validated unary, so exactly one param to bind.
+            return self.pool.substFvar(body, sym.param_names[0], arg);
+        }
+        return self.pool.addApp(.pred, qpred, &.{arg});
+    }
+
     /// The guard formula for a predicated fix/unpack eigenvariable `v` of sort
     /// `sort_tok`: the conjunction of `qual(v)` over the sort's qualifiers, or null
     /// if the sort is unrefined. (`v.sort` is already the carrier.)
@@ -3218,7 +3230,7 @@ pub const Elaborator = struct {
         const fv = try self.pool.add(.{ .fvar = v });
         var g: ?TermId = null;
         for (quals) |qpred| {
-            const app = try self.pool.addApp(.pred, qpred, &.{fv});
+            const app = try self.qualifierApp(qpred, fv);
             g = if (g) |prev| try self.pool.add(.{ .bin = .{ .op = .and_op, .lhs = prev, .rhs = app } }) else app;
         }
         return g;
@@ -3429,14 +3441,18 @@ pub const Elaborator = struct {
                 var i = q.binders.len;
                 while (i > 0) {
                     i -= 1;
-                    id = try self.pool.close(id, fresh[i]);
-                    // inject each qualifier guard on bvar0 (inside this quant).
+                    // inject each qualifier guard on the binder's FVAR (before closing),
+                    // then close guard+body together. Building the guard on an fvar
+                    // (not a raw bvar 0) is what lets qualifierApp splice a define'd
+                    // guard's body — whose OWN inner binders would recapture a bvar —
+                    // capture-free, since substFvar handles fvar substitution correctly.
                     for (quals) |qpred| {
-                        const bound = try self.pool.add(.{ .bvar = 0 });
-                        const guard_app = try self.pool.addApp(.pred, qpred, &.{bound});
+                        const bfv = try self.pool.add(.{ .fvar = .{ .name = fresh[i], .sort = sort } });
+                        const guard_app = try self.qualifierApp(qpred, bfv);
                         const connective: term.BinOp = if (q.q == .forall) .implies else .and_op;
                         id = try self.pool.add(.{ .bin = .{ .op = connective, .lhs = guard_app, .rhs = id } });
                     }
+                    id = try self.pool.close(id, fresh[i]);
                     id = try self.pool.add(.{ .quant = .{
                         .q = if (q.q == .forall) .forall else .exists,
                         .sort = sort,
@@ -3451,7 +3467,7 @@ pub const Elaborator = struct {
                         var f = t.formula;
                         for (quals) |qpred| {
                             const bound = try self.pool.add(.{ .fvar = .{ .name = fresh[i], .sort = sort } });
-                            const guard_app = try self.pool.addApp(.pred, qpred, &.{bound});
+                            const guard_app = try self.qualifierApp(qpred, bound);
                             f = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_app, .rhs = f } });
                         }
                         const closed = try self.pool.close(f, fresh[i]);
@@ -3469,7 +3485,7 @@ pub const Elaborator = struct {
                         var f = rf.*;
                         for (quals) |qpred| {
                             const bound = try self.pool.add(.{ .fvar = .{ .name = fresh[i], .sort = sort } });
-                            const guard_app = try self.pool.addApp(.pred, qpred, &.{bound});
+                            const guard_app = try self.qualifierApp(qpred, bound);
                             f = try self.pool.add(.{ .bin = .{ .op = .implies, .lhs = guard_app, .rhs = f } });
                         }
                         const closed = try self.pool.close(f, fresh[i]);
@@ -3543,7 +3559,7 @@ pub const Elaborator = struct {
     fn surfaceResultFact(self: *Elaborator, sym: Symbol, term_id: TermId) ElabError!void {
         if (sym.result_refined == sym.result) return;
         for (try self.sortQualifiers(sym.result_refined)) |qpred| {
-            const fact = try self.pool.addApp(.pred, qpred, &.{term_id});
+            const fact = try self.qualifierApp(qpred, term_id);
             try self.result_facts.append(self.arena, fact);
         }
     }

@@ -197,14 +197,14 @@ pub fn addTests(
     // so a proof that needs the body gets it for free — no unfold/cite step.
     ctx.okSilent(&.{ "check", "tests/cases/define_pred.bpa" });
 
-    // GUARD (interim, until where-reification lands — task #125): a `define`d pred
-    // as a `where` guard must be reified into a synthetic opaque pred + iff axiom
-    // so the refined sort carries a real symbol. Not built yet → reject cleanly at
-    // the named-sort site rather than carry an incoherent guard.
-    ctx.fail(&.{ "check", "tests/cases/define_where_guard_bad.bpa" }, "tests/cases/define_where_guard_bad.bpa:13:22: error: predicated-sort guard 'isBig' is a transparent (`define`d) predicate; `where`-reification of defines is not yet implemented — use an opaque `pred` for the guard\n");
+    // WHERE-REIFICATION (task #125): a `define`d pred is ACCEPTED as a `where`
+    // guard — it rides along as a qualifier symbol and its uses expand to the
+    // inlined body. Both the named-sort `sort H = G where D` site …
+    ctx.okSilent(&.{ "check", "tests/cases/define_where_guard.bpa" });
 
-    // …and at the anonymous inline-`where` site (`x: G where D` in a binder).
-    ctx.fail(&.{ "check", "tests/cases/define_where_guard_inline_bad.bpa" }, "tests/cases/define_where_guard_inline_bad.bpa:11:45: error: sort refinement 'isBig' is a transparent (`define`d) predicate; `where`-reification of defines is not yet implemented — use an opaque `pred` for the guard\n");
+    // … and the anonymous inline-`where` site (`x: G where D` in a binder), whose
+    // guard now expands in the goal so the proof (which sees the expanded body) matches.
+    ctx.okSilent(&.{ "check", "tests/cases/define_where_guard_inline.bpa" });
 
     // defines share the declaration namespace
     ctx.fail(&.{ "check", "tests/cases/define_bad.bpa" }, "tests/cases/define_bad.bpa:5:8: error: duplicate declaration of 'TWO'\n");

@@ -1,0 +1,13 @@
+// A `define`d predicate is accepted as a `where` guard (`where`-reification,
+// task #125): the refined sort carries the define as a qualifier symbol, and its
+// uses EXPAND to the inlined body. No synthetic pred or iff axiom is minted — a
+// define'd pred IS a real predicate symbol, so it rides along as a qualifier
+// exactly like an opaque pred; only its applications differ (they expand).
+
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+
+define isBig(n: Nat) = exists m: Nat; n = succ(m)
+
+sort Big = Nat where isBig
