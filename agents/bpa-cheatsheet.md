@@ -20,6 +20,23 @@ awk '/^#+ /{p=0} /^### KEYWORD: sort$/{p=1} p' GUIDE.md      # a declaration key
 
 Naming/label conventions are a SEPARATE doc — see `agents/style-guide.md`.
 
+## Checking workflow (ITERATE FAST, CONFIRM STRICT)
+
+While writing/fixing a proof, run **`bpa check --fast <file>`** every iteration —
+it trusts accelerated verdicts and skips kernel-certificate generation, so it's
+much faster feedback for the write-check-fix loop. It gives you the same
+pass/fail signal for your proof structure.
+
+Then, ONCE, before you declare the file done (and before it hits a gate), run
+plain **`bpa check <file>`** (strict — full kernel verification). This is the real
+guarantee. A proof can pass `--fast` but FAIL strict (an accelerant couldn't
+produce a kernel certificate) — the final strict pass catches that. A file is not
+"done" until plain `bpa check` is green with NO `NOT FULLY VERIFIED` banner.
+
+(Flags: `--fast` trusts accelerated verdicts; `--faster` also trusts imported
+proofs; `--reckless` also trusts imported schemas; `--draft` allows `hole`s. Use
+`--fast` for the loop; plain check to finalize.)
+
 ## Proof skeleton
 
 ```bpa
