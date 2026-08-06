@@ -138,24 +138,15 @@ proof
                               @b-equals-d-times-k |
                                 b = mul(d, k)
                                 [by hypothesis with-quotient-k]
+                              // add(a, b) = add(mul(d,j), mul(d,k)) = mul(d, add(j,k)),
+                              // stitching the two witness facts (a = d·j, b = d·k) and
+                              // left-distributivity, each used in whichever direction.
                               @sum-of-multiples-distributes |
                                 mul(d, add(j, k)) = add(mul(d, j), mul(d, k))
                                 [by specialize mulAddDistribLeft(d, j, k)]
-                              @sum-of-products-collects |
-                                add(mul(d, j), mul(d, k)) = mul(d, add(j, k))
-                                [by symmetry sum-of-multiples-distributes]
-                              @d-times-j-is-a |
-                                mul(d, j) = a
-                                [by symmetry a-equals-d-times-j]
-                              @d-times-k-is-b |
-                                mul(d, k) = b
-                                [by symmetry b-equals-d-times-k]
-                              @a-plus-multiple-is-d-multiple |
-                                add(a, mul(d, k)) = mul(d, add(j, k))
-                                [by rewrite d-times-j-is-a sum-of-products-collects]
                               @sum-is-d-multiple |
                                 add(a, b) = mul(d, add(j, k))
-                                [by rewrite d-times-k-is-b a-plus-multiple-is-d-multiple]
+                                [by chain a-equals-d-times-j b-equals-d-times-k sum-of-multiples-distributes]
                               @d-divides-sum-under-witness |
                                 divides(d, add(a, b))
                                 [by exists_intro(add(j, k)) sum-is-d-multiple]
