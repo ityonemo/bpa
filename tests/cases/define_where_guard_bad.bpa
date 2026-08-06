@@ -1,0 +1,13 @@
+// A `define`d predicate as a `where` guard requires REIFICATION (mint a synthetic
+// opaque pred + its iff axiom at the `where`, so the refined sort carries a real
+// symbol and guarded models keep working). That is a deferred must-have (task
+// #125). Until it lands, a define-guard is rejected cleanly rather than carrying
+// an incoherent opaque atom — use an opaque `pred` for the guard.
+
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+
+define isBig(n: Nat) = exists m: Nat; n = succ(m)
+
+sort Big = Nat where isBig

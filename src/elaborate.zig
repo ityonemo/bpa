@@ -323,6 +323,13 @@ pub const Elaborator = struct {
                             const gsym = self.env.findSym(self.file, gname) orelse
                                 return self.fail(g.start, "predicated-sort guard '{s}' is not a predicate in scope", .{self.text(g)});
                             const sym = self.env.sym(gsym);
+                            // INTERIM (until where-reification lands, task #125): a
+                            // `where` guard naming a transparent (`define`d) pred must
+                            // reify into a synthetic opaque pred + iff axiom. Not built
+                            // yet — reject cleanly rather than carry an incoherent guard.
+                            if (sym.definition != null) {
+                                return self.fail(g.start, "predicated-sort guard '{s}' is a transparent (`define`d) predicate; `where`-reification of defines is not yet implemented — use an opaque `pred` for the guard", .{self.text(g)});
+                            }
                             // the guard must be a unary predicate over the target's
                             // CARRIER (a pred's arg sorts are stored lowered, so a
                             // pred over a refined target `B` has arg-sort = carrier).
@@ -3183,6 +3190,11 @@ pub const Elaborator = struct {
         const gsym = self.env.findSym(self.file, gname) orelse
             return self.fail(g.start, "sort refinement '{s}' is not a predicate in scope", .{self.text(g)});
         const sym = self.env.sym(gsym);
+        // INTERIM (until where-reification lands, task #125): a define'd guard must
+        // reify into a synthetic opaque pred + iff axiom. Not built yet — reject.
+        if (sym.definition != null) {
+            return self.fail(g.start, "sort refinement '{s}' is a transparent (`define`d) predicate; `where`-reification of defines is not yet implemented — use an opaque `pred` for the guard", .{self.text(g)});
+        }
         const arg_ok = sym.arg_sorts.len == 1 and
             self.env.carrierOf(sym.arg_sorts[0]) == self.env.carrierOf(base);
         if (sym.kind != .pred or !arg_ok) {
