@@ -129,7 +129,7 @@ pub fn addTests(
     );
 
     // forward label references: a step may cite a later-defined label
-    ctx.ok(&.{ "check", "tests/cases/forward_ref.bpa" }, "OK: 6 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/forward_ref.bpa" });
 
     // mutually-citing steps form a justification cycle, reported by name
     ctx.fail(&.{ "check", "tests/cases/forward_ref_cycle.bpa" }, "tests/cases/forward_ref_cycle.bpa:10:4: error: cyclic justification: a -> b -> a\n");
@@ -146,37 +146,37 @@ pub fn addTests(
 
     // a deep but terminating instantiation chain (10 distinct schemas) is
     // accepted — the old inst_depth cap wrongly rejected it
-    ctx.ok(&.{ "check", "tests/cases/schema_deep_ok.bpa" }, "OK: 12 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/schema_deep_ok.bpa" });
 
     // kebab-case is rejected in a declaration-name position (parser)
     ctx.fail(&.{ "check", "tests/cases/kebab_decl_bad.bpa" }, "tests/cases/kebab_decl_bad.bpa:6:6: error: expected 'identifier', got 'foo-bar'\n");
 
     // kebab-case IS allowed for proof labels and [by ...] references
-    ctx.ok(&.{ "check", "tests/cases/kebab_label_ok.bpa" }, "OK: 4 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/kebab_label_ok.bpa" });
 
     // eta-sugar: a schema Nat->Prop param accepts a bare predicate name
-    ctx.ok(&.{ "check", "tests/cases/schema_eta.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/schema_eta.bpa" });
 
     // N-ary schema params: a RELATIONAL (2-arg) `Element -> Element -> Prop` param,
     // instantiated by a bare binary predicate (eta) and a 2-binder lambda, applied
     // to two args in the body (each application beta-reduces both binders).
-    ctx.ok(&.{ "check", "tests/cases/schema_binary_param.bpa" }, "OK: 7 declarations, 2 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/schema_binary_param.bpa" });
 
     // definite description (the tame ι) as an axiom-schema over a relational param:
     // a proven total+single-valued graph is realized by a function (`exists g`).
-    ctx.ok(&.{ "check", "tests/cases/choice_description.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/choice_description.bpa" });
 
     // the `case` construct: a 3-way disjunction split checks with every step kernel-checked
-    ctx.ok(&.{ "check", "tests/cases/case_split.bpa" }, "OK: 11 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/case_split.bpa" });
 
     // a `case` arm assuming the wrong disjunct is a located error
     ctx.fail(&.{ "check", "tests/cases/case_bad_arm.bpa" }, "tests/cases/case_bad_arm.bpa:20:16: error: case arm assumes 'q(Z)', but the disjunct here is 'p(Z)'\n");
 
     // forall_elim at several arguments emits the chain in one written step
-    ctx.ok(&.{ "check", "tests/cases/forall_elim_multi.bpa" }, "OK: 5 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/forall_elim_multi.bpa" });
 
     // no-shadowing rule: disjoint sibling subproofs may reuse a fix var
-    ctx.ok(&.{ "check", "tests/cases/fix_sibling_reuse.bpa" }, "OK: 9 declarations, 2 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/fix_sibling_reuse.bpa" });
 
     // no-shadowing rule for labels: an inner label shadowing an enclosing
     // one is an error (disjoint sibling reuse stays fine)
@@ -190,12 +190,12 @@ pub fn addTests(
     );
 
     // `define` abbreviations expand transparently; certificates unaffected
-    ctx.ok(&.{ "check", "tests/cases/define.bpa" }, "OK: 9 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/define.bpa" });
 
     // a PARAMETERIZED, Prop-valued `define` — a transparent (macro) predicate.
     // `even(n)` expands to its body at elaboration (the kernel never sees `even`),
     // so a proof that needs the body gets it for free — no unfold/cite step.
-    ctx.ok(&.{ "check", "tests/cases/define_pred.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/define_pred.bpa" });
 
     // GUARD (interim, until where-reification lands — task #125): a `define`d pred
     // as a `where` guard must be reified into a synthetic opaque pred + iff axiom
@@ -210,10 +210,10 @@ pub fn addTests(
     ctx.fail(&.{ "check", "tests/cases/define_bad.bpa" }, "tests/cases/define_bad.bpa:5:8: error: duplicate declaration of 'TWO'\n");
 
     // the outline fixture is itself a valid proof
-    ctx.ok(&.{ "check", "tests/cases/outline.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/outline.bpa" });
 
     // the search fixture is itself a valid proof
-    ctx.ok(&.{ "check", "tests/cases/search_target.bpa" }, "OK: 8 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "tests/cases/search_target.bpa" });
 
     // an error in an embedded proof maps to the .md's OWN line number
     // (prose-masking preserves line offsets).

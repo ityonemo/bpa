@@ -105,7 +105,7 @@ qed
 
 - **`fix` takes ONE binder.** `fix a, b: Nat {` is a PARSE ERROR — nest them: `fix a: Nat { fix b: Nat { … } }`, discharging with one `forall_intro` per level (inner discharges `forall b; …`, outer `forall a, b; …`).
 - **Literate `.md` fence discipline**: bpa code lives in ` ```bpa … ``` ` blocks; every block must be CLOSED before prose. A missing/misplaced ``` fence makes the checker try to parse prose as bpa ("expected a declaration, got 'The'"). When inserting a new theorem in an `.md`, keep it inside one fenced block (or open+close its own).
-- **Gate counts after edits**: in `tests/test_*.zig`, THEOREM counts must stay FIXED (a changed theorem count = you broke a proof); DECLARATION counts DRIFT (drop as axioms/steps vanish, rise as you add helpers) — update those to match the new `OK:` line. Run `bpa fmt <file>` before `fmt --check` gates.
+- **Gates don't pin counts**: `tests/test_*.zig` uses `ctx.okSilent(&.{"check", FILE})` (asserts "checks OK, exit 0") — NOT a `"OK: N declarations, …"` golden. So an edit that changes decl/theorem counts needs NO gate update; just make sure the file still checks. (A few `--fast`/accelerated gates keep a full banner golden with counts — leave those.) Run `bpa fmt <file>` before `fmt --check` gates.
 - `[by hole]` is INVALID — `hole` is a top-level declaration, not a justification. Every obligation must really be proved (or the theorem itself is a `hole`).
 - `or_elim` is BINARY. 3-way → `case on`.
 - Cite a theorem/axiom as a `[by theorem X]` / `[by axiom X]` STEP before a later `forall_elim` refs that step.

@@ -31,10 +31,10 @@ pub fn addTests(
     // evenOrOdd accelerated step (∀∃, Cooper-QE) certifies via the cooper link's
     // synthesized induction (period-2 parity split), so all six theorems are
     // proven with no acceleration.
-    ctx.ok(&.{ "check", "examples/peano.bpa" }, "OK: 18 declarations, 6 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/peano.bpa" });
 
     // the by-hand twin: every induction case in primitive rules
-    ctx.ok(&.{ "check", "examples/peano-pure.bpa" }, "OK: 13 declarations, 3 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/peano-pure.bpa" });
 
     // the incorrect-proof showcase: three classic mistakes, three exact
     // diagnostics (this file is documentation; its output is the contract)
@@ -46,21 +46,21 @@ pub fn addTests(
     );
 
     // Gauss's summation formula, by hand, proven over the imported base
-    ctx.ok(&.{ "check", "examples/gauss-pure.bpa" }, "OK: 70 declarations, 19 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/gauss-pure.bpa" });
 
     // the automation-assisted twin: `ac` replaces the by-hand exchange
     // lemma, still proven
-    ctx.ok(&.{ "check", "examples/gauss.bpa" }, "OK: 70 declarations, 18 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/gauss.bpa" });
 
     // Euclid's algorithm from a consumer's view: import the verified gcd
     // library and cite its correctness theorems to derive concrete facts
-    ctx.ok(&.{ "check", "examples/euclid.bpa" }, "OK: 235 declarations, 60 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/euclid.bpa" });
 
-    ctx.ok(&.{ "check", "examples/euclid-compute.bpa" }, "OK: 258 declarations, 62 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/euclid-compute.bpa" });
 
     // √2 is irrational (stated over ℕ), proven — the headline result.
-    ctx.ok(&.{ "check", "examples/sqrt2.bpa" }, "OK: 286 declarations, 63 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/sqrt2.bpa" });
 
     // literate: `check` on a .md checks its ```bpa blocks (prose masked).
-    ctx.ok(&.{ "check", "examples/literate.md" }, "OK: 6 declarations, 1 theorems proven\n");
+    ctx.okSilent(&.{ "check", "examples/literate.md" });
 }

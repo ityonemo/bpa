@@ -5,8 +5,14 @@
 //! is 6–8 lines of boilerplate per gate; these helpers collapse a gate to a
 //! single call:
 //!
-//!   ctx.ok(&.{ "check", "std/peano.bpa" }, "OK: 48 declarations, 16 theorems proven\n");
+//!   ctx.okSilent(&.{ "check", "std/peano.bpa" });               // checks OK, exit 0
 //!   ctx.fail(&.{ "check", "tests/cases/mp_bad.bpa" }, "…:16:22: error: …\n");
+//!
+//! Prefer `okSilent` for "this file checks" gates — do NOT pin declaration/theorem
+//! COUNTS in the golden (they churn on every edit and are noise, not a regression
+//! signal). `ok` with a full "OK: …" golden is reserved for gates that assert a
+//! meaningful BANNER (the `(N accelerated: …)` / `NOT FULLY VERIFIED` disclosure),
+//! where the count rides along harmlessly.
 //!
 //! `ok` asserts (stdout == given, stderr == "", exit 0); `fail` asserts
 //! (stderr == given, exit 1) and leaves stdout unchecked; `okCode` is `ok` with
