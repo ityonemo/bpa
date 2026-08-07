@@ -157,6 +157,16 @@ pub fn addTests(
     // through a `@`-projection → cite the mapped discharge, not materialize a proof).
     ctx.okSilent(&.{ "check", "tests/cases/model_subgroup_transfer.bpa" });
 
+    // SCHEMA TRANSFER through a guarded model: a source induction SCHEMA
+    // (elemInduction) is discharged by a local guard-relativized schema
+    // (goodInduction), α-checked at the model decl against the remapped source;
+    // `[by model(...) source.elemInduction]` then instantiates the discharge.
+    ctx.okSilent(&.{ "check", "tests/cases/model_schema_source.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/model_schema.bpa" });
+    // RED: a schema source must be discharged by a SCHEMA (matching predicate
+    // parameter); a plain axiom cannot, and the model decl rejects it.
+    ctx.fail(&.{ "check", "tests/cases/model_schema_bad.bpa" }, "tests/cases/model_schema_bad.bpa:20:25: error: 'notASchema' discharges a schema, so it must itself be a schema (with a matching predicate parameter)\n");
+
     // ACCELERANT-THROUGH-GUARDED-MODEL boundary (RED characterization, one per
     // accelerant). Transferring a source theorem whose proof USES an accelerant
     // through a GUARDED model currently fails: the accelerant builds its synthetic
@@ -182,7 +192,7 @@ pub fn addTests(
     ctx.okSilent(&.{ "check", "tests/cases/schema_wellformed_ok.bpa" });
 
     ctx.fail(&.{ "check", "tests/cases/model_accel_simplify.bpa" },
-        \\tests/cases/model_accel_simplify.bpa:80:26: error: eigenvariable 'b' occurs free in step 'simplify#56' outside the subproof; rename it
+        \\tests/cases/model_accel_simplify.bpa:80:26: error: eigenvariable 'b' occurs free in step 'simplify#63' outside the subproof; rename it
         \\tests/cases/model_accel_simplify.bpa:80:26: error: guarded model transfer of 'plusZeroRight' does not kernel-check under the interpretation
         \\
     );

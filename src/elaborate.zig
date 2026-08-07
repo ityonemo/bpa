@@ -621,6 +621,10 @@ pub const Elaborator = struct {
         var sym_map: std.ArrayList(term.Pool.Remap.SymPair) = .empty;
         var expands: std.ArrayList(term.Pool.Remap.Expand) = .empty;
         var stmt_map: std.ArrayList(StmtPair) = .empty;
+        // schema discharges (source schema -> local schema) recorded for a
+        // DEFERRED α-check: the check needs the finished remap (guard included),
+        // which is only assembled after this mapping loop.
+        var schema_pairs: std.ArrayList(StmtPair) = .empty;
         var source_file: ?FileId = null;
 
         for (d.mappings) |m| {
@@ -681,6 +685,16 @@ pub const Elaborator = struct {
                 else
                     self.env.findStatementId(tgt.file, tgt.base) orelse
                         return self.fail(m.target.start, "'{s}' is not an axiom/theorem", .{self.text(m.target)});
+                // A SCHEMA source (an induction/recursion family) is discharged by a
+                // local schema whose statement is the guard-relativized remap of the
+                // source's body — verified below once the remap is built. The target
+                // MUST itself be a schema (a ground axiom/theorem cannot instantiate).
+                if (self.env.statements.items[@intFromEnum(from_stmt)] == .schema) {
+                    if (self.env.statements.items[@intFromEnum(to_stmt)] != .schema) {
+                        return self.fail(m.target.start, "'{s}' discharges a schema, so it must itself be a schema (with a matching predicate parameter)", .{self.text(m.target)});
+                    }
+                    try schema_pairs.append(self.arena, .{ .from = from_stmt, .to = to_stmt });
+                }
                 try stmt_map.append(self.arena, .{ .from = from_stmt, .to = to_stmt });
             } else {
                 return self.fail(m.source.start, "unknown model mapping source '{s}'", .{self.text(m.source)});
@@ -717,6 +731,10 @@ pub const Elaborator = struct {
             .guard = guard,
             .expands = try expands.toOwnedSlice(self.arena),
         };
+        // SOUNDNESS GATE: each schema discharge's statement must α-equal the
+        // guard-relativized remap of the source schema's body. Checked here, once,
+        // at the DECL — a wrong discharge is caught even if never cited.
+        for (schema_pairs.items) |sp| try self.checkSchemaDischarge(sp.from, sp.to, remap, d.name.start);
         try self.models.put(self.arena, name, .{
             .remap = remap,
             .source_file = source_file orelse self.file,
@@ -1676,6 +1694,100 @@ pub const Elaborator = struct {
             .theorem => |f| f.name,
             .schema => |s| s.name,
         };
+    }
+
+    /// Model SOUNDNESS GATE: verify a schema discharge. `src` is the source
+    /// theory's schema (e.g. peano.induction), `dst` a local schema the model
+    /// maps it to. Both are instantiated at ONE shared opaque predicate symbol;
+    /// the source instance is remapped through the model, and the two bodies must
+    /// be α-equal — i.e. the discharge's statement IS the guard-relativized remap
+    /// of the source. (Lambda args are substituted structurally, not re-typechecked,
+    /// so the same opaque symbol serves both the source-sorted and target-sorted
+    /// binder — `alphaEq` keys on the symbol id, not its declared sort.)
+    fn checkSchemaDischarge(self: *Elaborator, src: StatementId, dst: StatementId, remap: term.Pool.Remap, loc: u32) ElabError!void {
+        const src_schema = &self.env.statements.items[@intFromEnum(src)].schema;
+        const dst_schema = &self.env.statements.items[@intFromEnum(dst)].schema;
+        if (src_schema.params.len != dst_schema.params.len) {
+            return self.fail(loc, "schema discharge '{s}' has {d} parameter(s); the source schema '{s}' has {d}", .{
+                self.interner.str(dst_schema.name), dst_schema.params.len,
+                self.interner.str(src_schema.name),  src_schema.params.len,
+            });
+        }
+
+        // one shared opaque symbol per parameter position; build a source-sorted
+        // and a target-sorted lambda over each (same symbol id in both).
+        var src_args: SchemaArgs = .empty;
+        var dst_args: SchemaArgs = .empty;
+        // param sorts resolve in their OWN schema's file scope (a source param's
+        // sort token indexes the source file, not the consumer's).
+        const src_ctx0: Ctx = .{ .source = src_schema.source, .file = src_schema.file, .diag = @intFromEnum(src_schema.file) };
+        const dst_ctx0: Ctx = .{ .source = dst_schema.source, .file = dst_schema.file, .diag = @intFromEnum(dst_schema.file) };
+        for (src_schema.params, dst_schema.params) |sp, dp| {
+            // names + sorts resolve in their OWN schema's file scope: a token's
+            // text (internTok) and sort (resolveSort) both index that file's source.
+            const saved = self.swapCtx(src_ctx0);
+            const sname = try self.internTok(sp.name);
+            const src_sorts = try self.arena.alloc(SortId, sp.arg_sorts.len);
+            for (sp.arg_sorts, src_sorts) |s, *o| o.* = try self.resolveSort(s);
+            const result_sort = try self.resolveSort(sp.result);
+            _ = self.swapCtx(dst_ctx0);
+            const dname = try self.internTok(dp.name);
+            const dst_sorts = try self.arena.alloc(SortId, dp.arg_sorts.len);
+            for (dp.arg_sorts, dst_sorts) |s, *o| o.* = try self.resolveSort(s);
+            _ = self.swapCtx(saved);
+            const kind: term.AppKind = if (result_sort == .prop) .pred else .app;
+            const opaque_sym = try self.env.addSym(self.file, .{
+                .name = try self.freshNamed("model-schema-param"),
+                .kind = kind,
+                .arg_sorts = src_sorts,
+                .result = result_sort,
+                .result_refined = result_sort,
+                .guard = null,
+                .param_names = &.{},
+                .loc = 0,
+            });
+            if (src_sorts.len == 0) {
+                const t = try self.pool.addApp(kind, opaque_sym, &.{});
+                src_args.put(self.arena, sname, .{ .value = .{ .id = t, .sort = result_sort } }) catch return error.OutOfMemory;
+                dst_args.put(self.arena, dname, .{ .value = .{ .id = t, .sort = result_sort } }) catch return error.OutOfMemory;
+            } else {
+                src_args.put(self.arena, sname, try self.opaqueLambda(opaque_sym, kind, src_sorts, result_sort)) catch return error.OutOfMemory;
+                dst_args.put(self.arena, dname, try self.opaqueLambda(opaque_sym, kind, dst_sorts, result_sort)) catch return error.OutOfMemory;
+            }
+        }
+
+        const src_ctx: Ctx = .{ .source = src_schema.source, .file = src_schema.file, .diag = @intFromEnum(src_schema.file) };
+        const dst_ctx: Ctx = .{ .source = dst_schema.source, .file = dst_schema.file, .diag = @intFromEnum(dst_schema.file) };
+        // instantiate bodies only (skip re-checking either schema's own proof here —
+        // that is done at each schema's declaration).
+        const recheck = self.verify.recheck_schemas;
+        self.verify.recheck_schemas = false;
+        defer self.verify.recheck_schemas = recheck;
+        const src_body = (try self.instantiateSchemaCore(src, src_schema, src_ctx, &src_args)) orelse
+            return self.fail(loc, "could not instantiate source schema for the discharge check", .{});
+        const dst_body = (try self.instantiateSchemaCore(dst, dst_schema, dst_ctx, &dst_args)) orelse
+            return self.fail(loc, "could not instantiate the discharge schema", .{});
+        const remapped = self.pool.remapFormula(src_body, remap) catch return error.OutOfMemory;
+        if (!self.pool.alphaEq(remapped, dst_body)) {
+            return self.fail(loc, "schema discharge '{s}' does not match the model's remap of '{s}':\n  expected (remapped source): {s}\n  discharge:                 {s}", .{
+                self.interner.str(dst_schema.name), self.interner.str(src_schema.name),
+                try self.renderTerm(remapped), try self.renderTerm(dst_body),
+            });
+        }
+    }
+
+    /// Build a `SchemaArg.lambda` `(fun x1…xn => opaque(x1…xn))` at the given arg
+    /// sorts, reusing an existing opaque symbol. Binders are free fvars; the body
+    /// applies `opaque` to them (substituted structurally at instantiation).
+    fn opaqueLambda(self: *Elaborator, opaque_sym: term.SymId, kind: term.AppKind, arg_sorts: []const SortId, result_sort: SortId) ElabError!SchemaArg {
+        const names = try self.arena.alloc(StrId, arg_sorts.len);
+        const fvars = try self.arena.alloc(TermId, arg_sorts.len);
+        for (arg_sorts, names, fvars) |asort, *n, *fv| {
+            n.* = try self.freshName();
+            fv.* = try self.pool.add(.{ .fvar = .{ .name = n.*, .sort = asort } });
+        }
+        const applied = try self.pool.addApp(kind, opaque_sym, fvars);
+        return .{ .lambda = .{ .body = applied, .params = names, .arg_sorts = arg_sorts, .result_sort = result_sort } };
     }
 
     /// Strict-mode declaration check: instantiate a schema at fresh OPAQUE

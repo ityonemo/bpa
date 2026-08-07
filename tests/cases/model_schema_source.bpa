@@ -1,0 +1,12 @@
+// Source theory for the SCHEMA-transfer fixture. A minimal Peano-like carrier:
+// a zero, a successor, and an induction SCHEMA (a proofless axiom family
+// parameterized by a proposition `prop`). The point of the fixture is that a
+// guarded `model` can transfer this SCHEMA down onto its carrier — discharging
+// it with a locally-declared, guard-relativized schema — not just plain axioms.
+sort Elem
+const ZE: Elem
+func step(n: Elem): Elem
+
+// the induction schema: prove `prop` across all of Elem from ZE + step.
+axiom elemInduction(prop: Elem -> Prop):
+  prop(ZE) -> (forall k: Elem; prop(k) -> prop(step(k))) -> forall n: Elem; prop(n)

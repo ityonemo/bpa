@@ -1,0 +1,21 @@
+// RED: a schema source must be discharged by a SCHEMA (with a matching predicate
+// parameter). Here `elemInduction` (a schema) is mapped to `notASchema` (a plain
+// axiom), so the model decl rejects the mapping.
+import source <<< "model_schema_source.bpa"
+
+sort Number
+const ZED: Number
+func next(n: Number): Number
+pred good(x: Number)
+
+sort NumberGood = Number where good
+
+// a plain axiom (NOT a schema) — cannot discharge a schema source.
+axiom notASchema: forall n: Number; good(n) -> good(next(n))
+
+model NumberModel {
+  source.Elem: NumberGood
+  source.ZE: ZED
+  source.step: next
+  source.elemInduction: notASchema
+}

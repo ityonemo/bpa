@@ -49,10 +49,28 @@ pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal
         return self.fail(inst_tok.start, "unknown model '{s}'", .{self.text(inst_tok)});
 
     const stmt_id = try self.resolveStatementRef(c.refs[0]);
+
+    // A SCHEMA source (e.g. `peano.induction`) is transferred like a mapped
+    // AXIOM: it has no ground formula to remap-and-α-check here (its body carries
+    // an unbound predicate param), so it MUST be discharged by an explicit model
+    // mapping (`source.induction: localSchema`) whose target was α-checked against
+    // the guard-relativized remap at the model DECL site. Resolve straight through
+    // stmt_map to that discharge — in both strict and --fast mode. The kernel then
+    // checks the discharge's schema statement α-matches the goal.
+    if (self.env.statements.items[@intFromEnum(stmt_id)] == .schema) {
+        const discharge = blk: {
+            for (model.stmt_map) |p| {
+                if (p.from == stmt_id) break :blk p.to;
+            }
+            return self.fail(c.refs[0].start, "model does not discharge the schema '{s}'; add a mapping `{s}: <local schema>` to the model", .{ self.text(c.refs[0]), self.text(c.refs[0]) });
+        };
+        return schemaDischarge(self, discharge, goal, loc);
+    }
+
     const src_formula = switch (self.env.statements.items[@intFromEnum(stmt_id)]) {
         .axiom => |f| f.formula,
         .theorem => |f| f.formula,
-        .schema => return self.fail(c.refs[0].start, "model cannot transfer a schema; cite a plain axiom/theorem", .{}),
+        .schema => unreachable, // handled above
     };
     const transferred = self.pool.remapFormula(src_formula, model.remap) catch return error.OutOfMemory;
     if (!self.pool.alphaEq(transferred, goal)) {
@@ -867,4 +885,32 @@ fn citeStatement(self: *Elaborator, id: StatementId, loc: u32) kernel.Justificat
         .theorem => .{ .theorem_ref = .{ .stmt = id, .loc = loc } },
         .schema => .{ .axiom_ref = .{ .stmt = id, .loc = loc } }, // unreachable in practice
     };
+}
+
+/// Discharge a transferred SCHEMA source: the model maps `source.<schema>` to a
+/// local `discharge` schema whose statement is the guarded remap of the source
+/// (α-verified at the model DECL site). The transfer cite occurs while the OUTER
+/// schema is being instantiated (self.schema_args binds its opaque predicate
+/// param), so instantiating `discharge` at those SAME args yields exactly the
+/// goal formula — emit it as a zero-premise `schema_instance` the kernel checks.
+/// `discharge` may be a posited axiom-schema or a proven theorem-schema; either
+/// way its body is what instantiates.
+fn schemaDischarge(self: *Elaborator, discharge: StatementId, goal: TermId, loc: u32) ElabError!kernel.Justification {
+    const stmt = &self.env.statements.items[@intFromEnum(discharge)];
+    if (stmt.* != .schema) {
+        return self.fail(loc, "model schema mapping target is not a schema", .{});
+    }
+    const sch = &stmt.schema;
+    const args = self.schema_args orelse
+        return self.fail(loc, "a transferred schema can only be cited inside a schema body (there is no predicate parameter to instantiate at)", .{});
+    const schema_ctx: Elaborator.Ctx = .{ .source = sch.source, .file = sch.file, .diag = @intFromEnum(sch.file) };
+    const inst = (try self.instantiateSchemaCore(discharge, sch, schema_ctx, args)) orelse
+        return self.fail(loc, "model transfer failed to instantiate the discharge schema", .{});
+    if (!self.pool.alphaEq(inst, goal)) {
+        return self.fail(loc, "model schema transfer does not match the goal:\n  transferred: {s}\n  goal:        {s}", .{
+            try self.renderTerm(inst),
+            try self.renderTerm(goal),
+        });
+    }
+    return .{ .schema_instance = .{ .instance = inst, .premises = &.{} } };
 }
