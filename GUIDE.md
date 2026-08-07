@@ -437,6 +437,36 @@ the model's axiom obligations were themselves checked and the source theorem was
 already proven over the abstract sort — so nothing is trusted that wasn't
 derived.
 
+**Transferring a SCHEMA.** A model can also transfer a source theory's *schema*
+(an induction/recursion family like `peano.induction`, parameterized by a
+predicate). Add an ordinary mapping line whose source is the schema and whose
+target is a **locally-declared schema** of the same shape — an axiom *or* a
+theorem:
+
+```bpa
+model NonNegInt {
+  peano.Nat: NonNeg          // NonNeg = Int where non_neg  (guards the transfer)
+  peano.succ: succ
+  // ... axiom obligations ...
+  peano.induction: nonnegInduction
+}
+```
+
+The discharge target (`nonnegInduction`) must itself be a schema; its statement
+must be the **guard-relativized remap** of the source's body (every carrier `∀`
+gains `non_neg(x) ->`). That match is verified once, at the model declaration
+(even if the schema is never cited). Then `[by model(NonNegInt) peano.induction]`
+inside a schema body instantiates the discharge at the caller's predicate
+parameter — kernel-checked, untainted. (A schema transfer is only cited *inside a
+schema body*, where a predicate parameter exists to instantiate.)
+
+Note a schema transfer moves the *shape*, not any free lunch: a model carrier
+still owns whatever axiomatic commitment the schema encodes (the discharge is
+typically a local `axiom`). E.g. ℤ-induction cannot be derived from ℕ — the
+nonneg model gives only the conditional nonneg schema — so ℤ still axiomatizes
+its induction; the transfer just guarantees the nonneg schema is exactly ℕ's,
+relativized.
+
 > `model` is bpa's lightweight take on what typeclasses (Lean), locales
 > (Isabelle), and module functors (Rocq) do — but explicit and search-free: you
 > name the instance at every use, the mapping is one level deep, and the transfer
