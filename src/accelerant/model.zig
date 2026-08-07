@@ -136,13 +136,28 @@ fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId
         if (p.from == source) return p.to;
     }
 
-    // A guarded model (`where <pred>`) relativizes every carrier ∀ to
-    // `guard(x) -> …`, which the strict 1:1 remap below cannot honor in the proof
-    // BODY (each forall_elim over a guarded universal now owes a `guard(t)`
-    // discharge). Guarded transfer takes a distinct re-emitting path that inserts
-    // those discharges (and the `fix a { assume guard(a) }` blocks); the unguarded
-    // path here stays structure-preserving and untouched.
-    if (model.remap.guard != null) return materializeGuardedModelTheorem(self, model, source, loc);
+    // An ACCELERANT SYNTHETIC (`simplify$n`, `chain$n`, …) whose proof is
+    // CONTEXT-FREE w.r.t. the interpretation — it discharges every premise from an
+    // ASSUME hypothesis and cites no model-AFFECTED environment fact — is a bare
+    // equational lemma `∀ eigenvars; premises -> s = t` proved purely by rewriting.
+    // It quantifies over carrier ELEMENTS, never over membership, so under a GUARDED
+    // model it must be transferred UNGUARDED (a plain 1:1 remap over the target base
+    // carrier), NOT relativized: relativizing would inject `guard(k) ->` obligations
+    // its citation (a bare forall_elim + modus_ponens, emitted in source space) does
+    // not discharge — the eigenvariable-escape that made a `simplify`-under-`fix`
+    // proof untransferable. Sound because the model's mapped premises hold on the
+    // whole target carrier (a discharge for `∀b; plus(Z,b)=b` is unconditional).
+    //
+    // A synthetic that CITES a model-affected axiom/theorem directly (e.g. `assoc`
+    // cites `opAssoc`, which a subgroup model relativizes to `∀x; inK(x) -> …`) is
+    // NOT context-free: guard-stripping it would mismatch that relativized citation.
+    // Such a synthetic stays on the ordinary GUARDED path (which weakens the cited
+    // axiom and discharges each forall_elim), exactly like a non-synthetic theorem.
+    const strip_guard = model.remap.guard != null and isContextFreeSynthetic(self, model, source);
+    if (model.remap.guard != null and !strip_guard) return materializeGuardedModelTheorem(self, model, source, loc);
+    const saved_guard = model.remap.guard;
+    if (strip_guard) model.remap.guard = null;
+    defer model.remap.guard = saved_guard;
 
     const stmt = self.env.statements.items[@intFromEnum(source)];
     const fact = switch (stmt) {
@@ -204,6 +219,63 @@ fn materializeModelTheorem(self: *Elaborator, model: *Model, source: StatementId
     return mat_id;
 }
 
+/// True if `source` is an accelerant SYNTHETIC whose proof is CONTEXT-FREE w.r.t.
+/// this model's interpretation: it is `.synthetic`, and no step in its proof cites
+/// an axiom/theorem whose formula the model's remap AFFECTS. Such a synthetic (e.g.
+/// `simplify$n`, which discharges its premises from ASSUME hypotheses) transfers
+/// UNGUARDED. A synthetic that cites a model-affected fact directly (e.g. `assoc$n`
+/// citing `opAssoc`, relativized by a subgroup model) is NOT context-free and stays
+/// on the guarded path — stripping its guard would mismatch that relativized cite.
+fn isContextFreeSynthetic(self: *Elaborator, model: *Model, source: StatementId) bool {
+    const fact = switch (self.env.statements.items[@intFromEnum(source)]) {
+        .theorem => |t| t,
+        else => return false,
+    };
+    if (!fact.synthetic) return false;
+    const proof = fact.proof orelse return false;
+    for (proof.steps) |s| {
+        const cited: StatementId = switch (s.just) {
+            .axiom_ref => |r| r.stmt,
+            .theorem_ref => |r| r.stmt,
+            else => continue,
+        };
+        const cf = switch (self.env.statements.items[@intFromEnum(cited)]) {
+            .axiom => |f| f.formula,
+            .theorem => |f| f.formula,
+            .schema => return false,
+        };
+        // a directly-MAPPED fact resolves (via remapCitation) to its target as-is.
+        // Guard-stripping is safe iff the GUARDLESS remap of the source formula
+        // α-matches that target — i.e. the author mapped it to an UNCONDITIONAL
+        // (unguarded) discharge (`addZeroLeft` → `∀b; tadd(TZERO,b)=b`). If the map
+        // target is a genuinely RELATIVIZED form (`opAssoc` → `∀x; inK(x) -> …`), the
+        // guardless citation would mismatch it → not context-free.
+        var mapped_target: ?StatementId = null;
+        for (model.stmt_map) |p| {
+            if (p.from == cited) mapped_target = p.to;
+        }
+        if (mapped_target) |tgt| {
+            var guardless = model.remap;
+            guardless.guard = null;
+            const want = self.pool.remapFormula(cf, guardless) catch return false;
+            const tgt_f = switch (self.env.statements.items[@intFromEnum(tgt)]) {
+                .axiom => |f| f.formula,
+                .theorem => |f| f.formula,
+                .schema => return false,
+            };
+            if (!self.pool.alphaEq(want, tgt_f)) return false;
+            continue;
+        }
+        if (!model.remap.affects(self.pool, cf)) continue; // unaffected: cites as-is, fine.
+        // affected + unmapped: a NESTED context-free synthetic (e.g. `arithmetic`
+        // cites `simplify#n`) is itself guard-stripped by recursion — fine. Any
+        // other affected+unmapped fact would need a relativized materialization the
+        // guardless synthetic cannot consume → not context-free.
+        if (!isContextFreeSynthetic(self, model, cited)) return false;
+    }
+    return true;
+}
+
 /// Materialize a source theorem's proof through a GUARDED model. Unlike the
 /// unguarded 1:1 remap, guard relativization is not structure-preserving: it
 /// re-emits the proof into a fresh Lowering, inserting `assume guard(a)` blocks
@@ -236,19 +308,39 @@ fn materializeGuardedModelTheorem(self: *Elaborator, model: *Model, source: Stat
     });
     const root: kernel.BlockId = @enumFromInt(0);
 
+    var guardless = model.remap;
+    guardless.guard = null;
     var ctx: GuardedCtx = .{
         .model = model,
         .proof = proof,
         .step_map = .empty,
         .guard_hyp = .empty,
         .block_map = .empty,
+        .synthetic_blind = .empty,
+        .guardless = guardless,
         .loc = loc,
     };
+    try markSyntheticClusters(self, &ctx);
 
     // walk the source block tree from the root, re-emitting each block's directly
     // owned steps and recursing into children (a carrier `fix` becomes
     // `fix a { assume guard(a) { … } }`). Captures every ref by emission.
     try reemitBlock(self, &plow, root, &ctx, @enumFromInt(0));
+
+    // TOP-LEVEL WEAKENING: when the whole proof is a guard-blind synthetic cluster
+    // (e.g. `reassociate`'s single `[by assoc(op)]` step), the re-emitted body
+    // concludes the UNGUARDED carrier universal `∀x…; P`, but the theorem's declared
+    // statement is the relativized `∀x; guard(x) -> …; P`. Wrap the unguarded result
+    // in `fix xᵢ; assume guard(xᵢ)` layers with a forall_elim(x₁…xₙ) at the core —
+    // the same weakening `emitWeakenedAxiom` performs for an unconditional axiom, but
+    // citing the cluster's final STEP instead of a mapped statement.
+    if (plow.steps.items.len > 0) {
+        const last = plow.steps.items[plow.steps.items.len - 1];
+        if (!self.pool.alphaEq(last.formula, remapped_formula)) {
+            const last_ref: kernel.SRef = .{ .id = @enumFromInt(plow.steps.items.len - 1), .loc = loc };
+            _ = try emitTopLevelWeakening(self, &plow, root, &ctx, last_ref, last.formula, remapped_formula);
+        }
+    }
     plow.blocks.items[0].last_step = @intCast(plow.steps.items.len);
 
     const on_fail = try std.fmt.allocPrint(self.arena, "guarded model transfer of '{s}' does not kernel-check under the interpretation", .{self.interner.str(fact.name)});
@@ -268,8 +360,69 @@ const GuardedCtx = struct {
     /// source BlockId -> the new BlockId it re-emitted to (for BRef-carrying
     /// justifications: hypothesis, or_elim arms).
     block_map: std.AutoHashMapUnmanaged(kernel.BlockId, kernel.BlockId),
+    /// source StepId set: steps belonging to an ACCELERANT-SYNTHETIC citation
+    /// cluster (theorem_ref of a `.synthetic` theorem, its chained forall_elims /
+    /// modus_ponens, and the premise-discharge global refs those modus_ponens
+    /// consume). These are re-emitted GUARD-BLIND (see emitGuardBlindStep).
+    synthetic_blind: std.AutoHashMapUnmanaged(kernel.StepId, void),
+    /// the model's interpretation with the carrier guard STRIPPED — used to remap
+    /// synthetic-cluster formulas so they match the unguarded synthetic theorem.
+    guardless: term.Pool.Remap,
     loc: u32,
 };
+
+/// Precompute the set of source steps that form ACCELERANT-SYNTHETIC citation
+/// clusters. A synthetic is a CONTEXT-FREE equational lemma transferred UNGUARDED
+/// (materializeModelTheorem's `.synthetic` branch), so its citation cluster in the
+/// guarded proof must be re-emitted guard-blind — otherwise the relativizing remap
+/// injects `guard(...) ->` obligations the (unguarded) synthetic never carries.
+/// The cluster is contiguous: a `theorem_ref` to a `.synthetic` theorem, then one
+/// `forall_elim` per eigenvariable each citing the previous (`.step`), then one
+/// `modus_ponens` per premise each citing the previous (`.implication`). A
+/// modus_ponens also consumes a premise-discharge step via `.antecedent`; when the
+/// premise is a GLOBAL axiom/theorem it is a separate `axiom_ref`/`theorem_ref`
+/// step that likewise must be transferred unguarded (the synthetic's mapped premise
+/// is unconditional), so we mark it too. Steps are processed in emission order, so a
+/// single forward pass propagates the marking.
+fn markSyntheticClusters(self: *Elaborator, ctx: *GuardedCtx) ElabError!void {
+    for (ctx.proof.steps, 0..) |s, i| {
+        const sid: kernel.StepId = @enumFromInt(i);
+        switch (s.just) {
+            .theorem_ref => |r| {
+                // only a CONTEXT-FREE synthetic is transferred guard-blind (see
+                // isContextFreeSynthetic + the `.synthetic` branch of
+                // materializeModelTheorem). A synthetic that cites a model-affected
+                // fact (e.g. `assoc` → `opAssoc`) rides the ordinary guarded path,
+                // so its cluster must NOT be marked blind.
+                if (isContextFreeSynthetic(self, ctx.model, r.stmt))
+                    try ctx.synthetic_blind.put(self.arena, sid, {});
+            },
+            .forall_elim => |r| {
+                if (ctx.synthetic_blind.contains(r.step.id)) try ctx.synthetic_blind.put(self.arena, sid, {});
+            },
+            .modus_ponens => |r| {
+                if (ctx.synthetic_blind.contains(r.implication.id)) {
+                    try ctx.synthetic_blind.put(self.arena, sid, {});
+                    // the premise-discharge step feeding this modus_ponens must match
+                    // the UNGUARDED synthetic premise. When it is a BARE GLOBAL
+                    // axiom/theorem ref (an unconditional mapped fact — `dischargeRef`'s
+                    // global branch), it must be transferred guard-blind too; else the
+                    // guarded re-emit would auto-weaken it (`∀x; guard(x) -> …`) and
+                    // mismatch. A LOCAL derived discharge (e.g. a `forall_elim` of an
+                    // in-scope universal, or a hypothesis) is left to the ordinary
+                    // guarded re-emit — its guarded form already matches the premise
+                    // (relativization only wraps `∀` binders, which a ground premise or
+                    // an already-specialized step does not reintroduce).
+                    const ante = ctx.proof.steps[@intFromEnum(r.antecedent.id)];
+                    if (ante.just == .axiom_ref or ante.just == .theorem_ref) {
+                        try ctx.synthetic_blind.put(self.arena, r.antecedent.id, {});
+                    }
+                }
+            },
+            else => {},
+        }
+    }
+}
 
 /// Re-emit a source block's directly-owned steps into a corresponding target
 /// block, recursing into child blocks. A `fix a` over the carrier sort is
@@ -312,6 +465,12 @@ fn reemitBlock(self: *Elaborator, plow: *Lowering, target: kernel.BlockId, ctx: 
             try ctx.step_map.put(self.arena, @enumFromInt(i), ref);
         } else if (childBlockOf(step.just)) |child| {
             try reemitChild(self, plow, target, ctx, child, @enumFromInt(i));
+        } else if (ctx.synthetic_blind.contains(@enumFromInt(i))) {
+            // an accelerant-synthetic citation-cluster step: re-emit guard-blind
+            // (formula remapped WITHOUT the guard, justification a plain 1:1 remap)
+            // so it matches the unguarded materialized synthetic.
+            const new_ref = try emitGuardBlindStep(self, plow, target, ctx, step);
+            try ctx.step_map.put(self.arena, @enumFromInt(i), new_ref);
         } else {
             const new_ref = try emitGuardedStep(self, plow, target, ctx, step);
             try ctx.step_map.put(self.arena, @enumFromInt(i), new_ref);
@@ -539,6 +698,127 @@ fn emitGuardedStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ct
         // separate boundary).
         else => return self.fail(loc, "guarded model materialization does not yet handle this proof shape", .{}),
     }
+}
+
+/// Re-emit one source step of an ACCELERANT-SYNTHETIC citation cluster GUARD-BLIND:
+/// the formula is remapped with the guard STRIPPED (`ctx.guardless`), and the
+/// justification is re-emitted as the plain 1:1 unguarded shape — NO guarded
+/// forall_elim (`guard(with) ->`) special-casing and NO auto-weakening. This is
+/// exactly what a synthetic (context-free equational lemma) needs: it holds on the
+/// whole target carrier, so its remapped citation carries no membership obligation.
+///  - `theorem_ref`/`axiom_ref`: route through `remapCitation` — the synthetic's
+///    theorem_ref resolves to its UNGUARDED materialization (the `.synthetic` branch
+///    in materializeModelTheorem); a mapped global premise axiom resolves to its
+///    stmt_map target; an unaffected fact cites as-is.
+///  - `forall_elim`/`modus_ponens`: plain re-emit, SRefs through `ctx.step_map`,
+///    the `with` term through the guardless remap.
+fn emitGuardBlindStep(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, s: kernel.Step) ElabError!kernel.SRef {
+    const model = ctx.model;
+    const loc = ctx.loc;
+    const new_formula = self.pool.remapFormula(s.formula, ctx.guardless) catch return error.OutOfMemory;
+    switch (s.just) {
+        .axiom_ref => |r| {
+            const j = try remapCitation(self, model, r.stmt, false, loc);
+            return self.emitStep(plow, block, loc, new_formula, j);
+        },
+        .theorem_ref => |r| {
+            const j = try remapCitation(self, model, r.stmt, true, loc);
+            return self.emitStep(plow, block, loc, new_formula, j);
+        },
+        .forall_elim => |r| {
+            const with = self.pool.remapFormula(r.with, ctx.guardless) catch return error.OutOfMemory;
+            return self.emitStep(plow, block, loc, new_formula, .{ .forall_elim = .{ .step = ctx.step_map.get(r.step.id).?, .with = with, .with_loc = loc } });
+        },
+        .modus_ponens => |r| return self.emitStep(plow, block, loc, new_formula, .{ .modus_ponens = .{ .implication = ctx.step_map.get(r.implication.id).?, .antecedent = ctx.step_map.get(r.antecedent.id).? } }),
+        // a synthetic cluster is built only from the shapes above; anything else
+        // was mis-marked — fall back to the guarded re-emit rather than mis-handle.
+        else => return emitGuardedStep(self, plow, block, ctx, s),
+    }
+}
+
+/// TOP-LEVEL WEAKENING of a guard-blind synthetic conclusion. The re-emitted proof
+/// body proved the UNGUARDED carrier universal `unguarded` (formula of `src_ref`),
+/// but the theorem's declared statement is the relativized `target`
+/// `∀x₁; guard(x₁) -> … -> ∀xₙ; guard(xₙ) -> P`. Emit the `fix xᵢ; assume guard(xᵢ)`
+/// weakening layers with a `forall_elim(x₁…xₙ)` of `src_ref` at the core, returning
+/// the ref of the relativized conclusion. Errors if `target` is not the guarded
+/// weakening of `unguarded` (a shape the transfer does not produce).
+fn emitTopLevelWeakening(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, src_ref: kernel.SRef, unguarded: TermId, target: TermId) ElabError!kernel.SRef {
+    const guard = ctx.model.remap.guard.?;
+    const lowered_carrier = ctx.model.remap.sort(guard.carrier);
+
+    // peel the target's alternating `∀xᵢ:carrier; guard(xᵢ) -> …` layers.
+    var hints: std.ArrayList(StrId) = .empty;
+    var residual = target;
+    while (true) {
+        const q = self.pool.get(residual);
+        if (q != .quant or q.quant.q != .forall or q.quant.sort != lowered_carrier) break;
+        const b = self.pool.get(q.quant.body);
+        if (b != .bin or b.bin.op != .implies) break;
+        const ante = self.pool.get(b.bin.lhs);
+        if (ante != .pred or ante.pred.sym != guard.pred or ante.pred.args_len != 1) break;
+        const arg = self.pool.args(ante.pred)[0];
+        if (self.pool.get(arg) != .bvar or self.pool.get(arg).bvar != 0) break;
+        try hints.append(self.arena, q.quant.hint);
+        residual = b.bin.rhs;
+    }
+    if (hints.items.len == 0)
+        return self.fail(ctx.loc, "guarded model: transferred synthetic conclusion is not a relativized universal", .{});
+
+    // the unguarded result must be `∀x₁…xₙ:carrier; residual`.
+    var rebuilt = residual;
+    var i: usize = hints.items.len;
+    while (i > 0) {
+        i -= 1;
+        rebuilt = try self.pool.add(.{ .quant = .{ .q = .forall, .sort = lowered_carrier, .hint = hints.items[i], .body = rebuilt } });
+    }
+    if (!self.pool.alphaEq(unguarded, rebuilt))
+        return self.fail(ctx.loc, "guarded model: transferred synthetic conclusion does not weaken to the theorem statement", .{});
+
+    return emitTopWeakenLayer(self, plow, block, ctx, src_ref, unguarded, target, hints.items, &.{});
+}
+
+/// One `fix xᵢ; assume guard(xᵢ)` layer of the top-level weakening (mirrors
+/// emitWeakenLayer, but the base case cites the ALREADY-EMITTED unguarded step
+/// `src_ref` via a forall_elim chain rather than a statement).
+fn emitTopWeakenLayer(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx: *GuardedCtx, src_ref: kernel.SRef, unguarded: TermId, claim: TermId, hints: []const StrId, fixed: []const TermId) ElabError!kernel.SRef {
+    const loc = ctx.loc;
+    const guard = ctx.model.remap.guard.?;
+
+    if (hints.len == 0) {
+        // base: specialize the unguarded universal at every fixed var.
+        var step_ref = src_ref;
+        var current = unguarded;
+        for (fixed) |fv| {
+            const q = self.pool.get(current);
+            const opened = try self.pool.open(q.quant.body, fv);
+            step_ref = try self.emitStep(plow, block, loc, opened, .{ .forall_elim = .{ .step = step_ref, .with = fv, .with_loc = loc } });
+            current = opened;
+        }
+        return step_ref;
+    }
+
+    const lowered_carrier = ctx.model.remap.sort(guard.carrier);
+    const hint = hints[0];
+    const fix_b = try self.newBlock(plow, try self.freshNamed("gm-topweaken-fix"), block, .{ .fix = .{ .v = .{ .name = hint, .sort = lowered_carrier } } });
+    const x = try self.pool.add(.{ .fvar = .{ .name = hint, .sort = lowered_carrier } });
+    const guard_x = try self.pool.addApp(.pred, guard.pred, &.{x});
+    const asm_b = try self.newBlock(plow, try self.freshNamed("gm-topweaken-guard"), fix_b, .{ .assume = guard_x });
+    _ = try self.emitStep(plow, asm_b, loc, guard_x, .{ .hypothesis = .{ .id = asm_b, .loc = loc } });
+
+    const claim_node = self.pool.get(claim);
+    const opened = try self.pool.open(claim_node.quant.body, x); // guard(x) -> rest[x]
+    const inner_claim = self.pool.get(opened).bin.rhs; // rest[x]
+
+    const new_fixed = try self.arena.alloc(TermId, fixed.len + 1);
+    @memcpy(new_fixed[0..fixed.len], fixed);
+    new_fixed[fixed.len] = x;
+    _ = try emitTopWeakenLayer(self, plow, asm_b, ctx, src_ref, unguarded, inner_claim, hints[1..], new_fixed);
+
+    self.closeBlock(plow, asm_b);
+    _ = try self.emitStep(plow, fix_b, loc, opened, .{ .implies_intro = .{ .id = asm_b, .loc = loc } });
+    self.closeBlock(plow, fix_b);
+    return self.emitStep(plow, block, loc, claim, .{ .forall_intro = .{ .id = fix_b, .loc = loc } });
 }
 
 /// AUTO-WEAKENING of an unconditional mapped axiom. If `source_axiom` maps to a

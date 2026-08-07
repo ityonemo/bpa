@@ -191,42 +191,18 @@ pub fn addTests(
     // legitimate schemas.
     ctx.okSilent(&.{ "check", "tests/cases/schema_wellformed_ok.bpa" });
 
-    ctx.fail(&.{ "check", "tests/cases/model_accel_simplify.bpa" },
-        \\tests/cases/model_accel_simplify.bpa:80:26: error: eigenvariable 'b' occurs free in step 'simplify#63' outside the subproof; rename it
-        \\tests/cases/model_accel_simplify.bpa:80:26: error: guarded model transfer of 'plusZeroRight' does not kernel-check under the interpretation
-        \\
-    );
-    ctx.fail(&.{ "check", "tests/cases/model_accel_assoc.bpa" },
-        \\tests/cases/model_accel_assoc.bpa:45:26: error: eigenvariable 'c' occurs free in step 'simplify#82' outside the subproof; rename it
-        \\tests/cases/model_accel_assoc.bpa:45:26: error: guarded model transfer of 'assoc$47' does not kernel-check under the interpretation
-        \\
-    );
-    ctx.fail(&.{ "check", "tests/cases/model_accel_assoc_commut.bpa" },
-        \\tests/cases/model_accel_assoc_commut.bpa:51:26: error: eigenvariable 'c' occurs free in step 'simplify#101' outside the subproof; rename it
-        \\tests/cases/model_accel_assoc_commut.bpa:51:26: error: guarded model transfer of 'assoc_commut$61' does not kernel-check under the interpretation
-        \\
-    );
-    // tautology transfers GREEN: its synthetic theorem is context-free (its
-    // citation's `forall_elim` binds only the arm-local eigenvariable), so no
-    // eigenvariable escapes. Its distinct blocker was `not_intro` (proof-by-
-    // contradiction) — unhandled by the guarded re-emitter until we taught
-    // reemitBlock to re-emit the not_intro assume arm like an or_elim arm.
+    // ACCELERANT-SYNTHETIC transfer through a GUARDED model: the accelerant emits a
+    // CONTEXT-FREE synthetic theorem in source space; the guarded materializer now
+    // re-emits its citation cluster GUARD-BLIND (matching the unguarded synthetic)
+    // and, when the whole proof is one such cluster concluding a carrier universal,
+    // weakens that conclusion to the relativized statement. All seven transfer GREEN.
+    ctx.okSilent(&.{ "check", "tests/cases/model_accel_simplify.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/model_accel_assoc.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/model_accel_assoc_commut.bpa" });
     ctx.okSilent(&.{ "check", "tests/cases/model_accel_tautology.bpa" });
-    ctx.fail(&.{ "check", "tests/cases/model_accel_polynomial.bpa" },
-        \\tests/cases/model_accel_polynomial.bpa:100:26: error: eigenvariable 'b' occurs free in step 'simplify#151' outside the subproof; rename it
-        \\tests/cases/model_accel_polynomial.bpa:100:26: error: guarded model transfer of 'polynomial$97' does not kernel-check under the interpretation
-        \\
-    );
-    ctx.fail(&.{ "check", "tests/cases/model_accel_arithmetic.bpa" },
-        \\tests/cases/model_accel_arithmetic.bpa:62:26: error: eigenvariable 'b' occurs free in step 'simplify#32' outside the subproof; rename it
-        \\tests/cases/model_accel_arithmetic.bpa:62:26: error: guarded model transfer of 'arithmetic$19' does not kernel-check under the interpretation
-        \\
-    );
-    ctx.fail(&.{ "check", "tests/cases/model_accel_ext.bpa" },
-        \\tests/cases/model_accel_ext.bpa:62:26: error: eigenvariable 'f' occurs free in step 'simplify#90' outside the subproof; rename it
-        \\tests/cases/model_accel_ext.bpa:62:26: error: guarded model transfer of 'ext$64' does not kernel-check under the interpretation
-        \\
-    );
+    ctx.okSilent(&.{ "check", "tests/cases/model_accel_polynomial.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/model_accel_arithmetic.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/model_accel_ext.bpa" });
 
     // PREDICATED SORT `sort H = G where inH` — binder positions: ∀/∃
     // inject the guard (implies/and), `fix h: H` carries it on the block (surfaced
