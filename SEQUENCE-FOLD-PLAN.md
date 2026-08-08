@@ -70,3 +70,22 @@ S4: gates (add std/sequence.bpa to test_cli fmt list; fix test_std) + fmt + zig 
 
 ## STATUS: S1 committed & green. S2 partial WIP is in `git stash@{0}` (agent stopped
 ## mid-conversion; it still checked green but was incomplete). Corpus green at 699539e.
+
+## ===== STAGE 2 MODEL SHAPE LOCKED (probed strict + kernel-checked, no taint) =====
+The IntSeq model MUST map the index STRUCTURE (ops), not just the index sort — else
+the transferred fold theorem carries peano's succ/ZERO and fails α-match (identical
+PRINT, different symbols). Full working model block:
+
+  model IntSeq {
+    sequence.Nat: NonNegZ    sequence.ZERO: ZERO    sequence.succ: succ
+    sequence.Value: Int      sequence.Seq: Seq      sequence.at: at
+    sequence.IDENTITY: ONE   sequence.combine: mul  sequence.foldUpTo: productUpTo
+    sequence.foldZero: productZero   sequence.foldSucc: productSucc
+    // + sequence.add: add and sequence.less_than: <order.less_than> IF a transferred
+    //   fold lemma mentions them (seqConcat uses add on the index).
+  }
+Plus in scope: nonnegZero/nonnegSucc (guard-intro closure), and PROVE nonneg(succ(ZERO))
+etc. wherever a concrete composite index appears (composite-index TCC).
+Consumer declares OWN: sort Seq, at(Seq×NonNegZ→Int), productUpTo(Seq×NonNegZ→Int) +
+productZero/productSucc axioms. NonNegZ = integer.NonNeg; nonneg = integer.nonneg
+(= order.nonneg = is_nonneg, all the same pred).
