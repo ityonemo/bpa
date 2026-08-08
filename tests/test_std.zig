@@ -35,10 +35,11 @@ pub fn addTests(
     // parity: even/odd + the crux 2|p² → 2|p, proven (no accelerated tactic)
     ctx.okSilent(&.{ "check", "std/peano-parity.bpa" });
 
-    // the integers ℤ ring algebra (std/integer-ring.bpa): left/right recursion,
-    // commutativity, associativity, the additive-inverse law n+(-n)=0, and the
-    // mul lemmas — all proven from the ℤ axioms by bidirectional induction.
-    ctx.okSilent(&.{ "check", "std/integer-ring.bpa" });
+    // the ℤ base std/integer.bpa now bundles the ring algebra (left/right
+    // recursion, commutativity, associativity, n+(-n)=0, mul lemmas), the nonneg
+    // subclass + its transferred Peano induction, DERIVED bidirectional induction,
+    // and the IntegerRing model — the former integer-ring / integer-nonneg /
+    // integer-ring-model files collapsed into it. Checked below with the base.
 
     // ℤ subtraction (total: a-b = a+(-b)) + the strict/non-strict order, over
     // the ring algebra. The order's gap witness is pinned NONNEGATIVE (an
@@ -112,15 +113,9 @@ pub fn addTests(
     // (the synthetic materialized theorems are suppressed.)
     ctx.okSilent(&.{ "check", "std/ring.bpa" });
 
-    // ℤ as a thin model of the ring theory (std/integer-ring-model.bpa): the
-    // THREE-LEVEL chain ℤ → ring → group. `model IntegerRing = Int` discharges
-    // ring's 7 axioms from ℤ's facts (ring's RIGHT identity/inverse laws are now
-    // derived theorems, so they are not mapped; associativity axioms now bind the canonical
-    // a,b,c order, so ℤ's assoc theorems α-match the remapped ring axioms directly
-    // — no binder-order adapters needed), and negMulNeg ((-a)(-b)=ab, new to ℤ)
-    // transfers — its ring proof having itself transferred group.invInvolution
-    // through ring's AdditiveGroup model, re-materialized here.
-    ctx.okSilent(&.{ "check", "std/integer-ring-model.bpa" });
+    // ℤ modeling the ring theory now lives INSIDE std/integer.bpa (the
+    // `model IntegerRing` block + the negMulNeg transfer smoke test) — the
+    // THREE-LEVEL chain ℤ → ring → group, checked with the base above.
 
     // the set theory (std/set.bpa): the membership axioms + extensionality, and
     // the 19 set-algebra identities (idempotence, identity, associativity,

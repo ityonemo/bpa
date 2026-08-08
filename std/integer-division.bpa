@@ -18,9 +18,9 @@
 // algorithm development builds on.
 
 import integer <<< "std/integer.bpa"
-import ring <<< "std/integer-ring.bpa"
+import ring <<< "std/integer.bpa"
 import order <<< "std/integer-order.bpa"
-import nonneg <<< "std/integer-nonneg.bpa"
+import nonneg <<< "std/integer.bpa"
 import wellordering <<< "std/integer-wellordering.bpa"
 import divides <<< "std/integer-divides.bpa"
 

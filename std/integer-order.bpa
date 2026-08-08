@@ -12,8 +12,8 @@
 // carry `std/integer-nonneg.bpa`'s `nonneg` predicate through the gap.
 
 import integer <<< "std/integer.bpa"
-import ring <<< "std/integer-ring.bpa"
-import nonnegatives <<< "std/integer-nonneg.bpa"
+import ring <<< "std/integer.bpa"
+import nonnegatives <<< "std/integer.bpa"
 
 sort Int = integer.Int
 const ZERO = integer.ZERO
@@ -32,7 +32,7 @@ theorem addIsAssociative = ring.addIsAssociative
 theorem addNegRight = ring.addNegRight
 
 theorem addNegLeft = ring.addNegLeft
-axiom induction = integer.induction
+theorem induction = integer.induction
 
 // mul recursion + negation axioms/lemmas, for the sign lemmas less_than.
 axiom mulZeroLeft = integer.mulZeroLeft

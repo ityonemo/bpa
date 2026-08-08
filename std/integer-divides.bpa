@@ -9,7 +9,7 @@
 // the induction-from-0 examples use.
 
 import integer <<< "std/integer.bpa"
-import ring <<< "std/integer-ring.bpa"
+import ring <<< "std/integer.bpa"
 import divisibility <<< "std/divisibility.bpa"
 
 sort Int = integer.Int
@@ -29,7 +29,7 @@ theorem addIsAssociative = ring.addIsAssociative
 theorem mulOneRight = ring.mulOneRight
 theorem mulAddDistribLeft = ring.mulAddDistribLeft
 theorem mulIsAssociative = ring.mulIsAssociative
-axiom induction = integer.induction
+theorem induction = integer.induction
 
 // -- divisibility -----------------------------------------------------------
 
