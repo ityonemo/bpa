@@ -100,6 +100,13 @@ pub fn addTests(
     // witness/splice/cancel factorization sequences.
     ctx.okSilent(&.{ "check", "std/integer-sequence.bpa" });
 
+    // the reusable ℤ PRIME THEORY (std/primes.bpa): primality packaged once as a
+    // transparent `define is_prime`, then Euclid's Lemma (via coprimeBezout),
+    // primeDividesProductImpliesMember (FTA-uniqueness crux), and the infinitude
+    // of primes — an independent std development of the facts that aata/2.3-primes.md
+    // proves inline. Layers over std/integer-gcd.bpa + std/integer-sequence.bpa.
+    ctx.okSilent(&.{ "check", "std/primes.bpa" });
+
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
     // + LEFT inverse) + an opt-in `opCommutative`; the right-sided laws and the
     // basic-property theorems (identityUnique, inverseUnique, invProduct, cancelLeft,
