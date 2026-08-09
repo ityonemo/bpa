@@ -954,7 +954,7 @@ fn emitGuardProof(self: *Elaborator, plow: *Lowering, block: kernel.BlockId, ctx
     // whose conclusion C unifies with t — instantiate it, recurse on each
     // antecedent, and chain forall_elim + modus_ponens.
     if (try emitCompositeGuard(self, plow, block, ctx, t, want)) |ref| return ref;
-    return self.fail(ctx.loc, "guarded model: cannot prove '{s}' — supply an axiom or theorem establishing it", .{try self.renderTerm(want)});
+    return self.fail(ctx.loc, "guarded model '{s}' cannot discharge the closure obligation '{s}' — supply an axiom or theorem establishing it, in scope where model '{s}' is declared", .{ self.interner.str(ctx.model.name), try self.renderTerm(want), self.interner.str(ctx.model.name) });
 }
 
 /// Discharge `guard(t)` for a composite `t` via a closure fact. Searches for a
