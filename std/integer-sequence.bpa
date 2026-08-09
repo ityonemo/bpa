@@ -548,73 +548,9 @@ qed
 // a | b and b | c give a | c: unpack b = mul(a, j) and c = mul(b, k), so
 // c = mul(mul(a, j), k) = mul(a, mul(j, k)) (mulIsAssociative), and exists_intro
 // on the quotient mul(j, k) reads a | c off that.
-theorem dividesTransitive: forall a, b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
-proof
-  @generalize-a |
-    fix a: Int {
-      @generalize-b |
-        fix b: Int {
-          @generalize-c |
-            fix c: Int {
-              @given-a-divides-b |
-                assume does_divide(a, b) {
-                  @given-b-divides-c |
-                    assume does_divide(b, c) {
-                      @a-divides-b |
-                        does_divide(a, b)
-                        [by hypothesis given-a-divides-b]
-                      @b-divides-c |
-                        does_divide(b, c)
-                        [by hypothesis given-b-divides-c]
-                      @with-a-quotient |
-                        unpack j: Int from a-divides-b {
-                          @b-is-a-times-j |
-                            b = mul(a, j)
-                            [by hypothesis with-a-quotient]
-                          @with-b-quotient |
-                            unpack k: Int from b-divides-c {
-                              @c-is-b-times-k |
-                                c = mul(b, k)
-                                [by hypothesis with-b-quotient]
-                              @a-j-times-k-regroups |
-                                mul(mul(a, j), k) = mul(a, mul(j, k))
-                                [by specialize mulIsAssociative(a, j, k)]
-                              // c = b·k = (a·j)·k = a·(j·k)
-                              @c-is-a-times-jk |
-                                c = mul(a, mul(j, k))
-                                [by chain c-is-b-times-k b-is-a-times-j a-j-times-k-regroups]
-                              @a-divides-c |
-                                does_divide(a, c)
-                                [by exists_intro(mul(j, k)) c-is-a-times-jk]
-                            }
-                          @a-divides-c |
-                            does_divide(a, c)
-                            [by exists_elim with-b-quotient]
-                        }
-                      @a-divides-c |
-                        does_divide(a, c)
-                        [by exists_elim with-a-quotient]
-                    }
-                  @b-divides-c-implies-a-divides-c |
-                    does_divide(b, c) -> does_divide(a, c)
-                    [by implies_intro given-b-divides-c]
-                }
-              @a-divides-b-implies-transitive |
-                does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
-                [by implies_intro given-a-divides-b]
-            }
-          @discharge-c |
-            forall c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
-            [by forall_intro generalize-c]
-        }
-      @discharge-b |
-        forall b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
-        [by forall_intro generalize-b]
-    }
-  @conclusion |
-    forall a, b, c: Int; does_divide(a, b) -> does_divide(b, c) -> does_divide(a, c)
-    [by forall_intro generalize-a]
-qed
+// divisibility transitivity: transferred to ℤ from the abstract divisibility
+// theory in integer-divides (which models std/divisibility.bpa).
+theorem dividesTransitive = divides.dividesTransitive
 
 // -- divisibility respects subtraction --------------------------------------
 

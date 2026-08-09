@@ -86,3 +86,10 @@ proof
     forall d, a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
     [by model(IntegerDivisibility) divisibility.dividesAdd]
 qed
+
+theorem dividesTransitive: forall a, b, c: Int; divides(a, b) -> divides(b, c) -> divides(a, c)
+proof
+  @conclusion |
+    forall a, b, c: Int; divides(a, b) -> divides(b, c) -> divides(a, c)
+    [by model(IntegerDivisibility) divisibility.dividesTransitive]
+qed

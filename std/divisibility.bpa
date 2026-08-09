@@ -174,3 +174,73 @@ proof
     forall d, a, b: Dividable; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
     [by forall_intro generalize-d]
 qed
+
+// a | b and b | c give a | c: unpack b = a·j and c = b·k, so c = (a·j)·k = a·(j·k)
+// (mulIsAssociative), and exists_intro on the quotient j·k reads a | c off that.
+theorem dividesTransitive: forall a, b, c: Dividable; divides(a, b) -> divides(b, c) -> divides(a, c)
+proof
+  @generalize-a |
+    fix a: Dividable {
+      @generalize-b |
+        fix b: Dividable {
+          @generalize-c |
+            fix c: Dividable {
+              @given-a-divides-b |
+                assume divides(a, b) {
+                  @given-b-divides-c |
+                    assume divides(b, c) {
+                      @a-divides-b |
+                        divides(a, b)
+                        [by hypothesis given-a-divides-b]
+                      @b-divides-c |
+                        divides(b, c)
+                        [by hypothesis given-b-divides-c]
+                      @with-a-quotient |
+                        unpack j: Dividable from a-divides-b {
+                          @b-is-a-times-j |
+                            b = mul(a, j)
+                            [by hypothesis with-a-quotient]
+                          @with-b-quotient |
+                            unpack k: Dividable from b-divides-c {
+                              @c-is-b-times-k |
+                                c = mul(b, k)
+                                [by hypothesis with-b-quotient]
+                              @a-j-times-k-regroups |
+                                mul(mul(a, j), k) = mul(a, mul(j, k))
+                                [by specialize mulIsAssociative(a, j, k)]
+                              // c = b·k = (a·j)·k = a·(j·k)
+                              @c-is-a-times-jk |
+                                c = mul(a, mul(j, k))
+                                [by chain c-is-b-times-k b-is-a-times-j a-j-times-k-regroups]
+                              @a-divides-c |
+                                divides(a, c)
+                                [by exists_intro(mul(j, k)) c-is-a-times-jk]
+                            }
+                          @a-divides-c |
+                            divides(a, c)
+                            [by exists_elim with-b-quotient]
+                        }
+                      @a-divides-c |
+                        divides(a, c)
+                        [by exists_elim with-a-quotient]
+                    }
+                  @b-divides-c-implies-a-divides-c |
+                    divides(b, c) -> divides(a, c)
+                    [by implies_intro given-b-divides-c]
+                }
+              @a-divides-b-implies-transitive |
+                divides(a, b) -> divides(b, c) -> divides(a, c)
+                [by implies_intro given-a-divides-b]
+            }
+          @discharge-c |
+            forall c: Dividable; divides(a, b) -> divides(b, c) -> divides(a, c)
+            [by forall_intro generalize-c]
+        }
+      @discharge-b |
+        forall b, c: Dividable; divides(a, b) -> divides(b, c) -> divides(a, c)
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, c: Dividable; divides(a, b) -> divides(b, c) -> divides(a, c)
+    [by forall_intro generalize-a]
+qed

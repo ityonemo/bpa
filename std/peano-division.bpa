@@ -14,6 +14,7 @@
 import peano <<< "std/peano.bpa"
 import ordering <<< "std/peano-ordering.bpa"
 import subtraction <<< "std/peano-subtraction.bpa"
+import divisibility <<< "std/divisibility.bpa"
 
 // -- vocabulary -------------------------------------------------------------
 
@@ -46,6 +47,21 @@ theorem notLessThanZero = ordering.notLessThanZero
 // existential, produced with exists_intro and consumed with unpack.
 define divides(d: Nat, n: Nat) = exists k: Nat; n = mul(d, k)
 
+// ℕ models the abstract divisibility theory (std/divisibility.bpa): mul/ONE/add
+// with the multiplicative axioms discharge its obligations, so the basic facts
+// (dividesRefl/dividesMul/dividesAdd/dividesTransitive) TRANSFER onto ℕ instead
+// of being re-proved. ℤ models it the same way (std/integer-divides.bpa) — that
+// shared reuse is what earns the abstract theory its keep.
+model PeanoDivisibility {
+  divisibility.Dividable: Nat
+  divisibility.ONE: ONE
+  divisibility.mul: mul
+  divisibility.add: add
+  divisibility.mulOneRight: mulOneRight
+  divisibility.mulIsAssociative: mulIsAssociative
+  divisibility.mulAddDistribLeft: mulAddDistribLeft
+}
+
 // -- guarded Euclidean division ---------------------------------------------
 
 func div(a: Nat, b: Nat): Nat requires b != ZERO
@@ -69,23 +85,12 @@ intheory modIntro
 // -- theorems ---------------------------------------------------------------
 
 // divides(d, d): witness k = ONE.
+// transferred from the abstract divisibility theory via PeanoDivisibility.
 theorem dividesRefl: forall d: Nat; divides(d, d)
 proof
-  @generalize-d |
-    fix d: Nat {
-      @mul-by-one-is-identity |
-        mul(d, ONE) = d
-        [by specialize mulOneRight(d)]
-      @d-is-d-times-one |
-        d = mul(d, ONE)
-        [by symmetry mul-by-one-is-identity]
-      @d-divides-itself |
-        divides(d, d)
-        [by exists_intro(ONE) d-is-d-times-one]
-    }
   @conclusion |
     forall d: Nat; divides(d, d)
-    [by forall_intro generalize-d]
+    [by model(PeanoDivisibility) divisibility.dividesRefl]
 qed
 
 // divides(d, ZERO): witness k = ZERO.
@@ -108,134 +113,21 @@ proof
     [by forall_intro generalize-d]
 qed
 
-// divides(a,b) -> divides(b,c) -> divides(a,c): b = a*j, c = b*k => c = a*(j*k).
+// transferred from the abstract divisibility theory via PeanoDivisibility.
 theorem dividesTransitive: forall a, b, c: Nat; divides(a, b) -> divides(b, c) -> divides(a, c)
 proof
-  @generalize-a |
-    fix a: Nat {
-      @generalize-b |
-        fix b: Nat {
-          @generalize-c |
-            fix c: Nat {
-              @given-a-divides-b |
-                assume divides(a, b) {
-                  @given-b-divides-c |
-                    assume divides(b, c) {
-                      @a-divides-b |
-                        divides(a, b)
-                        [by hypothesis given-a-divides-b]
-                      @b-divides-c |
-                        divides(b, c)
-                        [by hypothesis given-b-divides-c]
-                      @with-b-quotient-j |
-                        unpack j: Nat from a-divides-b {
-                          @b-equals-a-times-j |
-                            b = mul(a, j)
-                            [by hypothesis with-b-quotient-j]
-                          @with-c-quotient-k |
-                            unpack kk: Nat from b-divides-c {
-                              @c-equals-b-times-k |
-                                c = mul(b, kk)
-                                [by hypothesis with-c-quotient-k]
-                              @c-is-a-times-jk |
-                                c = mul(a, mul(j, kk))
-                                [by simplify b-equals-a-times-j c-equals-b-times-k mulIsAssociative]
-                              @a-divides-c-under-witnesses |
-                                divides(a, c)
-                                [by exists_intro(mul(j, kk)) c-is-a-times-jk]
-                            }
-                          @a-divides-c-after-k |
-                            divides(a, c)
-                            [by exists_elim with-c-quotient-k]
-                        }
-                      @a-divides-c |
-                        divides(a, c)
-                        [by exists_elim with-b-quotient-j]
-                    }
-                  @b-divides-c-implies-a-divides-c |
-                    divides(b, c) -> divides(a, c)
-                    [by implies_intro given-b-divides-c]
-                }
-              @a-divides-b-implies-transitive |
-                divides(a, b) -> divides(b, c) -> divides(a, c)
-                [by implies_intro given-a-divides-b]
-            }
-          @discharge-c |
-            forall c: Nat; divides(a, b) -> divides(b, c) -> divides(a, c)
-            [by forall_intro generalize-c]
-        }
-      @discharge-b |
-        forall b, c: Nat; divides(a, b) -> divides(b, c) -> divides(a, c)
-        [by forall_intro generalize-b]
-    }
   @conclusion |
     forall a, b, c: Nat; divides(a, b) -> divides(b, c) -> divides(a, c)
-    [by forall_intro generalize-a]
+    [by model(PeanoDivisibility) divisibility.dividesTransitive]
 qed
 
 // divides(d,a) -> divides(d,b) -> divides(d, add(a,b)): a=d*j, b=d*k => a+b=d*(j+k).
+// transferred from the abstract divisibility theory via PeanoDivisibility.
 theorem dividesAdd: forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
 proof
-  @generalize-d |
-    fix d: Nat {
-      @generalize-a |
-        fix a: Nat {
-          @generalize-b |
-            fix b: Nat {
-              @given-d-divides-a |
-                assume divides(d, a) {
-                  @given-d-divides-b |
-                    assume divides(d, b) {
-                      @d-divides-a |
-                        divides(d, a)
-                        [by hypothesis given-d-divides-a]
-                      @d-divides-b |
-                        divides(d, b)
-                        [by hypothesis given-d-divides-b]
-                      @with-a-quotient-j |
-                        unpack j: Nat from d-divides-a {
-                          @a-equals-d-times-j |
-                            a = mul(d, j)
-                            [by hypothesis with-a-quotient-j]
-                          @with-b-quotient-k |
-                            unpack kk: Nat from d-divides-b {
-                              @b-equals-d-times-k |
-                                b = mul(d, kk)
-                                [by hypothesis with-b-quotient-k]
-                              @sum-is-d-multiple |
-                                add(a, b) = mul(d, add(j, kk))
-                                [by simplify a-equals-d-times-j b-equals-d-times-k mulAddDistribLeft]
-                              @d-divides-sum-under-witness |
-                                divides(d, add(a, b))
-                                [by exists_intro(add(j, kk)) sum-is-d-multiple]
-                            }
-                          @d-divides-sum-after-k |
-                            divides(d, add(a, b))
-                            [by exists_elim with-b-quotient-k]
-                        }
-                      @d-divides-sum |
-                        divides(d, add(a, b))
-                        [by exists_elim with-a-quotient-j]
-                    }
-                  @d-divides-b-implies-d-divides-sum |
-                    divides(d, b) -> divides(d, add(a, b))
-                    [by implies_intro given-d-divides-b]
-                }
-              @common-divisor-divides-sum |
-                divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
-                [by implies_intro given-d-divides-a]
-            }
-          @discharge-b |
-            forall b: Nat; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
-            [by forall_intro generalize-b]
-        }
-      @discharge-a |
-        forall a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
-        [by forall_intro generalize-a]
-    }
   @conclusion |
     forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, add(a, b))
-    [by forall_intro generalize-d]
+    [by model(PeanoDivisibility) divisibility.dividesAdd]
 qed
 
 // divides(d,a) -> divides(d,b) -> divides(d, sub(a,b)): via mulSubDistribLeft.
@@ -304,50 +196,12 @@ proof
 qed
 
 // divides(d, a) -> divides(d, mul(a, k)): a = d*j => a*k = d*(j*k).
+// transferred from the abstract divisibility theory via PeanoDivisibility.
 theorem dividesMul: forall d, a, k: Nat; divides(d, a) -> divides(d, mul(a, k))
 proof
-  @generalize-d |
-    fix d: Nat {
-      @generalize-a |
-        fix a: Nat {
-          @generalize-k |
-            fix k: Nat {
-              @given-d-divides-a |
-                assume divides(d, a) {
-                  @d-divides-a |
-                    divides(d, a)
-                    [by hypothesis given-d-divides-a]
-                  @with-a-quotient-j |
-                    unpack j: Nat from d-divides-a {
-                      @a-equals-d-times-j |
-                        a = mul(d, j)
-                        [by hypothesis with-a-quotient-j]
-                      @scaled-product-is-d-multiple |
-                        mul(a, k) = mul(d, mul(j, k))
-                        [by simplify a-equals-d-times-j mulIsAssociative]
-                      @d-divides-scaled-under-witness |
-                        divides(d, mul(a, k))
-                        [by exists_intro(mul(j, k)) scaled-product-is-d-multiple]
-                    }
-                  @d-divides-scaled |
-                    divides(d, mul(a, k))
-                    [by exists_elim with-a-quotient-j]
-                }
-              @d-divides-a-implies-d-divides-scaled |
-                divides(d, a) -> divides(d, mul(a, k))
-                [by implies_intro given-d-divides-a]
-            }
-          @discharge-k |
-            forall k: Nat; divides(d, a) -> divides(d, mul(a, k))
-            [by forall_intro generalize-k]
-        }
-      @discharge-a |
-        forall a, k: Nat; divides(d, a) -> divides(d, mul(a, k))
-        [by forall_intro generalize-a]
-    }
   @conclusion |
     forall d, a, k: Nat; divides(d, a) -> divides(d, mul(a, k))
-    [by forall_intro generalize-d]
+    [by model(PeanoDivisibility) divisibility.dividesMul]
 qed
 
 // THE gcd BRIDGE: for b != ZERO with d | b, d | a  iff  d | mod(a, b).
