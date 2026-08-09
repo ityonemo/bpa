@@ -233,6 +233,27 @@ is to never need one, which keeps byte-determinism universal.
 
 ## Caching
 
+**INVARIANT (user ruling 2026-08-09): plain `bpa check` is ALWAYS strict** —
+full kernel certificates, no imported-proof/schema trust, and NO cache. The
+maximal guarantee is the default and is never silently weakened. All caching /
+trust-shortcutting is OPT-IN, disclosed, and non-default. Corollaries:
+
+- **Caching lives behind its own flag** (`--cached`, a non-strict mode like
+  `--fast`) — it never activates under strict `check`. A user who runs plain
+  `check` re-verifies from axioms every time; cache staleness can never ambush
+  them. (The `--cold`/force-re-verify affordance below is for *within* a cached
+  workflow.)
+- **The cache key includes the verify-mode + taint set**, so a `--fast`/tainted
+  entry is never served to a strict request (no laundering trust through the
+  cache). A served-from-cache result still reports trust status / dead-step /
+  accelerated-taint exactly as if freshly checked — the cache is a speed layer,
+  never a correctness- or disclosure-shortcut.
+- **Collapse the fast-flag ladder (user ruling):** fold `--fast`/`--faster`/
+  `--reckless` toward ONE dev-speed flag — `--fast` does what `--reckless` does
+  (trust imports AND imported schemas for iteration). The finer split is an
+  implementation distinction nobody reaches for at the CLI. Two user intents
+  only: dev-speed (`--fast`) vs the real guarantee (plain `check`, always strict).
+
 **The cache unit is the statement, matching the proving unit.** (This
 supersedes the earlier "files are the permanent trust/cache boundary" ruling,
 which belonged to the file-eager model; files remain the unit of parsing and
@@ -252,10 +273,13 @@ code organization.)
   verified" table is the lockfile for third-party theories — "trusted"
   becomes "verified previously, hash unchanged", at theorem granularity.
 
-Disclosure: the summary reports cache use (e.g. `N proven (M from cache)`);
-a `--cold` flag forces full re-verification. The local cache is a trust
-surface equivalent to trusting one's own filesystem and binary; signing is a
-distribution-time concern, not a local one.
+Disclosure: under `--cached` the summary reports cache use (e.g.
+`N proven (M from cache)`). (Reconciled with the INVARIANT above: caching is
+opt-in via `--cached`, so plain strict `check` is already the "force full
+re-verification" path — there is no separate `--cold` under strict; a
+force-refresh affordance, if wanted, lives *within* a `--cached` workflow.) The
+local cache is a trust surface equivalent to trusting one's own filesystem and
+binary; signing is a distribution-time concern, not a local one.
 
 ## Daemon/watch mode: ~obviated by durable caching (decided)
 
