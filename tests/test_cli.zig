@@ -193,6 +193,11 @@ pub fn addTests(
     // `define` abbreviations expand transparently; certificates unaffected
     ctx.okSilent(&.{ "check", "tests/cases/define.bpa" });
 
+    // `define` expansion is CAPTURE-AVOIDING: a nested define call whose inner
+    // formal name collides with an outer define's argument must not capture it
+    // (`outer(n, x)` = `mul(n, x)`, NOT `mul(x, x)`).
+    ctx.okSilent(&.{ "check", "tests/cases/define_no_capture.bpa" });
+
     // a PARAMETERIZED, Prop-valued `define` — a transparent (macro) predicate.
     // `even(n)` expands to its body at elaboration (the kernel never sees `even`),
     // so a proof that needs the body gets it for free — no unfold/cite step.

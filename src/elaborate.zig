@@ -3989,13 +3989,25 @@ pub const Elaborator = struct {
         }
         // a `define` is a MACRO: expand the call to its stored body with each
         // actual substituted for the corresponding param fvar (like a schema-lambda
-        // beta-reduction). The kernel never sees the define'd symbol. Simultaneous
-        // by construction — the body's param fvars are distinct and the actuals are
-        // already-elaborated closed terms.
+        // beta-reduction). The kernel never sees the define'd symbol.
+        //
+        // The substitution MUST be simultaneous: param fvars are named after their
+        // source name, and an actual may itself be an fvar named after an OUTER
+        // define/func param (defines nest — `outer(n,x) = inner(n,x)`). A naive
+        // sequential subst would then CAPTURE: substituting `inner.d := fvar_n`
+        // introduces `fvar_n`, which the later `inner.n := …` pass would wrongly
+        // rewrite too. So substitute in two phases through FRESH temporaries that
+        // cannot collide with any actual: params → temps, then temps → actuals.
         if (sym.definition) |body| {
             var expanded = body;
-            for (sym.param_names, arg_ids) |pn, actual| {
-                expanded = try self.pool.substFvar(expanded, pn, actual);
+            const temps = try self.arena.alloc(StrId, sym.param_names.len);
+            for (sym.param_names, temps) |pn, *t| {
+                t.* = try self.freshName();
+                const tv = try self.pool.add(.{ .fvar = .{ .name = t.*, .sort = .prop } });
+                expanded = try self.pool.substFvar(expanded, pn, tv);
+            }
+            for (temps, arg_ids) |t, actual| {
+                expanded = try self.pool.substFvar(expanded, t, actual);
             }
             return .{ .id = expanded, .sort = sym.result };
         }
@@ -4091,6 +4103,35 @@ test "well-sorted declarations elaborate cleanly" {
     // schema stored lazily as a form
     const ind = ctx.env.findStatement(@enumFromInt(0), try ctx.interner.intern("induction")).?;
     try testing.expect(ind.* == .schema);
+}
+
+test "define expansion is capture-avoiding across nested defines" {
+    // outer(n, x) = inner(n, x), inner(d, n) = mul(d, n). The inner formal `n`
+    // collides with outer's argument `n`; a naive sequential subst captures →
+    // mul(x, x). Simultaneous (through fresh temps) keeps it mul(n, x), so the
+    // reflexivity proof of `outer(n, x) = mul(n, x)` checks with no diagnostics.
+    const source =
+        \\sort T
+        \\func mul(a: T, b: T): T
+        \\define inner(d: T, n: T) = mul(d, n)
+        \\define outer(n: T, x: T) = inner(n, x)
+        \\theorem outerIsMul: forall n, x: T; outer(n, x) = mul(n, x)
+        \\proof
+        \\  @generalize-n |
+        \\    fix n: T {
+        \\      @generalize-x |
+        \\        fix x: T {
+        \\          @body | outer(n, x) = mul(n, x) [by reflexivity]
+        \\        }
+        \\      @discharge-x | forall x: T; outer(n, x) = mul(n, x) [by forall_intro generalize-x]
+        \\    }
+        \\  @conclusion | forall n, x: T; outer(n, x) = mul(n, x) [by forall_intro generalize-n]
+        \\qed
+    ;
+    var ctx = try TestCtx.run(testing.allocator, source);
+    defer ctx.deinit(testing.allocator);
+    if (ctx.sink.list.items.len != 0) std.debug.print("unexpected diagnostic: {s}\n", .{ctx.firstMessage()});
+    try testing.expectEqual(0, ctx.sink.list.items.len);
 }
 
 test "use-all-facts: schema instantiate does not clobber outer accelerant roots (--fast)" {
