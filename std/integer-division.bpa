@@ -98,6 +98,11 @@ theorem negLessThanZero = order.negLessThanZero
 theorem productOfNonpositiveFactorsIsNonneg = order.productOfNonpositiveFactorsIsNonneg
 theorem negAdd = ring.negAdd
 theorem negNeg = ring.negNeg
+theorem signTrichotomy = order.signTrichotomy
+theorem nonnegMul = order.nonnegMul
+theorem positiveIsNonneg = order.positiveIsNonneg
+theorem dividesMul = divides.dividesMul
+theorem dividesAdd = divides.dividesAdd
 
 theorem productOfNonnegativesIsNonneg: forall b, k: Int;
   is_nonneg(b) -> is_nonneg(k) -> is_nonneg(mul(b, k))
@@ -2920,4 +2925,271 @@ proof
   @conclusion |
     forall a, b: Int; less_than(ZERO, b) -> exists q: Int; exists r: Int; a = add(mul(b, q), r) and is_nonneg(r) and less_than(r, b)
     [by forall_intro generalize-a]
+qed
+
+// -- moved from the sequence/prime chapter: subtraction + divisor bounds ---
+
+// d | a and d | b give d | (a − b): d | (−b) because −b = mul(b, −1) is a
+// multiple of b's divisor d (dividesMul with −1), then dividesAdd on a and −b,
+// with sub(a, b) = add(a, neg(b)) (subDef).
+theorem dividesSubtracts: forall d, a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-a |
+        fix a: Int {
+          @generalize-b |
+            fix b: Int {
+              @given-d-divides-a |
+                assume does_divide(d, a) {
+                  @given-d-divides-b |
+                    assume does_divide(d, b) {
+                      @d-divides-a |
+                        does_divide(d, a)
+                        [by hypothesis given-d-divides-a]
+                      @d-divides-b |
+                        does_divide(d, b)
+                        [by hypothesis given-d-divides-b]
+                      // d | neg(b): neg(b) = mul(b, neg(ONE)) is a multiple of b.
+                      @d-divides-b-times-neg-one-fact |
+                        does_divide(d, mul(b, neg(ONE)))
+                        [by specialize dividesMul(d, b, neg(ONE)) d-divides-b]
+                      @b-times-neg-one-is-neg-b |
+                        mul(b, neg(ONE)) = neg(b)
+                        [by simplify mulNegRight mulOneRight]
+                      @d-divides-neg-b |
+                        does_divide(d, neg(b))
+                        [by rewrite b-times-neg-one-is-neg-b d-divides-b-times-neg-one-fact]
+                      // d | add(a, neg(b)) = a − b.
+                      @d-divides-a-plus-neg-b |
+                        does_divide(d, add(a, neg(b)))
+                        [by specialize dividesAdd(d, a, neg(b)) d-divides-a d-divides-neg-b]
+                      @a-minus-b-is-a-plus-neg-b |
+                        sub(a, b) = add(a, neg(b))
+                        [by specialize subDef(a, b)]
+                      @a-plus-neg-b-is-a-minus-b |
+                        add(a, neg(b)) = sub(a, b)
+                        [by symmetry a-minus-b-is-a-plus-neg-b]
+                      @d-divides-a-minus-b |
+                        does_divide(d, sub(a, b))
+                        [by rewrite a-plus-neg-b-is-a-minus-b d-divides-a-plus-neg-b]
+                    }
+                  @d-divides-b-implies-divides-difference |
+                    does_divide(d, b) -> does_divide(d, sub(a, b))
+                    [by implies_intro given-d-divides-b]
+                }
+              @d-divides-a-implies-rest |
+                does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+                [by implies_intro given-d-divides-a]
+            }
+          @discharge-b |
+            forall b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+            [by forall_intro generalize-b]
+        }
+      @discharge-a |
+        forall a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+        [by forall_intro generalize-a]
+    }
+  @conclusion |
+    forall d, a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
+    [by forall_intro generalize-d]
+qed
+
+// If d | n with d, n positive, then d ≤ n. Write n = d·k. The quotient k is
+// positive: k = 0 makes n = 0, and k < 0 makes n = −(d·|k|) negative, both
+// against n > 0. With k ≥ 1, the difference k − 1 is nonneg, so the gap
+// g = d·(k−1) is nonneg (nonnegMul), and add(d, g) = d·(1 + (k−1)) = d·k = n,
+// so exists_intro on the gap g reads d ≤ n.
+theorem divisorAtMost: forall d, n: Int; less_than(ZERO, d) -> less_than(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-n |
+        fix n: Int {
+          @given-d-positive |
+            assume less_than(ZERO, d) {
+              @given-n-positive |
+                assume less_than(ZERO, n) {
+                  @given-d-divides-n |
+                    assume does_divide(d, n) {
+                      @d-positive |
+                        less_than(ZERO, d)
+                        [by hypothesis given-d-positive]
+                      @n-positive |
+                        less_than(ZERO, n)
+                        [by hypothesis given-n-positive]
+                      @d-divides-n |
+                        does_divide(d, n)
+                        [by hypothesis given-d-divides-n]
+                      @with-quotient-k |
+                        unpack k: Int from d-divides-n {
+                          @n-is-d-times-k |
+                            n = mul(d, k)
+                            [by hypothesis with-quotient-k]
+                          @d-nonneg |
+                            is_nonneg(d)
+                            [by specialize positiveIsNonneg(d) d-positive]
+                          // the quotient k is positive.
+                          @k-sign |
+                            less_than(ZERO, k) or k = ZERO or less_than(k, ZERO)
+                            [by specialize signTrichotomy(k)]
+                          @k-positive |
+                            less_than(ZERO, k)
+                            case k-sign {
+                              @when-k-positive |
+                                assume less_than(ZERO, k) {
+                                  @conclusion-k-positive |
+                                    less_than(ZERO, k)
+                                    [by hypothesis when-k-positive]
+                                }
+                              @when-k-zero |
+                                assume k = ZERO {
+                                  @k-is-zero |
+                                    k = ZERO
+                                    [by hypothesis when-k-zero]
+                                  @d-times-zero-is-zero |
+                                    mul(d, ZERO) = ZERO
+                                    [by specialize mulZeroRight(d)]
+                                  // n = d·k = d·0 = 0
+                                  @n-is-zero |
+                                    n = ZERO
+                                    [by chain n-is-d-times-k k-is-zero d-times-zero-is-zero]
+                                  @zero-less_than-zero |
+                                    less_than(ZERO, ZERO)
+                                    [by rewrite n-is-zero n-positive]
+                                  @zero-not-less_than-zero |
+                                    not less_than(ZERO, ZERO)
+                                    [by specialize lessThanIrreflexive(ZERO)]
+                                  @conclusion-k-positive |
+                                    less_than(ZERO, k)
+                                    [by absurd zero-less_than-zero zero-not-less_than-zero]
+                                }
+                              @when-k-negative |
+                                assume less_than(k, ZERO) {
+                                  @k-negative |
+                                    less_than(k, ZERO)
+                                    [by hypothesis when-k-negative]
+                                  // n = d·k = −(d·(−k)), and d·(−k) is nonneg, so n ≤ 0.
+                                  @neg-k-nonneg |
+                                    is_nonneg(neg(k))
+                                    [by specialize negLessThanZero(k) k-negative]
+                                  @d-times-neg-k-nonneg |
+                                    is_nonneg(mul(d, neg(k)))
+                                    [by specialize nonnegMul(d, neg(k)) d-nonneg neg-k-nonneg]
+                                  @d-times-neg-k-is-neg-product |
+                                    mul(d, neg(k)) = neg(mul(d, k))
+                                    [by specialize mulNegRight(d, k)]
+                                  // d·(−k) = −(d·k) = −n
+                                  @d-times-neg-k-is-neg-n |
+                                    mul(d, neg(k)) = neg(n)
+                                    [by chain d-times-neg-k-is-neg-product n-is-d-times-k]
+                                  @neg-n-nonneg |
+                                    is_nonneg(neg(n))
+                                    [by rewrite d-times-neg-k-is-neg-n d-times-neg-k-nonneg]
+                                  @add-n-neg-n-is-zero |
+                                    add(n, neg(n)) = ZERO
+                                    [by specialize addNegRight(n)]
+                                  @n-plus-neg-n-witnesses |
+                                    is_nonneg(neg(n)) and add(n, neg(n)) = ZERO
+                                    [by and_intro neg-n-nonneg add-n-neg-n-is-zero]
+                                  @n-at-most-zero-iff-gap |
+                                    at_most(n, ZERO) iff (exists g: Int; is_nonneg(g) and add(n, g) = ZERO)
+                                    [by specialize lessOrEqualIsGapExistential(n, ZERO)]
+                                  @gap-gives-n-at-most-zero |
+                                    (exists g: Int; is_nonneg(g) and add(n, g) = ZERO) -> at_most(n, ZERO)
+                                    [by iff_elim_backward n-at-most-zero-iff-gap]
+                                  @n-reaches-zero-gap-exists |
+                                    exists g: Int; is_nonneg(g) and add(n, g) = ZERO
+                                    [by exists_intro(neg(n)) n-plus-neg-n-witnesses]
+                                  @n-at-most-zero |
+                                    at_most(n, ZERO)
+                                    [by modus_ponens gap-gives-n-at-most-zero n-reaches-zero-gap-exists]
+                                  @zero-at-most-n |
+                                    at_most(ZERO, n)
+                                    [by specialize lessThanToLessOrEqual(ZERO, n) n-positive]
+                                  @n-is-zero |
+                                    n = ZERO
+                                    [by specialize lessOrEqualAntisymmetric(n, ZERO) n-at-most-zero zero-at-most-n]
+                                  @zero-less_than-zero |
+                                    less_than(ZERO, ZERO)
+                                    [by rewrite n-is-zero n-positive]
+                                  @zero-not-less_than-zero |
+                                    not less_than(ZERO, ZERO)
+                                    [by specialize lessThanIrreflexive(ZERO)]
+                                  @conclusion-k-positive |
+                                    less_than(ZERO, k)
+                                    [by absurd zero-less_than-zero zero-not-less_than-zero]
+                                }
+                            }
+                          // k ≥ 1, so k − 1 is nonneg and g = d·(k−1) is the gap.
+                          @one-at-most-k |
+                            at_most(ONE, k)
+                            [by specialize oneAtMostPositive(k) k-positive]
+                          @k-minus-one-nonneg |
+                            is_nonneg(sub(k, ONE))
+                            [by specialize atMostGivesNonnegDifference(ONE, k) one-at-most-k]
+                          @gap-nonneg |
+                            is_nonneg(mul(d, sub(k, ONE)))
+                            [by specialize nonnegMul(d, sub(k, ONE)) d-nonneg k-minus-one-nonneg]
+                          // add(d, d·(k−1)) = d·(1 + (k−1)) = d·k = n.
+                          @one-plus-k-minus-one-is-k |
+                            add(ONE, sub(k, ONE)) = k
+                            [by specialize addDiffReaches(ONE, k)]
+                          @d-times-one-plus-diff |
+                            mul(d, add(ONE, sub(k, ONE))) = add(mul(d, ONE), mul(d, sub(k, ONE)))
+                            [by specialize mulAddDistribLeft(d, ONE, sub(k, ONE))]
+                          @d-times-one-is-d |
+                            mul(d, ONE) = d
+                            [by specialize mulOneRight(d)]
+                          @d-times-one-plus-diff-collects |
+                            mul(d, add(ONE, sub(k, ONE))) = add(d, mul(d, sub(k, ONE)))
+                            [by rewrite d-times-one-is-d d-times-one-plus-diff]
+                          @d-times-k-splits |
+                            mul(d, k) = add(d, mul(d, sub(k, ONE)))
+                            [by rewrite one-plus-k-minus-one-is-k d-times-one-plus-diff-collects]
+                          @n-splits-into-d-plus-gap |
+                            n = add(d, mul(d, sub(k, ONE)))
+                            [by rewrite d-times-k-splits n-is-d-times-k]
+                          @d-plus-gap-is-n |
+                            add(d, mul(d, sub(k, ONE))) = n
+                            [by symmetry n-splits-into-d-plus-gap]
+                          @gap-witnesses-at-most |
+                            is_nonneg(mul(d, sub(k, ONE))) and add(d, mul(d, sub(k, ONE))) = n
+                            [by and_intro gap-nonneg d-plus-gap-is-n]
+                          @d-at-most-n-iff-gap |
+                            at_most(d, n) iff (exists g: Int; is_nonneg(g) and add(d, g) = n)
+                            [by specialize lessOrEqualIsGapExistential(d, n)]
+                          @gap-gives-d-at-most-n |
+                            (exists g: Int; is_nonneg(g) and add(d, g) = n) -> at_most(d, n)
+                            [by iff_elim_backward d-at-most-n-iff-gap]
+                          @d-reaches-n-gap-exists |
+                            exists g: Int; is_nonneg(g) and add(d, g) = n
+                            [by exists_intro(mul(d, sub(k, ONE))) gap-witnesses-at-most]
+                          @d-at-most-n |
+                            at_most(d, n)
+                            [by modus_ponens gap-gives-d-at-most-n d-reaches-n-gap-exists]
+                        }
+                      @d-at-most-n |
+                        at_most(d, n)
+                        [by exists_elim with-quotient-k]
+                    }
+                  @d-divides-n-implies-at-most |
+                    does_divide(d, n) -> at_most(d, n)
+                    [by implies_intro given-d-divides-n]
+                }
+              @n-positive-implies-at-most |
+                less_than(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+                [by implies_intro given-n-positive]
+            }
+          @d-positive-implies-at-most |
+            less_than(ZERO, d) -> less_than(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+            [by implies_intro given-d-positive]
+        }
+      @discharge-n |
+        forall n: Int; less_than(ZERO, d) -> less_than(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+        [by forall_intro generalize-n]
+    }
+  @conclusion |
+    forall d, n: Int; less_than(ZERO, d) -> less_than(ZERO, n) -> does_divide(d, n) -> at_most(d, n)
+    [by forall_intro generalize-d]
 qed

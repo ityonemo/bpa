@@ -25,6 +25,7 @@ func mul = integer.mul
 func neg = integer.neg
 axiom addZeroLeft = integer.addZeroLeft
 axiom addSuccLeft = integer.addSuccLeft
+axiom oneIsSuccZero = integer.oneIsSuccZero
 theorem addZeroRight = ring.addZeroRight
 theorem addSuccRight = ring.addSuccRight
 theorem addIsCommutative = ring.addIsCommutative
@@ -2049,3 +2050,258 @@ qed
 // mul commutativity is a pure ring fact — it now lives in integer.bpa's
 // ring layer (no order needed); alias it here.
 theorem mulIsCommutative = integer.mulIsCommutative
+
+// -- small sign/order facts consumed by the division and prime chapters ------
+
+// 0 < 1: the gap succ(ZERO) = ONE witnesses it (add(ZERO, succ ZERO) = ONE).
+theorem zeroLessThanOne: less_than(ZERO, ONE)
+proof
+  @one-is-succ-zero |
+    ONE = succ(ZERO)
+    [by axiom oneIsSuccZero]
+  @succ-zero-is-one |
+    succ(ZERO) = ONE
+    [by symmetry one-is-succ-zero]
+  @zero-nonneg |
+    nonneg(ZERO)
+    [by axiom nonnegZero]
+  @zero-plus-succ-zero-is-succ-zero |
+    add(ZERO, succ(ZERO)) = succ(ZERO)
+    [by specialize addZeroLeft(succ(ZERO))]
+  @zero-plus-succ-zero-is-one |
+    add(ZERO, succ(ZERO)) = ONE
+    [by rewrite succ-zero-is-one zero-plus-succ-zero-is-succ-zero]
+  @conclusion |
+    less_than(ZERO, ONE)
+    [by specialize lessThanIntro(ZERO, ZERO, ONE) zero-nonneg zero-plus-succ-zero-is-one]
+qed
+
+// -1 < 0: add(neg(ONE), succ(ZERO)) = ZERO with nonneg gap ZERO, so lessThanIntro
+// gives less_than(neg(ONE), ZERO). Used by coprimeBezout to reject d = -1.
+theorem negOneLessThanZero: less_than(neg(ONE), ZERO)
+proof
+  @one-is-succ-zero |
+    ONE = succ(ZERO)
+    [by axiom oneIsSuccZero]
+  @neg-one-plus-one-is-zero |
+    add(neg(ONE), ONE) = ZERO
+    [by specialize addNegLeft(ONE)]
+  @neg-one-plus-succ-zero-is-zero |
+    add(neg(ONE), succ(ZERO)) = ZERO
+    [by rewrite one-is-succ-zero neg-one-plus-one-is-zero]
+  @zero-is-nonneg |
+    nonneg(ZERO)
+    [by axiom nonnegZero]
+  @less-than-intro |
+    forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
+    [by axiom lessThanIntro]
+  @conclusion |
+    less_than(neg(ONE), ZERO)
+    [by specialize lessThanIntro(neg(ONE), ZERO, ZERO) zero-is-nonneg neg-one-plus-succ-zero-is-zero]
+qed
+
+// A positive integer is nonnegative: unfold less_than(ZERO, x) to a gap succ(d) = x
+// with d nonneg (add(ZERO, succ d) = x collapses to succ d = x), and the
+// successor of a nonneg is nonneg.
+theorem positiveIsNonneg: forall x: Int; less_than(ZERO, x) -> nonneg(x)
+proof
+  @generalize-x |
+    fix x: Int {
+      @given-x-positive |
+        assume less_than(ZERO, x) {
+          @x-positive |
+            less_than(ZERO, x)
+            [by hypothesis given-x-positive]
+          @gap-exists |
+            exists d: Int; nonneg(d) and add(ZERO, succ(d)) = x
+            [by specialize lessThanElim(ZERO, x) x-positive]
+          @with-gap-d |
+            unpack d: Int from gap-exists {
+              @gap-nonneg-and-reaches-x |
+                nonneg(d) and add(ZERO, succ(d)) = x
+                [by hypothesis with-gap-d]
+              @gap-nonneg |
+                nonneg(d)
+                [by tautology gap-nonneg-and-reaches-x]
+              @gap-reaches-x |
+                add(ZERO, succ(d)) = x
+                [by tautology gap-nonneg-and-reaches-x]
+              @zero-plus-succ-gap-is-succ-gap |
+                add(ZERO, succ(d)) = succ(d)
+                [by specialize addZeroLeft(succ(d))]
+              @succ-gap-is-x |
+                succ(d) = x
+                [by rewrite zero-plus-succ-gap-is-succ-gap gap-reaches-x]
+              @succ-gap-nonneg |
+                nonneg(succ(d))
+                [by specialize nonnegSucc(d) gap-nonneg]
+              @x-nonneg |
+                nonneg(x)
+                [by rewrite succ-gap-is-x succ-gap-nonneg]
+            }
+          @x-nonneg |
+            nonneg(x)
+            [by exists_elim with-gap-d]
+        }
+      @positive-implies-nonneg |
+        less_than(ZERO, x) -> nonneg(x)
+        [by implies_intro given-x-positive]
+    }
+  @conclusion |
+    forall x: Int; less_than(ZERO, x) -> nonneg(x)
+    [by forall_intro generalize-x]
+qed
+
+// A negative integer negates to a positive one. Unfold less_than(a, ZERO) to a
+// nonneg gap d with add(a, succ(d)) = ZERO; add -a on the left, regroup and
+// cancel a to get add(ZERO, succ(d)) = neg(a), off which lessThanIntro reads
+// less_than(ZERO, neg(a)).
+theorem negativeNegIsPositive: forall a: Int; less_than(a, ZERO) -> less_than(ZERO, neg(a))
+proof
+  @generalize-a |
+    fix a: Int {
+      @given-a-negative |
+        assume less_than(a, ZERO) {
+          @a-negative |
+            less_than(a, ZERO)
+            [by hypothesis given-a-negative]
+          @less-than-elim |
+            forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
+            [by axiom lessThanElim]
+          @gap-exists |
+            exists d: Int; nonneg(d) and add(a, succ(d)) = ZERO
+            [by specialize lessThanElim(a, ZERO) a-negative]
+          @with-gap-d |
+            unpack d: Int from gap-exists {
+              @gap-nonneg-and-sums |
+                nonneg(d) and add(a, succ(d)) = ZERO
+                [by hypothesis with-gap-d]
+              @gap-nonneg |
+                nonneg(d)
+                [by and_elim_left gap-nonneg-and-sums]
+              @a-plus-successor-is-zero |
+                add(a, succ(d)) = ZERO
+                [by and_elim_right gap-nonneg-and-sums]
+              @add-is-associative |
+                forall x, y, z: Int; add(add(x, y), z) = add(x, add(y, z))
+                [by theorem addIsAssociative]
+              @regroup |
+                add(add(neg(a), a), succ(d)) = add(neg(a), add(a, succ(d)))
+                [by forall_elim(neg(a), a, succ(d)) add-is-associative]
+              @neg-a-plus-a-is-zero |
+                add(neg(a), a) = ZERO
+                [by specialize addNegLeft(a)]
+              @add-zero-right-lemma |
+                forall n: Int; add(n, ZERO) = n
+                [by theorem addZeroRight]
+              @neg-a-plus-zero-is-neg-a |
+                add(neg(a), ZERO) = neg(a)
+                [by forall_elim(neg(a)) add-zero-right-lemma]
+              @zero-plus-successor-is-neg-a |
+                add(ZERO, succ(d)) = neg(a)
+                [by chain neg-a-plus-a-is-zero regroup a-plus-successor-is-zero neg-a-plus-zero-is-neg-a]
+              @less-than-intro |
+                forall x, e, y: Int; nonneg(e) -> add(x, succ(e)) = y -> less_than(x, y)
+                [by axiom lessThanIntro]
+              @conclusion-neg-a-positive |
+                less_than(ZERO, neg(a))
+                [by specialize lessThanIntro(ZERO, d, neg(a)) gap-nonneg zero-plus-successor-is-neg-a]
+            }
+          @neg-a-positive |
+            less_than(ZERO, neg(a))
+            [by exists_elim with-gap-d]
+        }
+      @negative-implies-neg-positive |
+        less_than(a, ZERO) -> less_than(ZERO, neg(a))
+        [by implies_intro given-a-negative]
+    }
+  @conclusion |
+    forall a: Int; less_than(a, ZERO) -> less_than(ZERO, neg(a))
+    [by forall_intro generalize-a]
+qed
+
+// A nonnegative integer that is not positive must be ZERO. nonnegCases splits it
+// into ZERO or a nonneg successor; a successor is positive, so the non-positive
+// hypothesis kills that arm.
+theorem nonnegNotPositiveIsZero: forall x: Int; nonneg(x) -> (not less_than(ZERO, x)) -> x = ZERO
+proof
+  @generalize-x |
+    fix x: Int {
+      @given-x-nonneg |
+        assume nonneg(x) {
+          @given-x-not-positive |
+            assume not less_than(ZERO, x) {
+              @x-nonneg |
+                nonneg(x)
+                [by hypothesis given-x-nonneg]
+              @x-not-positive |
+                not less_than(ZERO, x)
+                [by hypothesis given-x-not-positive]
+              @x-zero-or-successor |
+                x = ZERO or (exists m: Int; nonneg(m) and x = succ(m))
+                [by specialize nonnegCases(x) x-nonneg]
+              @conclusion-x-is-zero |
+                x = ZERO
+                case x-zero-or-successor {
+                  @when-x-is-zero |
+                    assume x = ZERO {
+                      @conclusion-x-is-zero |
+                        x = ZERO
+                        [by hypothesis when-x-is-zero]
+                    }
+                  @when-x-is-successor |
+                    assume exists m: Int; nonneg(m) and x = succ(m) {
+                      @successor-exists |
+                        exists m: Int; nonneg(m) and x = succ(m)
+                        [by hypothesis when-x-is-successor]
+                      @with-predecessor-m |
+                        unpack m: Int from successor-exists {
+                          @gap-nonneg-and-x-is-successor |
+                            nonneg(m) and x = succ(m)
+                            [by hypothesis with-predecessor-m]
+                          @gap-nonneg |
+                            nonneg(m)
+                            [by and_elim_left gap-nonneg-and-x-is-successor]
+                          @x-is-successor |
+                            x = succ(m)
+                            [by and_elim_right gap-nonneg-and-x-is-successor]
+                          @add-zero-left |
+                            forall n: Int; add(ZERO, n) = n
+                            [by axiom addZeroLeft]
+                          @zero-plus-successor-is-successor |
+                            add(ZERO, succ(m)) = succ(m)
+                            [by forall_elim(succ(m)) add-zero-left]
+                          @successor-is-x |
+                            succ(m) = x
+                            [by symmetry x-is-successor]
+                          @zero-plus-successor-is-x |
+                            add(ZERO, succ(m)) = x
+                            [by rewrite successor-is-x zero-plus-successor-is-successor]
+                          @less-than-intro |
+                            forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
+                            [by axiom lessThanIntro]
+                          @x-is-positive |
+                            less_than(ZERO, x)
+                            [by specialize lessThanIntro(ZERO, m, x) gap-nonneg zero-plus-successor-is-x]
+                          @conclusion-x-is-zero |
+                            x = ZERO
+                            [by absurd x-is-positive x-not-positive]
+                        }
+                      @conclusion-x-is-zero |
+                        x = ZERO
+                        [by exists_elim with-predecessor-m]
+                    }
+                }
+            }
+          @not-positive-implies-zero |
+            (not less_than(ZERO, x)) -> x = ZERO
+            [by implies_intro given-x-not-positive]
+        }
+      @nonneg-implies-not-positive-implies-zero |
+        nonneg(x) -> (not less_than(ZERO, x)) -> x = ZERO
+        [by implies_intro given-x-nonneg]
+    }
+  @conclusion |
+    forall x: Int; nonneg(x) -> (not less_than(ZERO, x)) -> x = ZERO
+    [by forall_intro generalize-x]
+qed
