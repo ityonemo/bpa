@@ -17,5 +17,5 @@ model NumberModel {
   source.Elem: NumberGood
   source.ZE: ZED
   source.step: next
-  source.elemInduction: notASchema
+  source.elemInduction <- notASchema
 }

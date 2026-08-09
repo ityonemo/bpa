@@ -43,16 +43,16 @@ model HSubGroup {
   subgroup.inverse: inverse
   subgroup.E: E
   subgroup.inSubgroup: inH
-  subgroup.subgroupHasIdentity: hHasIdentity
-  subgroup.subgroupClosedOp: hClosedOp
-  subgroup.subgroupClosedInverse: hClosedInverse
+  subgroup.subgroupHasIdentity <- hHasIdentity
+  subgroup.subgroupClosedOp <- hClosedOp
+  subgroup.subgroupClosedInverse <- hClosedInverse
   // the subgroup theory's abstract PARENT group IS the real group. A model maps
   // only AXIOMS: grpAssoc/grpIdentityLeft/grpInverseLeft are the parent's axioms;
   // its Right laws are theorems that materialize through these, so they are NOT
   // mapped (mapping a theorem is a hard error).
-    subgroup.grpAssoc: group.opAssoc
-    subgroup.grpIdentityLeft: group.opIdentityLeft
-    subgroup.grpInverseLeft: group.opInverseLeft
+    subgroup.grpAssoc <- group.opAssoc
+    subgroup.grpIdentityLeft <- group.opIdentityLeft
+    subgroup.grpInverseLeft <- group.opInverseLeft
 }
 
 // ── LAYER 2: HGroup — inH IS a group, routing each group.X THROUGH HSubGroup. ─
@@ -61,9 +61,9 @@ model HGroup {
   group.op: op
   group.inverse: inverse
   group.E: E
-  group.opAssoc: HSubGroup @subgroup.opAssoc
-  group.opIdentityLeft: HSubGroup @subgroup.opIdentityLeft
-  group.opInverseLeft: HSubGroup @subgroup.opInverseLeft
+  group.opAssoc <- HSubGroup @subgroup.opAssoc
+  group.opIdentityLeft <- HSubGroup @subgroup.opIdentityLeft
+  group.opInverseLeft <- HSubGroup @subgroup.opInverseLeft
 }
 
 // ── the payoff: EVERY group theorem transferred onto the subgroup through HGroup,
@@ -157,12 +157,12 @@ model KSubGroup {
   subgroup.inverse: inverse
   subgroup.E: E
   subgroup.inSubgroup: inK
-  subgroup.subgroupHasIdentity: kHasIdentity
-  subgroup.subgroupClosedOp: kClosedOp
-  subgroup.subgroupClosedInverse: kClosedInverse
-  subgroup.grpAssoc: group.opAssoc
-  subgroup.grpIdentityLeft: group.opIdentityLeft
-  subgroup.grpInverseLeft: group.opInverseLeft
+  subgroup.subgroupHasIdentity <- kHasIdentity
+  subgroup.subgroupClosedOp <- kClosedOp
+  subgroup.subgroupClosedInverse <- kClosedInverse
+  subgroup.grpAssoc <- group.opAssoc
+  subgroup.grpIdentityLeft <- group.opIdentityLeft
+  subgroup.grpInverseLeft <- group.opInverseLeft
 }
 
 // KGroup: inK IS a group, routing each group axiom through KSubGroup.
@@ -171,9 +171,9 @@ model KGroup {
   group.op: op
   group.inverse: inverse
   group.E: E
-  group.opAssoc: KSubGroup @subgroup.opAssoc
-  group.opIdentityLeft: KSubGroup @subgroup.opIdentityLeft
-  group.opInverseLeft: KSubGroup @subgroup.opInverseLeft
+  group.opAssoc <- KSubGroup @subgroup.opAssoc
+  group.opIdentityLeft <- KSubGroup @subgroup.opIdentityLeft
+  group.opInverseLeft <- KSubGroup @subgroup.opInverseLeft
 }
 
 // three group theorems transferred onto the SUB-subgroup K.

@@ -165,7 +165,15 @@ pub fn addTests(
     ctx.okSilent(&.{ "check", "tests/cases/model_schema.bpa" });
     // RED: a schema source must be discharged by a SCHEMA (matching predicate
     // parameter); a plain axiom cannot, and the model decl rejects it.
-    ctx.fail(&.{ "check", "tests/cases/model_schema_bad.bpa" }, "tests/cases/model_schema_bad.bpa:20:25: error: 'notASchema' discharges a schema, so it must itself be a schema (with a matching predicate parameter)\n");
+    ctx.fail(&.{ "check", "tests/cases/model_schema_bad.bpa" }, "tests/cases/model_schema_bad.bpa:20:27: error: 'notASchema' discharges a schema, so it must itself be a schema (with a matching predicate parameter)\n");
+
+    // MODEL SYNTAX: `:` interprets a sort/symbol, `<-` discharges an axiom
+    // obligation. The happy path uses both; the two rejection paths are hard errors.
+    ctx.okSilent(&.{ "check", "tests/cases/model_obligation_arrow.bpa" });
+    // `:` on an axiom obligation → error, directing to `<-`.
+    ctx.fail(&.{ "check", "tests/cases/model_axiom_colon_bad.bpa" }, "tests/cases/model_axiom_colon_bad.bpa:17:3: error: 'source.opUnitLeft' is an axiom obligation, not a sort/symbol — discharge it with `<-` (`source.opUnitLeft <- <local fact>`), not `:`\n");
+    // `<-` on a sort/symbol → error, directing to `:`.
+    ctx.fail(&.{ "check", "tests/cases/model_symbol_arrow_bad.bpa" }, "tests/cases/model_symbol_arrow_bad.bpa:15:3: error: 'source.op' is a sort or symbol, not an axiom — map it with `:` (`source.op: <target>`), not `<-`\n");
 
     // ACCELERANT-THROUGH-GUARDED-MODEL boundary (RED characterization, one per
     // accelerant). Transferring a source theorem whose proof USES an accelerant

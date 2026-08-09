@@ -22,7 +22,7 @@ model ThingModel {
   cite.Sort: Thing
   cite.UNIT: NEUTRAL
   cite.op: combine
-  cite.opUnitLeft: combineNeutralLeft
+  cite.opUnitLeft <- combineNeutralLeft
   }
 
 theorem combineCollapsesAndMarks:

@@ -36,7 +36,7 @@ sort GrpH = Grp where inH
 
 model SubgroupIsGroup {
   Grp: GrpH
-  opIdentityLeft: identityLeftOnH
+  opIdentityLeft <- identityLeftOnH
   }
 
 // transferred (relativized) theorem: op(E, E) = E holds on H, discharging inH(E).

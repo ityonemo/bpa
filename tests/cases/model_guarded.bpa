@@ -27,7 +27,7 @@ model ThingModel {
   source.Sort: ThingGood
   source.UNIT: ZED
   source.op: combine
-  source.opUnitLeft: combineZedLeftGuarded
+  source.opUnitLeft <- combineZedLeftGuarded
   }
 
 // L1 (ground): transfer opUnitAtUnit — the proof instantiates at the constant

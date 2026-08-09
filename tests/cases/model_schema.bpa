@@ -27,7 +27,7 @@ model NumberModel {
   source.Elem: NumberGood
   source.ZE: ZED
   source.step: next
-  source.elemInduction: goodInduction
+  source.elemInduction <- goodInduction
 }
 
 // the payoff: cite the transferred schema. Its statement is goodInduction's — the

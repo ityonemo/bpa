@@ -50,8 +50,8 @@ model SrcIsGood {
   ZERO: TZERO
   succ: tsucc
   add: tadd
-  addZeroLeft: taddZeroLeft
-  addSuccLeft: taddSuccLeft
+  addZeroLeft <- taddZeroLeft
+  addSuccLeft <- taddSuccLeft
 }
 
 theorem transferred:

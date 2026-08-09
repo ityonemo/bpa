@@ -1,23 +1,23 @@
-// `model` transfer under --fast: a concrete sort `Thing` models the abstract
-// theory in model_source.bpa (Sort->Thing, UNIT->ZED, op->combine), and the
-// source theorem `opUnitLeftTwice` transfers to `Thing`, cited through the model.
-// Default mode rejects the accelerated transfer; --fast accepts it.
+// `model` obligation discharge uses `<-` (distinct from `:` symbol/sort maps):
+//   `src : tgt`       — interpret a source SORT or SYMBOL as a local one
+//   `src <- localThm` — discharge a source AXIOM obligation with a local fact
+// Happy path: a concrete `Thing` models the source theory, symbols via `:`, the
+// axiom obligation via `<-`, and the source theorem transfers through the model.
 import source <<< "model_source.bpa"
 
 sort Thing
 const ZED: Thing
 func combine(a: Thing, b: Thing): Thing
 
-// Thing's own left-identity fact — discharges the source's opUnitLeft obligation.
 axiom combineZedLeft: forall a: Thing; combine(ZED, a) = a
+
 model ThingModel {
   source.Sort: Thing
   source.UNIT: ZED
   source.op: combine
   source.opUnitLeft <- combineZedLeft
-  }
+}
 
-// transfer opUnitLeftTwice: forall a: Thing; combine(ZED, combine(ZED, a)) = combine(ZED, a)
 theorem combineZedLeftTwice: forall a: Thing; combine(ZED, combine(ZED, a)) = combine(ZED, a)
 proof
   @conclusion |

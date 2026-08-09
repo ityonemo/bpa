@@ -59,7 +59,7 @@ model SrcIsGood {
   Src: GoodTgt
   red: tred
   blue: tblue
-  redImpliesBlue: tredImpliesTblue
+  redImpliesBlue <- tredImpliesTblue
 }
 
 theorem transferred: forall x: GoodTgt; tred(x) -> tblue(x)

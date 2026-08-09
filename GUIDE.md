@@ -344,9 +344,9 @@ theorem addIsCommutative = peano.addIsCommutative
 
 Declares that a local sort **is a model of** an imported abstract theory, so
 that theory's whole proven corpus transfers to the local sort — a working
-feature used throughout `std/`. A `model NAME { source: target … }` block
-discharges the abstract theory's axioms (mapping each primitive and each
-axiom obligation to a local symbol/fact), and in exchange every theorem the
+feature used throughout `std/`. A `model NAME { … }` block interprets the
+abstract theory's primitives as local symbols (with `:`) and discharges its
+axiom obligations with local facts (with `<-`), and in exchange every theorem the
 theory proves becomes citable at your sort via `[by model(NAME) source.thm]`.
 Where an alias
 identifies one entity with another, a `model` is a **named namespace of overloads** —
@@ -358,21 +358,27 @@ citable at your sort.
 import group <<< "std/group.bpa"
 
 model AdditiveGroup {
-  group.Grp:      Rat               // a sort-mapping (just another overload)
-  group.E:        ZERO              // primitives: source symbol : local symbol
+  group.Grp:      Rat               // `:` — a sort interpretation
+  group.E:        ZERO              // `:` — primitives: source symbol : local symbol
   group.op:       add
   group.inverse:  neg
-  group.opAssoc:  addIsAssociative  // axiom obligations: source axiom : local fact
-  // ... one line per remaining group axiom
+  group.opAssoc   <- addIsAssociative  // `<-` — an axiom obligation discharged by a local fact
+  // ... one `<-` line per remaining group axiom
 }
 ```
 
 There is **no header of any kind** — a `model` is just its mappings, a bag of
-overloads. Read every line **`source : target`** — the abstract theory's entity on
-the left, the local thing that plays it on the right. Primitive lines map symbols
-(a sort-mapping like `group.Grp: Rat` is just one more overload in the bag, not a
-distinguished one); axiom lines discharge an obligation by naming a local axiom
-or theorem whose formula, seen through the mapping, *is* that axiom.
+overloads. Two line forms, distinguished by operator:
+- **`source : target`** — INTERPRET a source sort or symbol as a local one (a
+  sort-mapping like `group.Grp: Rat` is just one more overload in the bag). The
+  target's arity/sort-shape must be compatible with the source's.
+- **`source <- localFact`** — DISCHARGE a source axiom obligation with a local
+  axiom or theorem whose formula, seen through the mapping, *is* that axiom.
+Using `:` on an axiom (or `<-` on a symbol) is a hard error — the two relations
+are distinct (interpretation vs. verification) and the syntax must say which you
+mean. A source *theorem* is not mappable at all (it materializes through the
+mapped axioms). The `@`-projection value (`src.ax <- OtherModel@src.thm`,
+discharging via a theorem transferred through another model) is a `<-` form only.
 
 A model is **GUARDED** (relativized to a subset) exactly when a sort-mapping's
 target is a **predicated sort** — e.g. `group.Grp: GrpH` where

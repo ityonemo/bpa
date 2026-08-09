@@ -76,20 +76,20 @@ model SrcIsGood {
   ONE: TONE
   add: tadd
   mul: tmul
-  addIsAssociative: taddIsAssociative
-  addIsCommutative: taddIsCommutative
-  addLeftSwap: taddLeftSwap
-  mulIsAssociative: tmulIsAssociative
-  mulIsCommutative: tmulIsCommutative
-  mulLeftSwap: tmulLeftSwap
-  mulAddDistribLeft: tmulAddDistribLeft
-  mulAddDistribRight: tmulAddDistribRight
-  addZeroLeft: taddZeroLeft
-  addZeroRight: taddZeroRight
-  mulZeroLeft: tmulZeroLeft
-  mulZeroRight: tmulZeroRight
-  mulOneLeft: tmulOneLeft
-  mulOneRight: tmulOneRight
+  addIsAssociative <- taddIsAssociative
+  addIsCommutative <- taddIsCommutative
+  addLeftSwap <- taddLeftSwap
+  mulIsAssociative <- tmulIsAssociative
+  mulIsCommutative <- tmulIsCommutative
+  mulLeftSwap <- tmulLeftSwap
+  mulAddDistribLeft <- tmulAddDistribLeft
+  mulAddDistribRight <- tmulAddDistribRight
+  addZeroLeft <- taddZeroLeft
+  addZeroRight <- taddZeroRight
+  mulZeroLeft <- tmulZeroLeft
+  mulZeroRight <- tmulZeroRight
+  mulOneLeft <- tmulOneLeft
+  mulOneRight <- tmulOneRight
 }
 
 theorem transferred: forall a, b, c: GoodTgt;

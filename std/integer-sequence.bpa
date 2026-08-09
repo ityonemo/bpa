@@ -98,8 +98,8 @@ model IntSeq {
   sequence.IDENTITY: ONE
   sequence.combine: mul
   sequence.foldUpTo: productUpTo
-  sequence.foldZero: productUpToZero
-  sequence.foldSucc: productUpToSucc
+  sequence.foldZero <- productUpToZero
+  sequence.foldSucc <- productUpToSucc
 }
 
 // nonneg(succ(ZERO)) and nonneg(ONE) as in-scope facts, so composite concrete-

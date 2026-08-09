@@ -15,7 +15,7 @@ sort GrpH = Grp where inH
 
 model M {
   source.Grp: GrpH
-  source.opSwapsToE: source.opSwapsToE
+  source.opSwapsToE <- source.opSwapsToE
   }
 
 // transferred: op(E,E) = op(E,E) on H. Materialization weakens the two-binder

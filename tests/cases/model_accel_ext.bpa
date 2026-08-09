@@ -50,8 +50,8 @@ model SrcIsGood {
   Fn: GoodFn
   apply: tapply
   compose: tcompose
-  composeApply: tcomposeApply
-  funcExtensionality: tfuncExtensionality
+  composeApply <- tcomposeApply
+  funcExtensionality <- tfuncExtensionality
 }
 
 theorem transferred: forall h, g, f: GoodFn;

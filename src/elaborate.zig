@@ -655,6 +655,34 @@ pub const Elaborator = struct {
                 if (sf != src.file) return self.fail(m.source.start, "all model mappings must come from one source theory", .{});
             } else source_file = src.file;
 
+            // OPERATOR ↔ SOURCE-KIND check: `:` interprets a SORT or SYMBOL; `<-`
+            // discharges an OBLIGATION (a source axiom, or an axiom-shaped schema).
+            // A mismatch is a hard error — the two relations are distinct
+            // (interpretation vs. verification), so the syntax states which the
+            // author means. A THEOREM source is neither: it's not mappable at all,
+            // and falls through to the "maps only axioms" rejection below
+            // (regardless of operator), which is the more precise diagnostic.
+            const is_sort = self.env.findSort(src.file, src.base) != null;
+            const is_sym = self.env.findSym(src.file, src.base) != null;
+            const src_stmt: ?Statement = if (!is_sort and !is_sym)
+                if (self.env.findStatementId(src.file, src.base)) |sid| self.env.statements.items[@intFromEnum(sid)] else null
+            else
+                null;
+            // an obligation source = an axiom, or a schema with no proof (a
+            // parameterized axiom). A proof-carrying schema / theorem is derived.
+            const src_is_obligation = if (src_stmt) |st| switch (st) {
+                .axiom => true,
+                .schema => |s| s.proof == null,
+                .theorem => false,
+            } else false;
+            switch (m.kind) {
+                .symbol => if (src_is_obligation) return self.fail(m.source.start, "'{s}' is an axiom obligation, not a sort/symbol — discharge it with `<-` (`{s} <- <local fact>`), not `:`", .{ self.text(m.source), self.text(m.source) }),
+                // `<-` requires an obligation source. A sort/symbol under `<-` is a
+                // clear "use `:`" error; a theorem under `<-` falls through to the
+                // theorem-rejection below (drop it entirely).
+                .obligation => if (is_sort or is_sym) return self.fail(m.source.start, "'{s}' is a sort or symbol, not an axiom — map it with `:` (`{s}: <target>`), not `<-`", .{ self.text(m.source), self.text(m.source) }),
+            }
+
             // dispatch on what the source entity is: sort, symbol, or statement.
             if (self.env.findSort(src.file, src.base)) |from_sort| {
                 const to_sort = self.env.findSort(tgt.file, tgt.base) orelse

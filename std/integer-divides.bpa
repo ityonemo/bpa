@@ -46,9 +46,9 @@ model IntegerDivisibility {
   divisibility.ONE: ONE
   divisibility.mul: mul
   divisibility.add: add
-  divisibility.mulOneRight: mulOneRight
-  divisibility.mulIsAssociative: mulIsAssociative
-  divisibility.mulAddDistribLeft: mulAddDistribLeft
+  divisibility.mulOneRight <- mulOneRight
+  divisibility.mulIsAssociative <- mulIsAssociative
+  divisibility.mulAddDistribLeft <- mulAddDistribLeft
 }
 
 // -- powers (recursive on the exponent) -------------------------------------

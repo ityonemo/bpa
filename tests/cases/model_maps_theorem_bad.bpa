@@ -15,6 +15,6 @@ model SourceModel {
   src.Sort: Thing
   src.UNIT: NEUTRAL
   src.op: combine
-  src.leftUnitAxiom: combineUnitAxiom
+  src.leftUnitAxiom <- combineUnitAxiom
   src.leftUnit: combineUnitAxiom
 }

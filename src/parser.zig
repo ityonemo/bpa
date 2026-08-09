@@ -244,23 +244,33 @@ pub const Parser = struct {
         }
     }
 
-    /// `{ <source>: <target> ... }` — the mapping lines of a `model` block, each
-    /// binding a source-theory entity (a qualified ident) to a local one.
+    /// The mapping lines of a `model` block. Two forms:
+    ///   `<source> : <target>`       — a symbol/sort interpretation (`.symbol`)
+    ///   `<source> <- <target>`      — an axiom-obligation discharge (`.obligation`)
+    /// A `<target>@<projected>` model-projection value is only valid on the `<-`
+    /// form (it names a theorem transferred through another model to discharge the
+    /// obligation).
     fn parseModelMappings(self: *Parser) ParseError![]const ast.Mapping {
         _ = try self.expect(.l_brace);
         var mappings: std.ArrayList(ast.Mapping) = .empty;
         while (self.tok.tag != .r_brace) {
             const source = try self.expect(.identifier);
-            _ = try self.expect(.colon);
+            const kind: ast.Mapping.Kind = switch (self.tok.tag) {
+                .colon => .symbol,
+                .obligation_arrow => .obligation,
+                else => return self.fail("expected ':' (symbol/sort map) or '<-' (axiom-obligation discharge)", .{}),
+            };
+            _ = self.advance();
             const target = try self.expect(.identifier);
-            // `<target>@<projected>` — a model-projection value. The lexer emits the
-            // `@projected` tail as one `at_label` token; strip the `@`.
+            // `<target>@<projected>` — a model-projection value (`<-` form only).
+            // The lexer emits the `@projected` tail as one `at_label` token; strip `@`.
             var projection: ?Token = null;
             if (self.tok.tag == .at_label) {
+                if (kind != .obligation) return self.fail("a '@'-projection value is only valid on a '<-' obligation discharge, not a ':' symbol map", .{});
                 const at = self.advance();
                 projection = .{ .tag = .identifier, .start = at.start + 1, .end = at.end };
             }
-            try mappings.append(self.arena, .{ .source = source, .target = target, .projection = projection });
+            try mappings.append(self.arena, .{ .kind = kind, .source = source, .target = target, .projection = projection });
         }
         _ = try self.expect(.r_brace);
         return mappings.toOwnedSlice(self.arena);

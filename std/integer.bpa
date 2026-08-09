@@ -141,14 +141,14 @@ model NonNegInt {
   peano.succ: succ
   peano.add: add
   peano.mul: mul
-  peano.succInjective: succInjective
-  peano.succNotZero: nonnegSuccNotZero
-  peano.addZeroLeft: addZeroLeft
-  peano.addSuccLeft: addSuccLeft
-  peano.mulZeroLeft: mulZeroLeft
-  peano.mulSuccLeft: mulSuccLeft
-  peano.oneIsSuccZero: oneIsSuccZero
-  peano.induction: nonnegInduction
+  peano.succInjective <- succInjective
+  peano.succNotZero <- nonnegSuccNotZero
+  peano.addZeroLeft <- addZeroLeft
+  peano.addSuccLeft <- addSuccLeft
+  peano.mulZeroLeft <- mulZeroLeft
+  peano.mulSuccLeft <- mulSuccLeft
+  peano.oneIsSuccZero <- oneIsSuccZero
+  peano.induction <- nonnegInduction
 }
 
 // INVERSION: a nonnegative integer is 0 or the successor of a nonnegative — this
@@ -2587,13 +2587,13 @@ model IntegerRing {
   ring.add: add
   ring.mul: mul
   ring.neg: neg
-  ring.addAssoc: addIsAssociative
-  ring.addZeroLeft: addZeroLeft
-  ring.addNegLeft: addNegLeft
-  ring.addCommutative: addIsCommutative
-  ring.mulAssoc: mulIsAssociative
-  ring.mulDistributesLeftOverAdd: mulAddDistribLeft
-  ring.mulDistributesRightOverAdd: mulAddDistribRight
+  ring.addAssoc <- addIsAssociative
+  ring.addZeroLeft <- addZeroLeft
+  ring.addNegLeft <- addNegLeft
+  ring.addCommutative <- addIsCommutative
+  ring.mulAssoc <- mulIsAssociative
+  ring.mulDistributesLeftOverAdd <- mulAddDistribLeft
+  ring.mulDistributesRightOverAdd <- mulAddDistribRight
 }
 
 // smoke test: (-a)·(-b) = a·b transfers through the ring model.

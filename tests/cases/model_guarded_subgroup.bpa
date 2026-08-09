@@ -101,7 +101,7 @@ sort GrpH = Grp where inH
 
 model SubgroupIsGroup {
   Grp: GrpH
-  opIdentityLeft: opIdentityLeft
+  opIdentityLeft <- opIdentityLeft
 }
 
 // transferred (relativized) theorem: op(E, E) = E holds on H. Materialization

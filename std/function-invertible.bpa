@@ -320,9 +320,9 @@ model InvertibleFunctionsGroup {
   group.E: identityFn
   group.op: compose
   group.inverse: inverse
-  group.opAssoc: composeAssoc
-  group.opIdentityLeft: composeIdentityLeft
-  group.opInverseLeft: inverseLeft
+  group.opAssoc <- composeAssoc
+  group.opIdentityLeft <- composeIdentityLeft
+  group.opInverseLeft <- inverseLeft
 }
 
 // ── the payoff: the group corpus, transferred onto the invertible functions ──

@@ -26,8 +26,8 @@ model ThingModel {
   source.UNIT: ZED
   source.op: combine
   source.marked: flagged
-  source.opUnitLeft: combineZedLeftGuarded
-  source.something: somethingThing
+  source.opUnitLeft <- combineZedLeftGuarded
+  source.something <- somethingThing
   }
 
 // the correctly-relativized statement: ∃ an x that is BOTH in the subset AND

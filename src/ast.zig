@@ -139,12 +139,24 @@ pub const Decl = union(enum) {
     },
 };
 
-/// One `<source>: <target>` line in a `model` block. `<target>@<projected>`
-/// (`group.opAssoc: HSubGroup@subgroup.opAssoc`) is a MODEL-PROJECTION value —
-/// discharge this obligation by transferring the `projected` theorem THROUGH the
-/// model named `target`. `projection` is the qualified projected name (the `@`-tail,
-/// sans `@`); null for a plain target.
-pub const Mapping = struct { source: Token, target: Token, projection: ?Token = null };
+/// One line in a `model` block. Two forms, distinguished by operator:
+///   `src : tgt`       — a SYMBOL/SORT interpretation (`.symbol`): map a source
+///                       sort or function/predicate to a local one.
+///   `src <- localThm` — an AXIOM OBLIGATION discharge (`.obligation`): the local
+///                       fact `localThm` discharges the source axiom `src`.
+/// `<target>@<projected>` (`group.opAssoc <- HSubGroup@subgroup.opAssoc`) is a
+/// MODEL-PROJECTION value — discharge this obligation by transferring the
+/// `projected` theorem THROUGH the model named `target`. `projection` is the
+/// qualified projected name (the `@`-tail, sans `@`); null for a plain target.
+/// Projection is only meaningful on an `.obligation` line.
+pub const Mapping = struct {
+    kind: Kind,
+    source: Token,
+    target: Token,
+    projection: ?Token = null,
+
+    pub const Kind = enum { symbol, obligation };
+};
 
 pub const File = struct { decls: []const Decl };
 

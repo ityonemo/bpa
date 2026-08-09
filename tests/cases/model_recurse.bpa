@@ -14,7 +14,7 @@ model ThingModel {
   source.Sort: Thing
   source.UNIT: ZED
   source.op: combine
-  source.opUnitLeft: combineZedLeft
+  source.opUnitLeft <- combineZedLeft
   }
 
 theorem combineZedLeftTwice: forall a: Thing; combine(ZED, combine(ZED, a)) = combine(ZED, a)

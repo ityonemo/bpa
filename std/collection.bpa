@@ -55,12 +55,12 @@ model CollectionIsSet {
   set.intersection: intersectionCollection
   set.difference: differenceCollection
   set.complement: complementCollection
-  set.unionMember: unionCollectionContains
-  set.intersectionMember: intersectionCollectionContains
-  set.differenceMember: differenceCollectionContains
-  set.complementMember: complementCollectionContains
-  set.emptysetMember: emptyCollectionContains
-  set.extensionality: collectionExtensionality
+  set.unionMember <- unionCollectionContains
+  set.intersectionMember <- intersectionCollectionContains
+  set.differenceMember <- differenceCollectionContains
+  set.complementMember <- complementCollectionContains
+  set.emptysetMember <- emptyCollectionContains
+  set.extensionality <- collectionExtensionality
 }
 
 // the set algebra, transferred onto collections (a representative sample — the full

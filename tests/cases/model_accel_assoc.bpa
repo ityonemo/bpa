@@ -34,7 +34,7 @@ axiom topAssoc: forall a, b, c: Tgt; top(top(a, b), c) = top(a, top(b, c))
 model SrcIsGood {
   Src: GoodTgt
   op: top
-  opAssoc: topAssoc
+  opAssoc <- topAssoc
 }
 
 theorem transferred: forall a, b, c, d: GoodTgt;

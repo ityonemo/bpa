@@ -1,0 +1,18 @@
+// REJECTION: discharging an AXIOM obligation with `:` is now an error — axiom
+// discharges must use `<-` (which reads as "this obligation is discharged by
+// that fact"), keeping `:` for symbol/sort interpretation only. Here
+// `source.opUnitLeft` is an axiom, so the `:` on its line must be rejected.
+import source <<< "model_source.bpa"
+
+sort Thing
+const ZED: Thing
+func combine(a: Thing, b: Thing): Thing
+
+axiom combineZedLeft: forall a: Thing; combine(ZED, a) = a
+
+model ThingModel {
+  source.Sort: Thing
+  source.UNIT: ZED
+  source.op: combine
+  source.opUnitLeft: combineZedLeft
+}

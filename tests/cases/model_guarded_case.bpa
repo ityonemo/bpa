@@ -25,10 +25,10 @@ model ThingModel {
   source.op: combine
   source.p: pp
   source.q: qq
-  source.opUnitLeft: combineZedLeftGuarded
-  source.pOrQ: ppOrQq
-  source.pGivesUnit: ppGives
-  source.qGivesUnit: qqGives
+  source.opUnitLeft <- combineZedLeftGuarded
+  source.pOrQ <- ppOrQq
+  source.pGivesUnit <- ppGives
+  source.qGivesUnit <- qqGives
   }
 
 theorem combineZedByCases: forall a: Thing; good(a) -> combine(ZED, a) = a

@@ -1,0 +1,17 @@
+// REJECTION: using `<-` to map a SORT or SYMBOL is an error — `<-` is for axiom
+// obligation discharges only; sorts and symbols are interpreted with `:`. Here
+// `source.op` is a function symbol, so the `<-` on its line must be rejected.
+import source <<< "model_source.bpa"
+
+sort Thing
+const ZED: Thing
+func combine(a: Thing, b: Thing): Thing
+
+axiom combineZedLeft: forall a: Thing; combine(ZED, a) = a
+
+model ThingModel {
+  source.Sort: Thing
+  source.UNIT: ZED
+  source.op <- combine
+  source.opUnitLeft <- combineZedLeft
+}

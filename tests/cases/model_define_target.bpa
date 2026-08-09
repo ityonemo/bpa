@@ -18,7 +18,7 @@ model ThingModel {
   source.Sort: Thing
   source.UNIT: DOUBLED
   source.op: combine
-  source.opUnitLeft: combineDoubledLeft
+  source.opUnitLeft <- combineDoubledLeft
 }
 
 // transfer opUnitLeftTwice: the source `UNIT` becomes DOUBLED (expanded to

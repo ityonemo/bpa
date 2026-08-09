@@ -38,9 +38,9 @@ axiom tjoinSwap: forall x, y, r: Tgt; tjoin(x, tjoin(y, r)) = tjoin(y, tjoin(x, 
 model SrcIsGood {
   Src: GoodTgt
   join: tjoin
-  joinAssoc: tjoinAssoc
-  joinComm: tjoinComm
-  joinSwap: tjoinSwap
+  joinAssoc <- tjoinAssoc
+  joinComm <- tjoinComm
+  joinSwap <- tjoinSwap
 }
 
 theorem transferred: forall a, b, c, d: GoodTgt;

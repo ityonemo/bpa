@@ -68,6 +68,7 @@ pub const Token = struct {
         /// import path: "peano.bpa" (no escapes)
         string,
         import_arrow, // <<<
+        obligation_arrow, // <- (model axiom-obligation discharge)
         /// only emitted when `keep_comments` is set (used by `bpa fmt`)
         comment,
         invalid,
@@ -124,6 +125,7 @@ pub const Token = struct {
                 .r_bracket => "]",
                 .string => "string",
                 .import_arrow => "<<<",
+                .obligation_arrow => "<-",
                 .comment => "comment",
                 .invalid => "invalid token",
                 .eof => "end of file",
@@ -274,6 +276,11 @@ pub const Lexer = struct {
                 if (self.index + 1 < src.len and src[self.index] == '<' and src[self.index + 1] == '<') {
                     self.index += 2;
                     break :blk .import_arrow;
+                }
+                // `<-` — model axiom-obligation discharge (distinct from `:` maps).
+                if (self.index < src.len and src[self.index] == '-') {
+                    self.index += 1;
+                    break :blk .obligation_arrow;
                 }
                 break :blk .invalid;
             },

@@ -116,7 +116,7 @@ qed
 
 ## Declaration keywords — one-liners; detail at `### KEYWORD: <name>` in GUIDE.md
 
-`sort` (a type; `sort H = G where inH` is a refined subsort), `const` (0-ary), `func` (returns a term-sort, never Prop), `pred` (opaque predicate; no `:=` body), `axiom`, `theorem`, `hole` (aspirational placeholder — a top-level DECLARATION, NOT a `[by hole]` step; default rejects, `--draft` allows), `intheory <name>` (forward-declare a theorem — "in theory it holds; you owe the proof later"), `import X <<< "path"`, aliases (`sort A = X.B`, `func f = X.g`), `model NAME { src: tgt … }` (discharge an abstract theory's axioms so its theorems transfer; cite `[by model(NAME) src.thm]`).
+`sort` (a type; `sort H = G where inH` is a refined subsort), `const` (0-ary), `func` (returns a term-sort, never Prop), `pred` (opaque predicate; no `:=` body), `axiom`, `theorem`, `hole` (aspirational placeholder — a top-level DECLARATION, NOT a `[by hole]` step; default rejects, `--draft` allows), `intheory <name>` (forward-declare a theorem — "in theory it holds; you owe the proof later"), `import X <<< "path"`, aliases (`sort A = X.B`, `func f = X.g`), `model NAME { src: tgt … ; srcAxiom <- localFact … }` (interpret an abstract theory's primitives with `:` + discharge its axioms with `<-`, so its theorems transfer; cite `[by model(NAME) src.thm]`. `:` on an axiom or `<-` on a symbol is a hard error; a source theorem isn't mappable; `@`-projection is `<-`-only).
 
 ## Gotchas that bite (memorize)
 

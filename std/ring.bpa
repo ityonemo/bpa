@@ -39,10 +39,10 @@ model AdditiveGroup {
   group.E: ZERO
   group.op: add
   group.inverse: neg
-  group.opAssoc: addAssoc
-  group.opIdentityLeft: addZeroLeft
-  group.opInverseLeft: addNegLeft
-  group.opCommutative: addCommutative
+  group.opAssoc <- addAssoc
+  group.opIdentityLeft <- addZeroLeft
+  group.opInverseLeft <- addNegLeft
+  group.opCommutative <- addCommutative
 }
 
 // -- right identity / inverse (derived from the left laws + commutativity) ---

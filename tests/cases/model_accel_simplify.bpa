@@ -68,9 +68,9 @@ model SrcIsGood {
   Z: TZ
   s: ts
   plus: tplus
-  plusZeroLeft: tplusZeroLeft
-  plusSuccLeft: tplusSuccLeft
-  srcInduction: goodInduction
+  plusZeroLeft <- tplusZeroLeft
+  plusSuccLeft <- tplusSuccLeft
+  srcInduction <- goodInduction
 }
 
 theorem transferred: forall n: GoodTgt; tplus(n, TZ) = n
