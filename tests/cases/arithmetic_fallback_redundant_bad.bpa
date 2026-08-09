@@ -1,0 +1,32 @@
+// RED: a `[by arithmetic fallback(X)]` step whose goal the arithmetic CERTIFIER
+// CHAIN can discharge on its own — so the fallback is REDUNDANT. Strict `check`
+// must reject it ("drop the redundant fallback"). `--fast` (certifier not run)
+// and `--draft` (WIP) suppress the check.
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+axiom mulZeroLeft: forall b: Nat; mul(ZERO, b) = ZERO
+axiom mulSuccLeft: forall a, b: Nat; mul(succ(a), b) = add(mul(a, b), b)
+axiom oneIsSuccZero: ONE = succ(ZERO)
+
+// a manual proof of the goal (the fallback target) — itself certifies, but that's
+// fine; it's a legitimately-proven theorem.
+theorem twoTimesTwoManual: mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+proof
+  @conclusion |
+    mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+    [by arithmetic]
+qed
+
+// the offending step: arithmetic CAN certify this, so the `fallback` is dead weight.
+theorem twoTimesTwoRedundant: mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+proof
+  @conclusion |
+    mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+    [by arithmetic fallback(twoTimesTwoManual)]
+qed

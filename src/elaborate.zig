@@ -94,10 +94,11 @@ pub const Verify = struct {
     /// re-check imported schemas at each instantiation. When false, a proven
     /// imported schema is trusted without re-instantiating its body.
     recheck_schemas: bool = true,
-    /// reject a proof with a DEAD step — one whose result is unreachable from
-    /// the conclusion via citation edges (a fact the proof introduces but never
-    /// uses). `--draft` sets this false (a WIP proof may have not-yet-wired facts).
-    reject_unused: bool = true,
+    /// `--draft` mode: a WIP proof. The single coarse "work in progress" bit that
+    /// author-hygiene checks consult to relax — NOT rejecting a proof for a dead
+    /// step (a fact it introduces but never uses), a redundant arithmetic
+    /// `fallback`, etc. (Holes are allowed under `--draft` too, gated in main.)
+    draft: bool = false,
 };
 
 pub const Elaborator = struct {
@@ -850,9 +851,9 @@ pub const Elaborator = struct {
         );
         if (!(try proven)) return null;
         // no dead steps: every step must be reachable from the conclusion via
-        // citation edges (a proof must USE all the facts it introduces). --draft
-        // (reject_unused=false) skips this for WIP proofs.
-        if (self.verify.reject_unused) {
+        // citation edges (a proof must USE all the facts it introduces). `--draft`
+        // (a WIP proof may have not-yet-wired facts) skips this.
+        if (!self.verify.draft) {
             if (try self.checkAllStepsUsed(low.steps.items, low.blocks.items) == false) return null;
         }
         return .{ .steps = low.steps.items, .blocks = low.blocks.items };

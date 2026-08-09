@@ -362,6 +362,7 @@ fn findLabel(source: []const u8, steps: []const ast.Step, label: []const u8) ?u3
 fn declSteps(d: *const ast.Decl) ?[]const ast.Step {
     return switch (d.*) {
         .theorem => |t| t.steps,
+        .schema => |s| s.steps, // proof-carrying schema (null if axiom-schema)
         else => null,
     };
 }
@@ -369,6 +370,7 @@ fn declSteps(d: *const ast.Decl) ?[]const ast.Step {
 fn declName(source: []const u8, d: *const ast.Decl) ?[]const u8 {
     return switch (d.*) {
         .theorem => |t| tokenText(source, t.name),
+        .schema => |s| tokenText(source, s.name),
         else => null,
     };
 }

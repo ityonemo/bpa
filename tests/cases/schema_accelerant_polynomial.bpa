@@ -1,0 +1,34 @@
+// SPIKE probe: a proof-carrying SCHEMA whose proof uses `polynomial` (a
+// structural accelerant). We want `bpa debug accelerant <file> polySchema
+// <step>` to reprint the synthetic. polynomial operates on shape, so an opaque
+// schema param should admit it.
+import peano <<< "std/peano.bpa"
+
+sort Nat = peano.Nat
+const ZERO = peano.ZERO
+func succ = peano.succ
+func add = peano.add
+func mul = peano.mul
+
+// a proof-carrying schema (the `prop` param makes it a schema); the proof body
+// uses `polynomial` at @poly-step over a generic term `n`.
+theorem polySchema(prop: Nat -> Prop): forall n: Nat; mul(add(n, n), n) = add(mul(n, n), mul(n, n))
+proof
+  @generalize-n |
+    fix n: Nat {
+      @poly-step |
+        mul(add(n, n), n) = add(mul(n, n), mul(n, n))
+        [by polynomial(peano)]
+    }
+  @conclusion |
+    forall n: Nat; mul(add(n, n), n) = add(mul(n, n), mul(n, n))
+    [by forall_intro generalize-n]
+qed
+
+// make the file prove something concrete so the summary reports it.
+theorem trivial: ZERO = ZERO
+proof
+  @conclusion |
+    ZERO = ZERO
+    [by reflexivity]
+qed

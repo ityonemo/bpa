@@ -1565,6 +1565,14 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
             // `body.reasons` captures each link's decline reason for the terminal.
             var body: CertifierBody = .{ .c = c, .symbols = symbols, .loc = loc, .reasons = undefined };
             if (try common.generate(self, low, block_id, loc, "arithmetic", goal, c.refs, &body)) |just| {
+                // Case D: the certifier chain discharged this goal on its own, so a
+                // `fallback(<thm>)` is REDUNDANT — the fallback exists only for goals
+                // arithmetic CANNOT certify (the branch below). Reject it (strict
+                // only, by construction — this block is under certify_arithmetic;
+                // `--draft` suppresses the hygiene nag).
+                if (c.fallback) |fb| {
+                    if (!self.verify.draft) return self.fail(fb.start, "'arithmetic' certifies this goal on its own — the fallback '{s}' is unnecessary; drop `fallback({s})`", .{ self.text(fb), self.text(fb) });
+                }
                 return just;
             }
             // every certifier declined: valid but not certifiable here. A

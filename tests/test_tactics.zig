@@ -438,6 +438,15 @@ pub fn addTests(
     // certificate — no --fast, no acceleration.
     ctx.okSilent(&.{ "check", "tests/cases/cooper_gap.bpa" });
 
+    // Case D: a `fallback(<thm>)` on a goal the arithmetic CERTIFIER CHAIN can
+    // discharge itself is REDUNDANT — strict `check` rejects it. (Distinct from
+    // cooper_gap, where the certifier DECLINES so the fallback is legitimate.)
+    ctx.fail(&.{ "check", "tests/cases/arithmetic_fallback_redundant_bad.bpa" }, "tests/cases/arithmetic_fallback_redundant_bad.bpa:31:29: error: 'arithmetic' certifies this goal on its own — the fallback 'twoTimesTwoManual' is unnecessary; drop `fallback(twoTimesTwoManual)`\n");
+    // `--fast` suppresses it structurally (the certifier chain never runs).
+    ctx.okSilent(&.{ "check", "--fast", "tests/cases/arithmetic_fallback_redundant_bad.bpa" });
+    // `--draft` suppresses it (WIP: don't nag about redundant fallbacks yet).
+    ctx.okSilent(&.{ "check", "--draft", "tests/cases/arithmetic_fallback_redundant_bad.bpa" });
+
     // Milestone D2: mixed skeletons replay as kernel-checked certificates
     ctx.okSilent(&.{ "check", "tests/cases/smt_cert.bpa" });
 

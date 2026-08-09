@@ -214,6 +214,13 @@ pub fn addTests(
     // (RED: locked to the renderer's real output once GREEN.)
     ctx.ok(&.{ "debug", "accelerant", "tests/cases/debug_accelerant.bpa", "15" }, debug_accelerant_text);
 
+    // `debug accelerant` resolves a step inside a proof-carrying SCHEMA (not just
+    // plain theorems) and reprints its accelerant synthetic — the opaque-param
+    // wellformedness self-check already emitted it. Exit 0 = the selector found
+    // the schema step and reprinted (regression guard for the `.schema` arm in
+    // declSteps/declName).
+    ctx.okSilent(&.{ "debug", "accelerant", "tests/cases/schema_accelerant_polynomial.bpa", "polySchema", "poly-step" });
+
     // an ALIAS (`theorem addZeroRight = peano.addZeroRight` in subtraction)
     // resolves across files to the real proof — identical output.
     ctx.ok(&.{ "query", "theorem", "std/peano-subtraction.bpa", "addZeroRight" }, std_theorem_text);

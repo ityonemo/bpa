@@ -421,8 +421,9 @@ pub fn main(init: std.process.Init) !u8 {
         }
     }
     const root_path = path orelse return fail(usage, .{});
-    // --draft is for WIP proofs: allow holes AND don't reject not-yet-wired facts.
-    if (draft) verify.reject_unused = false;
+    // --draft is for WIP proofs: allow holes AND relax author-hygiene checks
+    // (dead steps, redundant fallbacks, …). One coarse bit read by all of them.
+    verify.draft = draft;
 
     const source = readSource(arena, root_path) catch |e| switch (e) {
         error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{root_path}),
