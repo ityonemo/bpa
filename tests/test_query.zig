@@ -221,6 +221,11 @@ pub fn addTests(
     // declSteps/declName).
     ctx.okSilent(&.{ "debug", "accelerant", "tests/cases/schema_accelerant_polynomial.bpa", "polySchema", "poly-step" });
 
+    // `debug accelerant` on an `arithmetic … fallback(<thm>)` step (certifiers
+    // DECLINED, so the manual theorem is the proof): there is no synthetic to
+    // reprint — say so and NAME the fallback, not the generic "no accelerant here".
+    ctx.fail(&.{ "debug", "accelerant", "tests/cases/cooper_gap.bpa", "sumParity", "conclusion" }, "error: proof by fallback: this `arithmetic` step is discharged by the manual theorem 'provedHere' (the certifiers declined), so there is no accelerant synthetic to reprint\n");
+
     // an ALIAS (`theorem addZeroRight = peano.addZeroRight` in subtraction)
     // resolves across files to the real proof — identical output.
     ctx.ok(&.{ "query", "theorem", "std/peano-subtraction.bpa", "addZeroRight" }, std_theorem_text);

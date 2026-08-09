@@ -17,6 +17,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const ast = @import("../ast.zig");
+const lexer = @import("../lexer.zig");
 const parser = @import("../parser.zig");
 const diagnostics = @import("../diagnostics.zig");
 const intern = @import("../intern.zig");
@@ -82,7 +83,15 @@ pub fn accelerant(
             break;
         }
     }
-    const id = found orelse return fail(arena, "no accelerant produced a theorem there (is it a `[by <tactic> …]` step in strict mode?)", .{});
+    const id = found orelse {
+        // No synthetic — but if this is an `arithmetic … fallback(<thm>)` step, the
+        // step is proved by CITING that manual theorem (the certifier chain
+        // declined), not by an accelerant certificate. Say so, and name it, instead
+        // of the generic "no accelerant" message.
+        if (fallbackAt(file, target_offset)) |fb|
+            return fail(arena, "proof by fallback: this `arithmetic` step is discharged by the manual theorem '{s}' (the certifiers declined), so there is no accelerant synthetic to reprint", .{tokenText(source, fb)});
+        return fail(arena, "no accelerant produced a theorem there (is it a `[by <tactic> …]` step in strict mode?)", .{});
+    };
 
     const text = try renderTheorem(arena, loaded.pool, loaded.environment, loaded.interner, id);
     return .{ .text = text, .ok = true };
@@ -332,6 +341,31 @@ fn stepLabelOffset(source: []const u8, file: ast.File, theorem: []const u8, labe
         if (!std.mem.eql(u8, nm, theorem)) continue;
         const steps = declSteps(d) orelse return null;
         return findLabel(source, steps, label);
+    }
+    return null;
+}
+
+/// The `fallback(<thm>)` token of the claim step at `offset` (its `[by …]` rule
+/// start), if that step carries one — else null. Walks nested blocks.
+fn fallbackAt(file: ast.File, offset: u32) ?lexer.Token {
+    for (file.decls) |*d| {
+        const steps = declSteps(d) orelse continue;
+        if (fallbackInSteps(steps, offset)) |fb| return fb;
+    }
+    return null;
+}
+
+fn fallbackInSteps(steps: []const ast.Step, offset: u32) ?lexer.Token {
+    for (steps) |*s| {
+        switch (s.body) {
+            .claim => |c| if (c.rule.start == offset) return c.fallback,
+            .assume => |blk| if (fallbackInSteps(blk.steps, offset)) |fb| return fb,
+            .fix => |blk| if (fallbackInSteps(blk.steps, offset)) |fb| return fb,
+            .unpack => |blk| if (fallbackInSteps(blk.steps, offset)) |fb| return fb,
+            .case => |blk| for (blk.arms) |arm| {
+                if (fallbackInSteps(arm.steps, offset)) |fb| return fb;
+            },
+        }
     }
     return null;
 }
