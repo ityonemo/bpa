@@ -820,9 +820,20 @@ pub const Elaborator = struct {
     /// errors record a diagnostic and yield null (the file continues).
     fn checkProofSteps(self: *Elaborator, steps: []const ast.Step, goal: TermId, goal_loc: u32) Allocator.Error!?Statement.LoweredProof {
         var low: Lowering = .{};
-        // fresh per proof — filled by `tccMatches` during lowering, consumed by
-        // `checkAllStepsUsed` below (a TCC-discharging step counts as used).
-        self.extra_reachable_steps.clearRetainingCapacity();
+        // `extra_reachable_steps` is per-proof reachability state (TCC dischargers +
+        // accelerant premises) indexed into THIS proof's `low.steps`, consumed by
+        // `checkAllStepsUsed` below. checkProofSteps is RE-ENTRANT: lowering a schema
+        // `instantiate` step re-verifies the schema body via a nested checkProofSteps
+        // (recheck_schemas), which has its own, disjoint step indexing. So SAVE the
+        // outer proof's accumulator, run this proof fresh, and RESTORE on exit — the
+        // nested call fully consumes its own roots before returning, so discarding
+        // them afterward is correct, and the outer proof's roots (recorded before the
+        // instantiate step) survive. Without this the nested clear orphaned the
+        // outer's accelerant-premise roots → a false "unused fact" under --fast (where
+        // the accelerant emits no kernel citation edge to reach the premise otherwise).
+        const saved_roots = self.extra_reachable_steps;
+        self.extra_reachable_steps = .empty;
+        defer self.extra_reachable_steps = saved_roots;
         const root_label = try self.interner.intern("proof");
         try low.blocks.append(self.arena, .{
             .parent = null,
@@ -4011,6 +4022,12 @@ pub const TestCtx = struct {
     source: []const u8,
 
     pub fn run(gpa: Allocator, source: []const u8) !TestCtx {
+        return runVerify(gpa, source, .{});
+    }
+
+    /// Like `run`, but with an explicit `Verify` mode (to exercise --fast /
+    /// --faster / --reckless / --draft paths, which `run` (strict) cannot reach).
+    pub fn runVerify(gpa: Allocator, source: []const u8, verify: Verify) !TestCtx {
         const arena_state = try gpa.create(std.heap.ArenaAllocator);
         arena_state.* = .init(gpa);
         const arena = arena_state.allocator();
@@ -4028,6 +4045,7 @@ pub const TestCtx = struct {
         var p: parser_mod.Parser = .init(arena, source, sink);
         const file = try p.parseFile();
         var elab: Elaborator = .init(arena, source, interner, pool, env, sink, file_id);
+        elab.verify = verify;
         try elab.elaborateFile(file);
         return .{
             .arena_state = arena_state,
@@ -4073,6 +4091,37 @@ test "well-sorted declarations elaborate cleanly" {
     // schema stored lazily as a form
     const ind = ctx.env.findStatement(@enumFromInt(0), try ctx.interner.intern("induction")).?;
     try testing.expect(ind.* == .schema);
+}
+
+test "use-all-facts: schema instantiate does not clobber outer accelerant roots (--fast)" {
+    // Under --fast (certify_arithmetic = false) an accelerant emits no kernel
+    // citation edge, so the dead-step walk relies on `extra_reachable_steps` to
+    // see an accelerant premise's use. A later schema `instantiate` step re-enters
+    // checkProofSteps (recheck_schemas) and MUST NOT reset that per-proof
+    // accumulator, or `@premise` below is falsely reported "unused fact".
+    const source =
+        \\sort Nat
+        \\const Z: Nat
+        \\func s(n: Nat): Nat
+        \\func add(a: Nat, b: Nat): Nat
+        \\axiom addZ: forall b: Nat; add(Z, b) = b
+        \\axiom addS: forall a, b: Nat; add(s(a), b) = s(add(a, b))
+        \\theorem sch(x: Nat): add(Z, x) = x
+        \\proof
+        \\  @c | add(Z, x) = x [by simplify addZ]
+        \\qed
+        \\theorem t: (add(s(Z), Z) = s(Z)) and (add(Z, Z) = Z)
+        \\proof
+        \\  @premise | add(Z, Z) = Z [by simplify addZ]
+        \\  @use | add(s(Z), Z) = s(Z) [by simplify addS premise]
+        \\  @via | add(Z, Z) = Z [by instantiate sch(Z)]
+        \\  @conclusion | (add(s(Z), Z) = s(Z)) and (add(Z, Z) = Z) [by and_intro use via]
+        \\qed
+    ;
+    var ctx = try TestCtx.runVerify(testing.allocator, source, .{ .certify_arithmetic = false });
+    defer ctx.deinit(testing.allocator);
+    if (ctx.sink.list.items.len != 0) std.debug.print("unexpected diagnostic: {s}\n", .{ctx.firstMessage()});
+    try testing.expectEqual(0, ctx.sink.list.items.len);
 }
 
 test "sort errors are precise" {

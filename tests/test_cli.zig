@@ -309,4 +309,12 @@ pub fn addTests(
     ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_unpack_ok.bpa" });
     ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_tcc_ok.bpa" });
     ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_accel_chain_ok.bpa" });
+    // REGRESSION: a schema `instantiate` step re-enters checkProofSteps (to
+    // re-verify the schema body under recheck_schemas), which must NOT wipe the
+    // outer proof's accelerant-premise reachability roots. Under --fast the
+    // accelerant emits no kernel citation edge, so the root is the only record of
+    // an accelerant premise's use; clobbering it falsely flags the premise dead.
+    // Must pass under BOTH strict and --fast.
+    ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_fast_schema_ok.bpa" });
+    ctx.okSilent(&.{ "check", "--fast", "tests/cases/use_all_facts_fast_schema_ok.bpa" });
 }

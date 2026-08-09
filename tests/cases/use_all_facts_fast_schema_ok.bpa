@@ -1,0 +1,44 @@
+// USE-ALL-FACTS × --fast × schema instantiation.
+//
+// Regression guard: a proof whose conclusion (or any step) is a schema
+// `instantiate` re-enters `checkProofSteps` to re-verify the schema body
+// (recheck_schemas), which resets the per-proof `extra_reachable_steps`
+// accumulator. That accumulator carries the accelerant-premise reachability
+// roots (an accelerant like `simplify` CONSUMES a cited step, but under --fast
+// its lowering emits no kernel citation edge — the root is the only record of
+// the use). If the nested re-entry clobbers the outer proof's roots, the
+// dead-step walk loses them and falsely reports the accelerant's premise as an
+// "unused fact" — but ONLY under --fast (strict masks it via the real kernel
+// edges the accelerant emits). So this file must check clean under BOTH strict
+// and --fast.
+
+sort Nat
+const Z: Nat
+func s(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+axiom addZ: forall b: Nat; add(Z, b) = b
+axiom addS: forall a, b: Nat; add(s(a), b) = s(add(a, b))
+
+// a PROVEN schema — instantiating it re-enters checkProofSteps.
+theorem trivialSchema(x: Nat): add(Z, x) = x
+proof
+  @via-add-zero | add(Z, x) = x [by simplify addZ]
+qed
+
+// `@premise` is consumed ONLY as the accelerant `@use`'s premise; the later
+// `instantiate` step must not wipe that use from the reachability roots.
+theorem premiseUsedThenSchema: (add(s(Z), Z) = s(Z)) and (add(Z, Z) = Z)
+proof
+  @premise |
+    add(Z, Z) = Z
+    [by simplify addZ]
+  @use |
+    add(s(Z), Z) = s(Z)
+    [by simplify addS premise]
+  @via-schema |
+    add(Z, Z) = Z
+    [by instantiate trivialSchema(Z)]
+  @conclusion |
+    (add(s(Z), Z) = s(Z)) and (add(Z, Z) = Z)
+    [by and_intro use via-schema]
+qed
