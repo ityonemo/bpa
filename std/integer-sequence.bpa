@@ -1,13 +1,13 @@
 // std/integer-sequence.bpa — nonneg-ℤ-indexed integer sequences and their
 // finite products. This file MODELS the abstract ℕ-indexed fold theory in
 // std/sequence.bpa: it declares its own `Seq`/`at`/`productUpTo` over the ℤ
-// carrier, maps the abstract fold onto them (`model IntSeq`), and transfers the
+// sort, maps the abstract fold onto them (`model IntSeq`), and transfers the
 // fold-structure facts, while keeping all the ℤ divisibility/number theory.
 //
 // A sequence is honestly ℕ-indexed. The ℤ model OVERLOADS the abstract index
 // sort onto `NonNegZ = Int where nonneg` (sound: the nonnegatives ARE a Peano
 // model — the `NonNegInt` model in std/integer.bpa). So on the ℤ side the index
-// and the value both sit on the Int carrier, the index being the nonneg
+// and the value both sit on the Int sort, the index being the nonneg
 // refinement; the finite product `productUpTo(s, k)` = at(s,0) · … · at(s,k-1)
 // is the fold with combine:mul, IDENTITY:ONE. Values stay Int — the FTA's ℤ
 // arithmetic is untouched. The headline reusable fact is

@@ -20,7 +20,7 @@ axiom qqGives: forall a: Thing; good(a) -> qq(a) -> combine(ZED, a) = a
 sort ThingGood = Thing where good
 
 model ThingModel {
-  source.Carrier: ThingGood
+  source.Sort: ThingGood
   source.UNIT: ZED
   source.op: combine
   source.p: pp

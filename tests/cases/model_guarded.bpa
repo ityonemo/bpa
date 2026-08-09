@@ -1,7 +1,7 @@
 // GUARDED model transfer (`model … where <guard>`): `Thing` models the abstract
 // theory from model_guarded_source.bpa, but ZED is a left identity only on the
 // guarded subset `good`. A transferred theorem is RELATIVIZED — its statement
-// carries `good(a) ->` at each carrier binder — and (strict mode) its
+// carries `good(a) ->` at each binder over the sort — and (strict mode) its
 // materialized proof discharges the guard obligation at every instantiation:
 //   - a constant  → the model's base closure fact (good(ZED))
 //   - a fixed var → the guard assumption in the eigenvariable's scope
@@ -24,7 +24,7 @@ axiom goodCombineZed: forall a: Thing; good(a) -> good(combine(ZED, a)) // compo
 sort ThingGood = Thing where good
 
 model ThingModel {
-  source.Carrier: ThingGood
+  source.Sort: ThingGood
   source.UNIT: ZED
   source.op: combine
   source.opUnitLeft: combineZedLeftGuarded
@@ -32,7 +32,7 @@ model ThingModel {
 
 // L1 (ground): transfer opUnitAtUnit — the proof instantiates at the constant
 // UNIT→ZED, so materialization discharges good(ZED) from goodZed. Statement is
-// unrelativized (no carrier binder).
+// unrelativized (no binder over the sort).
 theorem combineZedAtZed: combine(ZED, ZED) = ZED
 proof
   @conclusion |
@@ -41,7 +41,7 @@ proof
 qed
 
 // L2 (fix + eigenvariable): transfer opUnitLeftOnce — its proof `fix a { …
-// forall_elim(a) … }`. The materialized proof wraps the carrier fix as
+// forall_elim(a) … }`. The materialized proof wraps the sort's fix as
 // `fix a { assume good(a) { … } }` and discharges good(a) from that assumption.
 // Statement is relativized.
 theorem combineZedLeftForGood: forall a: Thing; good(a) -> combine(ZED, a) = a

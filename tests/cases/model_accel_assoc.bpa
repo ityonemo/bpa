@@ -1,7 +1,7 @@
 // MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `assoc` (GUARDED model).
 //
 // A source theorem proved with `assoc` (a single-operator reassociation) is
-// transferred through a GUARDED model (carrier restricted to `good`). The
+// transferred through a GUARDED model (sort restricted to `good`). The
 // transfer must materialize a MODEL-MANGLED, relativized synthetic rewrite chain
 // for the `assoc` step — but today the accelerant builds its synthetic theorem
 // at elaboration in the SOURCE space, blind to the model, so the guarded
@@ -22,7 +22,7 @@ proof
     [by assoc_quantified(opAssoc)]
 qed
 
-// a concrete carrier with a membership guard `good`.
+// a concrete sort with a membership guard `good`.
 sort Tgt
 func top(a: Tgt, b: Tgt): Tgt
 pred good(x: Tgt)

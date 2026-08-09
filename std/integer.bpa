@@ -9,7 +9,7 @@
 //     `induction` theorem — no bidirectional-induction axiom.
 // The ring algebra (commutativity, associativity, distributivity, the additive
 // inverse law) is PROVEN here by that induction, and ℤ then MODELS std/ring.bpa
-// (`model IntegerRing`, unguarded, whole-carrier) so the ring/group corpus transfers
+// (`model IntegerRing`, unguarded, whole-sort) so the ring/group corpus transfers
 // back onto ℤ. The irreducible axioms are: the recursion axioms, `nonneg` closure
 // (ZERO ∈ ℕ, closed under succ), the sign-split, and the ONE distinctness fact
 // `nonneg(n) -> succ(n) != ZERO` (which cannot come from succ/prev alone — in ℤ,
@@ -19,7 +19,7 @@
 import peano <<< "std/peano.bpa"
 import ring <<< "std/ring.bpa"
 
-// -- the ℤ carrier: successor-style, left-recursive ------------------------
+// -- the ℤ sort: successor-style, left-recursive ------------------------
 
 sort Int
 const ZERO: Int
@@ -127,7 +127,7 @@ qed
 // UNIDIRECTIONAL induction on the nonnegatives — the primitive induction
 // principle. Posited here as the model's discharge for `peano.induction`: the
 // model's α-gate VERIFIES this statement is exactly ℕ-induction relativized to
-// `nonneg` (guard `nonneg(k) ->` at each carrier binder). So it is not an
+// `nonneg` (guard `nonneg(k) ->` at each binder over the sort). So it is not an
 // arbitrary posit — it is ℕ's induction, transported.
 axiom nonnegInduction(prop: Int -> Prop):
   prop(ZERO)

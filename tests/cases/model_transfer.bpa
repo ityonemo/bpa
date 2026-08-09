@@ -1,5 +1,5 @@
 // `model` transfer under --fast: a concrete sort `Thing` models the abstract
-// theory in model_source.bpa (Carrier->Thing, UNIT->ZED, op->combine), and the
+// theory in model_source.bpa (Sort->Thing, UNIT->ZED, op->combine), and the
 // source theorem `opUnitLeftTwice` transfers to `Thing`, cited through the model.
 // Default mode rejects the accelerated transfer; --fast accepts it.
 import source <<< "model_source.bpa"
@@ -11,7 +11,7 @@ func combine(a: Thing, b: Thing): Thing
 // Thing's own left-identity fact — discharges the source's opUnitLeft obligation.
 axiom combineZedLeft: forall a: Thing; combine(ZED, a) = a
 model ThingModel {
-  source.Carrier: Thing
+  source.Sort: Thing
   source.UNIT: ZED
   source.op: combine
   source.opUnitLeft: combineZedLeft

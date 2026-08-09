@@ -19,8 +19,8 @@ JUDSON and is self-contained from the book's *own cumulative development*. Do
 already have it in hand at that point in the book."** The import horizon tracks
 the book's cumulative build:
 
-- The **carrier / theory Judson is currently assuming** is fair to import — early
-  Chapter 2 works over ℤ, so importing `std/integer*` for the ℤ carrier + its ring
+- The **sort / theory Judson is currently assuming** is fair to import — early
+  Chapter 2 works over ℤ, so importing `std/integer*` for the ℤ sort + its ring
   and order is fine ("Judson has ℤ").
 - Once **past** a chapter, later chapters may import that chapter's `std/` theory —
   past Chapter 3 (groups), later chapters may `import std/group` ("Judson has

@@ -1,4 +1,4 @@
-// MULTI-BINDER auto-weakening: a mapped axiom with TWO carrier binders, mapped to
+// MULTI-BINDER auto-weakening: a mapped axiom with TWO binders over the sort, mapped to
 // ITSELF, whose relativized obligation is `∀a; inH(a) -> ∀b; inH(b) -> P` — a free
 // weakening synthesized by nested fix/assume. (Single-binder is handled already;
 // this exercises N-binder, needed for group axioms like opAssoc/opCommutative.)

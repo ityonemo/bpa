@@ -4,19 +4,19 @@
 // (to a theorem OR an axiom). It may NOT cite a fact that IS affected by the
 // substitution but is not in the mapping.
 //
-// Two sorts: `Carrier` (substituted by the model) and `Untouched` (never
+// Two sorts: `Sort` (substituted by the model) and `Untouched` (never
 // substituted). Facts mentioning only `Untouched` are substitution-invariant.
 
-sort Carrier
+sort Sort
 sort Untouched
-const UNIT: Carrier
+const UNIT: Sort
 const POINT: Untouched
-func op(a: Carrier, b: Carrier): Carrier
+func op(a: Sort, b: Sort): Sort
 pred marks(u: Untouched)
 
-// substituted axioms (mention Carrier/op/UNIT — the model must map them):
-axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a // -> mapped to a THEOREM
-axiom opUnitRight: forall a: Carrier; op(a, UNIT) = a // -> mapped to an AXIOM
+// substituted axioms (mention Sort/op/UNIT — the model must map them):
+axiom opUnitLeft: forall a: Sort; op(UNIT, a) = a // -> mapped to a THEOREM
+axiom opUnitRight: forall a: Sort; op(a, UNIT) = a // -> mapped to an AXIOM
 
 // a substitution-INVARIANT axiom (mentions only Untouched/POINT/marks):
 axiom pointMarked: marks(POINT)
@@ -36,12 +36,12 @@ qed
 // mapping). op(UNIT, op(a, UNIT)) = op(UNIT, a): collapse the inner op(a, UNIT)
 // to a via opUnitRight.
 theorem unitCollapsesAndMarks:
-  (forall a: Carrier; op(UNIT, op(a, UNIT)) = op(UNIT, a)) and marks(POINT)
+  (forall a: Sort; op(UNIT, op(a, UNIT)) = op(UNIT, a)) and marks(POINT)
 proof
   @generalize-a |
-    fix a: Carrier {
+    fix a: Sort {
       @unit-right |
-        forall b: Carrier; op(b, UNIT) = b
+        forall b: Sort; op(b, UNIT) = b
         [by axiom opUnitRight]
       @inner-collapses |
         op(a, UNIT) = a
@@ -54,12 +54,12 @@ proof
         [by rewrite inner-collapses op-refl]
     }
   @collapses |
-    forall a: Carrier; op(UNIT, op(a, UNIT)) = op(UNIT, a)
+    forall a: Sort; op(UNIT, op(a, UNIT)) = op(UNIT, a)
     [by forall_intro generalize-a]
   @invariant-theorem |
     marks(POINT)
     [by theorem pointStays]
   @conclusion |
-    (forall a: Carrier; op(UNIT, op(a, UNIT)) = op(UNIT, a)) and marks(POINT)
+    (forall a: Sort; op(UNIT, op(a, UNIT)) = op(UNIT, a)) and marks(POINT)
     [by and_intro collapses invariant-theorem]
 qed

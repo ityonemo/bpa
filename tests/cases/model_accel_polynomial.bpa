@@ -1,7 +1,7 @@
 // MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `polynomial` (GUARDED model).
 //
 // A source theorem proved with `polynomial` (a commutative-semiring identity) is
-// transferred through a GUARDED model (carrier restricted to `good`). The
+// transferred through a GUARDED model (sort restricted to `good`). The
 // transfer must materialize a MODEL-MANGLED, relativized synthetic ring-rewrite
 // certificate for the step — but today the accelerant builds its synthetic
 // theorem at elaboration in the SOURCE space, blind to the model, so the guarded
@@ -42,7 +42,7 @@ proof
     [by polynomial_quantified]
 qed
 
-// a concrete carrier with a membership guard `good`.
+// a concrete sort with a membership guard `good`.
 sort Tgt
 const TZERO: Tgt
 const TONE: Tgt

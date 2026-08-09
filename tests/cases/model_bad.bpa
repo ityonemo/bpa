@@ -11,7 +11,7 @@ func combine(a: Thing, b: Thing): Thing
 axiom combineZedLeft: forall a: Thing; combine(ZED, a) = a
 
 model ThingModel {
-  source.Carrier: Thing
+  source.Sort: Thing
   source.UNIT: ZED
   source.op: combine
   source.opUnitLeft: combineZedLeft

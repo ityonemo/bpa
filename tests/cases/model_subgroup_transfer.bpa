@@ -24,7 +24,7 @@ const E = group.E
 func op = group.op
 func inverse = group.inverse
 
-// a concrete subgroup membership predicate over Grp + its predicated carrier.
+// a concrete subgroup membership predicate over Grp + its predicated sort.
 pred inH(g: Grp)
 sort H = Grp where inH
 
@@ -34,7 +34,7 @@ axiom hClosedOp: forall a, b: Grp; inH(a) -> inH(b) -> inH(op(a, b))
 axiom hClosedInverse: forall a: Grp; inH(a) -> inH(inverse(a))
 
 // ── LAYER 1: HSubGroup — inH IS a subgroup (models the subgroup theory). ──────
-// The subgroup theory's carrier `Sub` maps to the guarded H; its group-shaped
+// The subgroup theory's sort `Sub` maps to the guarded H; its group-shaped
 // primitives to Grp's; its criteria to inH's.
 model HSubGroup {
   subgroup.Grp: Grp

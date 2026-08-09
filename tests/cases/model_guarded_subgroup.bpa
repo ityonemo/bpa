@@ -1,5 +1,5 @@
 // The paradigm guarded-model case, END TO END in one file: a SUBGROUP (elements
-// satisfying `inH`) modeling its own group's carrier. Exercises, together:
+// satisfying `inH`) modeling its own group's underlying sort. Exercises, together:
 //   - a SAME-FILE guarded model (source theory and model share one file);
 //   - AUTO-WEAKENING — the group axiom `opIdentityLeft` (unconditional on G) is
 //     mapped to ITSELF; the materializer synthesizes its relativized obligation
@@ -28,7 +28,7 @@ proof
     [by forall_elim(E) identity-law]
 qed
 
-// --- the subgroup: a predicate over the SAME carrier + its defining axioms ----
+// --- the subgroup: a predicate over the SAME sort + its defining axioms ----
 pred inH(g: Grp)
 
 axiom inhabited: exists g: Grp; inH(g)

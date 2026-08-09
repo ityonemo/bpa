@@ -13,7 +13,7 @@
 // its double-negation membership rule, and every theorem is proved
 // membershipwise.
 //
-// `Element` is the SHARED element carrier (std/element.bpa), so sets compose
+// `Element` is the SHARED element sort (std/element.bpa), so sets compose
 // with any theory over the same elements (e.g. relations, std/relation.bpa):
 // aliasing identifies the sorts, so those theories' theorems apply directly.
 

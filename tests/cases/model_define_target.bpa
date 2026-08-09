@@ -15,7 +15,7 @@ define DOUBLED = combine(ZED, ZED)
 axiom combineDoubledLeft: forall a: Thing; combine(DOUBLED, a) = a
 
 model ThingModel {
-  source.Carrier: Thing
+  source.Sort: Thing
   source.UNIT: DOUBLED
   source.op: combine
   source.opUnitLeft: combineDoubledLeft

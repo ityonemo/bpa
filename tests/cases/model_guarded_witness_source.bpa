@@ -1,38 +1,38 @@
-// Source for the EXISTENTIAL-WITNESS failure boundary. A carrier with `op`,
+// Source for the EXISTENTIAL-WITNESS failure boundary. A sort with `op`,
 // left-identity `UNIT`, and an existence axiom `something` (∃ x; …). A theorem
 // unpacks that witness `w` and instantiates the identity axiom AT `w` — so a
 // guarded transfer would owe `guard(w)`, which nothing establishes (the witness
 // is not known to be in the guarded subset). This is the boundary case.
-sort Carrier
-const UNIT: Carrier
-func op(a: Carrier, b: Carrier): Carrier
-pred marked(x: Carrier)
+sort Sort
+const UNIT: Sort
+func op(a: Sort, b: Sort): Sort
+pred marked(x: Sort)
 
-axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
+axiom opUnitLeft: forall a: Sort; op(UNIT, a) = a
 // there exists SOME element (an unconstrained witness).
-axiom something: exists x: Carrier; marked(x)
+axiom something: exists x: Sort; marked(x)
 
 // unpack the witness w, then forall_elim opUnitLeft AT w → op(UNIT, w) = w.
 // The conclusion `exists x; op(UNIT, x) = x` hides w, so the statement itself is
 // witness-free, but the PROOF instantiates the guarded axiom at the witness.
-theorem someUnitFixed: exists x: Carrier; op(UNIT, x) = x
+theorem someUnitFixed: exists x: Sort; op(UNIT, x) = x
 proof
   @exists-marked |
-    exists x: Carrier; marked(x)
+    exists x: Sort; marked(x)
     [by axiom something]
   @with-w |
-    unpack w: Carrier from exists-marked {
+    unpack w: Sort from exists-marked {
       @unit-left |
-        forall b: Carrier; op(UNIT, b) = b
+        forall b: Sort; op(UNIT, b) = b
         [by axiom opUnitLeft]
       @at-w |
         op(UNIT, w) = w
         [by forall_elim(w) unit-left]
       @exists-fixed |
-        exists x: Carrier; op(UNIT, x) = x
+        exists x: Sort; op(UNIT, x) = x
         [by exists_intro(w) at-w]
     }
   @conclusion |
-    exists x: Carrier; op(UNIT, x) = x
+    exists x: Sort; op(UNIT, x) = x
     [by exists_elim with-w]
 qed

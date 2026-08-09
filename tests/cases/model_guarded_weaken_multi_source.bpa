@@ -1,4 +1,4 @@
-// Source for MULTI-BINDER auto-weakening: an axiom with TWO carrier binders that
+// Source for MULTI-BINDER auto-weakening: an axiom with TWO binders over the sort that
 // holds unconditionally, and a theorem instantiating it.
 sort Grp
 const E: Grp

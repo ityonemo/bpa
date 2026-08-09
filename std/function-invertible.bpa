@@ -26,7 +26,7 @@ axiom invertibleDef = function.invertibleDef
 axiom inverseLeft = function.inverseLeft
 axiom inverseRight = function.inverseRight
 
-// the predicated carrier: the invertible functions.
+// the predicated sort: the invertible functions.
 sort InvFn = Fn where invertible
 
 // ── the group axioms, over the invertible functions ──────────────────────────

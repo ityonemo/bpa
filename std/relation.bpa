@@ -1,5 +1,5 @@
 // std/relation.bpa — binary relations and equivalence relations over the shared
-// element carrier (std/element.bpa).
+// element sort (std/element.bpa).
 //
 // A relation on X is modeled as a binary predicate `related(x, y)` over the
 // shared `Element` sort (the analogue of `member` for sets / `apply` for
@@ -9,7 +9,7 @@
 // std/function.bpa.
 //
 // Ranging over the SHARED element sort (not a private one) is what lets a theory
-// that shares that carrier — e.g. sets in std/set.bpa — compose with relations
+// that shares that sort — e.g. sets in std/set.bpa — compose with relations
 // and REUSE these theorems directly (see std/equivalence.bpa).
 //
 // This is the FOL-tractable layer of relations. What it does NOT model:

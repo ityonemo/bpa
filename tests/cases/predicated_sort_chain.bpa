@@ -1,11 +1,11 @@
 // PREDICATED SORT chain: C = B where inC, where B = A where inB. A refined sort may
-// refine another refined sort. `carrierOf` walks the chain to the root A; the
+// refine another refined sort. The base-sort resolver walks the refinement chain to the root A; the
 // qualifiers accumulate — so `forall c: C; P(c)` desugars to
 // `forall c: A; inB(c) -> inC(c) -> P(c)` (the guards compose, declaration order).
 sort A
 pred inB(a: A)
 sort B = A where inB
-pred inC(b: B)              // a pred over the REFINED B (its carrier is A)
+pred inC(b: B)              // a pred over the REFINED B (its base sort is A)
 sort C = B where inC
 
 pred P(a: A)

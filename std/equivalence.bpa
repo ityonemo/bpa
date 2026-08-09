@@ -2,7 +2,7 @@
 // CLASS of an element as a Set.
 //
 // Sets (std/set.bpa) and relations (std/relation.bpa) both range over the SAME
-// shared element carrier (std/element.bpa) — so they COMPOSE, and this file
+// shared element sort (std/element.bpa) — so they COMPOSE, and this file
 // imports BOTH rather than re-declaring anything. A class is then a Set of the
 // elements the relation relates, via a class constructor:
 //
@@ -48,7 +48,7 @@ define equivalence = relation.equivalence
 func classOf(x: Element): Set
 
 // y is in the class of x exactly when y ~ x. (Element = Element = the shared
-// carrier, so `member(y, ·)` and `related(y, x)` speak of the same y.)
+// element sort, so `member(y, ·)` and `related(y, x)` speak of the same y.)
 axiom classMember: forall x: Element; forall y: Element;
   (member(y, classOf(x)) -> related(y, x))
   and (related(y, x) -> member(y, classOf(x)))

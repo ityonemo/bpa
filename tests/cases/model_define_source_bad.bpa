@@ -4,9 +4,9 @@
 // definition — definition-blind and unsound. The model must reject it and tell
 // the writer to map the body's primitives instead.
 
-sort Carrier
-const UNIT: Carrier
-func op(a: Carrier, b: Carrier): Carrier
+sort Sort
+const UNIT: Sort
+func op(a: Sort, b: Sort): Sort
 // TWICE is transparent — it IS op(UNIT, UNIT), not an opaque symbol.
 define TWICE = op(UNIT, UNIT)
 
@@ -15,7 +15,7 @@ const ZED: Thing
 func combine(a: Thing, b: Thing): Thing
 
 model ThingModel {
-  Carrier: Thing
+  Sort: Thing
   UNIT: ZED
   op: combine
   TWICE: ZED

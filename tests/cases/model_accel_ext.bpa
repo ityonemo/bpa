@@ -1,7 +1,7 @@
 // MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `ext` (GUARDED model).
 //
 // A source theorem proved with `ext` (function extensionality) is transferred
-// through a GUARDED model (carrier of functions restricted to `good`). The
+// through a GUARDED model (sort of functions restricted to `good`). The
 // transfer must materialize a MODEL-MANGLED, relativized synthetic extensionality
 // certificate for the step — but today the accelerant builds its synthetic
 // theorem at elaboration in the SOURCE space, blind to the model, so the guarded
@@ -31,7 +31,7 @@ proof
     [by ext_quantified]
 qed
 
-// a concrete carrier of functions with a membership guard `good`.
+// a concrete sort of functions with a membership guard `good`.
 sort TElement
 sort Tfn
 func tapply(f: Tfn, x: TElement): TElement

@@ -12,7 +12,7 @@ func combine(a: Thing, b: Thing): Thing
 axiom combineUnitAxiom: forall a: Thing; combine(NEUTRAL, a) = a
 
 model SourceModel {
-  src.Carrier: Thing
+  src.Sort: Thing
   src.UNIT: NEUTRAL
   src.op: combine
   src.leftUnitAxiom: combineUnitAxiom

@@ -1,12 +1,12 @@
-// Source theory for the GUARDED `model … where` fixtures. A carrier with a
+// Source theory for the GUARDED `model … where` fixtures. A sort with a
 // binary `op` and left-identity `UNIT`, plus two derived theorems whose proofs
 // forall_elim the axiom at (a) the bound variable only, and (b) a composite
-// carrier term — the two shapes that stress guarded materialization differently.
-sort Carrier
-const UNIT: Carrier
-func op(a: Carrier, b: Carrier): Carrier
+// term over the sort — the two shapes that stress guarded materialization differently.
+sort Sort
+const UNIT: Sort
+func op(a: Sort, b: Sort): Sort
 
-axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
+axiom opUnitLeft: forall a: Sort; op(UNIT, a) = a
 
 // (L1) GROUND: proof forall_elims the axiom at the CONSTANT UNIT only — no fix,
 // no eigenvariable. The guard obligation to discharge is `good(UNIT)`, from the
@@ -15,7 +15,7 @@ axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
 theorem opUnitAtUnit: op(UNIT, UNIT) = UNIT
 proof
   @unit-left |
-    forall a: Carrier; op(UNIT, a) = a
+    forall a: Sort; op(UNIT, a) = a
     [by axiom opUnitLeft]
   @at-unit |
     op(UNIT, UNIT) = UNIT
@@ -24,50 +24,50 @@ qed
 
 // (a) proof forall_elims the axiom at the BOUND variable `a` only: the injected
 // guard antecedent is exactly the one the relativized statement binds.
-theorem opUnitLeftOnce: forall a: Carrier; op(UNIT, a) = a
+theorem opUnitLeftOnce: forall a: Sort; op(UNIT, a) = a
 proof
   @generalize-a |
-    fix a: Carrier {
+    fix a: Sort {
       @unit-left |
-        forall b: Carrier; op(UNIT, b) = b
+        forall b: Sort; op(UNIT, b) = b
         [by axiom opUnitLeft]
       @at-a |
         op(UNIT, a) = a
         [by forall_elim(a) unit-left]
     }
   @conclusion |
-    forall a: Carrier; op(UNIT, a) = a
+    forall a: Sort; op(UNIT, a) = a
     [by forall_intro generalize-a]
 qed
 
 // (L3) COMPOSITE: proof forall_elims the axiom at the composite term op(UNIT, a).
 // Guarded materialization must discharge good(op(UNIT, a)) via a closure fact,
 // recursing to good(UNIT) [base] and good(a) [the fix assumption].
-theorem opUnitLeftTwice: forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+theorem opUnitLeftTwice: forall a: Sort; op(UNIT, op(UNIT, a)) = op(UNIT, a)
 proof
   @generalize-a |
-    fix a: Carrier {
+    fix a: Sort {
       @unit-left |
-        forall b: Carrier; op(UNIT, b) = b
+        forall b: Sort; op(UNIT, b) = b
         [by axiom opUnitLeft]
       @at-op-unit-a |
         op(UNIT, op(UNIT, a)) = op(UNIT, a)
         [by forall_elim(op(UNIT, a)) unit-left]
     }
   @conclusion |
-    forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+    forall a: Sort; op(UNIT, op(UNIT, a)) = op(UNIT, a)
     [by forall_intro generalize-a]
 qed
 
 // (L4) RECURSIVE CITATION: a theorem whose proof CITES another (opUnitLeftTwice),
 // forcing guarded materialization to recurse into that dependency (memoized) and
 // materialize IT guardedly too. Also instantiates the cited universal at op(UNIT,a).
-theorem opUnitLeftThrice: forall a: Carrier; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
+theorem opUnitLeftThrice: forall a: Sort; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
 proof
   @generalize-a |
-    fix a: Carrier {
+    fix a: Sort {
       @twice |
-        forall b: Carrier; op(UNIT, op(UNIT, b)) = op(UNIT, b)
+        forall b: Sort; op(UNIT, op(UNIT, b)) = op(UNIT, b)
         [by theorem opUnitLeftTwice]
       @inner-collapses |
         op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, op(UNIT, a))
@@ -80,6 +80,6 @@ proof
         [by rewrite outer-collapses inner-collapses]
     }
   @conclusion |
-    forall a: Carrier; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
+    forall a: Sort; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
     [by forall_intro generalize-a]
 qed

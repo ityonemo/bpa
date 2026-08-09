@@ -453,14 +453,14 @@ model NonNegInt {
 ```
 
 The discharge target (`nonnegInduction`) must itself be a schema; its statement
-must be the **guard-relativized remap** of the source's body (every carrier `∀`
-gains `non_neg(x) ->`). That match is verified once, at the model declaration
+must be the **guard-relativized remap** of the source's body (every `∀` over the
+sort gains `non_neg(x) ->`). That match is verified once, at the model declaration
 (even if the schema is never cited). Then `[by model(NonNegInt) peano.induction]`
 inside a schema body instantiates the discharge at the caller's predicate
 parameter — kernel-checked, untainted. (A schema transfer is only cited *inside a
 schema body*, where a predicate parameter exists to instantiate.)
 
-Note a schema transfer moves the *shape*, not any free lunch: a model carrier
+Note a schema transfer moves the *shape*, not any free lunch: a model's sort
 still owns whatever axiomatic commitment the schema encodes (the discharge is
 typically a local `axiom`). E.g. ℤ-induction cannot be derived from ℕ — the
 nonneg model gives only the conditional nonneg schema — so ℤ still axiomatizes

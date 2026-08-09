@@ -15,7 +15,7 @@ func apply(h: H): G
 pred Q(g: G)
 
 axiom succInH: forall g: G; inH(g) -> inH(succ(g))
-// `qEverywhere` is stated over the raw carrier G, so IT emits no guard obligation.
+// `qEverywhere` is stated over the raw sort G, so IT emits no guard obligation.
 axiom qEverywhere: forall x: G; Q(x)
 
 theorem allGGiveQ: forall g: H; Q(apply(succ(g)))

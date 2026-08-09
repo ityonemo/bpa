@@ -1,7 +1,7 @@
 // MODEL TRANSFER OF AN ACCELERANT-USING THEOREM — `tautology` (GUARDED model).
 //
 // A source theorem proved with `tautology` (a propositional consequence over
-// source predicates) is transferred through a GUARDED model (carrier restricted
+// source predicates) is transferred through a GUARDED model (sort restricted
 // to `good`). The transfer must materialize a MODEL-MANGLED, relativized
 // synthetic propositional certificate for the step — but today the accelerant
 // builds its synthetic theorem at elaboration in the SOURCE space, blind to the
@@ -45,7 +45,7 @@ proof
     [by forall_intro generalize-x]
 qed
 
-// a concrete carrier with a membership guard `good`.
+// a concrete sort with a membership guard `good`.
 sort Tgt
 pred good(x: Tgt)
 pred tred(x: Tgt)

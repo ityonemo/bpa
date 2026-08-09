@@ -38,7 +38,7 @@ so document order = declaration order (declare-before-use, reading downward), an
 an import in one section's block is visible to every later block. There is no
 per-block preamble tax.
 
-In practice: the *core vocabulary the whole chapter is about* (the carrier sort +
+In practice: the *core vocabulary the whole chapter is about* (the underlying sort +
 its operations — `Int`/`add`/`mul`, `Grp`/`op`, `Set`/`member`) is introduced
 once, with the opening prose that first names the object (the book opens the same
 way). *Concept-specific machinery* enters in the section that first discusses that
@@ -117,7 +117,7 @@ Every category has a distinct look:
   ambient domain of *underlying individuals* it quantifies over — sets over their
   members, functions over their points, relations over their relata — name that
   element-domain sort **`Element`** (as `std/element.bpa` does). Reserve it for the
-  underlying individuals, NOT the structure's own carrier: a group is `Grp`, ℤ is
+  underlying individuals, NOT the structure's own sort: a group is `Grp`, ℤ is
   `Int`, a set is `Set` — those *are* the objects the theory is about, not a domain
   beneath them. A shared canonical name lets element-domains compose (and `model`
   onto each other) without an aliasing layer. This is a *recommendation*: the older

@@ -1,6 +1,6 @@
 // Citation rule — the FORBIDDEN case. The model maps opUnitLeft but NOT
 // opUnitRight. Since opUnitRight is affected by the substitution (it mentions
-// Carrier/op/UNIT) yet is absent from the mapping, the materialized proof of
+// Sort/op/UNIT) yet is absent from the mapping, the materialized proof of
 // unitCollapsesAndMarks would cite a fact whose meaning shifts under the
 // interpretation with nothing accounting for it — rejected, naming opUnitRight.
 import cite <<< "model_cite_source.bpa"
@@ -19,7 +19,7 @@ qed
 
 // opUnitRight deliberately NOT mapped — the forbidden gap.
 model ThingModel {
-  cite.Carrier: Thing
+  cite.Sort: Thing
   cite.UNIT: NEUTRAL
   cite.op: combine
   cite.opUnitLeft: combineNeutralLeft

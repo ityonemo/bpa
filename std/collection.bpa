@@ -101,7 +101,7 @@ func bigIntersection(c: Collection): Set
 axiom bigIntersectionMember: forall c: Collection; forall x: Element;
   member(x, bigIntersection(c)) iff (forall s: Set; contains(s, c) -> member(x, s))
 
-// the universe: the set every element belongs to (the carrier of the whole space).
+// the universe: the set every element belongs to (the whole space of elements).
 const universe: Set
 axiom universeMember: forall x: Element; member(x, universe)
 

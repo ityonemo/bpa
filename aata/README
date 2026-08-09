@@ -29,8 +29,8 @@ self-contained from the book's *own cumulative development*. We do **not** impor
 a `std/` library to alias such a proof away — **unless "Judson would already have
 it in hand at that point in the book."** Concretely:
 
-- the **carrier / theory Judson is currently assuming** is fair to import — early
-  Chapter 2 works over ℤ, so importing `std/integer*` for the ℤ carrier + its ring
+- the **sort / theory Judson is currently assuming** is fair to import — early
+  Chapter 2 works over ℤ, so importing `std/integer*` for the ℤ sort + its ring
   and order is fine ("Judson has ℤ");
 - once **past** a chapter, later chapters may import that chapter's `std/` theory
   (past Chapter 3, later chapters may `import std/group` — "Judson has groups by
@@ -109,7 +109,7 @@ encoded [reason]` block for a stated theorem) saying exactly what it would
 require — a running backlog of standard-library constructions that future
 chapters will motivate:
 
-- a concrete **ℤ_n / U(n)** model (modular arithmetic as a group carrier),
+- a concrete **ℤ_n / U(n)** model (modular arithmetic as a group sort),
 - **finite sets + cardinality** (counting arguments, Cayley tables, Lagrange),
 - **matrix / GLₙ** constructions and the reals,
 - a **group power** `gⁿ` (recursive over a Nat exponent) for the ℕ-indexed

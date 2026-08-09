@@ -6,7 +6,7 @@
 // `less_or_equal`. The order file cannot host these theorems: nonneg is defined
 // BELOW it (std/integer-nonneg.bpa), and importing the order back into nonneg
 // would be a cycle. So we layer strong induction and well-ordering here, one
-// level above the whole order corpus, guarding EVERY carrier quantifier with
+// level above the whole order corpus, guarding EVERY quantifier over the sort with
 // `nonneg` (ℕ is a subclass of ℤ, so ranging over "all nonneg n" is the ℕ
 // quantifier). The proofs mirror std/peano-ordering.bpa's `strongInduction` and
 // `wellOrdering`, nonneg-guarded throughout.

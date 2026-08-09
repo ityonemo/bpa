@@ -1,4 +1,4 @@
-// SAME-FILE guarded model. A subgroup lives on the SAME carrier as its group, so
+// SAME-FILE guarded model. A subgroup lives on the SAME sort as its group, so
 // the paradigm case wants the source theory and the guarded model in ONE file —
 // no import needed. The source symbols are referenced by their bare (unqualified)
 // names in the model mapping; left-of-`:` is the source, right is the target.
@@ -31,7 +31,7 @@ pred inH(g: Grp)
 axiom hasIdentity: inH(E)                                       // base closure
 axiom identityLeftOnH: forall a: Grp; inH(a) -> op(E, a) = a    // relativized axiom
 
-// --- the guarded model, over the SAME carrier -------------------------------
+// --- the guarded model, over the SAME sort -------------------------------
 sort GrpH = Grp where inH
 
 model SubgroupIsGroup {

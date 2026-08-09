@@ -1,7 +1,7 @@
-// Source theory for the SCHEMA-transfer fixture. A minimal Peano-like carrier:
+// Source theory for the SCHEMA-transfer fixture. A minimal Peano-like sort:
 // a zero, a successor, and an induction SCHEMA (a proofless axiom family
 // parameterized by a proposition `prop`). The point of the fixture is that a
-// guarded `model` can transfer this SCHEMA down onto its carrier — discharging
+// guarded `model` can transfer this SCHEMA down onto its sort — discharging
 // it with a locally-declared, guard-relativized schema — not just plain axioms.
 sort Elem
 const ZE: Elem

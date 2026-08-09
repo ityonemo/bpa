@@ -1,28 +1,28 @@
 // A tiny abstract theory to exercise `model` transfer: a sort with a binary
 // `op`, a left-identity `UNIT`, and one PROVEN theorem over it. The theorem is
-// what a `model` of this theory transfers to a concrete carrier.
-sort Carrier
-const UNIT: Carrier
-func op(a: Carrier, b: Carrier): Carrier
+// what a `model` of this theory transfers to a concrete sort.
+sort Sort
+const UNIT: Sort
+func op(a: Sort, b: Sort): Sort
 
 // left-identity axiom: op(UNIT, a) = a
-axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
+axiom opUnitLeft: forall a: Sort; op(UNIT, a) = a
 
-// a derived theorem over the abstract carrier — transferable by `model`.
+// a derived theorem over the abstract sort — transferable by `model`.
 // (from the axiom at `op(UNIT, a)`: op(UNIT, op(UNIT, a)) = op(UNIT, a).)
-theorem opUnitLeftTwice: forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+theorem opUnitLeftTwice: forall a: Sort; op(UNIT, op(UNIT, a)) = op(UNIT, a)
 proof
   @generalize-a |
-    fix a: Carrier {
+    fix a: Sort {
       @unit-left |
-        forall b: Carrier; op(UNIT, b) = b
+        forall b: Sort; op(UNIT, b) = b
         [by axiom opUnitLeft]
       @conclusion-twice |
         op(UNIT, op(UNIT, a)) = op(UNIT, a)
         [by forall_elim(op(UNIT, a)) unit-left]
     }
   @conclusion |
-    forall a: Carrier; op(UNIT, op(UNIT, a)) = op(UNIT, a)
+    forall a: Sort; op(UNIT, op(UNIT, a)) = op(UNIT, a)
     [by forall_intro generalize-a]
 qed
 
@@ -30,12 +30,12 @@ qed
 // it forces `model` materialization to recurse into that dependency (memoized).
 // op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a): rewrite the inner double-UNIT
 // via opUnitLeftTwice, leaving op(UNIT, op(UNIT, a)), then again.
-theorem opUnitLeftThrice: forall a: Carrier; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
+theorem opUnitLeftThrice: forall a: Sort; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
 proof
   @generalize-a |
-    fix a: Carrier {
+    fix a: Sort {
       @twice |
-        forall b: Carrier; op(UNIT, op(UNIT, b)) = op(UNIT, b)
+        forall b: Sort; op(UNIT, op(UNIT, b)) = op(UNIT, b)
         [by theorem opUnitLeftTwice]
       @inner-collapses |
         op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, op(UNIT, a))
@@ -48,6 +48,6 @@ proof
         [by rewrite outer-collapses inner-collapses]
     }
   @conclusion |
-    forall a: Carrier; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
+    forall a: Sort; op(UNIT, op(UNIT, op(UNIT, a))) = op(UNIT, a)
     [by forall_intro generalize-a]
 qed

@@ -1,4 +1,4 @@
-// std/divisibility.bpa — the abstract theory of DIVISIBILITY over a carrier with
+// std/divisibility.bpa — the abstract theory of DIVISIBILITY over a sort with
 // a multiplication (and an addition, for the sum law). `divides(d, n)` means
 // "d divides n", i.e. n is a multiple of d: ∃k; n = d·k.
 //
@@ -11,7 +11,7 @@
 //
 // The multiplicative facts the proofs rely on (`mulOneRight`, `mulIsAssociative`,
 // `mulAddDistribLeft`) are stated here as axioms — the OBLIGATIONS a model
-// discharges by mapping them to its carrier's proven versions.
+// discharges by mapping them to its own sort's proven versions.
 
 sort Dividable
 const ONE: Dividable

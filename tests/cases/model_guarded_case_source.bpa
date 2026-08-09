@@ -3,24 +3,24 @@
 // materialization does not yet re-emit `or_elim`/assume-arm blocks or bare
 // `hypothesis` steps (the group corpus has none), so a guarded transfer of this
 // hits the boundary.
-sort Carrier
-const UNIT: Carrier
-func op(a: Carrier, b: Carrier): Carrier
-pred p(x: Carrier)
-pred q(x: Carrier)
+sort Sort
+const UNIT: Sort
+func op(a: Sort, b: Sort): Sort
+pred p(x: Sort)
+pred q(x: Sort)
 
-axiom opUnitLeft: forall a: Carrier; op(UNIT, a) = a
-axiom pOrQ: forall a: Carrier; p(a) or q(a)
-axiom pGivesUnit: forall a: Carrier; p(a) -> op(UNIT, a) = a
-axiom qGivesUnit: forall a: Carrier; q(a) -> op(UNIT, a) = a
+axiom opUnitLeft: forall a: Sort; op(UNIT, a) = a
+axiom pOrQ: forall a: Sort; p(a) or q(a)
+axiom pGivesUnit: forall a: Sort; p(a) -> op(UNIT, a) = a
+axiom qGivesUnit: forall a: Sort; q(a) -> op(UNIT, a) = a
 
 // prove op(UNIT, a) = a by cases on p(a) ∨ q(a).
-theorem unitByCases: forall a: Carrier; op(UNIT, a) = a
+theorem unitByCases: forall a: Sort; op(UNIT, a) = a
 proof
   @generalize-a |
-    fix a: Carrier {
+    fix a: Sort {
       @p-or-q-rule |
-        forall b: Carrier; p(b) or q(b)
+        forall b: Sort; p(b) or q(b)
         [by axiom pOrQ]
       @p-or-q |
         p(a) or q(a)
@@ -34,7 +34,7 @@ proof
                 p(a)
                 [by hypothesis when-p]
               @p-rule |
-                forall b: Carrier; p(b) -> op(UNIT, b) = b
+                forall b: Sort; p(b) -> op(UNIT, b) = b
                 [by axiom pGivesUnit]
               @p-at-a |
                 p(a) -> op(UNIT, a) = a
@@ -49,7 +49,7 @@ proof
                 q(a)
                 [by hypothesis when-q]
               @q-rule |
-                forall b: Carrier; q(b) -> op(UNIT, b) = b
+                forall b: Sort; q(b) -> op(UNIT, b) = b
                 [by axiom qGivesUnit]
               @q-at-a |
                 q(a) -> op(UNIT, a) = a
@@ -61,6 +61,6 @@ proof
         }
     }
   @conclusion |
-    forall a: Carrier; op(UNIT, a) = a
+    forall a: Sort; op(UNIT, a) = a
     [by forall_intro generalize-a]
 qed

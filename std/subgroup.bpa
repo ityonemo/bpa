@@ -1,7 +1,7 @@
 // std/subgroup.bpa — the theory of a SUBGROUP, as a STANDALONE,
 // reusable component (the dependency INVERSION).
 //
-// A subgroup is a group in its own right — a subset of a group's carrier that is
+// A subgroup is a group in its own right — a subset of a group's underlying sort that is
 // itself a group under the restricted operation. Rather than importing `std/group.bpa`
 // and bolting a membership predicate onto it, this theory is SELF-CONTAINED: it
 // declares its own abstract PARENT GROUP (a subgroup's parent IS a group), the
@@ -154,7 +154,7 @@ proof
     [by forall_intro generalize-a]
 qed
 
-// The subgroup, as a membership predicate over the group carrier, characterized by
+// The subgroup, as a membership predicate over the group's sort, characterized by
 // the three subgroup-criterion conditions.
 pred inSubgroup(g: Grp)
 
@@ -162,7 +162,7 @@ axiom subgroupHasIdentity: inSubgroup(E)
 axiom subgroupClosedOp: forall a, b: Grp; inSubgroup(a) -> inSubgroup(b) -> inSubgroup(op(a, b))
 axiom subgroupClosedInverse: forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(a))
 
-// The subgroup carrier as a PREDICATED SORT: `Sub` is `Grp` restricted to members.
+// The subgroup's underlying sort as a PREDICATED SORT: `Sub` is `Grp` restricted to members.
 // A statement `∀g: Sub; …` reads as "for every subgroup element" and desugars to
 // `∀g: Grp; inSubgroup(g) -> …` — the same theorem, but the membership hypotheses
 // stay implicit in the binder (surfaced in a proof with `[by predicate <fix>]`).
@@ -171,7 +171,7 @@ axiom subgroupClosedInverse: forall a: Grp; inSubgroup(a) -> inSubgroup(inverse(
 sort Sub = Grp where inSubgroup
 
 // ── THE FIVE GROUP AXIOMS, PROVEN ON THE SUBGROUP. ───────────────────────────
-// Each states that a group axiom holds over the subgroup carrier `Sub` (the law
+// Each states that a group axiom holds over the subgroup sort `Sub` (the law
 // holds on all of Grp, so it restricts to the subset). These are the five theorems
 // HGroup @-projects to discharge group's axiom obligations onto the subgroup.
 theorem opAssoc: forall a, b, c: Sub; op(op(a, b), c) = op(a, op(b, c))
