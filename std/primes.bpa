@@ -101,108 +101,18 @@ theorem sequencePrimeFactorExists = sequence.primeFactorExists
 // One is a left identity for multiplication — ℤ names only `mulOneRight`, but
 // the `polynomial` normalizer wants the left form in scope; derive it from
 // commutativity.
-theorem mulOneLeft: forall n: Int; mul(ONE, n) = n
-proof
-  @generalize-n |
-    fix n: Int {
-      @one-times-n-commutes |
-        mul(ONE, n) = mul(n, ONE)
-        [by specialize mulIsCommutative(ONE, n)]
-      @n-times-one-is-n |
-        mul(n, ONE) = n
-        [by specialize mulOneRight(n)]
-      @conclusion-one-times-n |
-        mul(ONE, n) = n
-        [by chain one-times-n-commutes n-times-one-is-n]
-    }
-  @conclusion |
-    forall n: Int; mul(ONE, n) = n
-    [by forall_intro generalize-n]
-qed
+// pure ring lemma — now in integer.bpa's ring layer; alias.
+theorem mulOneLeft = integer.mulOneLeft
 
 // Multiplicative left-swap `x·(y·r) = y·(x·r)` — another normal-form lemma the
 // `polynomial` normalizer wants; derive it from associativity and commutativity.
-theorem mulLeftSwap: forall x, y, r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
-proof
-  @generalize-x |
-    fix x: Int {
-      @generalize-y |
-        fix y: Int {
-          @generalize-r |
-            fix r: Int {
-              @associate-x-y |
-                mul(mul(x, y), r) = mul(x, mul(y, r))
-                [by specialize mulIsAssociative(x, y, r)]
-              @regroup-to-left |
-                mul(x, mul(y, r)) = mul(mul(x, y), r)
-                [by symmetry associate-x-y]
-              @commute-x-y |
-                mul(x, y) = mul(y, x)
-                [by specialize mulIsCommutative(x, y)]
-              @swap-factors |
-                mul(x, mul(y, r)) = mul(mul(y, x), r)
-                [by rewrite commute-x-y regroup-to-left]
-              @associate-y-x |
-                mul(mul(y, x), r) = mul(y, mul(x, r))
-                [by specialize mulIsAssociative(y, x, r)]
-              @conclusion-swap |
-                mul(x, mul(y, r)) = mul(y, mul(x, r))
-                [by chain swap-factors associate-y-x]
-            }
-          @discharge-r |
-            forall r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
-            [by forall_intro generalize-r]
-        }
-      @discharge-y |
-        forall y, r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
-        [by forall_intro generalize-y]
-    }
-  @conclusion |
-    forall x, y, r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
-    [by forall_intro generalize-x]
-qed
+// pure ring lemma — now in integer.bpa's ring layer; alias.
+theorem mulLeftSwap = integer.mulLeftSwap
 
 // Additive left-swap `x+(y+r) = y+(x+r)` — the additive analog, again for the
 // `polynomial` normalizer.
-theorem addLeftSwap: forall x, y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
-proof
-  @generalize-x |
-    fix x: Int {
-      @generalize-y |
-        fix y: Int {
-          @generalize-r |
-            fix r: Int {
-              @associate-x-y |
-                add(add(x, y), r) = add(x, add(y, r))
-                [by specialize addIsAssociative(x, y, r)]
-              @regroup-to-left |
-                add(x, add(y, r)) = add(add(x, y), r)
-                [by symmetry associate-x-y]
-              @commute-x-y |
-                add(x, y) = add(y, x)
-                [by specialize addIsCommutative(x, y)]
-              @swap-factors |
-                add(x, add(y, r)) = add(add(y, x), r)
-                [by rewrite commute-x-y regroup-to-left]
-              @associate-y-x |
-                add(add(y, x), r) = add(y, add(x, r))
-                [by specialize addIsAssociative(y, x, r)]
-              @conclusion-swap |
-                add(x, add(y, r)) = add(y, add(x, r))
-                [by chain swap-factors associate-y-x]
-            }
-          @discharge-r |
-            forall r: Int; add(x, add(y, r)) = add(y, add(x, r))
-            [by forall_intro generalize-r]
-        }
-      @discharge-y |
-        forall y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
-        [by forall_intro generalize-y]
-    }
-  @conclusion |
-    forall x, y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
-    [by forall_intro generalize-x]
-qed
+// pure ring lemma — now in integer.bpa's ring layer; alias.
+theorem addLeftSwap = integer.addLeftSwap
 
 // ---------------------------------------------------------------------------
 // PRIMALITY

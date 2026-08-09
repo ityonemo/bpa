@@ -2175,6 +2175,201 @@ proof
     [by forall_intro generalize-a]
 qed
 
+// mul is commutative — a pure ring fact (bidirectional induction on the second
+// factor; each step unfolds mulSuccRight/mulPrevRight and mirrors, closed by
+// simplify against the IH). No order needed, so it lives in the ring layer.
+theorem mulIsCommutative: forall a, b: Int; mul(a, b) = mul(b, a)
+proof
+  @base-case-proof |
+    fix a: Int {
+      @mul-zero-right |
+        forall n: Int; mul(n, ZERO) = ZERO
+        [by theorem mulZeroRight]
+      @a-times-zero-equals-zero-times-a |
+        mul(a, ZERO) = mul(ZERO, a)
+        [by simplify mul-zero-right mulZeroLeft]
+    }
+  @base-case |
+    forall a: Int; mul(a, ZERO) = mul(ZERO, a)
+    [by forall_intro base-case-proof]
+  @induction-step-succ |
+    fix k: Int {
+      @given-inductive-hypothesis |
+        assume forall a: Int; mul(a, k) = mul(k, a) {
+          @pointwise |
+            fix a2: Int {
+              @inductive-hypothesis |
+                forall a: Int; mul(a, k) = mul(k, a)
+                [by hypothesis given-inductive-hypothesis]
+              @inductive-hypothesis-at-a2 |
+                mul(a2, k) = mul(k, a2)
+                [by forall_elim(a2) inductive-hypothesis]
+              @successor-case |
+                mul(a2, succ(k)) = mul(succ(k), a2)
+                [by simplify mulSuccRight mulSuccLeft inductive-hypothesis-at-a2]
+            }
+          @discharge-a |
+            forall a: Int; mul(a, succ(k)) = mul(succ(k), a)
+            [by forall_intro pointwise]
+        }
+      @inductive-hypothesis-implies-successor |
+        (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, succ(k)) = mul(succ(k), a)
+        [by implies_intro given-inductive-hypothesis]
+    }
+  @induction-step-for-all-succ |
+    forall k: Int; (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, succ(k)) = mul(succ(k), a)
+    [by forall_intro induction-step-succ]
+  @induction-step-prev |
+    fix k: Int {
+      @given-inductive-hypothesis |
+        assume forall a: Int; mul(a, k) = mul(k, a) {
+          @pointwise |
+            fix a2: Int {
+              @inductive-hypothesis |
+                forall a: Int; mul(a, k) = mul(k, a)
+                [by hypothesis given-inductive-hypothesis]
+              @inductive-hypothesis-at-a2 |
+                mul(a2, k) = mul(k, a2)
+                [by forall_elim(a2) inductive-hypothesis]
+              @predecessor-case |
+                mul(a2, prev(k)) = mul(prev(k), a2)
+                [by simplify mulPrevRight mulPrevLeft inductive-hypothesis-at-a2]
+            }
+          @discharge-a |
+            forall a: Int; mul(a, prev(k)) = mul(prev(k), a)
+            [by forall_intro pointwise]
+        }
+      @inductive-hypothesis-implies-predecessor |
+        (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, prev(k)) = mul(prev(k), a)
+        [by implies_intro given-inductive-hypothesis]
+    }
+  @induction-step-for-all-prev |
+    forall k: Int; (forall a: Int; mul(a, k) = mul(k, a)) -> forall a: Int; mul(a, prev(k)) = mul(prev(k), a)
+    [by forall_intro induction-step-prev]
+  @mul-is-commutative-swapped |
+    forall b, a: Int; mul(a, b) = mul(b, a)
+    [by instantiate induction((fun k: Int => forall a: Int; mul(a, k) = mul(k, a))) base-case induction-step-for-all-succ induction-step-for-all-prev]
+  // swap the two leading universals into first-appearance (a, b) order.
+  @reorder-a |
+    fix a: Int {
+      @reorder-b |
+        fix b: Int {
+          @at-a-b |
+            mul(a, b) = mul(b, a)
+            [by forall_elim(b, a) mul-is-commutative-swapped]
+        }
+      @discharge-reorder-b |
+        forall b: Int; mul(a, b) = mul(b, a)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Int; mul(a, b) = mul(b, a)
+    [by forall_intro reorder-a]
+qed
+
+// mul left-swap: mul(x, mul(y,r)) = mul(y, mul(x,r)) — reassociate, commute the
+// outer pair, reassociate back. Pure ring; needed by polynomial normalization.
+theorem mulLeftSwap: forall x, y, r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
+proof
+  @generalize-x |
+    fix x: Int {
+      @generalize-y |
+        fix y: Int {
+          @generalize-r |
+            fix r: Int {
+              @associate-x-y |
+                mul(mul(x, y), r) = mul(x, mul(y, r))
+                [by specialize mulIsAssociative(x, y, r)]
+              @regroup-to-left |
+                mul(x, mul(y, r)) = mul(mul(x, y), r)
+                [by symmetry associate-x-y]
+              @commute-x-y |
+                mul(x, y) = mul(y, x)
+                [by specialize mulIsCommutative(x, y)]
+              @swap-factors |
+                mul(x, mul(y, r)) = mul(mul(y, x), r)
+                [by rewrite commute-x-y regroup-to-left]
+              @associate-y-x |
+                mul(mul(y, x), r) = mul(y, mul(x, r))
+                [by specialize mulIsAssociative(y, x, r)]
+              @conclusion-swap |
+                mul(x, mul(y, r)) = mul(y, mul(x, r))
+                [by chain swap-factors associate-y-x]
+            }
+          @discharge-r |
+            forall r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
+            [by forall_intro generalize-r]
+        }
+      @discharge-y |
+        forall y, r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
+        [by forall_intro generalize-y]
+    }
+  @conclusion |
+    forall x, y, r: Int; mul(x, mul(y, r)) = mul(y, mul(x, r))
+    [by forall_intro generalize-x]
+qed
+
+// add left-swap: the additive mirror of mulLeftSwap.
+theorem addLeftSwap: forall x, y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
+proof
+  @generalize-x |
+    fix x: Int {
+      @generalize-y |
+        fix y: Int {
+          @generalize-r |
+            fix r: Int {
+              @associate-x-y |
+                add(add(x, y), r) = add(x, add(y, r))
+                [by specialize addIsAssociative(x, y, r)]
+              @regroup-to-left |
+                add(x, add(y, r)) = add(add(x, y), r)
+                [by symmetry associate-x-y]
+              @commute-x-y |
+                add(x, y) = add(y, x)
+                [by specialize addIsCommutative(x, y)]
+              @swap-factors |
+                add(x, add(y, r)) = add(add(y, x), r)
+                [by rewrite commute-x-y regroup-to-left]
+              @associate-y-x |
+                add(add(y, x), r) = add(y, add(x, r))
+                [by specialize addIsAssociative(y, x, r)]
+              @conclusion-swap |
+                add(x, add(y, r)) = add(y, add(x, r))
+                [by chain swap-factors associate-y-x]
+            }
+          @discharge-r |
+            forall r: Int; add(x, add(y, r)) = add(y, add(x, r))
+            [by forall_intro generalize-r]
+        }
+      @discharge-y |
+        forall y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
+        [by forall_intro generalize-y]
+    }
+  @conclusion |
+    forall x, y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
+    [by forall_intro generalize-x]
+qed
+
+// mul left identity: mul(ONE, n) = n, by commuting to mulOneRight.
+theorem mulOneLeft: forall n: Int; mul(ONE, n) = n
+proof
+  @generalize-n |
+    fix n: Int {
+      @one-times-n-commutes |
+        mul(ONE, n) = mul(n, ONE)
+        [by specialize mulIsCommutative(ONE, n)]
+      @n-times-one-is-n |
+        mul(n, ONE) = n
+        [by specialize mulOneRight(n)]
+      @conclusion-one-times-n |
+        mul(ONE, n) = n
+        [by chain one-times-n-commutes n-times-one-is-n]
+    }
+  @conclusion |
+    forall n: Int; mul(ONE, n) = n
+    [by forall_intro generalize-n]
+qed
+
 // add(neg(n), n) = ZERO — the left additive inverse, by commuting to
 // add(n, neg(n)) = ZERO (addNegRight). A discharge lemma for the ring model.
 theorem addNegLeft: forall n: Int; add(neg(n), n) = ZERO
