@@ -1,0 +1,21 @@
+// A schema whose proof uses `[by arithmetic]` on a goal mentioning the schema's
+// VALUE parameter `k`. The goal is fine when `k` is a real forall variable, but
+// the schema wellformedness self-check reifies `k` as an OPAQUE symbol, which
+// arithmetic's Presburger fragment cannot treat as a Nat variable. This is a
+// known, planned-but-unsupported case — bpa should say so clearly (naming `k`),
+// not leak the internal `opaque-schema-param#N` symbol.
+sort Nat
+const ZERO: Nat
+const ONE: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+axiom oneIsSuccZero: ONE = succ(ZERO)
+
+theorem valArith(k: Nat): add(k, ONE) = succ(k)
+proof
+  @arith-step |
+    add(k, ONE) = succ(k)
+    [by arithmetic]
+qed

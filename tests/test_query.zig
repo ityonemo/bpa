@@ -226,6 +226,11 @@ pub fn addTests(
     // reprint — say so and NAME the fallback, not the generic "no accelerant here".
     ctx.fail(&.{ "debug", "accelerant", "tests/cases/cooper_gap.bpa", "sumParity", "conclusion" }, "error: proof by fallback: this `arithmetic` step is discharged by the manual theorem 'provedHere' (the certifiers declined), so there is no accelerant synthetic to reprint\n");
 
+    // `debug accelerant` on an arithmetic step over a reified SCHEMA PARAMETER
+    // passes through the same "unsupported but planned" message (naming the
+    // parameter) that `bpa check` gives — no internal-symbol leak.
+    ctx.fail(&.{ "debug", "accelerant", "tests/cases/schema_arithmetic_param_bad.bpa", "valArith", "arith-step" }, "tests/cases/schema_arithmetic_param_bad.bpa:20:9: error: arithmetic cannot yet decide this goal over the schema parameter 'k' (reified opaque while the schema's proof is checked). Certifying an arithmetic step over a schema parameter is currently unsupported but planned; use --fast to accept the accelerated verdict\n");
+
     // an ALIAS (`theorem addZeroRight = peano.addZeroRight` in subtraction)
     // resolves across files to the real proof — identical output.
     ctx.ok(&.{ "query", "theorem", "std/peano-subtraction.bpa", "addZeroRight" }, std_theorem_text);

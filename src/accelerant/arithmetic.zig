@@ -1498,6 +1498,29 @@ fn missingTheorySymbol(self: *Elaborator, goal: TermId, premises: []const TermId
     }
     return null;
 }
+/// If `t` mentions a REIFIED SCHEMA PARAMETER symbol (branded
+/// `opaque-schema-param#<origName>#<counter>` by `checkSchemaBodyOpaque`), return
+/// the original parameter name `<origName>`. Recurses into `.app`/`.pred` args.
+/// Used to give a specific "over the schema parameter '<name>'" diagnostic
+/// instead of leaking the internal symbol.
+fn schemaParamName(self: *Elaborator, t: TermId) ?[]const u8 {
+    const prefix = "opaque-schema-param#";
+    switch (self.pool.get(t)) {
+        .app, .pred => |a| {
+            const name = self.interner.str(self.env.sym(a.sym).name);
+            if (std.mem.startsWith(u8, name, prefix)) {
+                // `opaque-schema-param#<origName>#<counter>` — the middle segment.
+                const rest = name[prefix.len..];
+                const end = std.mem.lastIndexOfScalar(u8, rest, '#') orelse rest.len;
+                return rest[0..end];
+            }
+            for (self.pool.args(a)) |arg| if (schemaParamName(self, arg)) |n| return n;
+            return null;
+        },
+        else => return null,
+    }
+}
+
 fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     const loc = c.rule.start;
     const premises = try self.resolvePremises(low, block_id, c, "arithmetic");
@@ -1595,6 +1618,14 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
             for (cm.opaques) |lit| {
                 if (!looksArithmeticRelation(self, lit.atom, symbols)) continue;
                 if (try presburger_mod.outOfFragment(self.arena, self.pool, symbols, lit.atom)) |offending| {
+                    // If the offending term is a REIFIED SCHEMA PARAMETER (branded
+                    // `opaque-schema-param#<name>#<n>` by checkSchemaBodyOpaque), the
+                    // step is inside a schema whose parameter arithmetic can't treat
+                    // as a real variable during the opaque wellformedness check. That
+                    // is a known, planned-but-unsupported case — say so, naming the
+                    // user's parameter, instead of leaking the internal symbol.
+                    if (schemaParamName(self, offending)) |pname|
+                        return self.fail(loc, "arithmetic cannot yet decide this goal over the schema parameter '{s}' (reified opaque while the schema's proof is checked). Certifying an arithmetic step over a schema parameter is currently unsupported but planned; use --fast to accept the accelerated verdict", .{pname});
                     return self.fail(loc, "arithmetic: '{s}' is outside linear arithmetic", .{try self.renderTerm(offending)});
                 }
             }

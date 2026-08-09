@@ -2024,8 +2024,12 @@ pub const Elaborator = struct {
             for (p.arg_sorts, arg_sorts) |s, *out| out.* = try self.resolveSort(s);
             const result_sort = try self.resolveSort(p.result);
             const kind: term.AppKind = if (result_sort == .prop) .pred else .app;
-            // a fresh uninterpreted symbol of the param's signature.
-            const sym_name = try self.freshNamed("opaque-schema-param");
+            // a fresh uninterpreted symbol of the param's signature, BRANDED with
+            // the original param name (`opaque-schema-param#<origName>#<n>`) so a
+            // downstream error (e.g. arithmetic can't decide over it) can name the
+            // user's parameter instead of leaking the raw internal symbol.
+            const branded = std.fmt.allocPrint(self.arena, "opaque-schema-param#{s}", .{self.text(p.name)}) catch return error.OutOfMemory;
+            const sym_name = try self.freshNamed(branded);
             const sym_id = try self.env.addSym(self.file, .{
                 .name = sym_name,
                 .kind = kind,
