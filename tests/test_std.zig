@@ -75,6 +75,14 @@ pub fn addTests(
     // machinery. The reusable foundation for GCD / Bézout / the FTA.
     ctx.okSilent(&.{ "check", "std/integer-division.bpa" });
 
+    // the ℤ GCD / Bézout theory (std/integer-gcd.bpa): the existence-form gcd
+    // (bezout — a positive common divisor d = ar + bs divisible by every common
+    // divisor, via Well-Ordering on {am + bn > 0} + the Division Algorithm) and
+    // its coprime specialization (coprimeBezout — gcd = ±1 gives ar + bs = 1, the
+    // engine of Euclid's Lemma). An independent std development of the theory the
+    // AATA §2.2 chapter proves inline. Reusable ℤ number theory for later chapters.
+    ctx.okSilent(&.{ "check", "std/integer-gcd.bpa" });
+
     // the abstract, ℕ-indexed sequence + FOLD theory (std/sequence.bpa): an opaque
     // `Seq` over an abstract `Value` with an `at` accessor, an abstract `combine`/
     // `IDENTITY` fold (`foldUpTo`) + recursion axioms, and fold-structure theorems.
