@@ -113,6 +113,7 @@ fn debugCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
 
 const query_usage =
     "usage: bpa query outline <file.bpa> [theorem]\n" ++
+    "       bpa query claims <file.bpa> [theorem]\n" ++
     "       bpa query theorem <file.bpa> <theorem> [--sig]\n" ++
     "       bpa query whereis <file.bpa> <identifier>\n" ++
     "       bpa query search <file.bpa|dir> <query>\n" ++
@@ -148,6 +149,7 @@ fn readSource(arena: std.mem.Allocator, path: []const u8) ![]const u8 {
 
 /// `bpa query <op> …` — read-only inspection.
 ///   outline <file> [theorem]  — proof skeleton (labels + block headers)
+///   claims  <file> [theorem]  — proof skeleton (claim formulas, label-free)
 ///   theorem <file> <name>     — full source of a theorem (aliases followed)
 fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:0]const u8) !u8 {
     if (rest.len >= 1 and std.mem.eql(u8, rest[0], "outline")) {
@@ -159,6 +161,17 @@ fn queryCommand(arena: std.mem.Allocator, std_root: []const u8, rest: []const [:
             else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
         };
         const result = try bpa.query.outline.outline(arena, path, source, thm);
+        return emitQuery(result.text, result.ok);
+    }
+    if (rest.len >= 1 and std.mem.eql(u8, rest[0], "claims")) {
+        if (rest.len < 2 or rest.len > 3) return fail(query_usage, .{});
+        const path = rest[1];
+        const thm: ?[]const u8 = if (rest.len == 3) rest[2] else null;
+        const source = readSource(arena, path) catch |e| switch (e) {
+            error.FileNotFound => return fail("error: cannot open '{s}': file not found\n", .{path}),
+            else => return fail("error: cannot open '{s}': {t}\n", .{ path, e }),
+        };
+        const result = try bpa.query.claims.claims(arena, path, source, thm);
         return emitQuery(result.text, result.ok);
     }
     if (rest.len >= 1 and std.mem.eql(u8, rest[0], "theorem")) {
@@ -311,6 +324,7 @@ pub fn main(init: std.process.Init) !u8 {
             \\       bpa debug accelerant <file> <line | theorem step-label>
             \\       bpa debug taint <file> [theorem]
             \\       bpa query outline <file.bpa> [theorem]
+            \\       bpa query claims <file.bpa> [theorem]
             \\       bpa query theorem <file.bpa> <theorem> [--sig]
             \\       bpa query whereis <file.bpa> <identifier>
             \\       bpa query search <file.bpa|dir> <query>
@@ -354,6 +368,9 @@ pub fn main(init: std.process.Init) !u8 {
             \\step (bare label), with a header on steps that open a nesting
             \\block (fix / assume / unpack / case). With no theorem argument it
             \\outlines every proof in the file.
+            \\query claims is the same skeleton but shows each step's CLAIM
+            \\FORMULA instead of its label — the propositions the proof
+            \\establishes, label-free (block openers keep fix/assume/case headers).
             \\query theorem prints the full source of one theorem (following
             \\aliases across files to the real proof; axioms are marked).
             \\query whereis traces an identifier through every alias/import hop
@@ -378,7 +395,7 @@ pub fn main(init: std.process.Init) !u8 {
     if (args.len >= 2 and std.mem.eql(u8, args[1], "debug")) {
         return debugCommand(arena, std_root, args[2..]);
     }
-    const usage = "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa lint <file.bpa|.md>\n       bpa debug accelerant <file> <line | theorem step-label>\n       bpa debug taint <file> [theorem]\n       bpa query outline <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n";
+    const usage = "usage: bpa check [--fast | --faster | --reckless] [--draft] <file.bpa>\n       bpa fmt [--check] <file.bpa|.md>\n       bpa lint <file.bpa|.md>\n       bpa debug accelerant <file> <line | theorem step-label>\n       bpa debug taint <file> [theorem]\n       bpa query outline <file.bpa> [theorem]\n       bpa query claims <file.bpa> [theorem]\n       bpa query theorem <file.bpa> <theorem> [--sig]\n       bpa query whereis <file.bpa> <identifier>\n       bpa query search <file.bpa|dir> <query>\n       bpa query uses <file.bpa> [theorem]\n";
     if (args.len < 3 or !std.mem.eql(u8, args[1], "check")) {
         return fail(usage, .{});
     }

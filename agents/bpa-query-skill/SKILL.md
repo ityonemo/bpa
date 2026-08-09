@@ -38,6 +38,27 @@ theorem addZeroRight
   conclusion
 ```
 
+### `bpa query claims <file> [theorem]`
+The same skeleton as `outline`, but each step shows its **claim formula** instead
+of its label — the propositions the proof establishes, label-free (block openers
+keep their `fix`/`assume`/`case` headers). `outline` reads as the table of
+contents; `claims` reads as the mathematical content. Works on proof-carrying
+schemas too. Use when you want the *argument* (what is proved, step by step)
+rather than the *structure*.
+
+```
+$ bpa query claims std/peano.bpa addZeroRight
+theorem addZeroRight
+  add(ZERO, ZERO) = ZERO
+  fix k
+    assume add(k, ZERO) = k
+      add(k, ZERO) = k
+      add(succ(k), ZERO) = succ(k)
+    add(k, ZERO) = k -> add(succ(k), ZERO) = succ(k)
+  forall k: Nat; add(k, ZERO) = k -> add(succ(k), ZERO) = succ(k)
+  forall n: Nat; add(n, ZERO) = n
+```
+
 ### `bpa query theorem <file> <name> [--sig]`
 The full verbatim source of one declaration — statement + `proof … qed` + its
 leading doc-comment. **Follows aliases across files** to the real proof; axioms

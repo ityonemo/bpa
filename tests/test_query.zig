@@ -52,6 +52,41 @@ pub fn addTests(
     // a missing theorem is a located error on stderr (exit 1)
     ctx.fail(&.{ "query", "outline", "tests/cases/outline.bpa", "noSuchThing" }, "error: no theorem 'noSuchThing' in this file\n");
 
+    // `query claims <file> <theorem>`: the SAME skeleton as outline, but each
+    // step shows its CLAIM FORMULA instead of its label (block openers keep their
+    // fix / assume / case headers). Same proof as the outline gate above.
+    ctx.ok(&.{ "query", "claims", "tests/cases/outline.bpa", "everyoneIsQ" },
+        \\theorem everyoneIsQ
+        \\  fix n
+        \\    forall m: Nat; p(m) or q(m)
+        \\    p(n) or q(n)
+        \\    case p-or-q
+        \\      assume p(n)
+        \\        p(n)
+        \\        forall m: Nat; p(m) -> q(m)
+        \\        p(n) -> q(n)
+        \\        q(n)
+        \\      assume q(n)
+        \\        q(n)
+        \\  forall n: Nat; q(n)
+        \\
+    );
+
+    // `query claims` on a proof-carrying SCHEMA (`theorem name(param): …`): it is
+    // rendered like any proof (labeled `schema`), with the claim formulas of the
+    // steps inside its `fix` block — proving `claims` handles schematic theorems.
+    ctx.ok(&.{ "query", "claims", "tests/cases/query_claims_schema.bpa", "everythingP" },
+        \\schema everythingP
+        \\  fix n
+        \\    forall m: Nat; P(m)
+        \\    P(n)
+        \\  forall n: Nat; P(n)
+        \\
+    );
+
+    // a missing theorem is the same located error as outline (exit 1).
+    ctx.fail(&.{ "query", "claims", "tests/cases/outline.bpa", "noSuchThing" }, "error: no theorem 'noSuchThing' in this file\n");
+
     // `query uses <file>`: per-proof rule tally + external citations. The
     // refs that are the proof's OWN labels are excluded from `cites`; the
     // axioms/theorems it pulls in are listed.

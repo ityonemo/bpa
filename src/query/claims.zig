@@ -1,0 +1,241 @@
+//! `bpa query claims <file> [theorem]` — the CLAIMS skeleton of a proof.
+//!
+//! The companion to `bpa query outline`: same structure (one line per step,
+//! block nesting shown by indentation), but each plain step shows its CLAIM
+//! FORMULA instead of its label. So where `outline` reads as a table of contents
+//! (what each step is CALLED), `claims` reads as the sequence of PROPOSITIONS the
+//! proof establishes — the mathematical content, label-free.
+//!
+//! Per step:
+//!   - a plain claim step  →  its formula (surface syntax, whitespace-collapsed)
+//!   - `fix k`             →  `fix k`          (no formula on the step line)
+//!   - `unpack u from s`   →  `unpack u from s`
+//!   - `assume <F>`        →  `assume <F>`     (the assumed proposition)
+//!   - `case <disj>`       →  `case <disj>`, each arm `assume <F>`
+//! Nesting is 2 spaces per block level. Block openers keep their structural
+//! header (so fix/assume/case structure stays legible); everything else is the
+//! bare proposition.
+//!
+//! Walks the parsed AST (never elaborates). With a theorem argument, shows that
+//! one proof; without, shows EVERY proof-carrying declaration in the file.
+//!
+//! Formula rendering reuses the source text directly (see `formulaText`): a
+//! formula's surface syntax is the slice of `source` spanning its tokens,
+//! whitespace-collapsed — so it reads exactly as written.
+
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+const ast = @import("../ast.zig");
+const lexer = @import("../lexer.zig");
+const parser = @import("../parser.zig");
+const diagnostics = @import("../diagnostics.zig");
+const Token = lexer.Token;
+
+pub const Result = struct {
+    text: []const u8,
+    ok: bool,
+};
+
+/// Parse `source` and render the claims skeleton. On a parse error, `ok` is
+/// false and `text` is the rendered diagnostics (same `path:line:col: error:`
+/// form as `bpa check`). `theorem` null => every proof in the file.
+pub fn claims(
+    arena: Allocator,
+    path: []const u8,
+    source: []const u8,
+    theorem: ?[]const u8,
+) Allocator.Error!Result {
+    const sink = try arena.create(diagnostics.Sink);
+    sink.* = .init(arena);
+
+    var p: parser.Parser = .init(arena, source, sink);
+    const file = try p.parseFile();
+
+    var out: std.Io.Writer.Allocating = .init(arena);
+    const w = &out.writer;
+
+    if (sink.list.items.len > 0) {
+        const files = [_]diagnostics.FileSrc{.{ .path = path, .source = source }};
+        sink.render(w, &files) catch return error.OutOfMemory;
+        return .{ .text = try out.toOwnedSlice(), .ok = false };
+    }
+
+    const ok = if (theorem) |name|
+        renderOne(arena, w, source, file, name) catch return error.OutOfMemory
+    else
+        renderAll(arena, w, source, file) catch return error.OutOfMemory;
+
+    return .{ .text = try out.toOwnedSlice(), .ok = ok };
+}
+
+/// A proof-carrying declaration, uniformly: theorems and proof-carrying schemas.
+const Proof = struct { kind: []const u8, name: Token, steps: []const ast.Step };
+
+fn asProof(decl: ast.Decl) ?Proof {
+    return switch (decl) {
+        .theorem => |t| .{ .kind = "theorem", .name = t.name, .steps = t.steps },
+        .schema => |s| if (s.steps) |steps|
+            .{ .kind = "schema", .name = s.name, .steps = steps }
+        else
+            null,
+        else => null,
+    };
+}
+
+// -- every proof in the file (no theorem argument) --------------------------
+
+fn renderAll(arena: Allocator, w: *std.Io.Writer, source: []const u8, file: ast.File) !bool {
+    var first = true;
+    for (file.decls) |decl| {
+        const proof = asProof(decl) orelse continue;
+        if (!first) try w.writeAll("\n");
+        first = false;
+        try renderProof(arena, w, source, proof);
+    }
+    return true;
+}
+
+// -- one named proof --------------------------------------------------------
+
+fn renderOne(arena: Allocator, w: *std.Io.Writer, source: []const u8, file: ast.File, name: []const u8) !bool {
+    for (file.decls) |decl| {
+        const proof = asProof(decl) orelse continue;
+        if (std.mem.eql(u8, tokenText(source, proof.name), name)) {
+            try renderProof(arena, w, source, proof);
+            return true;
+        }
+    }
+    try w.print("error: no theorem '{s}' in this file\n", .{name});
+    return false;
+}
+
+fn renderProof(arena: Allocator, w: *std.Io.Writer, source: []const u8, proof: Proof) !void {
+    try w.print("{s} {s}\n", .{ proof.kind, tokenText(source, proof.name) });
+    for (proof.steps) |step| try renderStep(arena, w, source, step, 1);
+}
+
+fn renderStep(arena: Allocator, w: *std.Io.Writer, source: []const u8, step: ast.Step, depth: u32) !void {
+    try w.splatByteAll(' ', depth * 2);
+    switch (step.body) {
+        // the mathematical content: the proposition this step claims.
+        .claim => |c| try w.print("{s}\n", .{try formulaText(arena, source, c.formula)}),
+        // block openers keep a structural header (no formula on the step line for
+        // fix/unpack; assume/case surface their assumption/disjunction).
+        .fix => |b| {
+            try w.print("fix {s}\n", .{tokenText(source, b.name)});
+            for (b.steps) |s| try renderStep(arena, w, source, s, depth + 1);
+        },
+        .assume => |b| {
+            try w.print("assume {s}\n", .{try formulaText(arena, source, b.formula)});
+            for (b.steps) |s| try renderStep(arena, w, source, s, depth + 1);
+        },
+        .unpack => |b| {
+            try w.print("unpack {s} from {s}\n", .{
+                tokenText(source, b.name), tokenText(source, b.from),
+            });
+            for (b.steps) |s| try renderStep(arena, w, source, s, depth + 1);
+        },
+        .case => |b| {
+            try w.print("case {s}\n", .{tokenText(source, b.disj)});
+            for (b.arms) |arm| {
+                try w.splatByteAll(' ', (depth + 1) * 2);
+                try w.print("assume {s}\n", .{try formulaText(arena, source, arm.assumption)});
+                for (arm.steps) |s| try renderStep(arena, w, source, s, depth + 2);
+            }
+        },
+    }
+}
+
+// -- source-span rendering ---------------------------------------------------
+
+fn tokenText(source: []const u8, t: Token) []const u8 {
+    return source[t.start..t.end];
+}
+
+/// Surface syntax of a formula: the source slice spanning all its tokens, with
+/// internal runs of whitespace/newlines collapsed to a single space. Faithful
+/// to what was written, no pretty-printer needed.
+///
+/// The AST stores only content tokens, not the structural `(`/`)` around a call
+/// or explicit-paren group — so the token span can omit a trailing `)` (a
+/// call's close) or a leading `(` (a wrapping group). Rebalance by scanning the
+/// source outward: consume one `)` forward per unmatched `(`, and one `(`
+/// backward per unmatched `)`.
+fn formulaText(arena: Allocator, source: []const u8, e: *const ast.Expr) ![]const u8 {
+    var lo: u32 = std.math.maxInt(u32);
+    var hi: u32 = 0;
+    spanExpr(e, &lo, &hi);
+
+    var opens: i32 = 0;
+    for (source[lo..hi]) |c| {
+        if (c == '(') opens += 1;
+        if (c == ')') opens -= 1;
+    }
+    // more `(` than `)` inside: close them by walking forward.
+    while (opens > 0 and hi < source.len) : (hi += 1) {
+        if (source[hi] == ')') opens -= 1;
+    }
+    // more `)` than `(` inside: open them by walking backward.
+    while (opens < 0 and lo > 0) {
+        lo -= 1;
+        if (source[lo] == '(') opens += 1;
+    }
+    return collapse(arena, source[lo..hi]);
+}
+
+fn spanTok(t: Token, lo: *u32, hi: *u32) void {
+    if (t.start < lo.*) lo.* = t.start;
+    if (t.end > hi.*) hi.* = t.end;
+}
+
+fn spanExpr(e: *const ast.Expr, lo: *u32, hi: *u32) void {
+    switch (e.*) {
+        .name => |t| spanTok(t, lo, hi),
+        .call => |c| {
+            spanTok(c.callee, lo, hi);
+            for (c.args) |a| spanExpr(a, lo, hi);
+        },
+        .binary => |b| {
+            spanTok(b.tok, lo, hi);
+            spanExpr(b.lhs, lo, hi);
+            spanExpr(b.rhs, lo, hi);
+        },
+        .not => |n| {
+            spanTok(n.tok, lo, hi);
+            spanExpr(n.operand, lo, hi);
+        },
+        .quant => |q| {
+            spanTok(q.tok, lo, hi);
+            for (q.binders) |b| {
+                spanTok(b.name, lo, hi);
+                spanTok(b.sort, lo, hi);
+            }
+            spanExpr(q.body, lo, hi);
+        },
+        .lambda => |l| {
+            spanTok(l.tok, lo, hi);
+            for (l.binders) |b| {
+                spanTok(b.name, lo, hi);
+                spanTok(b.sort, lo, hi);
+            }
+            spanExpr(l.body, lo, hi);
+        },
+    }
+}
+
+/// Collapse internal whitespace runs (incl. newlines from a wrapped formula) to
+/// single spaces; trim ends. Arena-allocated.
+fn collapse(arena: Allocator, s: []const u8) ![]const u8 {
+    var buf: std.ArrayList(u8) = .empty;
+    var in_space = false;
+    for (s) |c| {
+        if (c == ' ' or c == '\t' or c == '\n' or c == '\r') {
+            in_space = true;
+            continue;
+        }
+        if (in_space and buf.items.len > 0) try buf.append(arena, ' ');
+        in_space = false;
+        try buf.append(arena, c);
+    }
+    return buf.toOwnedSlice(arena);
+}
