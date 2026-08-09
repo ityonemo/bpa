@@ -62,7 +62,7 @@ axiom nonnegZero = sequence.nonnegZero
 axiom nonnegSucc = sequence.nonnegSucc
 axiom nonnegInduction = sequence.nonnegInduction
 axiom oneIsSuccZero = sequence.oneIsSuccZero
-axiom subDef = sequence.subDef
+axiom definitionOfSubtraction = sequence.definitionOfSubtraction
 
 // -- ring algebra the arguments name explicitly -------------------------------
 theorem addIsCommutative = gcd.addIsCommutative
@@ -1304,7 +1304,7 @@ proof
                             [by specialize addIsCommutative(productUpTo(primes, count), ONE)]
                           @difference-is-one |
                             sub(add(productUpTo(primes, count), ONE), productUpTo(primes, count)) = ONE
-                            [by simplify subDef product-plus-one-commuted addIsAssociative addNegRight addZeroRight]
+                            [by simplify definitionOfSubtraction product-plus-one-commuted addIsAssociative addNegRight addZeroRight]
                           @p-divides-one |
                             does_divide(p, ONE)
                             [by rewrite difference-is-one p-divides-difference]

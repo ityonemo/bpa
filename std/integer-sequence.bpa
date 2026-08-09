@@ -48,7 +48,7 @@ theorem negNeg = order.negNeg
 theorem dividesRefl = divides.dividesRefl
 theorem dividesMul = divides.dividesMul
 theorem dividesAdd = divides.dividesAdd
-axiom subDef = order.subDef
+axiom definitionOfSubtraction = order.definitionOfSubtraction
 axiom lessThanIntro = order.lessThanIntro
 axiom lessThanElim = order.lessThanElim
 theorem lessOrEqualIsGapExistential = order.lessOrEqualIsGapExistential
@@ -553,7 +553,7 @@ theorem dividesTransitive = divides.dividesTransitive
 
 // d | a and d | b give d | (a − b): d | (−b) because −b = mul(b, −1) is a
 // multiple of b's divisor d (dividesMul with −1), then dividesAdd on a and −b,
-// with sub(a, b) = add(a, neg(b)) (subDef).
+// with sub(a, b) = add(a, neg(b)) (definitionOfSubtraction).
 theorem dividesSubtracts = division.dividesSubtracts
 
 // -- small order facts the prime-factor argument names ----------------------

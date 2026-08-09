@@ -45,7 +45,7 @@ axiom negZero = integer.negZero
 axiom oneIsSuccZero = integer.oneIsSuccZero
 axiom succPrev = integer.succPrev
 axiom prevSucc = integer.prevSucc
-axiom subDef = order.subDef
+axiom definitionOfSubtraction = order.definitionOfSubtraction
 axiom addZeroLeft = integer.addZeroLeft
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
@@ -1126,7 +1126,7 @@ proof
             fix q2: Int {
               @conclusion-distribute |
                 mul(b, sub(q1, q2)) = sub(mul(b, q1), mul(b, q2))
-                [by simplify subDef mulAddDistribLeft mulNegRight]
+                [by simplify definitionOfSubtraction mulAddDistribLeft mulNegRight]
             }
           @discharge-q2 |
             forall q2: Int; mul(b, sub(q1, q2)) = sub(mul(b, q1), mul(b, q2))
@@ -1320,10 +1320,10 @@ proof
                             [by hypothesis given-decompositions-equal]
                           @sub-def |
                             forall u, v: Int; sub(u, v) = add(u, neg(v))
-                            [by axiom subDef]
+                            [by axiom definitionOfSubtraction]
                           @difference-of-remainders-unfolds |
                             sub(r2, r1) = add(r2, neg(r1))
-                            [by specialize subDef(r2, r1)]
+                            [by specialize definitionOfSubtraction(r2, r1)]
                           @difference-of-products-unfolds |
                             sub(mul(b, q1), mul(b, q2)) = add(mul(b, q1), neg(mul(b, q2)))
                             [by forall_elim(mul(b, q1), mul(b, q2)) sub-def]
@@ -2428,7 +2428,7 @@ proof
 qed
 
 // -(x - y) = y - x.  -(x + (-y)) = (-x) + (-(-y)) = (-x) + y, and y + (-x)
-// is the same sum commuted; subDef turns both differences into these sums.
+// is the same sum commuted; definitionOfSubtraction turns both differences into these sums.
 theorem negOfDifferenceSwaps: forall x, y: Int; neg(sub(x, y)) = sub(y, x)
 proof
   @generalize-x |
@@ -2438,11 +2438,11 @@ proof
           // left side: neg(sub(x,y)) = add(neg(x), y)
           @left-unfolds |
             neg(sub(x, y)) = add(neg(x), y)
-            [by simplify subDef negAdd negNeg]
+            [by simplify definitionOfSubtraction negAdd negNeg]
           // right side: sub(y, x) = add(y, neg(x))
           @right-unfolds |
             sub(y, x) = add(y, neg(x))
-            [by specialize subDef(y, x)]
+            [by specialize definitionOfSubtraction(y, x)]
           // the two sums are equal by commutativity.
           @add-commutative |
             forall p, q: Int; add(p, q) = add(q, p)
@@ -2573,7 +2573,7 @@ proof
                         [by rewrite b-times-zero-is-zero a-minus-product-reflexive]
                       @a-minus-zero-unfolds |
                         sub(a, ZERO) = add(a, neg(ZERO))
-                        [by specialize subDef(a, ZERO)]
+                        [by specialize definitionOfSubtraction(a, ZERO)]
                       @a-minus-zero-is-a-plus-zero |
                         sub(a, ZERO) = add(a, ZERO)
                         [by rewrite negation-of-zero a-minus-zero-unfolds]
@@ -2617,7 +2617,7 @@ proof
                         [by rewrite b-two-a-is-a-two-b member-reflexive]
                       @factored-member-expands |
                         sub(a, mul(a, mul(TWO, b))) = mul(a, sub(ONE, mul(TWO, b)))
-                        [by simplify subDef mulAddDistribLeft mulNegRight mulOneRight]
+                        [by simplify definitionOfSubtraction mulAddDistribLeft mulNegRight mulOneRight]
                       @member-is-product |
                         sub(a, mul(b, mul(TWO, a))) = mul(a, sub(ONE, mul(TWO, b)))
                         [by rewrite factored-member-expands member-with-a-factored]
@@ -2889,7 +2889,7 @@ qed
 
 // d | a and d | b give d | (a − b): d | (−b) because −b = mul(b, −1) is a
 // multiple of b's divisor d (dividesMul with −1), then dividesAdd on a and −b,
-// with sub(a, b) = add(a, neg(b)) (subDef).
+// with sub(a, b) = add(a, neg(b)) (definitionOfSubtraction).
 theorem dividesSubtracts: forall d, a, b: Int; does_divide(d, a) -> does_divide(d, b) -> does_divide(d, sub(a, b))
 proof
   @generalize-d |
@@ -2924,7 +2924,7 @@ proof
                         [by specialize dividesAdd(d, a, neg(b)) d-divides-a d-divides-neg-b]
                       @a-minus-b-is-a-plus-neg-b |
                         sub(a, b) = add(a, neg(b))
-                        [by specialize subDef(a, b)]
+                        [by specialize definitionOfSubtraction(a, b)]
                       @a-plus-neg-b-is-a-minus-b |
                         add(a, neg(b)) = sub(a, b)
                         [by symmetry a-minus-b-is-a-plus-neg-b]

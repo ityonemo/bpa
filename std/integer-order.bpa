@@ -57,9 +57,12 @@ axiom nonnegSuccNotZero = nonnegatives.nonnegSuccNotZero
 theorem nonnegCases = nonnegatives.nonnegCases
 
 // -- subtraction: sub(a, b) = a + (-b) --------------------------------------
+// Subtraction is RING vocabulary (`a + (-b)`), so it and its ring-only facts
+// now live in the ring layer, std/integer.bpa. Re-aliased here so the order
+// theory below and downstream files keep seeing `order.sub` / `order.subSelf`.
 
-func sub(a: Int, b: Int): Int
-axiom subDef: forall a, b: Int; sub(a, b) = add(a, neg(b))
+func sub = integer.sub
+axiom definitionOfSubtraction = integer.definitionOfSubtraction
 
 // -- the strict order: a < b iff b = a + succ(d) for some NONNEGATIVE d ------
 
@@ -80,75 +83,14 @@ axiom lessThanElim: forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d
 // nonnegative-gap-existential characterization `exists d; nonneg(d) and add(a, d) = b`.
 define less_or_equal(a: Int, b: Int) = less_than(a, b) or a = b
 
-// -- subtraction facts (proven from the ring algebra, no induction) ---------
+// -- subtraction facts (ring algebra, moved down to std/integer.bpa) ---------
+// sub(a,a)=0, (a-b)+b=a, and a+(b-a)=b are ring-only; they now live in the ring
+// layer and are re-aliased here so `order.subSelf` / `order.subAddCancel` /
+// `order.addDiffReaches` still resolve for downstream files.
 
-// a - a = 0: sub(a, a) = a + (-a) = 0.
-theorem subSelf: forall a: Int; sub(a, a) = ZERO
-proof
-  @generalize-a |
-    fix a: Int {
-      @conclusion-sub |
-        sub(a, a) = ZERO
-        [by simplify subDef addNegRight]
-    }
-  @conclusion |
-    forall a: Int; sub(a, a) = ZERO
-    [by forall_intro generalize-a]
-qed
-
-// (a - b) + b = a: subtraction inverts addition. sub(a,b)+b = (a+(-b))+b
-// = a+((-b)+b) = a+0 = a. Uses associativity, commutativity (for (-b)+b=0
-// from b+(-b)=0), and the inverse law.
-theorem subAddCancel: forall a, b: Int; add(sub(a, b), b) = a
-proof
-  @generalize-a |
-    fix a: Int {
-      @generalize-b |
-        fix b: Int {
-          // start from add(sub(a,b), b), rewrite sub, associate, cancel.
-          @sub-is |
-            sub(a, b) = add(a, neg(b))
-            [by specialize subDef(a, b)]
-          @step0 |
-            add(sub(a, b), b) = add(add(a, neg(b)), b)
-            [by rewrite sub-is refl0]
-          @refl0 |
-            add(sub(a, b), b) = add(sub(a, b), b)
-            [by reflexivity]
-          @assoc-at |
-            add(add(a, neg(b)), b) = add(a, add(neg(b), b))
-            [by specialize addIsAssociative(a, neg(b), b)]
-          @step1 |
-            add(sub(a, b), b) = add(a, add(neg(b), b))
-            [by rewrite assoc-at step0]
-          // neg(b)+b = b+neg(b) = 0
-          @b-plus-negb |
-            add(b, neg(b)) = ZERO
-            [by specialize addNegRight(b)]
-          @commute-at |
-            add(neg(b), b) = add(b, neg(b))
-            [by specialize addIsCommutative(neg(b), b)]
-          @negb-plus-b |
-            add(neg(b), b) = ZERO
-            [by rewrite b-plus-negb commute-at]
-          @step2 |
-            add(sub(a, b), b) = add(a, ZERO)
-            [by rewrite negb-plus-b step1]
-          @a-plus-zero |
-            add(a, ZERO) = a
-            [by specialize addZeroRight(a)]
-          @conclusion-cancel |
-            add(sub(a, b), b) = a
-            [by rewrite a-plus-zero step2]
-        }
-      @discharge-b |
-        forall b: Int; add(sub(a, b), b) = a
-        [by forall_intro generalize-b]
-    }
-  @conclusion |
-    forall a, b: Int; add(sub(a, b), b) = a
-    [by forall_intro generalize-a]
-qed
+theorem subSelf = integer.subSelf
+theorem subAddCancel = integer.subAddCancel
+theorem addDiffReaches = integer.addDiffReaches
 
 // -- the order theory -------------------------------------------------------
 
@@ -1063,46 +1005,6 @@ proof
     }
   @conclusion |
     forall a, b: Int; less_or_equal(a, b) -> less_or_equal(b, a) -> a = b
-    [by forall_intro generalize-a]
-qed
-
-// The difference reaches: add(a, sub(b, a)) = b. Since sub(b, a) = b + (-a),
-// add(a, b + (-a)) reassociates and commutes to b + (a + (-a)) = b + 0 = b.
-theorem addDiffReaches: forall a, b: Int; add(a, sub(b, a)) = b
-proof
-  @generalize-a |
-    fix a: Int {
-      @generalize-b |
-        fix b: Int {
-          @sub-is-b-plus-neg-a |
-            sub(b, a) = add(b, neg(a))
-            [by specialize subDef(b, a)]
-          @regroup-a-b-neg-a |
-            add(add(a, b), neg(a)) = add(a, add(b, neg(a)))
-            [by specialize addIsAssociative(a, b, neg(a))]
-          @b-plus-a-flips |
-            add(b, a) = add(a, b)
-            [by specialize addIsCommutative(b, a)]
-          @regroup-b-a-neg-a |
-            add(add(b, a), neg(a)) = add(b, add(a, neg(a)))
-            [by specialize addIsAssociative(b, a, neg(a))]
-          @a-plus-neg-a-vanishes |
-            add(a, neg(a)) = ZERO
-            [by specialize addNegRight(a)]
-          @b-plus-zero-is-b |
-            add(b, ZERO) = b
-            [by specialize addZeroRight(b)]
-          // a + (b + (-a)) = (a + b) + (-a) = (b + a) + (-a) = b + (a + (-a)) = b + 0 = b.
-          @conclusion-diff-reaches |
-            add(a, sub(b, a)) = b
-            [by chain sub-is-b-plus-neg-a regroup-a-b-neg-a b-plus-a-flips regroup-b-a-neg-a a-plus-neg-a-vanishes b-plus-zero-is-b]
-        }
-      @discharge-b |
-        forall b: Int; add(a, sub(b, a)) = b
-        [by forall_intro generalize-b]
-    }
-  @conclusion |
-    forall a, b: Int; add(a, sub(b, a)) = b
     [by forall_intro generalize-a]
 qed
 

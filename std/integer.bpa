@@ -2603,3 +2603,120 @@ proof
     forall a, b: Int; mul(neg(a), neg(b)) = mul(a, b)
     [by model(IntegerRing) ring.negMulNeg]
 qed
+
+// -- subtraction: sub(a, b) = a + (-b) --------------------------------------
+// Over ℤ subtraction is TOTAL and trivial — just addition of the negation.
+// It lives here in the ring layer (it needs only `add`/`neg`), so every ℤ file
+// above sees it; its ring-only facts (sub(a,a)=0, (a-b)+b=a, a+(b-a)=b) are
+// proven from the additive-inverse algebra with no order or induction.
+
+func sub(a: Int, b: Int): Int
+axiom definitionOfSubtraction: forall a, b: Int; sub(a, b) = add(a, neg(b))
+
+// a - a = 0: sub(a, a) = a + (-a) = 0.
+theorem subSelf: forall a: Int; sub(a, a) = ZERO
+proof
+  @generalize-a |
+    fix a: Int {
+      @conclusion-sub |
+        sub(a, a) = ZERO
+        [by simplify definitionOfSubtraction addNegRight]
+    }
+  @conclusion |
+    forall a: Int; sub(a, a) = ZERO
+    [by forall_intro generalize-a]
+qed
+
+// (a - b) + b = a: subtraction inverts addition. sub(a,b)+b = (a+(-b))+b
+// = a+((-b)+b) = a+0 = a. Uses associativity, commutativity (for (-b)+b=0
+// from b+(-b)=0), and the inverse law.
+theorem subAddCancel: forall a, b: Int; add(sub(a, b), b) = a
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          // start from add(sub(a,b), b), rewrite sub, associate, cancel.
+          @sub-is |
+            sub(a, b) = add(a, neg(b))
+            [by specialize definitionOfSubtraction(a, b)]
+          @step0 |
+            add(sub(a, b), b) = add(add(a, neg(b)), b)
+            [by rewrite sub-is refl0]
+          @refl0 |
+            add(sub(a, b), b) = add(sub(a, b), b)
+            [by reflexivity]
+          @assoc-at |
+            add(add(a, neg(b)), b) = add(a, add(neg(b), b))
+            [by specialize addIsAssociative(a, neg(b), b)]
+          @step1 |
+            add(sub(a, b), b) = add(a, add(neg(b), b))
+            [by rewrite assoc-at step0]
+          // neg(b)+b = b+neg(b) = 0
+          @b-plus-negb |
+            add(b, neg(b)) = ZERO
+            [by specialize addNegRight(b)]
+          @commute-at |
+            add(neg(b), b) = add(b, neg(b))
+            [by specialize addIsCommutative(neg(b), b)]
+          @negb-plus-b |
+            add(neg(b), b) = ZERO
+            [by rewrite b-plus-negb commute-at]
+          @step2 |
+            add(sub(a, b), b) = add(a, ZERO)
+            [by rewrite negb-plus-b step1]
+          @a-plus-zero |
+            add(a, ZERO) = a
+            [by specialize addZeroRight(a)]
+          @conclusion-cancel |
+            add(sub(a, b), b) = a
+            [by rewrite a-plus-zero step2]
+        }
+      @discharge-b |
+        forall b: Int; add(sub(a, b), b) = a
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Int; add(sub(a, b), b) = a
+    [by forall_intro generalize-a]
+qed
+
+// The difference reaches: add(a, sub(b, a)) = b. Since sub(b, a) = b + (-a),
+// add(a, b + (-a)) reassociates and commutes to b + (a + (-a)) = b + 0 = b.
+theorem addDiffReaches: forall a, b: Int; add(a, sub(b, a)) = b
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @sub-is-b-plus-neg-a |
+            sub(b, a) = add(b, neg(a))
+            [by specialize definitionOfSubtraction(b, a)]
+          @regroup-a-b-neg-a |
+            add(add(a, b), neg(a)) = add(a, add(b, neg(a)))
+            [by specialize addIsAssociative(a, b, neg(a))]
+          @b-plus-a-flips |
+            add(b, a) = add(a, b)
+            [by specialize addIsCommutative(b, a)]
+          @regroup-b-a-neg-a |
+            add(add(b, a), neg(a)) = add(b, add(a, neg(a)))
+            [by specialize addIsAssociative(b, a, neg(a))]
+          @a-plus-neg-a-vanishes |
+            add(a, neg(a)) = ZERO
+            [by specialize addNegRight(a)]
+          @b-plus-zero-is-b |
+            add(b, ZERO) = b
+            [by specialize addZeroRight(b)]
+          // a + (b + (-a)) = (a + b) + (-a) = (b + a) + (-a) = b + (a + (-a)) = b + 0 = b.
+          @conclusion-diff-reaches |
+            add(a, sub(b, a)) = b
+            [by chain sub-is-b-plus-neg-a regroup-a-b-neg-a b-plus-a-flips regroup-b-a-neg-a a-plus-neg-a-vanishes b-plus-zero-is-b]
+        }
+      @discharge-b |
+        forall b: Int; add(a, sub(b, a)) = b
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Int; add(a, sub(b, a)) = b
+    [by forall_intro generalize-a]
+qed

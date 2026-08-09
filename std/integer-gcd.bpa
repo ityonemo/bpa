@@ -46,7 +46,7 @@ axiom lessThanIntro = order.lessThanIntro
 axiom nonnegZero = order.nonnegZero
 axiom nonnegSucc = order.nonnegSucc
 axiom addZeroLeft = order.addZeroLeft
-axiom subDef = order.subDef
+axiom definitionOfSubtraction = order.definitionOfSubtraction
 
 // divisibility intro/elim (does_divide IS the multiple existential) + closures
 theorem dividesMul = divides.dividesMul
@@ -163,7 +163,7 @@ proof
             [by modus_ponens cancel-the-quotient-term dq-plus-difference-is-decomposition]
           @difference-collects-coefficients |
             sub(a, mul(add(mul(a, r), mul(b, s)), q)) = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
-            [by simplify subDef mulAddDistribLeft mulAddDistribRight mulNegRight mulOneRight mulIsAssociative addIsAssociative negAdd]
+            [by simplify definitionOfSubtraction mulAddDistribLeft mulAddDistribRight mulNegRight mulOneRight mulIsAssociative addIsAssociative negAdd]
           @conclusion-remainder-is-member |
             remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
             [by chain difference-is-remainder d-value difference-collects-coefficients]
