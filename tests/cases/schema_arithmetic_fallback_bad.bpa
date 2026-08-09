@@ -1,0 +1,31 @@
+// RED: Case D fires from INSIDE a schema body. The schema's proof has an
+// `[by arithmetic fallback(twoTwo)]` step whose goal the certifier chain can
+// discharge — so the fallback is redundant. The schema's declaration-time
+// wellformedness self-check (instantiate at opaque params, run the proof) runs
+// arithmeticJustification, so strict `check` rejects the redundant fallback here
+// too — proving the arithmetic/Case-D interaction with schematic theorems.
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+func add(a: Nat, b: Nat): Nat
+func mul(a: Nat, b: Nat): Nat
+axiom addZeroLeft: forall b: Nat; add(ZERO, b) = b
+axiom addSuccLeft: forall a, b: Nat; add(succ(a), b) = succ(add(a, b))
+axiom mulZeroLeft: forall b: Nat; mul(ZERO, b) = ZERO
+axiom mulSuccLeft: forall a, b: Nat; mul(succ(a), b) = add(mul(a, b), b)
+
+// a proven theorem to (redundantly) fall back on.
+theorem twoTwo: mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+proof
+  @conclusion |
+    mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+    [by arithmetic]
+qed
+
+// the offending SCHEMA: its arithmetic step certifies, so `fallback` is dead weight.
+theorem schemaRedundantFallback(prop: Nat -> Prop): mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+proof
+  @conclusion |
+    mul(succ(succ(ZERO)), succ(succ(ZERO))) = succ(succ(succ(succ(ZERO))))
+    [by arithmetic fallback(twoTwo)]
+qed

@@ -447,6 +447,14 @@ pub fn addTests(
     // `--draft` suppresses it (WIP: don't nag about redundant fallbacks yet).
     ctx.okSilent(&.{ "check", "--draft", "tests/cases/arithmetic_fallback_redundant_bad.bpa" });
 
+    // arithmetic × SCHEMA: Case D fires from inside a schema body too — the
+    // declaration-time wellformedness self-check (instantiate at opaque params,
+    // run the proof) exercises arithmeticJustification, so a redundant `fallback`
+    // in a schema's proof is rejected. `--fast`/`--draft` suppress it as usual.
+    ctx.fail(&.{ "check", "tests/cases/schema_arithmetic_fallback_bad.bpa" }, "tests/cases/schema_arithmetic_fallback_bad.bpa:30:29: error: 'arithmetic' certifies this goal on its own — the fallback 'twoTwo' is unnecessary; drop `fallback(twoTwo)`\n");
+    ctx.okSilent(&.{ "check", "--fast", "tests/cases/schema_arithmetic_fallback_bad.bpa" });
+    ctx.okSilent(&.{ "check", "--draft", "tests/cases/schema_arithmetic_fallback_bad.bpa" });
+
     // Milestone D2: mixed skeletons replay as kernel-checked certificates
     ctx.okSilent(&.{ "check", "tests/cases/smt_cert.bpa" });
 
