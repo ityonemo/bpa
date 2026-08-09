@@ -75,13 +75,21 @@ pub fn addTests(
     // machinery. The reusable foundation for GCD / Bézout / the FTA.
     ctx.okSilent(&.{ "check", "std/integer-division.bpa" });
 
+    // the abstract, ℕ-indexed sequence + FOLD theory (std/sequence.bpa): an opaque
+    // `Seq` over an abstract `Value` with an `at` accessor, an abstract `combine`/
+    // `IDENTITY` fold (`foldUpTo`) + recursion axioms, and fold-structure theorems.
+    // This is the STRUCTURE that std/integer-sequence.bpa models (Value:Int,
+    // combine:mul, IDENTITY:ONE, foldUpTo:productUpTo) to recover the finite product.
+    ctx.okSilent(&.{ "check", "std/sequence.bpa" });
+
     // finite integer sequences + products (std/integer-sequence.bpa): a `Seq` sort
-    // with an `at(s,i)` accessor and a recursive `productUpTo(s,k)` (bpa has no
-    // lists/finite products, and a func can't take a Nat->Int param, so the indexed
-    // family is reified as a sort). everyEntryDividesProduct — each entry below the
-    // bound divides the product — is the lemma the infinitude/FTA arguments need.
-    // Plus the reification-existence axioms (seqSingletonExists/seqConcatExists/
-    // seqRemoveExists) that let FTA witness/splice/cancel factorization sequences.
+    // with an `at(s,i)` accessor and a recursive `productUpTo(s,k)` over the nonneg-ℤ
+    // index sort, obtained by MODELING the abstract fold above (bpa has no lists/
+    // finite products, so the indexed family is reified as a sort). everyEntryDivides-
+    // Product — each entry below the bound divides the product — is the lemma the
+    // infinitude/FTA arguments need. Plus the reification-existence axioms
+    // (seqSingletonExists/seqConcatExists/seqRemoveExists) that let FTA
+    // witness/splice/cancel factorization sequences.
     ctx.okSilent(&.{ "check", "std/integer-sequence.bpa" });
 
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity
