@@ -1,0 +1,18 @@
+// RED: a proof with a DEAD step — @unused introduces a fact that no later step
+// (nor the conclusion) cites. The use-all-facts checker must reject this: a
+// theorem that doesn't use all its facts fails.
+sort Thing
+const A: Thing
+const B: Thing
+axiom aEqB: A = B
+axiom bEqA: B = A
+
+theorem deadStep: A = B
+proof
+  @unused |
+    B = A
+    [by axiom bEqA]
+  @conclusion |
+    A = B
+    [by axiom aEqB]
+qed

@@ -210,9 +210,6 @@ proof
   @generalize-j |
     fix j: Nat {
       // succ(mul(TWO,j)) = add(mul(TWO,j), ONE)
-      @one-def |
-        ONE = succ(ZERO)
-        [by axiom oneIsSuccZero]
       @succ-as-add |
         succ(mul(TWO, j)) = add(mul(TWO, j), ONE)
         [by simplify addSuccRight addZeroRight oneIsSuccZero]

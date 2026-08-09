@@ -2092,9 +2092,6 @@ proof
   @zero-is-nonneg |
     nonneg(ZERO)
     [by axiom nonnegZero]
-  @less-than-intro |
-    forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
-    [by axiom lessThanIntro]
   @conclusion |
     less_than(neg(ONE), ZERO)
     [by specialize lessThanIntro(neg(ONE), ZERO, ZERO) zero-is-nonneg neg-one-plus-succ-zero-is-zero]
@@ -2165,9 +2162,6 @@ proof
           @a-negative |
             less_than(a, ZERO)
             [by hypothesis given-a-negative]
-          @less-than-elim |
-            forall x, y: Int; less_than(x, y) -> exists d: Int; nonneg(d) and add(x, succ(d)) = y
-            [by axiom lessThanElim]
           @gap-exists |
             exists d: Int; nonneg(d) and add(a, succ(d)) = ZERO
             [by specialize lessThanElim(a, ZERO) a-negative]
@@ -2200,9 +2194,6 @@ proof
               @zero-plus-successor-is-neg-a |
                 add(ZERO, succ(d)) = neg(a)
                 [by chain neg-a-plus-a-is-zero regroup a-plus-successor-is-zero neg-a-plus-zero-is-neg-a]
-              @less-than-intro |
-                forall x, e, y: Int; nonneg(e) -> add(x, succ(e)) = y -> less_than(x, y)
-                [by axiom lessThanIntro]
               @conclusion-neg-a-positive |
                 less_than(ZERO, neg(a))
                 [by specialize lessThanIntro(ZERO, d, neg(a)) gap-nonneg zero-plus-successor-is-neg-a]
@@ -2277,9 +2268,6 @@ proof
                           @zero-plus-successor-is-x |
                             add(ZERO, succ(m)) = x
                             [by rewrite successor-is-x zero-plus-successor-is-successor]
-                          @less-than-intro |
-                            forall a, d, b: Int; nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
-                            [by axiom lessThanIntro]
                           @x-is-positive |
                             less_than(ZERO, x)
                             [by specialize lessThanIntro(ZERO, m, x) gap-nonneg zero-plus-successor-is-x]

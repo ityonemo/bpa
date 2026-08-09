@@ -1,0 +1,39 @@
+// RED-for-the-bug / GREEN-when-fixed: a VALID proof whose existential fact is
+// consumed ONLY as the source of an `unpack` block. The `unpack ... from
+// a-multiple-exists` edge lives on the BLOCK (kind.unpack.source), not on any
+// step justification — so a reachability walk that ignores block edges wrongly
+// flags @a-multiple-exists as dead. This proof uses all its facts and must PASS.
+sort Thing
+func mul(a: Thing, b: Thing): Thing
+const A: Thing
+const D: Thing
+pred multiple_of(d: Thing, a: Thing)
+
+// `multiple_of(D, A)` means A = mul(D, k) for some k.
+axiom multipleUnpacks: forall d, a: Thing; multiple_of(d, a) -> (exists k: Thing; a = mul(d, k))
+axiom aIsMultipleOfD: multiple_of(D, A)
+
+theorem aIsSomeProduct: exists k: Thing; A = mul(D, k)
+proof
+  @multiple-unpacks-at-d-a |
+    multiple_of(D, A) -> (exists k: Thing; A = mul(D, k))
+    [by specialize multipleUnpacks(D, A)]
+  @d-a-multiple |
+    multiple_of(D, A)
+    [by axiom aIsMultipleOfD]
+  @a-multiple-exists |
+    exists k: Thing; A = mul(D, k)
+    [by modus_ponens multiple-unpacks-at-d-a d-a-multiple]
+  @with-quotient-j |
+    unpack j: Thing from a-multiple-exists {
+      @a-equals-d-times-j |
+        A = mul(D, j)
+        [by hypothesis with-quotient-j]
+      @conclusion-a-is-a-product |
+        exists k: Thing; A = mul(D, k)
+        [by exists_intro(j) a-equals-d-times-j]
+    }
+  @conclusion |
+    exists k: Thing; A = mul(D, k)
+    [by exists_elim with-quotient-j]
+qed

@@ -19,41 +19,47 @@ proof
   @result |
     p(Z) or q(Z)
     case disj {
-      @arm-p |
+      @when-p-holds |
         assume p(Z) {
-          @gp |
+          @generalize-bb |
             fix bb: Nat {
-              @pa |
+              @p-holds-everywhere |
                 forall x: Nat; p(x)
                 [by axiom pall]
-              @pp |
+              @p-holds-at-bb |
                 p(bb)
-                [by forall_elim(bb) pa]
+                [by forall_elim(bb) p-holds-everywhere]
             }
-          @h |
+          @discharge-bb |
+            forall bb: Nat; p(bb)
+            [by forall_intro generalize-bb]
+          @p-holds-at-Z |
             p(Z)
-            [by hypothesis arm-p]
-          @c |
+            [by forall_elim(Z) discharge-bb]
+          @conclusion-left-disjunct |
             p(Z) or q(Z)
-            [by or_intro_left h]
+            [by or_intro_left p-holds-at-Z]
         }
-      @arm-q |
+      @when-q-holds |
         assume q(Z) {
-          @gq |
+          @generalize-bb |
             fix bb: Nat {
-              @qa |
+              @q-holds-everywhere |
                 forall x: Nat; q(x)
                 [by axiom qall]
-              @qq |
+              @q-holds-at-bb |
                 q(bb)
-                [by forall_elim(bb) qa]
+                [by forall_elim(bb) q-holds-everywhere]
             }
-          @h |
+          @discharge-bb |
+            forall bb: Nat; q(bb)
+            [by forall_intro generalize-bb]
+          @q-holds-at-Z |
             q(Z)
-            [by hypothesis arm-q]
-          @c |
+            [by forall_elim(Z) discharge-bb]
+          @conclusion-right-disjunct |
             p(Z) or q(Z)
-            [by or_intro_right h]
+            [by or_intro_right q-holds-at-Z]
         }
     }
 qed

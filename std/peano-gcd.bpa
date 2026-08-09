@@ -70,9 +70,6 @@ proof
                   @a-divides-a |
                     divides(a, a)
                     [by specialize dividesRefl(a)]
-                  @a-divides-zero |
-                    divides(a, ZERO)
-                    [by specialize dividesZero(a)]
                   @a-is-gcd-with-zero |
                     a = gcd(a, ZERO)
                     [by symmetry gcd-with-zero-is-itself]

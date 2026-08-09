@@ -321,9 +321,6 @@ proof
               @k-nonneg |
                 is_nonneg(k)
                 [by hypothesis given-k-nonneg]
-              @succ-k-nonneg |
-                is_nonneg(succ(k))
-                [by specialize nonnegSucc(k) k-nonneg]
               @given-predicate-at-k |
                 assume is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> less_than(i, k) -> does_divide(at(s, i), productUpTo(s, k))) {
                   @predicate-at-k |

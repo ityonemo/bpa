@@ -94,6 +94,10 @@ pub const Verify = struct {
     /// re-check imported schemas at each instantiation. When false, a proven
     /// imported schema is trusted without re-instantiating its body.
     recheck_schemas: bool = true,
+    /// reject a proof with a DEAD step — one whose result is unreachable from
+    /// the conclusion via citation edges (a fact the proof introduces but never
+    /// uses). `--draft` sets this false (a WIP proof may have not-yet-wired facts).
+    reject_unused: bool = true,
 };
 
 pub const Elaborator = struct {
@@ -162,6 +166,18 @@ pub const Elaborator = struct {
     /// uninterpreted func's result-type is an axiom, like any). Accumulated during a
     /// statement/step's elaboration; the discharge consults it, then it is cleared.
     result_facts: std.ArrayList(TermId) = .empty,
+    /// USE-ALL-FACTS support: extra reachability ROOTS for the dead-step walk —
+    /// indices (into the current proof's lowered `steps`) of steps that are USED
+    /// via an edge the kernel justification does NOT carry, so the walk would
+    /// otherwise wrongly flag them dead. Two sources: (1) a step that DISCHARGED a
+    /// proof obligation (TCC) — an elaboration-time α-match, recorded in
+    /// `tccMatches`; (2) a step passed as an accelerant PREMISE (`c.refs`) whose
+    /// citation edge the accelerant's lowering swallowed (`.accelerated` fallback /
+    /// synthetic-theorem packaging), recorded at the accelerant dispatch.
+    /// `checkAllStepsUsed` seeds reachability from all of these. Reset per proof in
+    /// `checkProofSteps`. (See the REFACTOR NOTE on `checkAllStepsUsed`: a
+    /// disciplined rebuild would fold these into one uniform use-relation.)
+    extra_reachable_steps: std.ArrayList(u32) = .empty,
 
     /// declared `model`s, keyed by instance name. A cite `[by model(Name) thm]`
     /// looks the model up here and remaps `thm`'s formula through its `Remap`.
@@ -775,6 +791,9 @@ pub const Elaborator = struct {
     /// errors record a diagnostic and yield null (the file continues).
     fn checkProofSteps(self: *Elaborator, steps: []const ast.Step, goal: TermId, goal_loc: u32) Allocator.Error!?Statement.LoweredProof {
         var low: Lowering = .{};
+        // fresh per proof — filled by `tccMatches` during lowering, consumed by
+        // `checkAllStepsUsed` below (a TCC-discharging step counts as used).
+        self.extra_reachable_steps.clearRetainingCapacity();
         const root_label = try self.interner.intern("proof");
         try low.blocks.append(self.arena, .{
             .parent = null,
@@ -802,7 +821,156 @@ pub const Elaborator = struct {
             goal_loc,
         );
         if (!(try proven)) return null;
+        // no dead steps: every step must be reachable from the conclusion via
+        // citation edges (a proof must USE all the facts it introduces). --draft
+        // (reject_unused=false) skips this for WIP proofs.
+        if (self.verify.reject_unused) {
+            if (try self.checkAllStepsUsed(low.steps.items, low.blocks.items) == false) return null;
+        }
         return .{ .steps = low.steps.items, .blocks = low.blocks.items };
+    }
+
+    /// USE-ALL-FACTS: every AUTHOR-WRITTEN step must be reachable from the
+    /// conclusion via citation edges — a proof that introduces a fact it never
+    /// uses (a dead step) is rejected. Backward reachability from the conclusion:
+    /// a step's justification cites SRefs (mark those steps) and BRefs (mark the
+    /// referenced block's concluding step, which cascades through its subtree);
+    /// AND, since an `unpack` block's existential source is an edge carried on the
+    /// BLOCK (`kind.unpack.source`) rather than on any step justification, marking
+    /// any step inside an unpack block also marks that source. Any unmarked step
+    /// is dead — EXCEPT accelerant-emitted synthetics (hygienic `#`-labels): those
+    /// are machine-generated micro-derivations behind a single author `[by …]`
+    /// line, not author facts, so they are walked-through but never reported.
+    /// Returns false (and records one diagnostic) if any authored step is dead,
+    /// true otherwise. Gated off by `--draft`.
+    ///
+    /// REFACTOR NOTE: reachability here is stitched together from several
+    /// SEPARATE edge sources — step-justification SRefs/BRefs (below), the
+    /// block-carried `unpack.source` edge, and the `extra_reachable_steps` roots
+    /// (TCC dischargers + accelerant premises whose edges the lowering swallowed).
+    /// Each is a use that the kernel/elaborator already knows about but expresses
+    /// in its own representation. When the proof IR is
+    /// refactored we want ONE generic notion of "what does this step depend on"
+    /// (a uniform dependency/use relation every construct populates), so this walk
+    /// — and anyone else asking "is X used?" — consumes that instead of
+    /// re-deriving each edge kind by hand. Until then, every NEW edge-bearing
+    /// construct must be taught to this walk explicitly (as unpack/TCC were).
+    fn checkAllStepsUsed(self: *Elaborator, steps: []const kernel.Step, blocks: []const kernel.Block) Allocator.Error!bool {
+        if (steps.len == 0) return true;
+        const reached = try self.arena.alloc(bool, steps.len);
+        @memset(reached, false);
+        // the last owned step of a block is its "result" — what a BRef consumes.
+        const lastStepOf = struct {
+            fn f(bs: []const kernel.Block, b: kernel.BlockId) ?u32 {
+                const blk = bs[@intFromEnum(b)];
+                if (blk.last_step > blk.first_step) return blk.last_step - 1;
+                return null;
+            }
+        }.f;
+        // seed: the concluding step (last step owned by the root block).
+        var seed: ?u32 = null;
+        {
+            var it: usize = steps.len;
+            while (it > 0) {
+                it -= 1;
+                if (@intFromEnum(steps[it].block) == 0) {
+                    seed = @intCast(it);
+                    break;
+                }
+            }
+        }
+        const start = seed orelse return true;
+        var work: std.ArrayList(u32) = .empty;
+        try work.append(self.arena, start);
+        reached[start] = true;
+        // also seed from `extra_reachable_steps` (TCC dischargers + accelerant
+        // premises): each is genuinely used, but via an edge the kernel
+        // justification doesn't carry — so it is a reachability root alongside the
+        // conclusion. (See the field doc for the two sources.)
+        for (self.extra_reachable_steps.items) |di| try mark(reached, &work, self.arena, di);
+        while (work.pop()) |si| {
+            // block edges: a reached step's enclosing `unpack` blocks (up the
+            // ancestor chain) depend on their existential source step. Mark each.
+            {
+                var b: ?kernel.BlockId = steps[si].block;
+                while (b) |bid| {
+                    const blk = blocks[@intFromEnum(bid)];
+                    if (blk.kind == .unpack) try mark(reached, &work, self.arena, @intFromEnum(blk.kind.unpack.source.id));
+                    b = blk.parent;
+                }
+            }
+            const j = steps[si].just;
+            // every SRef the justification cites → the cited step is used.
+            switch (j) {
+                .modus_ponens => |r| {
+                    try mark(reached, &work, self.arena, @intFromEnum(r.implication.id));
+                    try mark(reached, &work, self.arena, @intFromEnum(r.antecedent.id));
+                },
+                .forall_elim => |r| try mark(reached, &work, self.arena, @intFromEnum(r.step.id)),
+                .exists_intro => |r| try mark(reached, &work, self.arena, @intFromEnum(r.step.id)),
+                .and_intro => |r| {
+                    try mark(reached, &work, self.arena, @intFromEnum(r.left.id));
+                    try mark(reached, &work, self.arena, @intFromEnum(r.right.id));
+                },
+                .and_elim_left, .and_elim_right, .or_intro_left, .or_intro_right, .double_negation, .symmetry => |sr| try mark(reached, &work, self.arena, @intFromEnum(sr.id)),
+                .rewrite => |r| {
+                    try mark(reached, &work, self.arena, @intFromEnum(r.equation.id));
+                    try mark(reached, &work, self.arena, @intFromEnum(r.target.id));
+                },
+                .iff_rewrite => |r| {
+                    try mark(reached, &work, self.arena, @intFromEnum(r.biconditional.id));
+                    try mark(reached, &work, self.arena, @intFromEnum(r.target.id));
+                },
+                .absurd => |r| {
+                    try mark(reached, &work, self.arena, @intFromEnum(r.s1.id));
+                    try mark(reached, &work, self.arena, @intFromEnum(r.s2.id));
+                },
+                .not_intro => |r| {
+                    if (lastStepOf(blocks, r.block.id)) |ls| try mark(reached, &work, self.arena, ls);
+                    try mark(reached, &work, self.arena, @intFromEnum(r.s1.id));
+                    try mark(reached, &work, self.arena, @intFromEnum(r.s2.id));
+                },
+                .or_elim => |r| {
+                    try mark(reached, &work, self.arena, @intFromEnum(r.disj.id));
+                    if (lastStepOf(blocks, r.left.id)) |ls| try mark(reached, &work, self.arena, ls);
+                    if (lastStepOf(blocks, r.right.id)) |ls| try mark(reached, &work, self.arena, ls);
+                },
+                .implies_intro, .forall_intro, .exists_elim => |b| {
+                    if (lastStepOf(blocks, b.id)) |ls| try mark(reached, &work, self.arena, ls);
+                },
+                // a `hypothesis`/`predicate` restatement asserts its block's OWN
+                // premise (assume-condition / fix-guard / unpack witness) — no step
+                // dependency. (An unpack block's source is marked via the block-edge
+                // pass above, when a step inside it is reached.)
+                .hypothesis => {},
+                .schema_instance => |r| for (r.premises) |p| try mark(reached, &work, self.arena, @intFromEnum(p.id)),
+                // axiom_ref / theorem_ref / reflexivity / accelerated: no step deps.
+                .axiom_ref, .theorem_ref, .reflexivity, .accelerated => {},
+            }
+        }
+        // any unmarked AUTHOR step is dead — report the FIRST one (source order).
+        // Accelerant-emitted synthetics (hygienic `#`-labels) are exempt: they are
+        // machine codegen behind one author `[by …]` line, not author facts, and
+        // their internal wiring need not be a clean cite-tree.
+        // Report EVERY unreached author step (the whole dead cluster), not just the
+        // first — a dead step often feeds another dead step, so listing all of them
+        // at once lets the author remove the cluster in one pass rather than
+        // rerunning the check per step. Synthetics (hygienic `#`-labels) are exempt.
+        var any_dead = false;
+        for (steps, 0..) |s, i| {
+            if (reached[i]) continue;
+            const label = self.interner.str(s.label);
+            if (std.mem.indexOfScalar(u8, label, '#') != null) continue; // synthetic
+            self.sink.add(s.loc, "unused fact: step '{s}' is never used — no later step or the conclusion cites it (a proof must use every fact it introduces; use --draft while filling in a proof)", .{label}) catch return error.OutOfMemory;
+            any_dead = true;
+        }
+        return !any_dead;
+    }
+
+    fn mark(reached: []bool, work: *std.ArrayList(u32), arena: Allocator, id: u32) Allocator.Error!void {
+        if (id >= reached.len or reached[id]) return;
+        reached[id] = true;
+        try work.append(arena, id);
     }
 
     /// Lower a block's sibling steps. Labels resolve across the whole block
@@ -1357,6 +1525,20 @@ pub const Elaborator = struct {
         // accelerated tactics dispatch through the registry (one uniform call);
         // kernel-primitive rules fall through to the switch below.
         if (accelerant_index.get(self.text(c.rule))) |i| {
+            // USE-ALL-FACTS: an accelerant CONSUMES its `c.refs` (premises), but its
+            // lowering may swallow the citation edge (an `.accelerated` fallback
+            // carries only the tactic name; a certificate may package a premise
+            // into a synthetic theorem). Record each ref that names a local step as
+            // a reachability root so the dead-step walk sees the use. Uses the
+            // NON-failing label lookup — a ref naming an axiom/theorem/block simply
+            // isn't a `.step` and is skipped (no diagnostic).
+            for (c.refs) |ref| {
+                const name = try self.internTok(ref);
+                if (low.labels.get(name)) |tgt| switch (tgt) {
+                    .step => |id| self.extra_reachable_steps.append(self.arena, @intFromEnum(id)) catch {},
+                    .block => {},
+                };
+            }
             return accelerants[i].justify(self, low, block_id, goal, c);
         }
         switch (kind) {
@@ -1667,9 +1849,16 @@ pub const Elaborator = struct {
             cur = b.parent;
         }
         // accessible prior steps
-        for (l.steps.items) |s| {
+        for (l.steps.items, 0..) |s, i| {
             if (!lowAncestorOrSelf(l, s.block, block_id)) continue;
-            if (self.pool.alphaEq(s.formula, f)) return true;
+            if (self.pool.alphaEq(s.formula, f)) {
+                // this step discharges the obligation — a real (non-citation) use.
+                // Record it so the dead-step walk doesn't flag it. (Best-effort:
+                // OOM here just means the walk may over-report; not a soundness
+                // issue, so swallow the error rather than fail elaboration.)
+                self.extra_reachable_steps.append(self.arena, @intCast(i)) catch {};
+                return true;
+            }
         }
         return false;
     }

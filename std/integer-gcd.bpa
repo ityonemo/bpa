@@ -694,9 +694,6 @@ proof
                         forall e: Int; does_divide(e, a) -> does_divide(e, b) -> (e = ONE or e = neg(ONE))
                         [by hypothesis given-coprime]
                       // Bézout supplies a positive gcd d = ar + bs dividing a, b.
-                      @bezout-theorem |
-                        forall a2, b2: Int; a2 != ZERO -> b2 != ZERO -> exists d: Int; less_than(ZERO, d) and does_divide(d, a2) and does_divide(d, b2) and (forall e: Int; does_divide(e, a2) -> does_divide(e, b2) -> does_divide(e, d)) and (exists r: Int; exists s: Int; d = add(mul(a2, r), mul(b2, s)))
-                        [by theorem bezout]
                       @gcd-exists |
                         exists d: Int; less_than(ZERO, d) and does_divide(d, a) and does_divide(d, b) and (forall e: Int; does_divide(e, a) -> does_divide(e, b) -> does_divide(e, d)) and (exists r: Int; exists s: Int; d = add(mul(a, r), mul(b, s)))
                         [by specialize bezout(a, b) a-nonzero b-nonzero]

@@ -290,4 +290,22 @@ pub fn addTests(
         \\  - zeroIsEven  (tests/cases/hole.bpa:10)  — rested on by: restsOnHole, transitiveHole
         \\
     );
+
+    // USE-ALL-FACTS: a proof with a DEAD step — one whose result is never cited by
+    // any later step nor the conclusion — is rejected (a proof must use every fact
+    // it introduces).
+    ctx.fail(&.{ "check", "tests/cases/use_all_facts_bad.bpa" },
+        \\tests/cases/use_all_facts_bad.bpa:12:4: error: unused fact: step 'unused' is never used — no later step or the conclusion cites it (a proof must use every fact it introduces; use --draft while filling in a proof)
+        \\
+    );
+    // --draft disables the check (a WIP proof may have not-yet-wired facts).
+    ctx.okSilent(&.{ "check", "--draft", "tests/cases/use_all_facts_bad.bpa" });
+    // a proof that USES every fact passes — including facts consumed through
+    // non-citation edges: an `unpack` block's existential source, a step that
+    // discharges a guarded application's proof obligation (a TCC), and a step fed
+    // only as an accelerant (`tautology`) premise.
+    ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_ok.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_unpack_ok.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_tcc_ok.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/use_all_facts_accel_chain_ok.bpa" });
 }

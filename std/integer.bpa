@@ -1229,9 +1229,6 @@ proof
       @neg-succ |
         forall n: Int; neg(succ(n)) = prev(neg(n))
         [by axiom negSucc]
-      @neg-prev |
-        forall n: Int; neg(prev(n)) = succ(neg(n))
-        [by axiom negPrev]
       // base case: both sides are ZERO.
       @lhs-at-zero |
         mul(ZERO, succ(b)) = ZERO
