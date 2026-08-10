@@ -133,7 +133,7 @@ $ bpa debug taint examples/peano.bpa
 theorem twoPlusTwo
   examples/peano.bpa:192:9: arithmetic
 ...
-$ bpa debug taint std/peano-gcd.bpa
+$ bpa debug taint std/peano-divides.bpa
 no accelerated tactics — every step is kernel-checked
 ```
 

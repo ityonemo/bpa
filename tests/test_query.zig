@@ -253,10 +253,10 @@ pub fn addTests(
     );
 
     // an import namespace resolves to the imported file as its origin.
-    ctx.ok(&.{ "query", "whereis", "std/peano-parity.bpa", "division" },
-        \\division
-        \\  std/peano-parity.bpa:10:  import division <<< "std/peano-division.bpa"
-        \\  std/peano-division.bpa  [origin: imported file]
+    ctx.ok(&.{ "query", "whereis", "std/peano-parity.bpa", "peano_divides" },
+        \\peano_divides
+        \\  std/peano-parity.bpa:10:  import peano_divides <<< "std/peano-divides.bpa"
+        \\  std/peano-divides.bpa  [origin: imported file]
         \\
     );
 

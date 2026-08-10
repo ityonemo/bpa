@@ -6,8 +6,8 @@
 // expand the odd-square identity `(2j+1)² = 2(2j²+2j)+1`.
 
 import peano <<< "std/peano.bpa"
-import ordering <<< "std/peano-ordering.bpa"
-import division <<< "std/peano-division.bpa"
+import ordering <<< "std/peano-order.bpa"
+import peano_divides <<< "std/peano-divides.bpa"
 import subtraction <<< "std/peano-subtraction.bpa"
 
 sort Nat = peano.Nat
@@ -17,7 +17,7 @@ func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
 func sub = subtraction.sub
-define divides(d: Nat, n: Nat) = division.divides(d, n)
+define divides(d: Nat, n: Nat) = peano_divides.divides(d, n)
 
 axiom induction = peano.induction
 axiom succInjective = peano.succInjective
@@ -29,10 +29,10 @@ theorem mulZeroRight = peano.mulZeroRight
 theorem addSuccRight = peano.addSuccRight
 theorem addZeroRight = peano.addZeroRight
 theorem addIsCommutative = peano.addIsCommutative
-theorem dividesZero = division.dividesZero
-theorem dividesRefl = division.dividesRefl
-theorem dividesAdd = division.dividesAdd
-theorem dividesSub = division.dividesSub
+theorem dividesZero = peano_divides.dividesZero
+theorem dividesRefl = peano_divides.dividesRefl
+theorem dividesAdd = peano_divides.dividesAdd
+theorem dividesSub = peano_divides.dividesSub
 theorem subAddCancel = subtraction.subAddCancel
 
 // TWO = 1 + 1, in add/ONE form (so `polynomial` treats it as the numeral 2,

@@ -16,9 +16,8 @@
 // the cancellation is `mulCancelLeft`; the parity is `std/peano-parity.bpa`.
 
 import peano <<< "std/peano.bpa"
-import ordering <<< "std/peano-ordering.bpa"
-import division <<< "std/peano-division.bpa"
-import gcd <<< "std/peano-gcd.bpa"
+import ordering <<< "std/peano-order.bpa"
+import peano_divides <<< "std/peano-divides.bpa"
 import parity <<< "std/peano-parity.bpa"
 
 sort Nat = peano.Nat
@@ -27,14 +26,14 @@ const ONE = peano.ONE
 func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
-func gcd_of = gcd.gcd
-define divides(d: Nat, n: Nat) = division.divides(d, n)
+func gcd = peano_divides.gcd
+define divides(d: Nat, n: Nat) = peano_divides.divides(d, n)
 
 axiom succNotZero = peano.succNotZero
 axiom oneIsSuccZero = peano.oneIsSuccZero
 axiom addSuccLeft = peano.addSuccLeft
 theorem mulCancelLeft = ordering.mulCancelLeft
-theorem gcdGreatest = gcd.gcdGreatest
+theorem gcdGreatest = peano_divides.gcdGreatest
 theorem evenSquareEven = parity.evenSquareEven
 theorem twoNotDivideOne = parity.twoNotDivideOne
 
@@ -42,16 +41,16 @@ theorem twoNotDivideOne = parity.twoNotDivideOne
 // twoNotDivideOne and the polynomial algebra all line up on the same term.
 define TWO = add(ONE, ONE)
 
-theorem sqrtTwoIrrational: forall p, q: Nat; gcd_of(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
+theorem sqrtTwoIrrational: forall p, q: Nat; gcd(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
 proof
   @generalize-p |
     fix p: Nat {
       @generalize-q |
         fix q: Nat {
           @given-coprime |
-            assume gcd_of(p, q) = ONE {
+            assume gcd(p, q) = ONE {
               @coprime |
-                gcd_of(p, q) = ONE
+                gcd(p, q) = ONE
                 [by hypothesis given-coprime]
               @suppose-square |
                 assume mul(p, p) = mul(TWO, mul(q, q)) {
@@ -129,7 +128,7 @@ proof
 
                       // 2 | gcd(p, q) = 1
                       @two-div-gcd |
-                        divides(TWO, gcd_of(p, q))
+                        divides(TWO, gcd(p, q))
                         [by specialize gcdGreatest(TWO, p, q) two-div-p two-div-q]
                       @two-div-one |
                         divides(TWO, ONE)
@@ -152,14 +151,14 @@ proof
                 [by not_intro suppose-square square-eq square-impossible]
             }
           @discharge-coprime |
-            gcd_of(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
+            gcd(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
             [by implies_intro given-coprime]
         }
       @discharge-q |
-        forall q: Nat; gcd_of(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
+        forall q: Nat; gcd(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
         [by forall_intro generalize-q]
     }
   @conclusion |
-    forall p, q: Nat; gcd_of(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
+    forall p, q: Nat; gcd(p, q) = ONE -> mul(p, p) != mul(TWO, mul(q, q))
     [by forall_intro generalize-p]
 qed

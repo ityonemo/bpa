@@ -1,18 +1,18 @@
-// std/peano-division.bpa — divisibility, and guarded Euclidean div/mod.
+// std/peano-divides.bpa — ℕ divisibility, the division algorithm, and the
+// Euclidean algorithm / gcd (the whole ℕ number-theory unit).
 //
-// `divides(d, n)` is "d divides n" (n = d*k for some k), with the standard
-// toolkit (reflexivity, transitivity, divides-a-sum, divides-a-difference,
-// divides-a-multiple). `div`/`mod` are guarded functions (a nonzero divisor
-// is a proof obligation) characterized by the Euclidean property; the
-// bridging `dividesModStep` — a common divisor of b is a common divisor of a
-// iff it divides a mod b — is the heart of gcd-preserves-common-divisors.
-//
-// `divides` and its lemmas are PURE. div/mod are axiomatized definitionally
-// (like peano's own recursion axioms); their guards use the requires/TCC
-// mechanism.
+// gcd(a, b) is defined by the Euclidean recursion (gcd(a, 0) = a;
+// gcd(a, b) = gcd(b, a mod b) for b != 0). Correctness is the pair:
+//   gcdDividesBoth — gcd(a, b) divides both a and b (it IS a common divisor)
+//   gcdGreatest    — every common divisor of a and b divides gcd(a, b)
+//                    (it is the GREATEST such, in the divisibility order)
+// Together these characterize gcd up to the divisibility order. Both are
+// proved PURE, by strong induction on the second argument (which strictly
+// decreases: a mod b < b), using dividesModStep + modBound from the division
+// layer and strongInduction from the ordering layer.
 
 import peano <<< "std/peano.bpa"
-import ordering <<< "std/peano-ordering.bpa"
+import ordering <<< "std/peano-order.bpa"
 import subtraction <<< "std/peano-subtraction.bpa"
 import divisibility <<< "std/divisibility.bpa"
 
@@ -40,6 +40,9 @@ theorem addCancelLeft = peano.addCancelLeft
 theorem trichotomy = ordering.trichotomy
 theorem lessThanAddCancelLeft = ordering.lessThanAddCancelLeft
 theorem notLessThanZero = ordering.notLessThanZero
+theorem zeroOrSucc = peano.zeroOrSucc
+theorem strongInduction = ordering.strongInduction
+axiom succNotZero = peano.succNotZero
 
 // -- divisibility -----------------------------------------------------------
 
@@ -672,4 +675,336 @@ proof
   @conclusion |
     forall b, r, q, a: Nat; b != ZERO -> less_than(r, b) -> add(mul(b, q), r) = a -> mod(a, b) = r
     [by forall_intro generalize-b]
+qed
+
+// -- the Euclidean algorithm ------------------------------------------------
+
+func gcd(a: Nat, b: Nat): Nat
+axiom gcdZero: forall a: Nat; gcd(a, ZERO) = a
+axiom gcdStep: forall b, a: Nat; b != ZERO -> gcd(a, b) = gcd(b, mod(a, b))
+
+// -- forwarded theorems -----------------------------------------------------
+
+intheory gcdDividesBoth
+intheory gcdGreatest
+
+// -- correctness ------------------------------------------------------------
+
+theorem gcdDividesBoth: forall a, b: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+proof
+  // step of strong induction: (forall m; m<b -> P(m)) -> P(b),
+  // where P(n) = forall a; divides(gcd(a,n),a) and divides(gcd(a,n),n)
+  @induction-step |
+    fix b: Nat {
+      @given-strong-inductive-hypothesis |
+        assume forall m: Nat; less_than(m, b) -> (forall a: Nat; divides(gcd(a, m), a) and divides(gcd(a, m), m)) {
+          @strong-inductive-hypothesis |
+            forall m: Nat; less_than(m, b) -> (forall a: Nat; divides(gcd(a, m), a) and divides(gcd(a, m), m))
+            [by hypothesis given-strong-inductive-hypothesis]
+          @generalize-a |
+            fix a: Nat {
+              @b-is-zero-or-successor |
+                b = ZERO or (exists mm: Nat; b = succ(mm))
+                [by specialize zeroOrSucc(b)]
+              @when-b-is-zero |
+                assume b = ZERO {
+                  @b-is-zero |
+                    b = ZERO
+                    [by hypothesis when-b-is-zero]
+                  @gcd-with-zero-is-itself |
+                    gcd(a, ZERO) = a
+                    [by specialize gcdZero(a)]
+                  @a-divides-a |
+                    divides(a, a)
+                    [by specialize dividesRefl(a)]
+                  @a-is-gcd-with-zero |
+                    a = gcd(a, ZERO)
+                    [by symmetry gcd-with-zero-is-itself]
+                  @gcd-divides-a |
+                    divides(gcd(a, ZERO), a)
+                    [by rewrite a-is-gcd-with-zero a-divides-a]
+                  @gcd-divides-zero |
+                    divides(gcd(a, ZERO), ZERO)
+                    [by specialize dividesZero(gcd(a, ZERO))]
+                  @zero-is-b |
+                    ZERO = b
+                    [by symmetry b-is-zero]
+                  @gcd-divides-a-at-b |
+                    divides(gcd(a, b), a)
+                    [by rewrite zero-is-b gcd-divides-a]
+                  @gcd-divides-b |
+                    divides(gcd(a, b), b)
+                    [by rewrite zero-is-b gcd-divides-zero]
+                  @gcd-divides-both-when-zero |
+                    divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                    [by and_intro gcd-divides-a-at-b gcd-divides-b]
+                }
+              @when-b-is-successor |
+                assume exists mm: Nat; b = succ(mm) {
+                  @predecessor-exists |
+                    exists mm: Nat; b = succ(mm)
+                    [by hypothesis when-b-is-successor]
+                  @with-predecessor-bp |
+                    unpack bp: Nat from predecessor-exists {
+                      @b-is-successor-of-bp |
+                        b = succ(bp)
+                        [by hypothesis with-predecessor-bp]
+                      @successor-bp-is-nonzero |
+                        succ(bp) != ZERO
+                        [by specialize succNotZero(bp)]
+                      @successor-bp-is-b |
+                        succ(bp) = b
+                        [by symmetry b-is-successor-of-bp]
+                      @b-is-nonzero |
+                        b != ZERO
+                        [by rewrite successor-bp-is-b successor-bp-is-nonzero]
+                      @gcd-recurses |
+                        gcd(a, b) = gcd(b, mod(a, b))
+                        [by specialize gcdStep(b, a) b-is-nonzero]
+                      @mod-is-below-b |
+                        less_than(mod(a, b), b)
+                        [by specialize modBound(b, a) b-is-nonzero]
+                      @inductive-hypothesis-applies-at-mod |
+                        less_than(mod(a, b), b) -> (forall aa: Nat; divides(gcd(aa, mod(a, b)), aa) and divides(gcd(aa, mod(a, b)), mod(a, b)))
+                        [by forall_elim(mod(a, b)) strong-inductive-hypothesis]
+                      @gcd-divides-both-at-mod |
+                        forall aa: Nat; divides(gcd(aa, mod(a, b)), aa) and divides(gcd(aa, mod(a, b)), mod(a, b))
+                        [by modus_ponens inductive-hypothesis-applies-at-mod mod-is-below-b]
+                      @gcd-b-mod-divides-both |
+                        divides(gcd(b, mod(a, b)), b) and divides(gcd(b, mod(a, b)), mod(a, b))
+                        [by forall_elim(b) gcd-divides-both-at-mod]
+                      @gcd-b-mod-divides-b |
+                        divides(gcd(b, mod(a, b)), b)
+                        [by and_elim_left gcd-b-mod-divides-both]
+                      @gcd-b-mod-divides-mod |
+                        divides(gcd(b, mod(a, b)), mod(a, b))
+                        [by and_elim_right gcd-b-mod-divides-both]
+                      @gcd-b-mod-is-gcd-a-b |
+                        gcd(b, mod(a, b)) = gcd(a, b)
+                        [by symmetry gcd-recurses]
+                      @gcd-divides-b |
+                        divides(gcd(a, b), b)
+                        [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-b]
+                      @gcd-divides-mod |
+                        divides(gcd(a, b), mod(a, b))
+                        [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-mod]
+                      @mod-crossing-holds-if-divides-b |
+                        divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
+                        [by specialize dividesModStep(b, gcd(a, b), a) b-is-nonzero]
+                      @mod-crossing-holds |
+                        divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b))
+                        [by modus_ponens mod-crossing-holds-if-divides-b gcd-divides-b]
+                      @divides-mod-implies-divides-a |
+                        divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a)
+                        [by iff_elim_backward mod-crossing-holds]
+                      @gcd-divides-a |
+                        divides(gcd(a, b), a)
+                        [by modus_ponens divides-mod-implies-divides-a gcd-divides-mod]
+                      @gcd-divides-both-when-successor |
+                        divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                        [by and_intro gcd-divides-a gcd-divides-b]
+                    }
+                  @gcd-divides-both-in-successor-case |
+                    divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                    [by exists_elim with-predecessor-bp]
+                }
+              @gcd-divides-both-at-a-and-b |
+                divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                [by or_elim b-is-zero-or-successor when-b-is-zero when-b-is-successor]
+            }
+          @discharge-a |
+            forall a: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+            [by forall_intro generalize-a]
+        }
+      @induction-step-at-b |
+        (forall m: Nat; less_than(m, b) -> (forall a: Nat; divides(gcd(a, m), a) and divides(gcd(a, m), m))) -> forall a: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+        [by implies_intro given-strong-inductive-hypothesis]
+    }
+  @induction-step-for-all-k |
+    forall b: Nat; (forall m: Nat; less_than(m, b) -> (forall a: Nat; divides(gcd(a, m), a) and divides(gcd(a, m), m))) -> forall a: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+    [by forall_intro induction-step]
+  // strong induction gives forall b; P(b)
+  @gcd-divides-both-swapped |
+    forall b, a: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+    [by instantiate strongInduction((fun n: Nat => forall a: Nat; divides(gcd(a, n), a) and divides(gcd(a, n), n))) induction-step-for-all-k]
+  // re-quantify in first-appearance order (a before b)
+  @reorder-a |
+    fix a: Nat {
+      @reorder-b |
+        fix b: Nat {
+          @gcd-divides-both-reordered |
+            divides(gcd(a, b), a) and divides(gcd(a, b), b)
+            [by forall_elim(b, a) gcd-divides-both-swapped]
+        }
+      @reorder-discharge-b |
+        forall b: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Nat; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+    [by forall_intro reorder-a]
+qed
+
+theorem gcdGreatest: forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+proof
+  @induction-step |
+    fix b: Nat {
+      @given-strong-inductive-hypothesis |
+        assume forall m: Nat; less_than(m, b) -> (forall a, d: Nat; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m))) {
+          @strong-inductive-hypothesis |
+            forall m: Nat; less_than(m, b) -> (forall a, d: Nat; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))
+            [by hypothesis given-strong-inductive-hypothesis]
+          @generalize-a |
+            fix a: Nat {
+              @generalize-d |
+                fix d: Nat {
+                  @given-d-divides-a |
+                    assume divides(d, a) {
+                      @given-d-divides-b |
+                        assume divides(d, b) {
+                          @d-divides-a |
+                            divides(d, a)
+                            [by hypothesis given-d-divides-a]
+                          @d-divides-b |
+                            divides(d, b)
+                            [by hypothesis given-d-divides-b]
+                          @b-is-zero-or-successor |
+                            b = ZERO or (exists mm: Nat; b = succ(mm))
+                            [by specialize zeroOrSucc(b)]
+                          @when-b-is-zero |
+                            assume b = ZERO {
+                              @b-is-zero |
+                                b = ZERO
+                                [by hypothesis when-b-is-zero]
+                              @gcd-with-zero-is-itself |
+                                gcd(a, ZERO) = a
+                                [by specialize gcdZero(a)]
+                              @a-is-gcd-with-zero |
+                                a = gcd(a, ZERO)
+                                [by symmetry gcd-with-zero-is-itself]
+                              @d-divides-gcd-with-zero |
+                                divides(d, gcd(a, ZERO))
+                                [by rewrite a-is-gcd-with-zero d-divides-a]
+                              @zero-is-b |
+                                ZERO = b
+                                [by symmetry b-is-zero]
+                              @d-divides-gcd-when-zero |
+                                divides(d, gcd(a, b))
+                                [by rewrite zero-is-b d-divides-gcd-with-zero]
+                            }
+                          @when-b-is-successor |
+                            assume exists mm: Nat; b = succ(mm) {
+                              @predecessor-exists |
+                                exists mm: Nat; b = succ(mm)
+                                [by hypothesis when-b-is-successor]
+                              @with-predecessor-bp |
+                                unpack bp: Nat from predecessor-exists {
+                                  @b-is-successor-of-bp |
+                                    b = succ(bp)
+                                    [by hypothesis with-predecessor-bp]
+                                  @successor-bp-is-nonzero |
+                                    succ(bp) != ZERO
+                                    [by specialize succNotZero(bp)]
+                                  @successor-bp-is-b |
+                                    succ(bp) = b
+                                    [by symmetry b-is-successor-of-bp]
+                                  @b-is-nonzero |
+                                    b != ZERO
+                                    [by rewrite successor-bp-is-b successor-bp-is-nonzero]
+                                  @gcd-recurses |
+                                    gcd(a, b) = gcd(b, mod(a, b))
+                                    [by specialize gcdStep(b, a) b-is-nonzero]
+                                  @mod-crossing-holds-if-divides-b |
+                                    divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
+                                    [by specialize dividesModStep(b, d, a) b-is-nonzero]
+                                  @mod-crossing-holds |
+                                    divides(d, a) iff divides(d, mod(a, b))
+                                    [by modus_ponens mod-crossing-holds-if-divides-b d-divides-b]
+                                  @divides-a-implies-divides-mod |
+                                    divides(d, a) -> divides(d, mod(a, b))
+                                    [by iff_elim_forward mod-crossing-holds]
+                                  @d-divides-mod |
+                                    divides(d, mod(a, b))
+                                    [by modus_ponens divides-a-implies-divides-mod d-divides-a]
+                                  @mod-is-below-b |
+                                    less_than(mod(a, b), b)
+                                    [by specialize modBound(b, a) b-is-nonzero]
+                                  @inductive-hypothesis-applies-at-mod |
+                                    less_than(mod(a, b), b) -> (forall aa, dd: Nat; divides(dd, aa) -> divides(dd, mod(a, b)) -> divides(dd, gcd(aa, mod(a, b))))
+                                    [by forall_elim(mod(a, b)) strong-inductive-hypothesis]
+                                  @greatest-at-mod |
+                                    forall aa, dd: Nat; divides(dd, aa) -> divides(dd, mod(a, b)) -> divides(dd, gcd(aa, mod(a, b)))
+                                    [by modus_ponens inductive-hypothesis-applies-at-mod mod-is-below-b]
+                                  @greatest-at-mod-b-d |
+                                    divides(d, b) -> divides(d, mod(a, b)) -> divides(d, gcd(b, mod(a, b)))
+                                    [by forall_elim(b, d) greatest-at-mod]
+                                  @divides-mod-implies-divides-gcd-b-mod |
+                                    divides(d, mod(a, b)) -> divides(d, gcd(b, mod(a, b)))
+                                    [by modus_ponens greatest-at-mod-b-d d-divides-b]
+                                  @d-divides-gcd-b-mod |
+                                    divides(d, gcd(b, mod(a, b)))
+                                    [by modus_ponens divides-mod-implies-divides-gcd-b-mod d-divides-mod]
+                                  @gcd-b-mod-is-gcd-a-b |
+                                    gcd(b, mod(a, b)) = gcd(a, b)
+                                    [by symmetry gcd-recurses]
+                                  @d-divides-gcd-when-successor |
+                                    divides(d, gcd(a, b))
+                                    [by rewrite gcd-b-mod-is-gcd-a-b d-divides-gcd-b-mod]
+                                }
+                              @d-divides-gcd-in-successor-case |
+                                divides(d, gcd(a, b))
+                                [by exists_elim with-predecessor-bp]
+                            }
+                          @d-divides-gcd |
+                            divides(d, gcd(a, b))
+                            [by or_elim b-is-zero-or-successor when-b-is-zero when-b-is-successor]
+                        }
+                      @d-divides-b-implies-d-divides-gcd |
+                        divides(d, b) -> divides(d, gcd(a, b))
+                        [by implies_intro given-d-divides-b]
+                    }
+                  @d-common-divisor-implies-d-divides-gcd |
+                    divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                    [by implies_intro given-d-divides-a]
+                }
+              @discharge-d |
+                forall d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                [by forall_intro generalize-d]
+            }
+          @discharge-a |
+            forall a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+            [by forall_intro generalize-a]
+        }
+      @induction-step-at-b |
+        (forall m: Nat; less_than(m, b) -> (forall a, d: Nat; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))) -> forall a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+        [by implies_intro given-strong-inductive-hypothesis]
+    }
+  @induction-step-for-all-k |
+    forall b: Nat; (forall m: Nat; less_than(m, b) -> (forall a, d: Nat; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))) -> forall a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by forall_intro induction-step]
+  @gcd-greatest-swapped |
+    forall b, a, d: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by instantiate strongInduction((fun n: Nat => forall a, d: Nat; divides(d, a) -> divides(d, n) -> divides(d, gcd(a, n)))) induction-step-for-all-k]
+  // re-quantify in first-appearance order (d before a before b)
+  @reorder-d |
+    fix d: Nat {
+      @reorder-a |
+        fix a: Nat {
+          @reorder-b |
+            fix b: Nat {
+              @greatest-at-d-a-b |
+                divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                [by forall_elim(b, a, d) gcd-greatest-swapped]
+            }
+          @reorder-discharge-b |
+            forall b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+            [by forall_intro reorder-b]
+        }
+      @reorder-discharge-a |
+        forall a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+        [by forall_intro reorder-a]
+    }
+  @conclusion |
+    forall d, a, b: Nat; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by forall_intro reorder-d]
 qed

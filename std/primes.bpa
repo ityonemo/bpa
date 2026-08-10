@@ -6,16 +6,14 @@
 // and packages primality once as a transparent `define is_prime` so downstream
 // consumers say `is_prime(p)` rather than re-spelling the defining conjunction.
 //
-// The engine is `coprimeBezout` (std/integer-gcd.bpa); the finite-product /
+// The engine is `coprimeBezout` (std/integer-divides.bpa); the finite-product /
 // sequence machinery is std/integer-sequence.bpa. We reuse that file's
 // `Seq`/`at`/`productUpTo`/`inSeqBefore` and its `does_divide`/`less_than`/
 // `at_most` defines so everything composes.
 
 import integer <<< "std/integer.bpa"
 import order <<< "std/integer-order.bpa"
-import divides <<< "std/integer-divides.bpa"
-import division <<< "std/integer-division.bpa"
-import gcd <<< "std/integer-gcd.bpa"
+import int_divides <<< "std/integer-divides.bpa"
 import sequence <<< "std/integer-sequence.bpa"
 import wellordering <<< "std/integer-wellordering.bpa"
 
@@ -34,7 +32,7 @@ pred is_nonneg = order.nonneg
 sort NonNegZ = integer.NonNeg
 define less_than(a: Int, b: Int) = order.less_than(a, b)
 define at_most(a: Int, b: Int) = order.less_or_equal(a, b)
-define does_divide(d: Int, n: Int) = divides.divides(d, n)
+define does_divide(d: Int, n: Int) = int_divides.divides(d, n)
 
 // -- sequences and finite products (reused from std/integer-sequence.bpa) ------
 sort Seq = sequence.Seq
@@ -51,7 +49,7 @@ theorem lessThanTransitive = sequence.lessThanTransitive
 theorem lessOrEqualSplit = sequence.lessOrEqualSplit
 theorem lessThanSuccRight = order.lessThanSuccRight
 theorem lessThanSelf = wellordering.lessThanSelf
-theorem atMostThenLessThan = division.atMostThenLessThan
+theorem atMostThenLessThan = int_divides.atMostThenLessThan
 theorem nonnegNotLessThanZero = sequence.nonnegNotLessThanZero
 theorem negLessThanZero = sequence.negLessThanZero
 theorem zeroLessThanOne = sequence.zeroLessThanOne
@@ -65,9 +63,9 @@ axiom oneIsSuccZero = sequence.oneIsSuccZero
 axiom definitionOfSubtraction = sequence.definitionOfSubtraction
 
 // -- ring algebra the arguments name explicitly -------------------------------
-theorem addIsCommutative = gcd.addIsCommutative
-theorem addIsAssociative = gcd.addIsAssociative
-theorem addZeroRight = gcd.addZeroRight
+theorem addIsCommutative = int_divides.addIsCommutative
+theorem addIsAssociative = int_divides.addIsAssociative
+theorem addZeroRight = int_divides.addZeroRight
 theorem addSuccRight = order.addSuccRight
 theorem addNegRight = sequence.addNegRight
 theorem mulOneRight = sequence.mulOneRight
@@ -75,7 +73,7 @@ theorem mulZeroRight = sequence.mulZeroRight
 theorem mulNegRight = sequence.mulNegRight
 theorem mulNegLeft = order.mulNegLeft
 theorem mulAddDistribLeft = sequence.mulAddDistribLeft
-theorem mulAddDistribRight = gcd.mulAddDistribRight
+theorem mulAddDistribRight = int_divides.mulAddDistribRight
 theorem mulIsAssociative = sequence.mulIsAssociative
 theorem mulIsCommutative = sequence.mulIsCommutative
 theorem negNeg = sequence.negNeg
@@ -85,14 +83,14 @@ axiom mulZeroLeft = integer.mulZeroLeft
 theorem dividesRefl = sequence.dividesRefl
 theorem dividesMul = sequence.dividesMul
 theorem dividesAdd = sequence.dividesAdd
-theorem dividesIntro = gcd.dividesIntro
+theorem dividesIntro = int_divides.dividesIntro
 theorem dividesSubtracts = sequence.dividesSubtracts
 theorem dividesTransitive = sequence.dividesTransitive
-theorem divisionAlgorithmExists = division.divisionAlgorithmExists
-theorem divisionAlgorithmUnique = division.divisionAlgorithmUnique
+theorem divisionAlgorithmExists = int_divides.divisionAlgorithmExists
+theorem divisionAlgorithmUnique = int_divides.divisionAlgorithmUnique
 
 // -- the coprime-Bézout engine and its supporting sign lemmas -----------------
-theorem coprimeBezout = gcd.coprimeBezout
+theorem coprimeBezout = int_divides.coprimeBezout
 
 // -- the FTA-facing sequence facts --------------------------------------------
 theorem memberDividesProduct = sequence.memberDividesProduct
@@ -196,9 +194,9 @@ proof
     [by forall_intro generalize-e]
 qed
 
-// A negative integer negates to a positive one — reused from integer-gcd under a
-// name local to the coprimality argument.
-theorem positiveOfNegative = gcd.negativeNegIsPositive
+// A negative integer negates to a positive one — reused from integer-divides under
+// a name local to the coprimality argument.
+theorem positiveOfNegative = int_divides.negativeNegIsPositive
 
 // Divisibility by a positive integer is decidable. Run the Division Algorithm
 // `a = pq + r`, `0 ≤ r < p`, and split `r` by trichotomy: `r < 0` is impossible,

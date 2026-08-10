@@ -8,7 +8,7 @@
 // would be a cycle. So we layer strong induction and well-ordering here, one
 // level above the whole order corpus, guarding EVERY quantifier over the sort with
 // `nonneg` (ℕ is a subclass of ℤ, so ranging over "all nonneg n" is the ℕ
-// quantifier). The proofs mirror std/peano-ordering.bpa's `strongInduction` and
+// quantifier). The proofs mirror std/peano-order.bpa's `strongInduction` and
 // `wellOrdering`, nonneg-guarded throughout.
 
 import order <<< "std/integer-order.bpa"

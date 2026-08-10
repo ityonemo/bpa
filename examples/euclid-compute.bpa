@@ -1,6 +1,6 @@
 // Euclid's algorithm, RUN on concrete numbers: gcd(9, 6) = 3.
 //
-// The abstract correctness of gcd lives in std/peano-gcd.bpa; examples/euclid.bpa
+// The abstract correctness of gcd lives in std/peano-divides.bpa; examples/euclid.bpa
 // shows the consumer-facing correctness theorems. This file does the other
 // thing a user wants — actually *compute* a gcd — by unfolding the recursion:
 //
@@ -16,9 +16,8 @@
 // etc.) is ground by `simplify` with the peano recursion axioms.
 
 import peano <<< "std/peano.bpa"
-import ordering <<< "std/peano-ordering.bpa"
-import division <<< "std/peano-division.bpa"
-import gcd <<< "std/peano-gcd.bpa"
+import ordering <<< "std/peano-order.bpa"
+import peano_divides <<< "std/peano-divides.bpa"
 
 // -- vocabulary -------------------------------------------------------------
 
@@ -28,8 +27,8 @@ func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
 pred less_than = ordering.less_than
-func mod = division.mod
-func gcd_of = gcd.gcd
+func mod = peano_divides.mod
+func gcd = peano_divides.gcd
 
 // recursion axioms used to grind closed numerals; the gcd equations; and
 // modIntro, the remainder-uniqueness lemma that makes each mod fact a
@@ -40,9 +39,9 @@ axiom mulZeroLeft = peano.mulZeroLeft
 axiom addSuccLeft = peano.addSuccLeft
 axiom addZeroLeft = peano.addZeroLeft
 axiom succNotZero = peano.succNotZero
-axiom gcdZero = gcd.gcdZero
-axiom gcdStep = gcd.gcdStep
-theorem modIntro = division.modIntro
+axiom gcdZero = peano_divides.gcdZero
+axiom gcdStep = peano_divides.gcdStep
+theorem modIntro = peano_divides.modIntro
 
 // -- numerals (succ-towers, named for readability) --------------------------
 
@@ -110,7 +109,7 @@ qed
 
 // -- unfold the recursion: gcd(9, 6) = 3 ------------------------------------
 
-theorem gcdNineSix: gcd_of(NINE, SIX) = THREE
+theorem gcdNineSix: gcd(NINE, SIX) = THREE
 proof
   @six-is-nonzero |
     SIX != ZERO
@@ -119,30 +118,30 @@ proof
     THREE != ZERO
     [by theorem threeNotZero]
   @gcd-nine-six-recurses |
-    gcd_of(NINE, SIX) = gcd_of(SIX, mod(NINE, SIX))
+    gcd(NINE, SIX) = gcd(SIX, mod(NINE, SIX))
     [by specialize gcdStep(SIX, NINE) six-is-nonzero]
   @mod-nine-six-is-three |
     mod(NINE, SIX) = THREE
     [by theorem modNineSix]
   @gcd-nine-six-is-gcd-six-three |
-    gcd_of(NINE, SIX) = gcd_of(SIX, THREE)
+    gcd(NINE, SIX) = gcd(SIX, THREE)
     [by rewrite mod-nine-six-is-three gcd-nine-six-recurses]
   @gcd-six-three-recurses |
-    gcd_of(SIX, THREE) = gcd_of(THREE, mod(SIX, THREE))
+    gcd(SIX, THREE) = gcd(THREE, mod(SIX, THREE))
     [by specialize gcdStep(THREE, SIX) three-is-nonzero]
   @mod-six-three-is-zero |
     mod(SIX, THREE) = ZERO
     [by theorem modSixThree]
   @gcd-six-three-is-gcd-three-zero |
-    gcd_of(SIX, THREE) = gcd_of(THREE, ZERO)
+    gcd(SIX, THREE) = gcd(THREE, ZERO)
     [by rewrite mod-six-three-is-zero gcd-six-three-recurses]
   @gcd-three-zero-is-three |
-    gcd_of(THREE, ZERO) = THREE
+    gcd(THREE, ZERO) = THREE
     [by specialize gcdZero(THREE)]
   @gcd-nine-six-is-gcd-three-zero |
-    gcd_of(NINE, SIX) = gcd_of(THREE, ZERO)
+    gcd(NINE, SIX) = gcd(THREE, ZERO)
     [by rewrite gcd-six-three-is-gcd-three-zero gcd-nine-six-is-gcd-six-three]
   @conclusion |
-    gcd_of(NINE, SIX) = THREE
+    gcd(NINE, SIX) = THREE
     [by rewrite gcd-three-zero-is-three gcd-nine-six-is-gcd-three-zero]
 qed

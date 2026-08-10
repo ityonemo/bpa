@@ -60,7 +60,7 @@ pub fn addTests(
     // induction). No hole; the file checks WITHOUT --draft.
     ctx.okSilent(&.{ "check", "aata/2.1-induction.md" });
     // §2.2 The Division Algorithm: Ch1-style — the proofs now live in
-    // std/integer-division.bpa; this file aliases them and narrates. Existence
+    // std/integer-divides.bpa; this file aliases them and narrates. Existence
     // over all of ℤ + uniqueness.
     ctx.okSilent(&.{ "check", "aata/2.2-division-algorithm.md" });
     // §2.3 Primes: stub for the GCD/Bézout/Euclid/FTA material to come; imports

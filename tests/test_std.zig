@@ -18,19 +18,17 @@ pub fn addTests(
 
     // the order theory + strong induction + well-ordering, split into its own
     // layer; proven, and --recursive re-verifies the imported peano proofs too
-    ctx.okSilent(&.{ "check", "std/peano-ordering.bpa" });
+    ctx.okSilent(&.{ "check", "std/peano-order.bpa" });
 
-    ctx.okSilent(&.{ "check", "std/peano-ordering.bpa" });
+    ctx.okSilent(&.{ "check", "std/peano-order.bpa" });
 
     // truncated subtraction + the gcd measure lemma (Euclid foundation)
     ctx.okSilent(&.{ "check", "std/peano-subtraction.bpa" });
 
-    // divisibility + guarded Euclidean div/mod + the gcd bridge lemma
-    ctx.okSilent(&.{ "check", "std/peano-division.bpa" });
-
-    // THE PAYOFF: Euclid's algorithm, proved correct (common divisor +
-    // greatest), by strong induction on the decreasing modulus
-    ctx.okSilent(&.{ "check", "std/peano-gcd.bpa" });
+    // divisibility, the guarded Euclidean div/mod, and THE PAYOFF: Euclid's
+    // algorithm proved correct (common divisor + greatest), by strong
+    // induction on the decreasing modulus — the whole ℕ number-theory unit
+    ctx.okSilent(&.{ "check", "std/peano-divides.bpa" });
 
     // parity: even/odd + the crux 2|p² → 2|p, proven (no accelerated tactic)
     ctx.okSilent(&.{ "check", "std/peano-parity.bpa" });
@@ -56,7 +54,7 @@ pub fn addTests(
     // live in integer-nonneg, which sits below the order in the import DAG).
     // nonnegStrongInduction (course-of-values) and nonnegWellOrdering (every
     // nonempty nonneg subset has a least element) — nonneg-guarded ports of the
-    // peano-ordering proofs; the Division Algorithm's existence half runs on these.
+    // peano-order proofs; the Division Algorithm's existence half runs on these.
     ctx.okSilent(&.{ "check", "std/integer-wellordering.bpa" });
 
     // abstract divisibility (std/divisibility.bpa): a carrier with mul/add/ONE
@@ -64,24 +62,15 @@ pub fn addTests(
     // over the abstract carrier. ℕ and ℤ `model` this to inherit them.
     ctx.okSilent(&.{ "check", "std/divisibility.bpa" });
 
-    // ℤ divisibility + powers (std/integer-divides.bpa): `divides` intro/elim +
-    // pow recursion; the three basic facts (refl/mul/add) TRANSFER from the
-    // abstract divisibility theory via `model IntegerDivisibility`.
-    ctx.okSilent(&.{ "check", "std/integer-divides.bpa" });
-
-    // the ℤ Division Algorithm (std/integer-division.bpa): existence over all of
-    // ℤ (via well-ordering on {a−bk≥0}) + uniqueness, with the supporting
+    // the whole ℤ number-theory unit (std/integer-divides.bpa): divisibility
+    // (`divides` intro/elim, the refl/mul/add facts TRANSFERRED from the abstract
+    // theory via `model IntegerDivisibility`) + powers; the Division Algorithm
+    // (existence over all of ℤ via well-ordering on {a−bk≥0} + uniqueness, with the
     // product-of-nonnegatives / bounded-multiple-is-zero / remainder-difference
-    // machinery. The reusable foundation for GCD / Bézout / the FTA.
-    ctx.okSilent(&.{ "check", "std/integer-division.bpa" });
-
-    // the ℤ GCD / Bézout theory (std/integer-gcd.bpa): the existence-form gcd
-    // (bezout — a positive common divisor d = ar + bs divisible by every common
-    // divisor, via Well-Ordering on {am + bn > 0} + the Division Algorithm) and
-    // its coprime specialization (coprimeBezout — gcd = ±1 gives ar + bs = 1, the
-    // engine of Euclid's Lemma). An independent std development of the theory the
-    // AATA §2.2 chapter proves inline. Reusable ℤ number theory for later chapters.
-    ctx.okSilent(&.{ "check", "std/integer-gcd.bpa" });
+    // machinery); and the GCD / Bézout theory (the existence-form gcd `bezout` and
+    // its coprime specialization `coprimeBezout`, the engine of Euclid's Lemma). An
+    // independent std development of the theory AATA §2.2/§2.3 prove inline.
+    ctx.okSilent(&.{ "check", "std/integer-divides.bpa" });
 
     // the abstract, ℕ-indexed sequence + FOLD theory (std/sequence.bpa): an opaque
     // `Seq` over an abstract `Value` with an `at` accessor, an abstract `combine`/
@@ -104,7 +93,7 @@ pub fn addTests(
     // transparent `define is_prime`, then Euclid's Lemma (via coprimeBezout),
     // primeDividesProductImpliesMember (FTA-uniqueness crux), and the infinitude
     // of primes — an independent std development of the facts that aata/2.3-primes.md
-    // proves inline. Layers over std/integer-gcd.bpa + std/integer-sequence.bpa.
+    // proves inline. Layers over std/integer-divides.bpa + std/integer-sequence.bpa.
     ctx.okSilent(&.{ "check", "std/primes.bpa" });
 
     // the group theory (std/group.bpa): THREE axioms (associativity + LEFT identity

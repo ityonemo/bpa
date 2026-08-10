@@ -6,12 +6,12 @@
 // subtractive recursion (Euclid's gcd) terminate: subtracting a positive b
 // that is <= a strictly shrinks a. Everything here is PURE.
 //
-// Imports the arithmetic core (peano) and the order theory (peano-ordering);
+// Imports the arithmetic core (peano) and the order theory (peano-order);
 // per convention, names used more than once are aliased, single uses are
 // qualified inline.
 
 import peano <<< "std/peano.bpa"
-import ordering <<< "std/peano-ordering.bpa"
+import ordering <<< "std/peano-order.bpa"
 
 // -- vocabulary -------------------------------------------------------------
 
