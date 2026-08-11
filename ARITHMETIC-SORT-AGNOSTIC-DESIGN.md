@@ -177,10 +177,20 @@ certifier must abstract consistently), so std strict-mode steps can't yet use it
 `exists y; x = succ(y)` (y = prev(x)) — certifies STRICT, not just `--fast`. Null for ℕ
 (no `prev`). Gate: `tests/cases/cooper_negative_witness.bpa`.
 
+**LANDED (28e66ed) — inverse-pair cancellation in the equation certifier.** The
+sorted-tower join now parses `neg(fvar)` leaves (`isTowerLeaf`) and cancels additive-
+inverse pairs (`cancelInverses`): bubble `x` adjacent-before `neg(x)`, collapse with
+`addNegRight`, drop the ZERO — all trace rewrites, kernel-checked. So
+`add(a, sub(b,a)) = b` (leaf multiset {a,b,neg(a)} → {b}) certifies STRICT. RED→GREEN
+gate `tests/cases/arithmetic_cert_neg_cancel.bpa`; unlocked migrating
+`std/integer.bpa` `addDiffReaches` (27-line chain → one `[by arithmetic]`).
+
 ## Deferred (explicitly out of scope)
 - **Certifying abstracted-atom goals** — extend the equation certifier so strict
   `bpa check` (not just `--fast`) discharges opaque-atom arithmetic. Unlocks replacing
   the gcd port's manual `subOfAddCancel` detour with `[by arithmetic(integer)]`.
-- **Corpus migration** of hand-proved sub/cancellation/order ladders to
-  `[by arithmetic]` / `[by arithmetic(integer)]` (NEXT — item 2 of the follow-up order).
+- **Broader corpus migration** — sweep more hand-proved sub/order ladders to
+  `[by arithmetic]` (a fixture must alias `addLeftSwap`+`addIsCommutative`+`addNegRight`+
+  `addZeroLeft/Right` for the certifier to reorder+cancel; certifier-rule-input lemmas
+  like `addIsCommutative` itself stay hand-proved to avoid circularity).
 - Dense-ℚ quantifier elimination (Fourier–Motzkin) — the ℚ quantified case.
