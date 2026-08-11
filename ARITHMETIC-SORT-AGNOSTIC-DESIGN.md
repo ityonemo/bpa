@@ -160,8 +160,27 @@ witnesses (they carry `x≥0`), so the existing Cooper tests stay green.
 - `tests/test_tactics.zig` + `tests/cases/arithmetic*/farkas*/cooper*/smt*` — the
   no-regression surface.
 
-## Deferred (explicitly out of scope for this branch)
+## Follow-ups
+
+**LANDED (116f441) — opaque-subterm abstraction (decide path).** `linearOf` abstracts a
+non-arithmetic subterm (`f(x)`, `mod(a,b)`, a nonlinear `mul(b,q)`) as a fresh linear
+atom, matched structurally (alphaEq — the pool doesn't hash-cons). Sound: never abstract
+a subterm mentioning a quantifier binder under elimination (`mul(y,y)` under `exists y`);
+`elim_names`/`mentionsElim` guard it. A non-valid goal with an abstracted atom reports
+"`X` is outside linear arithmetic" naming the subterm (not an atom-valued countermodel).
+`--fast`/decide only — CERTIFYING an abstracted-atom goal is still open (the equation
+certifier must abstract consistently), so std strict-mode steps can't yet use it.
+
+**LANDED (bee92da) — negative ℤ witnesses.** The Cooper certifier's witness builder
+(`buildWitness`/`witnessCandidates`) now builds `prev`-towers for negative offsets
+(`buildTowerSigned`), so a quantified-ℤ existential with a negative witness — e.g.
+`exists y; x = succ(y)` (y = prev(x)) — certifies STRICT, not just `--fast`. Null for ℕ
+(no `prev`). Gate: `tests/cases/cooper_negative_witness.bpa`.
+
+## Deferred (explicitly out of scope)
+- **Certifying abstracted-atom goals** — extend the equation certifier so strict
+  `bpa check` (not just `--fast`) discharges opaque-atom arithmetic. Unlocks replacing
+  the gcd port's manual `subOfAddCancel` detour with `[by arithmetic(integer)]`.
+- **Corpus migration** of hand-proved sub/cancellation/order ladders to
+  `[by arithmetic]` / `[by arithmetic(integer)]` (NEXT — item 2 of the follow-up order).
 - Dense-ℚ quantifier elimination (Fourier–Motzkin) — the ℚ quantified case.
-- Negative-witness construction for quantified-ℤ existentials.
-- Broad corpus migration of hand-proved sub/cancellation lemmas to `[by arithmetic]`
-  (do the gcd port's own steps; sweep the rest later).
