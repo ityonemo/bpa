@@ -4679,52 +4679,94 @@ theorem negOneLessThanZero = order.negOneLessThanZero
 // The Bézout crux: after dividing a by d = ar + bs (a = dq + rem), the remainder
 // is itself a combination rem = a(1 - rq) + b(-sq). Recover rem = a - dq by
 // cancelling dq, substitute d, and collect coefficients (simplify over the ring).
-theorem remainderIsMember(a: Int, b: Int, d: Int, r: Int, s: Int, q: Int, remainder: Int):
+theorem remainderIsMember:
+  forall a, b, d, r, s, q, remainder: Int;
   a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s))
   -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
 proof
-  @given-a-decomposes |
-    assume a = add(mul(d, q), remainder) {
-      @given-d-value |
-        assume d = add(mul(a, r), mul(b, s)) {
-          @a-decomposes |
-            a = add(mul(d, q), remainder)
-            [by hypothesis given-a-decomposes]
-          @d-value |
-            d = add(mul(a, r), mul(b, s))
-            [by hypothesis given-d-value]
-          @difference-reaches |
-            forall x, y: Int; add(x, sub(y, x)) = y
-            [by theorem addDiffReaches]
-          @dq-plus-difference-is-a |
-            add(mul(d, q), sub(a, mul(d, q))) = a
-            [by forall_elim(mul(d, q), a) difference-reaches]
-          @dq-plus-difference-is-decomposition |
-            add(mul(d, q), sub(a, mul(d, q))) = add(mul(d, q), remainder)
-            [by rewrite a-decomposes dq-plus-difference-is-a]
-          @cancel-left |
-            forall c, x, y: Int; add(c, x) = add(c, y) -> x = y
-            [by theorem addCancelLeft]
-          @cancel-the-quotient-term |
-            add(mul(d, q), sub(a, mul(d, q))) = add(mul(d, q), remainder) -> sub(a, mul(d, q)) = remainder
-            [by forall_elim(mul(d, q), sub(a, mul(d, q)), remainder) cancel-left]
-          @difference-is-remainder |
-            sub(a, mul(d, q)) = remainder
-            [by modus_ponens cancel-the-quotient-term dq-plus-difference-is-decomposition]
-          @difference-collects-coefficients |
-            sub(a, mul(add(mul(a, r), mul(b, s)), q)) = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
-            [by simplify definitionOfSubtraction mulAddDistribLeft mulAddDistribRight mulNegRight mulOneRight mulIsAssociative addIsAssociative negAdd]
-          @conclusion-remainder-is-member |
-            remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
-            [by chain difference-is-remainder d-value difference-collects-coefficients]
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @generalize-d |
+            fix d: Int {
+              @generalize-r |
+                fix r: Int {
+                  @generalize-s |
+                    fix s: Int {
+                      @generalize-q |
+                        fix q: Int {
+                          @generalize-remainder |
+                            fix remainder: Int {
+                              @given-a-decomposes |
+                                assume a = add(mul(d, q), remainder) {
+                                  @given-d-value |
+                                    assume d = add(mul(a, r), mul(b, s)) {
+                                      @a-decomposes |
+                                        a = add(mul(d, q), remainder)
+                                        [by hypothesis given-a-decomposes]
+                                      @d-value |
+                                        d = add(mul(a, r), mul(b, s))
+                                        [by hypothesis given-d-value]
+                                      @dq-plus-difference-is-a |
+                                        add(mul(d, q), sub(a, mul(d, q))) = a
+                                        [by arithmetic]
+                                      @dq-plus-difference-is-decomposition |
+                                        add(mul(d, q), sub(a, mul(d, q))) = add(mul(d, q), remainder)
+                                        [by rewrite a-decomposes dq-plus-difference-is-a]
+                                      @cancel-left |
+                                        forall c, x, y: Int; add(c, x) = add(c, y) -> x = y
+                                        [by theorem addCancelLeft]
+                                      @cancel-the-quotient-term |
+                                        add(mul(d, q), sub(a, mul(d, q))) = add(mul(d, q), remainder) -> sub(a, mul(d, q)) = remainder
+                                        [by forall_elim(mul(d, q), sub(a, mul(d, q)), remainder) cancel-left]
+                                      @difference-is-remainder |
+                                        sub(a, mul(d, q)) = remainder
+                                        [by modus_ponens cancel-the-quotient-term dq-plus-difference-is-decomposition]
+                                      @difference-collects-coefficients |
+                                        sub(a, mul(add(mul(a, r), mul(b, s)), q)) = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                                        [by simplify definitionOfSubtraction mulAddDistribLeft mulAddDistribRight mulNegRight mulOneRight mulIsAssociative addIsAssociative negAdd]
+                                      @conclusion-remainder-is-member |
+                                        remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                                        [by chain difference-is-remainder d-value difference-collects-coefficients]
+                                    }
+                                  @d-value-implies-member |
+                                    d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                                    [by implies_intro given-d-value]
+                                }
+                              @conclusion-implication |
+                                a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                                [by implies_intro given-a-decomposes]
+                            }
+                          @discharge-remainder |
+                            forall remainder: Int; a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                            [by forall_intro generalize-remainder]
+                        }
+                      @discharge-q |
+                        forall q, remainder: Int; a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                        [by forall_intro generalize-q]
+                    }
+                  @discharge-s |
+                    forall s, q, remainder: Int; a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                    [by forall_intro generalize-s]
+                }
+              @discharge-r |
+                forall r, s, q, remainder: Int; a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+                [by forall_intro generalize-r]
+            }
+          @discharge-d |
+            forall d, r, s, q, remainder: Int; a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+            [by forall_intro generalize-d]
         }
-      @d-value-implies-member |
-        d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
-        [by implies_intro given-d-value]
+      @discharge-b |
+        forall b, d, r, s, q, remainder: Int; a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+        [by forall_intro generalize-b]
     }
   @conclusion |
-    a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s)) -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
-    [by implies_intro given-a-decomposes]
+    forall a, b, d, r, s, q, remainder: Int;
+      a = add(mul(d, q), remainder) -> d = add(mul(a, r), mul(b, s))
+      -> remainder = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
+    [by forall_intro generalize-a]
 qed
 
 // The set S = {am + bn : am + bn > 0} is nonempty when a != ZERO: trichotomy
@@ -4917,7 +4959,7 @@ proof
                                             [by hypothesis suppose-remainder-positive]
                                           @remainder-is-member-identity |
                                             a = add(mul(d, q), rem) -> d = add(mul(a, r), mul(b, s)) -> rem = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
-                                            [by instantiate remainderIsMember(a, b, d, r, s, q, rem)]
+                                            [by specialize remainderIsMember(a, b, d, r, s, q, rem)]
                                           @remainder-is-member-form |
                                             rem = add(mul(a, sub(ONE, mul(r, q))), mul(b, neg(mul(s, q))))
                                             [by tautology remainder-is-member-identity a-decomposes d-equals-combination]
@@ -5036,7 +5078,7 @@ proof
                                             [by hypothesis suppose-remainder-positive]
                                           @remainder-is-member-identity |
                                             b = add(mul(d, q2), rem2) -> d = add(mul(b, s), mul(a, r)) -> rem2 = add(mul(b, sub(ONE, mul(s, q2))), mul(a, neg(mul(r, q2))))
-                                            [by instantiate remainderIsMember(b, a, d, s, r, q2, rem2)]
+                                            [by specialize remainderIsMember(b, a, d, s, r, q2, rem2)]
                                           @remainder-is-member-form-swapped |
                                             rem2 = add(mul(b, sub(ONE, mul(s, q2))), mul(a, neg(mul(r, q2))))
                                             [by tautology remainder-is-member-identity b-decomposes d-equals-combination-swapped]
