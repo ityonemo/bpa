@@ -42,6 +42,7 @@ func mul = integer.mul
 func neg = integer.neg
 axiom addZeroLeft = integer.addZeroLeft
 theorem addZeroRight = ring.addZeroRight
+axiom mulZeroLeft = integer.mulZeroLeft
 theorem mulZeroRight = ring.mulZeroRight
 theorem mulSuccRight = ring.mulSuccRight
 theorem addIsCommutative = ring.addIsCommutative
@@ -171,6 +172,9 @@ theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
 theorem mulIsCommutative = order.mulIsCommutative
 theorem negLessThanZero = order.negLessThanZero
+theorem zeroLessThanOne = order.zeroLessThanOne
+theorem mulNegLeft = order.mulNegLeft
+theorem negativeNegIsPositive = order.negativeNegIsPositive
 theorem productOfNonpositiveFactorsIsNonneg = order.productOfNonpositiveFactorsIsNonneg
 theorem negAdd = ring.negAdd
 theorem negNeg = ring.negNeg
@@ -3596,6 +3600,149 @@ proof
     [by forall_intro generalize-d]
 qed
 
+// The only divisors of 1 in ℤ are ±1. Split e by sign (signTrichotomy). e = 0 is
+// impossible: divides(0, 1) forces 1 = 0·k = 0, contradicting 0 < 1. On e > 0,
+// divisorAtMost gives e ≤ 1 and oneAtMostPositive gives 1 ≤ e, so e = 1 by
+// antisymmetry. On e < 0, neg(e) > 0 and divides(neg(e), 1) (rewrite the quotient
+// through mul(neg e, neg k) = e·k), so the same antisymmetry gives neg(e) = 1,
+// whence e = neg(1) via negNeg.
+theorem dividesOneImpliesUnit: forall e: Int; divides(e, ONE) -> (e = ONE or e = neg(ONE))
+proof
+  @generalize-e |
+    fix e: Int {
+      @given-e-divides-one |
+        assume divides(e, ONE) {
+          @e-divides-one |
+            divides(e, ONE)
+            [by hypothesis given-e-divides-one]
+          @one-positive |
+            less_than(ZERO, ONE)
+            [by theorem zeroLessThanOne]
+          @sign-cases |
+            less_than(ZERO, e) or e = ZERO or less_than(e, ZERO)
+            [by specialize signTrichotomy(e)]
+          @e-is-unit |
+            e = ONE or e = neg(ONE)
+            case sign-cases {
+              // e > 0: e ≤ 1 and 1 ≤ e pin e = 1.
+              @when-positive |
+                assume less_than(ZERO, e) {
+                  @e-positive |
+                    less_than(ZERO, e)
+                    [by hypothesis when-positive]
+                  @e-at-most-one |
+                    at_most(e, ONE)
+                    [by specialize divisorAtMost(e, ONE) e-positive one-positive e-divides-one]
+                  @one-at-most-e |
+                    at_most(ONE, e)
+                    [by specialize oneAtMostPositive(e) e-positive]
+                  @e-is-one |
+                    e = ONE
+                    [by specialize lessOrEqualAntisymmetric(e, ONE) e-at-most-one one-at-most-e]
+                  @conclusion-e-is-unit |
+                    e = ONE or e = neg(ONE)
+                    [by or_intro_left e-is-one]
+                }
+              // e = 0: divides(0, 1) forces 1 = 0, contradicting 0 < 1.
+              @when-zero |
+                assume e = ZERO {
+                  @e-is-zero |
+                    e = ZERO
+                    [by hypothesis when-zero]
+                  @zero-divides-one |
+                    divides(ZERO, ONE)
+                    [by rewrite e-is-zero e-divides-one]
+                  @with-quotient-k |
+                    unpack k: Int from zero-divides-one {
+                      @one-is-zero-times-k |
+                        ONE = mul(ZERO, k)
+                        [by hypothesis with-quotient-k]
+                      @zero-times-k-is-zero |
+                        mul(ZERO, k) = ZERO
+                        [by specialize mulZeroLeft(k)]
+                      @conclusion-one-is-zero |
+                        ONE = ZERO
+                        [by chain one-is-zero-times-k zero-times-k-is-zero]
+                    }
+                  @one-is-zero |
+                    ONE = ZERO
+                    [by exists_elim with-quotient-k]
+                  @zero-less_than-zero |
+                    less_than(ZERO, ZERO)
+                    [by rewrite one-is-zero one-positive]
+                  @zero-not-less_than-zero |
+                    not less_than(ZERO, ZERO)
+                    [by specialize lessThanIrreflexive(ZERO)]
+                  @conclusion-e-is-unit |
+                    e = ONE or e = neg(ONE)
+                    [by absurd zero-less_than-zero zero-not-less_than-zero]
+                }
+              // e < 0: neg(e) > 0 and neg(e) | 1, so neg(e) = 1, whence e = neg(1).
+              @when-negative |
+                assume less_than(e, ZERO) {
+                  @e-negative |
+                    less_than(e, ZERO)
+                    [by hypothesis when-negative]
+                  @neg-e-positive |
+                    less_than(ZERO, neg(e))
+                    [by specialize negativeNegIsPositive(e) e-negative]
+                  // neg(e) | 1: from 1 = e·k, 1 = mul(neg e, neg k) since the two
+                  // sign flips cancel.
+                  @with-quotient-k |
+                    unpack k: Int from e-divides-one {
+                      @one-is-e-times-k |
+                        ONE = mul(e, k)
+                        [by hypothesis with-quotient-k]
+                      @neg-e-times-neg-k-is-e-times-k |
+                        mul(neg(e), neg(k)) = mul(e, k)
+                        [by simplify mulNegLeft mulNegRight negNeg]
+                      @e-times-k-is-neg-e-times-neg-k |
+                        mul(e, k) = mul(neg(e), neg(k))
+                        [by symmetry neg-e-times-neg-k-is-e-times-k]
+                      @one-is-neg-e-times-neg-k |
+                        ONE = mul(neg(e), neg(k))
+                        [by chain one-is-e-times-k e-times-k-is-neg-e-times-neg-k]
+                      @conclusion-neg-e-divides-one |
+                        divides(neg(e), ONE)
+                        [by specialize dividesIntro(ONE, neg(e), neg(k)) one-is-neg-e-times-neg-k]
+                    }
+                  @neg-e-divides-one |
+                    divides(neg(e), ONE)
+                    [by exists_elim with-quotient-k]
+                  @neg-e-at-most-one |
+                    at_most(neg(e), ONE)
+                    [by specialize divisorAtMost(neg(e), ONE) neg-e-positive one-positive neg-e-divides-one]
+                  @one-at-most-neg-e |
+                    at_most(ONE, neg(e))
+                    [by specialize oneAtMostPositive(neg(e)) neg-e-positive]
+                  @neg-e-is-one |
+                    neg(e) = ONE
+                    [by specialize lessOrEqualAntisymmetric(neg(e), ONE) neg-e-at-most-one one-at-most-neg-e]
+                  @neg-neg-e-is-e |
+                    neg(neg(e)) = e
+                    [by specialize negNeg(e)]
+                  // rewrite neg(e) = 1 into neg(neg(e)) = e to get neg(1) = e.
+                  @neg-one-is-e |
+                    neg(ONE) = e
+                    [by rewrite neg-e-is-one neg-neg-e-is-e]
+                  @e-is-neg-one |
+                    e = neg(ONE)
+                    [by symmetry neg-one-is-e]
+                  @conclusion-e-is-unit |
+                    e = ONE or e = neg(ONE)
+                    [by or_intro_right e-is-neg-one]
+                }
+            }
+        }
+      @e-divides-one-implies-unit |
+        divides(e, ONE) -> (e = ONE or e = neg(ONE))
+        [by implies_intro given-e-divides-one]
+    }
+  @conclusion |
+    forall e: Int; divides(e, ONE) -> (e = ONE or e = neg(ONE))
+    [by forall_intro generalize-e]
+qed
+
 // -- the gcd bridge: d | b -> (d | a iff d | mod(a, b)) ---------------------
 //
 // For b > 0 with d | b: writing q = div(a,b), r = mod(a,b), divModProperty gives
@@ -4656,12 +4803,6 @@ qed
 // into ZERO or a nonneg successor; a successor is positive, so the non-positive
 // hypothesis kills that arm.
 theorem nonnegNotPositiveIsZero = order.nonnegNotPositiveIsZero
-
-// A negative integer negates to a positive one. Unfold less_than(a, ZERO) to a
-// nonneg gap d with add(a, succ(d)) = ZERO; add -a on the left, regroup and
-// cancel a to get add(ZERO, succ(d)) = neg(a), off which lessThanIntro reads
-// less_than(ZERO, neg(a)).
-theorem negativeNegIsPositive = order.negativeNegIsPositive
 
 // -1 < 0: add(neg(ONE), succ(ZERO)) = ZERO with nonneg gap ZERO, so lessThanIntro
 // gives less_than(neg(ONE), ZERO). Used by coprimeBezout to reject d = -1.
