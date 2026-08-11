@@ -156,6 +156,13 @@ theorem lessOrEqualAntisymmetric = order.lessOrEqualAntisymmetric
 axiom nonnegZero = nonneg.nonnegZero
 axiom nonnegSucc = nonneg.nonnegSucc
 theorem addNegRight = ring.addNegRight
+// addNegLeft + addLeftSwap early: the `arithmetic` equation certifier needs them
+// (and addNegRight) in scope to cancel a neg/positive pair and reorder a sum. A
+// rule the certifier can't resolve (because it's declared later, or absent) is
+// silently dropped from its rule set, so a linear goal fails to certify here
+// even though it certifies where the rule is in scope.
+theorem addNegLeft = ring.addNegLeft
+theorem addLeftSwap = ring.addLeftSwap
 theorem addCancelLeft = order.addCancelLeft
 theorem additionPreservesOrder = order.additionPreservesOrder
 theorem lessThanIrreflexive = order.lessThanIrreflexive
@@ -1119,7 +1126,7 @@ proof
                   // sub(y, x) = succ(d): add(sub(y,x), x) = y = add(succ(d), x), cancel-ish.
                   @difference-plus-x-is-y |
                     add(sub(y, x), x) = y
-                    [by specialize subAddCancel(y, x)]
+                    [by arithmetic]
                   @gap-commutes |
                     forall a, b: Int; add(a, b) = add(b, a)
                     [by theorem addIsCommutative]
@@ -1272,7 +1279,7 @@ proof
                       // x − y = 0 gives x = y: (x−y)+y = x and (x−y)+y = 0+y = y
                       @difference-plus-y-is-x |
                         add(sub(x, y), y) = x
-                        [by specialize subAddCancel(x, y)]
+                        [by arithmetic]
                       @zero-plus-y-is-x |
                         add(ZERO, y) = x
                         [by rewrite difference-is-zero difference-plus-y-is-x]
@@ -1535,7 +1542,7 @@ proof
                                   // difference <= big (subtracting a nonneg), and big < b.
                                   @difference-plus-small-is-big |
                                     add(sub(big, small), small) = big
-                                    [by specialize subAddCancel(big, small)]
+                                    [by arithmetic]
                                   @small-witnesses-difference-at-most-big |
                                     is_nonneg(small) and add(sub(big, small), small) = big
                                     [by and_intro small-nonneg difference-plus-small-is-big]
@@ -1678,7 +1685,7 @@ proof
                                                       // sub(r2,r1)=0 gives r2 = r1.
                                                       @difference-plus-r1-is-r2 |
                                                         add(sub(r2, r1), r1) = r2
-                                                        [by specialize subAddCancel(r2, r1)]
+                                                        [by arithmetic]
                                                       @zero-plus-r1-is-r2 |
                                                         add(ZERO, r1) = r2
                                                         [by rewrite r2-minus-r1-zero difference-plus-r1-is-r2]
@@ -1718,7 +1725,7 @@ proof
                                                         [by tautology r1-minus-r2-zero-if b-positive r2-nonneg r1-less_than-b r2-less_than-r1 b-divides-r1-minus-r2]
                                                       @difference-plus-r2-is-r1 |
                                                         add(sub(r1, r2), r2) = r1
-                                                        [by specialize subAddCancel(r1, r2)]
+                                                        [by arithmetic]
                                                       @zero-plus-r2-is-r1 |
                                                         add(ZERO, r2) = r1
                                                         [by rewrite r1-minus-r2-zero difference-plus-r2-is-r1]
@@ -1915,7 +1922,7 @@ proof
                                                       // sub(q1,q2)=0 gives q1 = q2.
                                                       @difference-plus-q2-is-q1 |
                                                         add(sub(q1, q2), q2) = q1
-                                                        [by specialize subAddCancel(q1, q2)]
+                                                        [by arithmetic]
                                                       @zero-plus-q2-is-q1 |
                                                         add(ZERO, q2) = q1
                                                         [by rewrite quotient-difference-zero difference-plus-q2-is-q1]
@@ -2011,7 +2018,7 @@ proof
                 [by forall_elim(p, y, sub(x, y)) addition-associates]
               @inner-difference-reaches |
                 add(y, sub(x, y)) = x
-                [by specialize addDiffReaches(y, x)]
+                [by arithmetic]
               @prefixed-difference-is-larger |
                 add(add(p, y), sub(x, y)) = add(p, x)
                 [by rewrite inner-difference-reaches prefixed-difference-associates]
@@ -2076,7 +2083,7 @@ proof
                   // sub(y,x) = d: add(x, sub(y,x)) = y = add(x, d), cancel x.
                   @x-plus-difference-is-y |
                     add(x, sub(y, x)) = y
-                    [by specialize addDiffReaches(x, y)]
+                    [by arithmetic]
                   @y-is-x-plus-gap |
                     y = add(x, d)
                     [by symmetry gap-reaches-y]
@@ -2883,7 +2890,7 @@ proof
                           // candidate < rem, since b > 0.
                           @candidate-plus-b-is-rem |
                             add(sub(rem, b), b) = rem
-                            [by specialize subAddCancel(rem, b)]
+                            [by arithmetic]
                           @self-less_than-self-plus-positive |
                             forall x, c: Int; less_than(ZERO, c) -> less_than(x, add(x, c))
                             [by theorem lessThanSelfPlusPositive]
@@ -3176,7 +3183,8 @@ proof
                           @gap-nonneg |
                             is_nonneg(mul(d, sub(k, ONE)))
                             [by specialize nonnegMul(d, sub(k, ONE)) d-nonneg k-minus-one-nonneg]
-                          // add(d, d·(k−1)) = d·(1 + (k−1)) = d·k = n.
+                          // add(d, d·(k−1)) = d·(1 + (k−1)) = d·k = n. (ONE = succ(ZERO) as a
+                          // neg-subtrahend is outside the certifier's leaf shape, so keep the lemma.)
                           @one-plus-k-minus-one-is-k |
                             add(ONE, sub(k, ONE)) = k
                             [by specialize addDiffReaches(ONE, k)]
@@ -3243,7 +3251,6 @@ qed
 
 theorem nonnegCases = order.nonnegCases
 theorem mulAddDistribRight = ring.mulAddDistribRight
-theorem addNegLeft = ring.addNegLeft
 
 theorem dividesIntro: forall n, d, k: Int; n = mul(d, k) -> divides(d, n)
 proof
@@ -3648,10 +3655,11 @@ proof
                         a = add(mod(a, b), mul(b, div(a, b)))
                         [by rewrite decomposition-commutes a-is-decomposition]
                       // r = a − b·q: with a = r + b·q, this is add-then-sub
-                      // cancellation, sub(add(r, b·q), b·q) = r.
+                      // cancellation, sub(add(r, b·q), b·q) = r (r and b·q are
+                      // opaque atoms to the linear certifier).
                       @cancel-multiple |
                         sub(add(mod(a, b), mul(b, div(a, b))), mul(b, div(a, b))) = mod(a, b)
-                        [by specialize subOfAddCancel(mod(a, b), mul(b, div(a, b)))]
+                        [by arithmetic]
                       @remainder-plus-multiple-is-a |
                         add(mod(a, b), mul(b, div(a, b))) = a
                         [by symmetry a-is-remainder-plus-multiple]
