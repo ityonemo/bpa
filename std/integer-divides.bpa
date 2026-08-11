@@ -116,7 +116,7 @@ qed
 
 // -- division-algorithm vocabulary ------------------------------------------
 
-func sub = order.sub
+func sub = integer.sub
 
 theorem addSuccRight = ring.addSuccRight
 theorem addPrevRight = ring.addPrevRight

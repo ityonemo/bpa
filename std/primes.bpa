@@ -25,7 +25,7 @@ const ONE = integer.ONE
 func succ = integer.succ
 func add = integer.add
 func mul = integer.mul
-func sub = order.sub
+func sub = integer.sub
 func neg = integer.neg
 
 pred is_nonneg = order.nonneg
