@@ -44,6 +44,15 @@ axiom mulSuccLeft: forall a, b: Nat; mul(succ(a), b) = add(mul(a, b), b)
 // ONE is definitional sugar for succ(ZERO)
 axiom oneIsSuccZero: ONE = succ(ZERO)
 
+// nonneg(n) holds for every natural — trivial content over ℕ. This predicate
+// EXISTS ONLY FOR THE `arithmetic` CERTIFIER: that accelerant runs a pure-ℤ
+// Presburger engine (it never assumes variables are ≥ 0), so a ℕ theory must
+// SUPPLY its nonnegativity as a well-known predicate. `arithmetic` reads
+// nonneg(x) as `x ≥ 0` and injects it per ℕ-sorted variable. It is not meant
+// as general-purpose ℕ vocabulary — ordinary proofs never need it.
+pred nonneg(n: Nat)
+axiom nonnegAll: forall n: Nat; nonneg(n)
+
 // -- forwarded theorems -----------------------------------------------------
 
 intheory addZeroRight

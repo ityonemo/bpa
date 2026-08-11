@@ -31,13 +31,28 @@ const Pool = term.Pool;
 /// scope. Absent names shrink the fragment; a term outside it is a located
 /// error naming the term.
 pub const Symbols = struct {
+    /// The arithmetic sort's anchor (used only to shape countermodels / bind
+    /// binders — NOT a soundness filter: the engine is sort-blind and treats
+    /// any non-well-known term as a linear variable ranging over ℤ).
     nat: ?SortId = null,
     zero: ?SymId = null,
     one: ?SymId = null,
     succ: ?SymId = null,
+    /// predecessor: prev(x) = x - 1 (ℤ theories; absent for ℕ).
+    prev: ?SymId = null,
     add: ?SymId = null,
     mul: ?SymId = null,
+    /// unary negation neg(x) = -x and total subtraction sub(a,b) = a - b
+    /// (ℤ theories; absent for ℕ, whose sub is truncated monus — NOT linear).
+    neg: ?SymId = null,
+    sub: ?SymId = null,
     less_than: ?SymId = null,
+    /// a well-known nonnegativity predicate nonneg(x) meaning x >= 0. Its
+    /// PRESENCE is a theory's request to constrain its variables nonneg: the
+    /// engine reads nonneg(x) hypotheses as x >= 0, and the elaborator injects
+    /// nonneg(x) per bound variable when this is set. Absent → pure ℤ (no
+    /// nonnegativity assumed anywhere).
+    nonneg: ?SymId = null,
 };
 
 pub const Verdict = union(enum) {
@@ -255,13 +270,15 @@ const Ctx = struct {
         }
 
         // decide by existentially closing the free variables (a witness is
-        // an assignment of the fixed-but-arbitrary variables)
+        // an assignment of the fixed-but-arbitrary variables). Pure ℤ: no
+        // nonnegativity guard — any x≥0 the theory needs is already a compiled
+        // conjunct (from an injected nonneg(x) hypothesis).
         var closed = f;
         for (self.free_vars.items) |fv| {
             closed = try self.node(.{ .quant = .{
                 .q = .exists,
                 .v = fv.id,
-                .body = try self.node(.{ .conj = .{ .lhs = try self.node(.{ .ge = try self.unit(fv.id) }), .rhs = closed } }),
+                .body = closed,
             } });
         }
         const ground = try self.eliminate(closed);
@@ -302,13 +319,13 @@ const Ctx = struct {
         self.next_var += 1;
         self.vars.put(self.arena, q.hint, y) catch return error.OutOfMemory;
 
-        // Nat semantics: exists y (y >= 0 and body). Compile the body, conjoin
-        // the nonnegativity guard, then trace-eliminate y.
+        // Pure ℤ: compile the body and trace-eliminate y directly. Any y >= 0 the
+        // theory requires is already a conjunct of `body` (from an injected
+        // nonneg(y) hypothesis), so no engine-supplied guard is added here.
         const body = try self.formula(opened, false);
-        const guarded = try self.node(.{ .conj = .{ .lhs = try self.node(.{ .ge = try self.unit(y) }), .rhs = body } });
 
         var replay: Replay = .{ .delta = 1, .period = 1, .boundaries = &.{}, .disjuncts = &.{}, .free_names = &.{}, .free_ids = &.{} };
-        try self.cooperTraced(y, guarded, &replay);
+        try self.cooperTraced(y, body, &replay);
 
         // export the remaining free variables (y is eliminated, not among them)
         // with their coefficient indices so the certifier maps a boundary's
@@ -403,9 +420,10 @@ const Ctx = struct {
     fn linearOf(self: *Ctx, t: TermId) Error!Linear {
         switch (self.pool.get(t)) {
             .fvar => |v| {
-                if (self.symbols.nat == null or v.sort != self.symbols.nat.?) {
-                    return self.fail(.{ .out_of_fragment = t });
-                }
+                // Sort-blind: any free variable is a linear unknown over ℤ. (The
+                // theory is responsible for only exposing well-typed goals; a
+                // genuinely non-arithmetic term reaches us as an .app/.pred leaf
+                // and is rejected there, not by sort.)
                 const gop = self.vars.getOrPut(self.arena, v.name) catch return error.OutOfMemory;
                 if (!gop.found_existing) {
                     gop.value_ptr.* = self.next_var;
@@ -426,6 +444,16 @@ const Ctx = struct {
                 }
                 if (matches(a.sym, self.symbols.succ) and args.len == 1) {
                     return self.shifted(try self.linearOf(args[0]), 1);
+                }
+                if (matches(a.sym, self.symbols.prev) and args.len == 1) {
+                    return self.shifted(try self.linearOf(args[0]), -1);
+                }
+                if (matches(a.sym, self.symbols.neg) and args.len == 1) {
+                    return self.negated(try self.linearOf(args[0]));
+                }
+                if (matches(a.sym, self.symbols.sub) and args.len == 2) {
+                    const l = try self.linearOf(args[0]);
+                    return self.combine(l, -1, try self.linearOf(args[1]));
                 }
                 if (matches(a.sym, self.symbols.add) and args.len == 2) {
                     const l = try self.linearOf(args[0]);
@@ -493,14 +521,18 @@ const Ctx = struct {
                     const diff = try self.shifted(try self.combine(hi, -1, lo), -1);
                     return self.node(.{ .ge = if (neg) try self.shifted(try self.negated(diff), -1) else diff });
                 }
+                if (matches(a.sym, self.symbols.nonneg) and args.len == 1) {
+                    // nonneg(x): x >= 0. Negated: x <= -1, i.e. -x - 1 >= 0.
+                    const x = try self.linearOf(args[0]);
+                    return self.node(.{ .ge = if (neg) try self.shifted(try self.negated(x), -1) else x });
+                }
                 return self.fail(.{ .out_of_fragment = t });
             },
             .quant => |q| {
-                if (self.symbols.nat == null or q.sort != self.symbols.nat.?) {
-                    return self.fail(.{ .out_of_fragment = t });
-                }
-                // open the binder as a variable named by its hint; the scoped
-                // map entry shadows (and later restores) any outer same-name
+                // Sort-blind: a binder over ANY sort opens as a ℤ-ranging
+                // variable. Nonnegativity, if the theory wants it, arrives as an
+                // injected nonneg(x) conjunct in the body (elaborator's job), NOT
+                // as an engine-supplied guard.
                 const v = self.next_var;
                 self.next_var += 1;
                 const fv = try self.pool.add(.{ .fvar = .{ .name = q.hint, .sort = q.sort } });
@@ -513,19 +545,11 @@ const Ctx = struct {
                 } else {
                     _ = self.vars.remove(q.hint);
                 }
-                // Nat semantics: exists x (x >= 0 and body); forall x (x < 0 or body)
                 const effective: term.Quantifier = if (neg) switch (q.q) {
                     .forall => .exists,
                     .exists => .forall,
                 } else q.q;
-                const wrapped = switch (effective) {
-                    .exists => try self.node(.{ .conj = .{ .lhs = try self.node(.{ .ge = try self.unit(v) }), .rhs = body } }),
-                    .forall => try self.node(.{ .disj = .{
-                        .lhs = try self.node(.{ .ge = try self.shifted(try self.negated(try self.unit(v)), -1) }),
-                        .rhs = body,
-                    } }),
-                };
-                return self.node(.{ .quant = .{ .q = effective, .v = v, .body = wrapped } });
+                return self.node(.{ .quant = .{ .q = effective, .v = v, .body = body } });
             },
             // a formula leaf that is not an atom of the fragment
             else => return self.fail(.{ .out_of_fragment = t }),
@@ -835,6 +859,7 @@ const Rig = struct {
     const sym_add: SymId = @enumFromInt(2);
     const sym_less: SymId = @enumFromInt(3);
     const sym_mul: SymId = @enumFromInt(4);
+    const sym_nonneg: SymId = @enumFromInt(5);
 
     fn init(arena: Allocator) Rig {
         return .{
@@ -846,8 +871,13 @@ const Rig = struct {
                 .add = sym_add,
                 .mul = sym_mul,
                 .less_than = sym_less,
+                .nonneg = sym_nonneg,
             },
         };
+    }
+
+    fn nonneg(self: *Rig, t: TermId) !TermId {
+        return self.pool.addApp(.pred, sym_nonneg, &.{t});
     }
 
     fn zero(self: *Rig) !TermId {
@@ -900,7 +930,9 @@ test "ground: 2 + 3 = 5" {
     try testing.expect(v == .valid);
 }
 
-test "forall b, a: a < a + succ(b)" {
+test "pure ℤ: forall b, a: a < a + succ(b) is NOT valid (b may be negative)" {
+    // The engine is pure ℤ — no implicit nonnegativity. a < a + b + 1 fails at
+    // b = -2, so the raw goal is not a consequence.
     var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
     defer arena_state.deinit();
     var r = Rig.init(arena_state.allocator());
@@ -909,6 +941,20 @@ test "forall b, a: a < a + succ(b)" {
     const body = try r.less(a, try r.add(a, try r.succ(b)));
     const goal = try r.quant(.forall, 11, try r.quant(.forall, 10, body));
     const v = try decide(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
+    try testing.expect(v != .valid);
+}
+
+test "nonneg(b) premise recovers ℕ: b >= 0 gives a < a + succ(b)" {
+    // With the theory-supplied nonneg(b) — the ℕ nonnegativity the engine no
+    // longer assumes — the goal is valid again. (nonneg(x) reads as x >= 0.)
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var r = Rig.init(arena_state.allocator());
+    const a = try r.fvar(10);
+    const b = try r.fvar(11);
+    const premise = try r.nonneg(b);
+    const goal = try r.less(a, try r.add(a, try r.succ(b)));
+    const v = try decide(arena_state.allocator(), &r.pool, r.symbols, &.{premise}, goal);
     try testing.expect(v == .valid);
 }
 

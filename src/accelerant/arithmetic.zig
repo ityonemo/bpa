@@ -499,9 +499,16 @@ fn arithmeticSymbols(self: *Elaborator) ElabError!presburger_mod.Symbols {
     symbols.zero = try self.wellKnownSym("ZERO");
     symbols.one = try self.wellKnownSym("ONE");
     symbols.succ = try self.wellKnownSym("succ");
+    symbols.prev = try self.wellKnownSym("prev");
     symbols.add = try self.wellKnownSym("add");
     symbols.mul = try self.wellKnownSym("mul");
+    symbols.neg = try self.wellKnownSym("neg");
+    symbols.sub = try self.wellKnownSym("sub");
     symbols.less_than = try self.wellKnownSym("less_than");
+    // A well-known nonnegativity predicate: its PRESENCE in scope is the
+    // theory's request to constrain its variables nonneg (ℕ binds it; ℤ does
+    // not). Read as x >= 0 by the engine; injected per binder below.
+    symbols.nonneg = try self.wellKnownSym("nonneg");
     const anchor = symbols.succ orelse symbols.add orelse symbols.zero orelse symbols.one;
     if (anchor) |sym| symbols.nat = self.env.sym(sym).result;
     return symbols;
@@ -1521,6 +1528,43 @@ fn schemaParamName(self: *Elaborator, t: TermId) ?[]const u8 {
     }
 }
 
+/// Walk `t`; for each free variable of `nat_sort` not yet seen, append a
+/// `nonneg(fv)` atom to `out`. This is the theory-supplied nonnegativity for the
+/// pure-ℤ engine: a ℕ theory (which binds `nonneg`) gets its `x ≥ 0` per free
+/// variable; ℤ/ℚ bind no `nonneg` and this never runs.
+fn collectNonnegTargets(
+    self: *Elaborator,
+    t: TermId,
+    nat_sort: term.SortId,
+    seen: *std.AutoHashMapUnmanaged(StrId, void),
+    out: *std.ArrayListUnmanaged(TermId),
+    nonneg_sym: term.SymId,
+) ElabError!void {
+    switch (self.pool.get(t)) {
+        .bvar => {},
+        .fvar => |v| {
+            if (v.sort != nat_sort) return;
+            const gop = seen.getOrPut(self.arena, v.name) catch return error.OutOfMemory;
+            if (gop.found_existing) return;
+            const atom = try self.pool.addApp(.pred, nonneg_sym, &.{t});
+            try out.append(self.arena, atom);
+        },
+        .app, .pred => |a| {
+            for (self.pool.args(a)) |arg| try collectNonnegTargets(self, arg, nat_sort, seen, out, nonneg_sym);
+        },
+        .eq => |p| {
+            try collectNonnegTargets(self, p.lhs, nat_sort, seen, out, nonneg_sym);
+            try collectNonnegTargets(self, p.rhs, nat_sort, seen, out, nonneg_sym);
+        },
+        .not => |inner| try collectNonnegTargets(self, inner, nat_sort, seen, out, nonneg_sym),
+        .bin => |b| {
+            try collectNonnegTargets(self, b.lhs, nat_sort, seen, out, nonneg_sym);
+            try collectNonnegTargets(self, b.rhs, nat_sort, seen, out, nonneg_sym);
+        },
+        .quant => |q| try collectNonnegTargets(self, q.body, nat_sort, seen, out, nonneg_sym),
+    }
+}
+
 fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     const loc = c.rule.start;
     const premises = try self.resolvePremises(low, block_id, c, "arithmetic");
@@ -1553,6 +1597,13 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
     // skeletonizes (a quantifier over a mixed body would be one opaque
     // atom). Binder hints name the variables in countermodels; a hint
     // colliding with an existing free variable gets a hygienic name.
+    //
+    // The engine is pure ℤ (no implicit nonnegativity). If the theory binds a
+    // well-known `nonneg` predicate, each stripped variable gets an injected
+    // `nonneg(x)` premise — this is how a ℕ theory recovers its x ≥ 0 without
+    // the engine assuming it. (Inner quantifier bodies carry their own injected
+    // nonneg conjuncts, added below.)
+    var injected: std.ArrayListUnmanaged(TermId) = .empty;
     var stripped = goal;
     if (symbols.nat) |nat_sort| {
         while (true) {
@@ -1569,7 +1620,29 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
         }
     }
 
-    const verdict = smt_mod.decideMixed(self.arena, self.pool, symbols, premises, stripped) catch return error.OutOfMemory;
+    // The engine is pure ℤ (no implicit nonnegativity). If the theory binds a
+    // well-known `nonneg` predicate, inject `nonneg(x)` for every free variable
+    // of the arithmetic sort in the (stripped) goal and premises — this is how a
+    // ℕ theory recovers its x ≥ 0. Covers both goal-quantifier binders (stripped
+    // above into free vars) and user-written `fix x` eigenvariables (already free
+    // in the goal). ℤ/ℚ bind no nonneg → nothing injected.
+    if (symbols.nonneg) |nn| if (symbols.nat) |nat_sort| {
+        var seen: std.AutoHashMapUnmanaged(StrId, void) = .empty;
+        try collectNonnegTargets(self, stripped, nat_sort, &seen, &injected, nn);
+        for (premises) |p| try collectNonnegTargets(self, p, nat_sort, &seen, &injected, nn);
+    };
+
+    // hand the engine the cited premises plus any injected nonneg(x) guards.
+    const all_premises: []const TermId = if (injected.items.len == 0)
+        premises
+    else blk: {
+        const buf = try self.arena.alloc(TermId, premises.len + injected.items.len);
+        @memcpy(buf[0..premises.len], premises);
+        @memcpy(buf[premises.len..], injected.items);
+        break :blk buf;
+    };
+
+    const verdict = smt_mod.decideMixed(self.arena, self.pool, symbols, all_premises, stripped) catch return error.OutOfMemory;
     switch (verdict) {
         .valid => {
             // --fast: DECIDE-only. decideMixed already settled validity; take the

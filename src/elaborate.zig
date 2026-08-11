@@ -2732,6 +2732,12 @@ pub const Elaborator = struct {
         "addZeroLeft",   "addZeroRight",     "addSuccLeft", "addSuccRight",
         "mulZeroLeft",   "mulZeroRight",     "mulSuccLeft", "mulSuccRight",
         "oneIsSuccZero", "addIsAssociative",
+        // ℤ elimination rules — absent (wellKnownRule → null) for ℕ theories,
+        // which have no total sub/neg/prev. They rewrite sub/neg/prev away toward
+        // an add-of-atoms normal form so the certifier can join ℤ linear goals.
+        "definitionOfSubtraction", "negNeg",   "negAdd",
+        "addNegRight",             "addNegLeft",
+        "prevSucc",                "succPrev",
     };
 
     const EqCert = struct {

@@ -12,6 +12,7 @@ func succ = peano.succ
 func add = peano.add
 func mul = peano.mul
 pred less_than = ordering.less_than
+pred nonneg = peano.nonneg
 axiom addZeroLeft = peano.addZeroLeft
 axiom addSuccLeft = peano.addSuccLeft
 axiom mulZeroLeft = peano.mulZeroLeft

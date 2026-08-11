@@ -354,7 +354,18 @@ pub fn addTests(
 
     // Milestone C: arithmetic accelerated tactic — Presburger quantifier elimination
     ctx.ok(&.{ "check", "--fast", "tests/cases/arithmetic.bpa" },
-        \\OK: 9 declarations, 4 theorems proven (4 accelerated: arithmetic)
+        \\OK: 10 declarations, 4 theorems proven (4 accelerated: arithmetic)
+        \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
+        \\
+    );
+
+    // pure-ℤ: the engine ranges over all integers (no implicit nonnegativity)
+    // and recognizes neg/sub/prev, so ℤ linear identities — including sub/neg
+    // cancellations outside a ℕ fragment — decide. (--fast gate: the bare
+    // fixture has no ring lemmas in scope to certify with; strict certification
+    // is exercised over the real integer theory in the std corpus.)
+    ctx.ok(&.{ "check", "--fast", "tests/cases/arithmetic_integer.bpa" },
+        \\OK: 17 declarations, 8 theorems proven (8 accelerated: arithmetic)
         \\  — NOT FULLY VERIFIED: accelerated (a procedure's verdict was trusted without a kernel derivation); re-run `bpa check` to fully verify.
         \\
     );

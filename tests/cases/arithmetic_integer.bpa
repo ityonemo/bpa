@@ -1,0 +1,75 @@
+// The `arithmetic` accelerant is a pure-ℤ Presburger engine: variables range
+// over all integers with NO implicit nonnegativity, and it recognizes the ℤ
+// operators neg / sub / prev (in addition to ZERO/ONE/succ/add/mul/less_than).
+// So linear ℤ identities — including sub/neg cancellations that are out of a
+// ℕ-only fragment — decide directly. There is no `nonneg` predicate in scope
+// here, so the engine assumes nothing about signs (the honest ℤ semantics).
+sort Int
+const ZERO: Int
+const ONE: Int
+func succ(n: Int): Int
+func prev(n: Int): Int
+func add(a: Int, b: Int): Int
+func neg(a: Int): Int
+func sub(a: Int, b: Int): Int
+pred less_than(a: Int, b: Int)
+
+// sub(a, b) = a + (-b): the two ℤ subtractions agree.
+theorem subIsAddNeg: forall a, b: Int; sub(a, b) = add(a, neg(b))
+proof
+  @conclusion |
+    forall a, b: Int; sub(a, b) = add(a, neg(b))
+    [by arithmetic]
+qed
+
+// the eight add/sub cancellation identities — all ℤ-valid, none in a ℕ fragment.
+theorem cancelSubAddRight: forall a, b: Int; sub(add(a, b), b) = a
+proof
+  @conclusion |
+    forall a, b: Int; sub(add(a, b), b) = a
+    [by arithmetic]
+qed
+
+theorem cancelSubAddLeft: forall a, b: Int; sub(add(b, a), b) = a
+proof
+  @conclusion |
+    forall a, b: Int; sub(add(b, a), b) = a
+    [by arithmetic]
+qed
+
+theorem cancelAddSubRight: forall a, b: Int; add(sub(a, b), b) = a
+proof
+  @conclusion |
+    forall a, b: Int; add(sub(a, b), b) = a
+    [by arithmetic]
+qed
+
+theorem cancelAddSubLeftFront: forall a, b: Int; add(b, sub(a, b)) = a
+proof
+  @conclusion |
+    forall a, b: Int; add(b, sub(a, b)) = a
+    [by arithmetic]
+qed
+
+// prev is the ℤ predecessor: prev(succ(x)) = x, and neg round-trips.
+theorem prevSucc: forall x: Int; prev(succ(x)) = x
+proof
+  @conclusion |
+    forall x: Int; prev(succ(x)) = x
+    [by arithmetic]
+qed
+
+theorem negNeg: forall x: Int; neg(neg(x)) = x
+proof
+  @conclusion |
+    forall x: Int; neg(neg(x)) = x
+    [by arithmetic]
+qed
+
+// an order fact that is ℤ-valid regardless of sign: a < b -> a < succ(b).
+theorem stepUp: forall a, b: Int; less_than(a, b) -> less_than(a, succ(b))
+proof
+  @conclusion |
+    forall a, b: Int; less_than(a, b) -> less_than(a, succ(b))
+    [by arithmetic]
+qed

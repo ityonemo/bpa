@@ -1,11 +1,14 @@
 // accelerated tactic: 'arithmetic' decides linear (Presburger) arithmetic over
 // Nat by quantifier elimination (see ACCELERATION.md). The symbols ZERO, succ,
 // add, mul, ONE, and less_than are recognized by name in the current scope.
+// The engine is pure ℤ; `nonneg` is the well-known predicate that supplies ℕ's
+// x ≥ 0 (injected per variable), so ℕ-only-valid goals still decide.
 sort Nat
 const ZERO: Nat
 func succ(n: Nat): Nat
 func add(a: Nat, b: Nat): Nat
 pred less_than(a: Nat, b: Nat)
+pred nonneg(n: Nat)
 
 theorem lessThanAddSucc: forall a, b: Nat; less_than(a, add(a, succ(b)))
 proof
