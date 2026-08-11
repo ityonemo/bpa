@@ -1,0 +1,44 @@
+// The equation certifier should treat an opaque compound subterm (a foreign
+// function application like f(x), or mod(a,b)/mul(b,q) in the gcd development) as
+// an atomic tower leaf — exactly as the decide engine abstracts it. Then a goal
+// like `sub(add(f(x), g(y)), g(y)) = f(x)` (leaves {f(x), g(y), neg(g(y))} after
+// unfolding sub) cancels g(y) with neg(g(y)) and reduces to {f(x)} — certifiable
+// strict, not just decidable under --fast.
+sort Int
+const ZERO: Int
+func succ(n: Int): Int
+func prev(n: Int): Int
+func add(a: Int, b: Int): Int
+func neg(a: Int): Int
+func sub(a: Int, b: Int): Int
+func f(x: Int): Int
+func g(x: Int): Int
+pred less_than(a: Int, b: Int)
+axiom definitionOfSubtraction: forall a, b: Int; sub(a, b) = add(a, neg(b))
+axiom addNegRight: forall n: Int; add(n, neg(n)) = ZERO
+axiom addNegLeft: forall n: Int; add(neg(n), n) = ZERO
+axiom negNeg: forall n: Int; neg(neg(n)) = n
+axiom addZeroLeft: forall b: Int; add(ZERO, b) = b
+axiom addZeroRight: forall n: Int; add(n, ZERO) = n
+axiom addIsAssociative: forall a, b, c: Int; add(add(a, b), c) = add(a, add(b, c))
+axiom addIsCommutative: forall a, b: Int; add(a, b) = add(b, a)
+axiom addLeftSwap: forall x, y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
+
+theorem opaqueDiffReaches: forall x, y: Int; add(f(x), sub(g(y), f(x))) = g(y)
+proof
+  @generalize-x |
+    fix x: Int {
+      @generalize-y |
+        fix y: Int {
+          @conclusion-opaque |
+            add(f(x), sub(g(y), f(x))) = g(y)
+            [by arithmetic]
+        }
+      @discharge-y |
+        forall y: Int; add(f(x), sub(g(y), f(x))) = g(y)
+        [by forall_intro generalize-y]
+    }
+  @conclusion |
+    forall x, y: Int; add(f(x), sub(g(y), f(x))) = g(y)
+    [by forall_intro generalize-x]
+qed

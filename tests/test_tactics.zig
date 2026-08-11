@@ -416,6 +416,11 @@ pub fn addTests(
     // equation certifier must cancel a with neg(a) (a `neg`-leaf tower).
     ctx.okSilent(&.{ "check", "tests/cases/arithmetic_cert_neg_cancel.bpa" });
 
+    // opaque compound leaves: `add(f(x), sub(g(y), f(x))) = g(y)` — foreign
+    // apps f(x)/g(y) ride the sorted-tower join as atoms and the f(x)/neg(f(x))
+    // pair cancels (bubbled to the tail so addNeg matches an innermost subterm).
+    ctx.okSilent(&.{ "check", "tests/cases/arithmetic_cert_opaque_leaf.bpa" });
+
     // Cooper-replay layer 2 (witness direction): a `forall x; exists y; …`
     // goal with a period-1 Cooper trace elaborates fully — the cooper link
     // picks a boundary witness and emits exists_intro over an or-intro arm.
