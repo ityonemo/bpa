@@ -71,7 +71,11 @@ pub const Verdict = union(enum) {
     overflow,
 };
 
-pub const Assignment = struct { name: StrId, value: i128 };
+/// A falsifying value for a free variable. `term` is set when the "variable" is
+/// an abstracted opaque subterm (mod(a,b), f(x)) rather than a named variable —
+/// the elaborator uses it to report the subterm as outside the linear fragment
+/// instead of surfacing a misleading atom-valued countermodel.
+pub const Assignment = struct { name: StrId, value: i128, term: ?TermId = null };
 
 pub const SatResult = union(enum) {
     unsat,
@@ -247,8 +251,16 @@ const Ctx = struct {
     next_var: u32 = 0,
     /// in-scope names (free variables and opened quantifier binders)
     vars: std.AutoHashMapUnmanaged(StrId, u32) = .empty,
-    /// free variables in first appearance order (their ids index `vars`)
-    free_vars: std.ArrayList(struct { name: StrId, id: u32 }) = .empty,
+    /// free variables in first appearance order (their ids index `vars`). `term`
+    /// is set for an abstracted opaque atom (its source subterm), null for an
+    /// ordinary named variable. Opaque atoms are matched STRUCTURALLY (the pool
+    /// does not hash-cons, so two syntactically-equal subterms have distinct
+    /// TermIds) — see abstractAtom.
+    free_vars: std.ArrayList(struct { name: StrId, id: u32, term: ?TermId = null }) = .empty,
+    /// names of quantifier binders currently open (opened by formula/runTrace).
+    /// A subterm mentioning one of these is a function of an eliminated variable
+    /// and must NOT be abstracted as an independent atom — that would be unsound.
+    elim_names: std.AutoHashMapUnmanaged(StrId, void) = .empty,
     budget: usize = work_budget,
 
     fn fail(self: *Ctx, reason: Verdict) Error {
@@ -284,6 +296,20 @@ const Ctx = struct {
         const ground = try self.eliminate(closed);
         if (!evalGround(ground)) return .unsat;
 
+        // Not valid. On the DECIDE path (a goal is present): if any opaque
+        // subterm was abstracted, the goal genuinely needs reasoning beyond
+        // linear arithmetic (an atom-valued countermodel would be misleading —
+        // those atoms are not independently realizable), so report the first
+        // abstracted subterm as out of fragment. This also keeps the
+        // reified-schema-param diagnostic firing. On the SATISFIABILITY path
+        // (neg_goal == null, the SMT theory check), opaque atoms are genuinely
+        // satisfiable — assign them freely — so do NOT bail here.
+        if (neg_goal != null) {
+            for (self.free_vars.items) |fv| {
+                if (fv.term) |t| return self.fail(.{ .out_of_fragment = t });
+            }
+        }
+
         // SAT: search small values of the free variables against the
         // inner-quantifier-free formula for a copy-pasteable witness
         const qf = try self.eliminate(f);
@@ -292,7 +318,7 @@ const Ctx = struct {
         if (self.witness(qf, 0, values)) {
             const out = try self.arena.alloc(Assignment, self.free_vars.items.len);
             for (self.free_vars.items, out) |fv, *a| {
-                a.* = .{ .name = fv.name, .value = values[fv.id] };
+                a.* = .{ .name = fv.name, .value = values[fv.id], .term = fv.term };
             }
             return .{ .sat = out };
         }
@@ -318,6 +344,10 @@ const Ctx = struct {
         const y: u32 = self.next_var;
         self.next_var += 1;
         self.vars.put(self.arena, q.hint, y) catch return error.OutOfMemory;
+        // y is the elimination target: a subterm mentioning it (e.g. mul(y,y))
+        // cannot be soundly abstracted as an atom — abstractAtom will decline,
+        // and this trace declines with it.
+        self.elim_names.put(self.arena, q.hint, {}) catch return error.OutOfMemory;
 
         // Pure ℤ: compile the body and trace-eliminate y directly. Any y >= 0 the
         // theory requires is already a conjunct of `body` (from an injected
@@ -348,7 +378,14 @@ const Ctx = struct {
         switch (self.pool.get(t)) {
             .bvar => {},
             .fvar => bound.* += 1,
-            .app, .pred => |a| for (self.pool.args(a)) |arg| self.countVars(arg, bound),
+            // +1 per app over-provisions width for a possible opaque-atom
+            // abstraction (an upper bound is all that is needed); recurse for any
+            // vars/atoms in the arguments too.
+            .app => |a| {
+                bound.* += 1;
+                for (self.pool.args(a)) |arg| self.countVars(arg, bound);
+            },
+            .pred => |a| for (self.pool.args(a)) |arg| self.countVars(arg, bound),
             .eq => |p| {
                 self.countVars(p.lhs, bound);
                 self.countVars(p.rhs, bound);
@@ -416,6 +453,45 @@ const Ctx = struct {
         return wanted != null and id == wanted.?;
     }
 
+    /// Abstract an opaque (non-arithmetic) subterm as a fresh linear atom.
+    /// STRUCTURALLY equal occurrences share a variable, so f(x) − f(x) cancels
+    /// (the pool does not hash-cons, so we scan for an alphaEq match rather than
+    /// key on TermId). Sound for validity: proving the goal for an arbitrary
+    /// value of the atom proves it for the actual subterm. The per-goal opaque
+    /// count is small, so the linear scan is cheap.
+    fn abstractAtom(self: *Ctx, t: TermId) Error!Linear {
+        // UNSOUND to abstract a subterm that is a function of a quantifier binder
+        // being eliminated (e.g. mul(y,y) under `exists y`): the atom's value is
+        // not independent of y. Refuse — the goal is genuinely out of fragment.
+        if (self.mentionsElim(t)) return self.fail(.{ .out_of_fragment = t });
+        for (self.free_vars.items) |fv| {
+            if (fv.term) |ot| {
+                if (self.pool.alphaEq(ot, t)) return self.unit(fv.id);
+            }
+        }
+        const id = self.next_var;
+        try self.free_vars.append(self.arena, .{ .name = @enumFromInt(0), .id = id, .term = t });
+        self.next_var += 1;
+        return self.unit(id);
+    }
+
+    /// Does `t` mention a currently-open quantifier binder (an elimination
+    /// target)? Such a subterm cannot be soundly abstracted as an atom.
+    fn mentionsElim(self: *Ctx, t: TermId) bool {
+        switch (self.pool.get(t)) {
+            .bvar => return false,
+            .fvar => |v| return self.elim_names.contains(v.name),
+            .app, .pred => |a| {
+                for (self.pool.args(a)) |arg| if (self.mentionsElim(arg)) return true;
+                return false;
+            },
+            .eq => |p| return self.mentionsElim(p.lhs) or self.mentionsElim(p.rhs),
+            .not => |inner| return self.mentionsElim(inner),
+            .bin => |b| return self.mentionsElim(b.lhs) or self.mentionsElim(b.rhs),
+            .quant => |q| return self.mentionsElim(q.body),
+        }
+    }
+
     /// Compile a Nat-sorted term to a linear form.
     fn linearOf(self: *Ctx, t: TermId) Error!Linear {
         switch (self.pool.get(t)) {
@@ -423,7 +499,7 @@ const Ctx = struct {
                 // Sort-blind: any free variable is a linear unknown over ℤ. (The
                 // theory is responsible for only exposing well-typed goals; a
                 // genuinely non-arithmetic term reaches us as an .app/.pred leaf
-                // and is rejected there, not by sort.)
+                // and is abstracted as an opaque atom there, not rejected.)
                 const gop = self.vars.getOrPut(self.arena, v.name) catch return error.OutOfMemory;
                 if (!gop.found_existing) {
                     gop.value_ptr.* = self.next_var;
@@ -464,10 +540,16 @@ const Ctx = struct {
                     const r = try self.linearOf(args[1]);
                     if (isConstant(l)) return self.combine(try self.blank(), l.konst, r);
                     if (isConstant(r)) return self.combine(try self.blank(), r.konst, l);
-                    return self.fail(.{ .out_of_fragment = t });
+                    // a genuine nonlinear product (both sides variable): abstract
+                    // the whole product as one opaque atom.
+                    return self.abstractAtom(t);
                 }
-                return self.fail(.{ .out_of_fragment = t });
+                // any other app (a foreign function like mod(a,b) or f(x)) is an
+                // opaque atom.
+                return self.abstractAtom(t);
             },
+            // a .pred/.eq/.bin/.quant is never a term position; only leaves and
+            // apps reach linearOf. A .bvar would be a bug (unopened binder).
             else => return self.fail(.{ .out_of_fragment = t }),
         }
     }
@@ -539,7 +621,12 @@ const Ctx = struct {
                 const opened = try self.pool.open(q.body, fv);
                 const saved = self.vars.get(q.hint);
                 self.vars.put(self.arena, q.hint, v) catch return error.OutOfMemory;
+                // this binder is an elimination target: a subterm mentioning it
+                // must not be abstracted as an independent atom.
+                const was_elim = self.elim_names.contains(q.hint);
+                self.elim_names.put(self.arena, q.hint, {}) catch return error.OutOfMemory;
                 const body = try self.formula(opened, neg);
+                if (!was_elim) _ = self.elim_names.remove(q.hint);
                 if (saved) |s| {
                     self.vars.put(self.arena, q.hint, s) catch return error.OutOfMemory;
                 } else {
@@ -860,6 +947,9 @@ const Rig = struct {
     const sym_less: SymId = @enumFromInt(3);
     const sym_mul: SymId = @enumFromInt(4);
     const sym_nonneg: SymId = @enumFromInt(5);
+    const sym_sub: SymId = @enumFromInt(6);
+    const sym_neg: SymId = @enumFromInt(7);
+    const sym_foreign: SymId = @enumFromInt(8);
 
     fn init(arena: Allocator) Rig {
         return .{
@@ -900,6 +990,10 @@ const Rig = struct {
 
     fn mul(self: *Rig, l: TermId, r: TermId) !TermId {
         return self.pool.addApp(.app, sym_mul, &.{ l, r });
+    }
+
+    fn sub(self: *Rig, l: TermId, r: TermId) !TermId {
+        return self.pool.addApp(.app, sym_sub, &.{ l, r });
     }
 
     fn less(self: *Rig, l: TermId, r: TermId) !TermId {
@@ -996,15 +1090,44 @@ test "free-variable countermodel: a < b is false at a := 0, b := 0" {
     try testing.expectEqual(0, v.countermodel[1].value);
 }
 
-test "nonlinear mul is out of fragment" {
+test "nonlinear mul abstracts to an opaque atom (same product cancels)" {
+    // mul(a,b) = mul(a,b): both sides abstract to the SAME opaque atom, so the
+    // equation is valid (X = X) — the abstraction cancels.
     var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
     defer arena_state.deinit();
     var r = Rig.init(arena_state.allocator());
     const product = try r.mul(try r.fvar(10), try r.fvar(11));
     const goal = try r.eq(product, product);
     const v = try decide(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
+    try testing.expect(v == .valid);
+}
+
+test "distinct nonlinear products are distinct atoms → out of fragment" {
+    // mul(a,b) = mul(b,a): the two products are DISTINCT opaque atoms, so the
+    // goal is not linear-arithmetic-valid; rather than a misleading atom-valued
+    // countermodel, report the (first) offending product as out of fragment.
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var r = Rig.init(arena_state.allocator());
+    const a = try r.fvar(10);
+    const b = try r.fvar(11);
+    const goal = try r.eq(try r.mul(a, b), try r.mul(b, a));
+    const v = try decide(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
     try testing.expect(v == .out_of_fragment);
-    try testing.expectEqual(product, v.out_of_fragment);
+}
+
+test "opaque atom cancellation is linear: sub(add(a, f), f) = a" {
+    // an opaque unary term f(x) abstracts to one atom; add-then-sub cancels it.
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    var r = Rig.init(arena_state.allocator());
+    r.symbols.sub = Rig.sym_sub;
+    r.symbols.neg = Rig.sym_neg;
+    const a = try r.fvar(10);
+    const fx = try r.pool.addApp(.app, Rig.sym_foreign, &.{try r.fvar(11)});
+    const goal = try r.eq(try r.sub(try r.add(a, fx), fx), a);
+    const v = try decide(arena_state.allocator(), &r.pool, r.symbols, &.{}, goal);
+    try testing.expect(v == .valid);
 }
 
 test "linear mul by a literal folds" {

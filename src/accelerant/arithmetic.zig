@@ -1524,7 +1524,11 @@ fn schemaParamName(self: *Elaborator, t: TermId) ?[]const u8 {
             for (self.pool.args(a)) |arg| if (schemaParamName(self, arg)) |n| return n;
             return null;
         },
-        else => return null,
+        .eq => |p| return schemaParamName(self, p.lhs) orelse schemaParamName(self, p.rhs),
+        .not => |inner| return schemaParamName(self, inner),
+        .bin => |b| return schemaParamName(self, b.lhs) orelse schemaParamName(self, b.rhs),
+        .quant => |q| return schemaParamName(self, q.body),
+        .bvar, .fvar => return null,
     }
 }
 
@@ -1642,6 +1646,22 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
         break :blk buf;
     };
 
+    // A reified schema parameter (branded opaque symbol from the schema
+    // self-check) must NOT be silently abstracted into a linear atom — that would
+    // let a goal over `k` "decide" but never certify. Detect it up front and give
+    // the specific "over the schema parameter '<name>'" diagnostic. (Only when
+    // certifying: under --fast the accelerated verdict is fine.)
+    if (self.verify.certify_arithmetic) {
+        if (schemaParamName(self, stripped)) |pname| {
+            return self.fail(loc, "arithmetic cannot yet decide this goal over the schema parameter '{s}' (reified opaque while the schema's proof is checked). Certifying an arithmetic step over a schema parameter is currently unsupported but planned; use --fast to accept the accelerated verdict", .{pname});
+        }
+        for (all_premises) |p| {
+            if (schemaParamName(self, p)) |pname| {
+                return self.fail(loc, "arithmetic cannot yet decide this goal over the schema parameter '{s}' (reified opaque while the schema's proof is checked). Certifying an arithmetic step over a schema parameter is currently unsupported but planned; use --fast to accept the accelerated verdict", .{pname});
+            }
+        }
+    }
+
     const verdict = smt_mod.decideMixed(self.arena, self.pool, symbols, all_premises, stripped) catch return error.OutOfMemory;
     switch (verdict) {
         .valid => {
@@ -1697,6 +1717,19 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
                     // as a real variable during the opaque wellformedness check. That
                     // is a known, planned-but-unsupported case — say so, naming the
                     // user's parameter, instead of leaking the internal symbol.
+                    if (schemaParamName(self, offending)) |pname|
+                        return self.fail(loc, "arithmetic cannot yet decide this goal over the schema parameter '{s}' (reified opaque while the schema's proof is checked). Certifying an arithmetic step over a schema parameter is currently unsupported but planned; use --fast to accept the accelerated verdict", .{pname});
+                    return self.fail(loc, "arithmetic: '{s}' is outside linear arithmetic", .{try self.renderTerm(offending)});
+                }
+            }
+            // An abstracted opaque subterm (mod(a,b), mul(a,b), f(x)) in the
+            // countermodel means the goal genuinely needs reasoning beyond linear
+            // arithmetic — its atom values are not independently realizable, so a
+            // numeric countermodel would mislead. Report the subterm as outside
+            // the fragment instead (naming a reified schema param if that's what
+            // it is).
+            for (cm.values) |a| {
+                if (a.term) |offending| {
                     if (schemaParamName(self, offending)) |pname|
                         return self.fail(loc, "arithmetic cannot yet decide this goal over the schema parameter '{s}' (reified opaque while the schema's proof is checked). Certifying an arithmetic step over a schema parameter is currently unsupported but planned; use --fast to accept the accelerated verdict", .{pname});
                     return self.fail(loc, "arithmetic: '{s}' is outside linear arithmetic", .{try self.renderTerm(offending)});
