@@ -136,6 +136,12 @@ pub const Elaborator = struct {
     /// stored on the fact when it proves. Same accumulate-then-store shape as
     /// accelerated_used.
     holes_used: std.ArrayList(StrId) = .empty,
+    /// scratch: when the arithmetic equation certifier declines because a rewrite
+    /// rule lemma it needs is NOT in theory scope (wellKnownFact resolves null),
+    /// the rule name is recorded here so the certifier adapter can report the
+    /// specific missing lemma instead of the generic "form not in certification
+    /// scope". Set in `ruleIndex`, cleared/read per equation-certifier attempt.
+    arith_missing_lemma: ?[]const u8 = null,
     /// innermost binding last: quantifier binders, proof vars, func params
     scope: std.ArrayList(ScopeEntry) = .empty,
     /// generator for hygienic binder fvar names ('#' cannot lex, so these can
@@ -2972,7 +2978,10 @@ pub const Elaborator = struct {
                 for (0..leaves.len - 1 - pass) |i| {
                     if (self.pool.termOrder(leaves[i], leaves[i + 1]) != .gt) continue;
                     const tail_pair = i + 2 == leaves.len;
-                    const rule_idx = (if (tail_pair) comm_idx else swap_idx) orelse return null;
+                    const rule_idx = (if (tail_pair) comm_idx else swap_idx) orelse {
+                        self.arith_missing_lemma = if (tail_pair) "addIsCommutative" else "addLeftSwap";
+                        return null;
+                    };
                     const sub_before = (try self.buildComb(symbols, leaves[i..])) orelse return null;
                     std.mem.swap(TermId, &leaves[i], &leaves[i + 1]);
                     const sub_after = (try self.buildComb(symbols, leaves[i..])) orelse return null;
@@ -3007,7 +3016,12 @@ pub const Elaborator = struct {
     /// id, so the certifier reuses the rewrite it already loaded). Null when the
     /// theory doesn't provide it.
     fn ruleIndex(self: *Elaborator, rules: []const simplify_mod.Rule, name_text: []const u8, loc: u32) ElabError!?usize {
-        const fact = (try self.wellKnownFact(name_text, loc)) orelse return null;
+        const fact = (try self.wellKnownFact(name_text, loc)) orelse {
+            // the rule lemma is not imported into theory scope — record it so the
+            // certifier adapter can name it (vs the generic "out of scope").
+            self.arith_missing_lemma = name_text;
+            return null;
+        };
         const want = sourceStatementId(fact.source) orelse return null;
         for (rules, 0..) |r, i| {
             if (sourceStatementId(r.source)) |id| {
@@ -3035,7 +3049,10 @@ pub const Elaborator = struct {
         trace: *std.ArrayList(simplify_mod.Rewrite),
     ) ElabError!?TermId {
         const tail_pair = pos + 2 == order.len;
-        const rule_idx = (if (tail_pair) comm_idx else swap_idx) orelse return null;
+        const rule_idx = (if (tail_pair) comm_idx else swap_idx) orelse {
+            self.arith_missing_lemma = if (tail_pair) "addIsCommutative" else "addLeftSwap";
+            return null;
+        };
         const sub_before = (try self.buildComb(symbols, order[pos..])) orelse return null;
         std.mem.swap(TermId, &order[pos], &order[pos + 1]);
         const sub_after = (try self.buildComb(symbols, order[pos..])) orelse return null;

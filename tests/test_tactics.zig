@@ -416,6 +416,20 @@ pub fn addTests(
     // equation certifier must cancel a with neg(a) (a `neg`-leaf tower).
     ctx.okSilent(&.{ "check", "tests/cases/arithmetic_cert_neg_cancel.bpa" });
 
+    // diagnostic: the SAME goal with `addLeftSwap` omitted from scope must report
+    // the specific missing rewrite lemma ("theory lacks lemma 'addLeftSwap'"), not
+    // the generic "form not in certification scope" (which reads as "wrong shape"
+    // and hides the one-alias fix). Guards the equation certifier's decline reason.
+    ctx.fail(
+        &.{ "check", "tests/cases/arithmetic_missing_lemma_diagnostic.bpa" },
+        "tests/cases/arithmetic_missing_lemma_diagnostic.bpa:37:17: error: 'arithmetic' is valid but no certifier could prove it here:\n" ++
+            "  - equation/order/exists: theory lacks lemma 'addLeftSwap'\n" ++
+            "  - mixed-skeleton: form not in certification scope\n" ++
+            "  - farkas: theory lacks symbol 'less_than'\n" ++
+            "  - cooper: form not in certification scope\n" ++
+            "use --fast to accept the accelerated verdict\n",
+    );
+
     // opaque compound leaves: `add(f(x), sub(g(y), f(x))) = g(y)` — foreign
     // apps f(x)/g(y) ride the sorted-tower join as atoms and the f(x)/neg(f(x))
     // pair cancels (bubbled to the tail so addNeg matches an innermost subterm).

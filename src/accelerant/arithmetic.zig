@@ -566,7 +566,11 @@ const certifiers = [_]Certifier{
 /// is an "out of scope" decline (its internals resolve their own lemmas).
 fn equationCertifier(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim, symbols: presburger_mod.Symbols, loc: u32) ElabError!Outcome {
     _ = loc;
+    self.arith_missing_lemma = null;
     if (try arithmeticCertificate(self, low, block_id, goal, c, symbols)) |just| return .{ .certified = just };
+    // if the decline was specifically a rewrite rule not imported into scope,
+    // name it (a one-alias fix) rather than the generic "not my shape".
+    if (self.arith_missing_lemma) |name| return .{ .declined = .{ .missing_lemma = name } };
     return .{ .declined = .out_of_scope };
 }
 
