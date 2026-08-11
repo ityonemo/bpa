@@ -1999,9 +1999,6 @@ proof
         fix x: Int {
           @generalize-y |
             fix y: Int {
-              @difference-reaches |
-                forall w, z: Int; add(w, sub(z, w)) = z
-                [by theorem addDiffReaches]
               @addition-associates |
                 forall u, v, w: Int; add(add(u, v), w) = add(u, add(v, w))
                 [by theorem addIsAssociative]
@@ -2010,7 +2007,7 @@ proof
                 [by theorem addCancelLeft]
               @prefixed-larger-reaches |
                 add(add(p, y), sub(add(p, x), add(p, y))) = add(p, x)
-                [by forall_elim(add(p, y), add(p, x)) difference-reaches]
+                [by arithmetic]
               @prefixed-difference-associates |
                 add(add(p, y), sub(x, y)) = add(p, add(y, sub(x, y)))
                 [by forall_elim(p, y, sub(x, y)) addition-associates]
@@ -2558,9 +2555,6 @@ proof
               @b-positive |
                 less_than(ZERO, b)
                 [by hypothesis given-b-positive]
-              @difference-reaches |
-                forall w, z: Int; add(w, sub(z, w)) = z
-                [by theorem addDiffReaches]
               @negation-of-zero |
                 neg(ZERO) = ZERO
                 [by axiom negZero]
@@ -2796,7 +2790,7 @@ proof
                       // a = bq + rem, since bq + (a - bq) = a.
                       @bq-plus-difference-is-a |
                         add(mul(b, quot), sub(a, mul(b, quot))) = a
-                        [by forall_elim(mul(b, quot), a) difference-reaches]
+                        [by arithmetic]
                       @difference-is-remainder |
                         sub(a, mul(b, quot)) = rem
                         [by symmetry remainder-is-a-minus-bq]
@@ -3181,11 +3175,10 @@ proof
                           @gap-nonneg |
                             is_nonneg(mul(d, sub(k, ONE)))
                             [by specialize nonnegMul(d, sub(k, ONE)) d-nonneg k-minus-one-nonneg]
-                          // add(d, d·(k−1)) = d·(1 + (k−1)) = d·k = n. (ONE = succ(ZERO) as a
-                          // neg-subtrahend is outside the certifier's leaf shape, so keep the lemma.)
+                          // add(d, d·(k−1)) = d·(1 + (k−1)) = d·k = n.
                           @one-plus-k-minus-one-is-k |
                             add(ONE, sub(k, ONE)) = k
-                            [by specialize addDiffReaches(ONE, k)]
+                            [by arithmetic]
                           @d-times-one-plus-diff |
                             mul(d, add(ONE, sub(k, ONE))) = add(mul(d, ONE), mul(d, sub(k, ONE)))
                             [by specialize mulAddDistribLeft(d, ONE, sub(k, ONE))]
