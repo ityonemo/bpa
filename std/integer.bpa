@@ -2720,3 +2720,25 @@ proof
     forall a, b: Int; add(a, sub(b, a)) = b
     [by forall_intro generalize-a]
 qed
+
+// sub(add(a, b), b) = a: adding then subtracting the same value cancels. A pure
+// linear ℤ identity — the `arithmetic` accelerant discharges it directly (it
+// knows sub = add(·, neg ·)).
+theorem subOfAddCancel: forall a, b: Int; sub(add(a, b), b) = a
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @conclusion-cancel |
+            sub(add(a, b), b) = a
+            [by arithmetic]
+        }
+      @discharge-b |
+        forall b: Int; sub(add(a, b), b) = a
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Int; sub(add(a, b), b) = a
+    [by forall_intro generalize-a]
+qed

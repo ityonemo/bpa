@@ -12,10 +12,16 @@
 //     Principle of Well-Ordering on S = { a − bk : k ∈ ℤ, a − bk ≥ 0 }; its least
 //     member is the remainder. Uniqueness (divisionAlgorithmUnique) from
 //     b | (r' − r) with |r' − r| < b forcing r' = r.
-//   - GCD + BÉZOUT: no `gcd` function — the gcd is CHARACTERIZED by its defining
-//     properties (a positive common divisor divisible by every common divisor,
-//     and an integer combination ar + bs): the existence-form GCD (`bezout`) and
-//     its coprime specialization (`coprimeBezout`, the engine of Euclid's Lemma).
+//   - GCD, two coexisting developments. (1) The existence-form / BÉZOUT gcd,
+//     CHARACTERIZED by its defining properties (a positive common divisor
+//     divisible by every common divisor, and an integer combination ar + bs):
+//     `bezout` and its coprime specialization `coprimeBezout` (the engine of
+//     Euclid's Lemma). (2) The CONCRETE Euclidean `gcd` function (`gcdZero` /
+//     `gcdStep` / `gcdAbs`, with `abs` for sign-normalization), proved correct
+//     for ALL integers — `gcdDividesBoth` (it is a common divisor) and
+//     `gcdGreatest` (every common divisor divides it) — by strong induction on
+//     the decreasing modulus over the nonneg core, then lifted past negative b
+//     via `abs`. The two developments are independent.
 //
 // The AATA transliteration (aata/2.3-primes.md) proves the gcd theory INLINE for
 // Judson pedagogy; per the import-horizon rule the two homes stay independent.
@@ -158,6 +164,7 @@ theorem lessOrEqualSplit = order.lessOrEqualSplit
 theorem mulNegRight = ring.mulNegRight
 theorem addDiffReaches = order.addDiffReaches
 theorem subAddCancel = order.subAddCancel
+theorem subOfAddCancel = integer.subOfAddCancel
 theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
 theorem mulIsCommutative = order.mulIsCommutative
@@ -2950,6 +2957,21 @@ proof
     [by forall_intro generalize-a]
 qed
 
+// -- guarded Euclidean division (native port of the ℕ development) ----------
+//
+// div(a, b) / mod(a, b) are the quotient and remainder for a POSITIVE divisor
+// b > 0: the uninterpreted funcs are pinned by divModProperty (b·q + r = a),
+// modBound (r < b) and modNonneg (0 ≤ r) — exactly the data divisionAlgorithm-
+// Exists supplies, so the axioms are consistent. (ℕ posits the analogous
+// divModProperty/modBound as axioms too; the extra modNonneg is what ℕ gets for
+// free from every Nat being ≥ 0.)
+
+func div(a: Int, b: Int): Int requires less_than(ZERO, b)
+func mod(a: Int, b: Int): Int requires less_than(ZERO, b)
+axiom divModProperty: forall b, a: Int; less_than(ZERO, b) -> add(mul(b, div(a, b)), mod(a, b)) = a
+axiom modBound: forall b, a: Int; less_than(ZERO, b) -> less_than(mod(a, b), b)
+axiom modNonneg: forall b, a: Int; less_than(ZERO, b) -> is_nonneg(mod(a, b))
+
 // -- moved from the sequence/prime chapter: subtraction + divisor bounds ---
 
 // d | a and d | b give d | (a − b): d | (−b) because −b = mul(b, −1) is a
@@ -3255,6 +3277,1389 @@ proof
   @conclusion |
     forall n, d, k: Int; n = mul(d, k) -> divides(d, n)
     [by forall_intro generalize-n]
+qed
+
+// -- absolute value + Euclidean-gcd supporting lemmas -----------------------
+
+// abs(n) = n on the nonneg cone, neg(n) on the negatives. Uninterpreted func
+// pinned by the two sign-guarded axioms; always nonneg (absNonneg). Sign-
+// normalizes the divisor so the concrete gcd extends past the positive core.
+func abs(n: Int): Int
+axiom absOfNonneg: forall n: Int; is_nonneg(n) -> abs(n) = n
+axiom absOfNegative: forall n: Int; less_than(n, ZERO) -> abs(n) = neg(n)
+
+// abs(n) is nonneg for every n: signTrichotomy splits n; on the positive and
+// zero arms abs(n) = n is nonneg, on the negative arm abs(n) = neg(n) is nonneg
+// by negLessThanZero.
+theorem absNonneg: forall n: Int; is_nonneg(abs(n))
+proof
+  @generalize-n |
+    fix n: Int {
+      @sign-cases |
+        less_than(ZERO, n) or n = ZERO or less_than(n, ZERO)
+        [by specialize signTrichotomy(n)]
+      @abs-is-nonneg |
+        is_nonneg(abs(n))
+        case sign-cases {
+          @when-positive |
+            assume less_than(ZERO, n) {
+              @n-positive |
+                less_than(ZERO, n)
+                [by hypothesis when-positive]
+              @n-nonneg |
+                is_nonneg(n)
+                [by specialize positiveIsNonneg(n) n-positive]
+              @abs-is-n |
+                abs(n) = n
+                [by specialize absOfNonneg(n) n-nonneg]
+              @n-is-abs |
+                n = abs(n)
+                [by symmetry abs-is-n]
+              @abs-nonneg-positive |
+                is_nonneg(abs(n))
+                [by rewrite n-is-abs n-nonneg]
+            }
+          @when-zero |
+            assume n = ZERO {
+              @n-is-zero |
+                n = ZERO
+                [by hypothesis when-zero]
+              @zero-is-n |
+                ZERO = n
+                [by symmetry n-is-zero]
+              @zero-nonneg |
+                is_nonneg(ZERO)
+                [by axiom nonnegZero]
+              @n-nonneg |
+                is_nonneg(n)
+                [by rewrite zero-is-n zero-nonneg]
+              @abs-is-n |
+                abs(n) = n
+                [by specialize absOfNonneg(n) n-nonneg]
+              @n-is-abs |
+                n = abs(n)
+                [by symmetry abs-is-n]
+              @abs-nonneg-zero |
+                is_nonneg(abs(n))
+                [by rewrite n-is-abs n-nonneg]
+            }
+          @when-negative |
+            assume less_than(n, ZERO) {
+              @n-negative |
+                less_than(n, ZERO)
+                [by hypothesis when-negative]
+              @neg-n-nonneg |
+                is_nonneg(neg(n))
+                [by specialize negLessThanZero(n) n-negative]
+              @abs-is-neg-n |
+                abs(n) = neg(n)
+                [by specialize absOfNegative(n) n-negative]
+              @neg-n-is-abs |
+                neg(n) = abs(n)
+                [by symmetry abs-is-neg-n]
+              @abs-nonneg-negative |
+                is_nonneg(abs(n))
+                [by rewrite neg-n-is-abs neg-n-nonneg]
+            }
+        }
+    }
+  @conclusion |
+    forall n: Int; is_nonneg(abs(n))
+    [by forall_intro generalize-n]
+qed
+
+// The successor of a nonneg integer is positive: 0 + succ(m) = succ(m) with m
+// nonneg witnesses the strict order 0 < succ(m) via lessThanIntro.
+theorem succOfNonnegIsPositive: forall m: Int; is_nonneg(m) -> less_than(ZERO, succ(m))
+proof
+  @generalize-m |
+    fix m: Int {
+      @given-m-nonneg |
+        assume is_nonneg(m) {
+          @m-nonneg |
+            is_nonneg(m)
+            [by hypothesis given-m-nonneg]
+          @zero-prefix-is-succ |
+            add(ZERO, succ(m)) = succ(m)
+            [by specialize integer.addZeroLeft(succ(m))]
+          @strict-gap-witnesses-order |
+            forall a, d, b: Int; is_nonneg(d) -> add(a, succ(d)) = b -> less_than(a, b)
+            [by axiom lessThanIntro]
+          @gap-gives-order |
+            is_nonneg(m) -> add(ZERO, succ(m)) = succ(m) -> less_than(ZERO, succ(m))
+            [by forall_elim(ZERO, m, succ(m)) strict-gap-witnesses-order]
+          @zero-less-than-succ |
+            less_than(ZERO, succ(m))
+            [by tautology gap-gives-order m-nonneg zero-prefix-is-succ]
+        }
+      @nonneg-implies-succ-positive |
+        is_nonneg(m) -> less_than(ZERO, succ(m))
+        [by implies_intro given-m-nonneg]
+    }
+  @conclusion |
+    forall m: Int; is_nonneg(m) -> less_than(ZERO, succ(m))
+    [by forall_intro generalize-m]
+qed
+
+// d | 0 for every d, witnessed by 0: 0 = d·0.
+theorem dividesZero: forall d: Int; divides(d, ZERO)
+proof
+  @generalize-d |
+    fix d: Int {
+      @d-times-zero-is-zero |
+        mul(d, ZERO) = ZERO
+        [by specialize mulZeroRight(d)]
+      @zero-is-d-times-zero |
+        ZERO = mul(d, ZERO)
+        [by symmetry d-times-zero-is-zero]
+      @d-divides-zero |
+        divides(d, ZERO)
+        [by specialize dividesIntro(ZERO, d, ZERO) zero-is-d-times-zero]
+    }
+  @conclusion |
+    forall d: Int; divides(d, ZERO)
+    [by forall_intro generalize-d]
+qed
+
+// d | n iff d | neg(n): neg preserves the multiple structure both ways. Forward,
+// a witness n = d·k gives neg(n) = neg(d·k) = d·neg(k) (mulNegRight). Backward,
+// from neg(n) = d·j: neg(neg(n)) = d·neg(j), and neg(neg(n)) = n (negNeg).
+theorem dividesNeg: forall d, n: Int; divides(d, n) iff divides(d, neg(n))
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-n |
+        fix n: Int {
+          @when-divides-n |
+            assume divides(d, n) {
+              @multiple-exists |
+                exists k: Int; n = mul(d, k)
+                [by hypothesis when-divides-n]
+              @with-quotient-k |
+                unpack k: Int from multiple-exists {
+                  @n-is-multiple |
+                    n = mul(d, k)
+                    [by hypothesis with-quotient-k]
+                  // neg(n) = neg(d·k) = d·(neg k): mulNegRight commuted, then
+                  // rewrite the multiple in for n.
+                  @d-times-neg-k |
+                    mul(d, neg(k)) = neg(mul(d, k))
+                    [by specialize mulNegRight(d, k)]
+                  @neg-multiple-is-d-times-neg-k |
+                    neg(mul(d, k)) = mul(d, neg(k))
+                    [by symmetry d-times-neg-k]
+                  @neg-n-is-d-times-neg-k |
+                    neg(n) = mul(d, neg(k))
+                    [by simplify n-is-multiple neg-multiple-is-d-times-neg-k]
+                  @d-divides-neg-n |
+                    divides(d, neg(n))
+                    [by specialize dividesIntro(neg(n), d, neg(k)) neg-n-is-d-times-neg-k]
+                }
+              @d-divides-neg-n-discharged |
+                divides(d, neg(n))
+                [by exists_elim with-quotient-k]
+            }
+          @divides-n-implies-divides-neg-n |
+            divides(d, n) -> divides(d, neg(n))
+            [by implies_intro when-divides-n]
+          @when-divides-neg-n |
+            assume divides(d, neg(n)) {
+              @neg-multiple-exists |
+                exists j: Int; neg(n) = mul(d, j)
+                [by hypothesis when-divides-neg-n]
+              @with-quotient-j |
+                unpack j: Int from neg-multiple-exists {
+                  @neg-n-is-multiple |
+                    neg(n) = mul(d, j)
+                    [by hypothesis with-quotient-j]
+                  @neg-neg-n-is-n |
+                    neg(neg(n)) = n
+                    [by specialize negNeg(n)]
+                  @n-is-neg-neg-n |
+                    n = neg(neg(n))
+                    [by symmetry neg-neg-n-is-n]
+                  // neg(neg n) = neg(d·j) since neg(n) = d·j (congruence under neg).
+                  @neg-neg-n-is-neg-multiple |
+                    neg(neg(n)) = neg(mul(d, j))
+                    [by chain neg-n-is-multiple]
+                  @d-times-neg-j |
+                    mul(d, neg(j)) = neg(mul(d, j))
+                    [by specialize mulNegRight(d, j)]
+                  @neg-multiple-is-d-times-neg-j |
+                    neg(mul(d, j)) = mul(d, neg(j))
+                    [by symmetry d-times-neg-j]
+                  // n = neg(neg n) = neg(d·j) = d·(neg j).
+                  @n-is-d-times-neg-j |
+                    n = mul(d, neg(j))
+                    [by chain n-is-neg-neg-n neg-neg-n-is-neg-multiple neg-multiple-is-d-times-neg-j]
+                  @d-divides-n |
+                    divides(d, n)
+                    [by specialize dividesIntro(n, d, neg(j)) n-is-d-times-neg-j]
+                }
+              @d-divides-n-discharged |
+                divides(d, n)
+                [by exists_elim with-quotient-j]
+            }
+          @divides-neg-n-implies-divides-n |
+            divides(d, neg(n)) -> divides(d, n)
+            [by implies_intro when-divides-neg-n]
+          @divides-neg-both-ways |
+            divides(d, n) iff divides(d, neg(n))
+            [by iff_intro divides-n-implies-divides-neg-n divides-neg-n-implies-divides-n]
+        }
+      @discharge-n |
+        forall n: Int; divides(d, n) iff divides(d, neg(n))
+        [by forall_intro generalize-n]
+    }
+  @conclusion |
+    forall d, n: Int; divides(d, n) iff divides(d, neg(n))
+    [by forall_intro generalize-d]
+qed
+
+// d | n iff d | abs(n): on the nonneg arms abs(n) = n so the biconditional is
+// reflexive; on the negative arm abs(n) = neg(n), closed by dividesNeg.
+theorem dividesAbs: forall d, n: Int; divides(d, n) iff divides(d, abs(n))
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-n |
+        fix n: Int {
+          @sign-cases |
+            less_than(ZERO, n) or n = ZERO or less_than(n, ZERO)
+            [by specialize signTrichotomy(n)]
+          @divides-abs-both-ways |
+            divides(d, n) iff divides(d, abs(n))
+            case sign-cases {
+              @when-positive |
+                assume less_than(ZERO, n) {
+                  @n-positive |
+                    less_than(ZERO, n)
+                    [by hypothesis when-positive]
+                  @n-nonneg |
+                    is_nonneg(n)
+                    [by specialize positiveIsNonneg(n) n-positive]
+                  @abs-is-n |
+                    abs(n) = n
+                    [by specialize absOfNonneg(n) n-nonneg]
+                  @n-is-abs |
+                    n = abs(n)
+                    [by symmetry abs-is-n]
+                  @divides-n-iff-n |
+                    divides(d, n) iff divides(d, n)
+                    [by tautology]
+                  @divides-abs-positive |
+                    divides(d, n) iff divides(d, abs(n))
+                    [by rewrite n-is-abs divides-n-iff-n]
+                }
+              @when-zero |
+                assume n = ZERO {
+                  @n-is-zero |
+                    n = ZERO
+                    [by hypothesis when-zero]
+                  @zero-is-n |
+                    ZERO = n
+                    [by symmetry n-is-zero]
+                  @zero-nonneg |
+                    is_nonneg(ZERO)
+                    [by axiom nonnegZero]
+                  @n-nonneg |
+                    is_nonneg(n)
+                    [by rewrite zero-is-n zero-nonneg]
+                  @abs-is-n |
+                    abs(n) = n
+                    [by specialize absOfNonneg(n) n-nonneg]
+                  @n-is-abs |
+                    n = abs(n)
+                    [by symmetry abs-is-n]
+                  @divides-n-iff-n |
+                    divides(d, n) iff divides(d, n)
+                    [by tautology]
+                  @divides-abs-zero |
+                    divides(d, n) iff divides(d, abs(n))
+                    [by rewrite n-is-abs divides-n-iff-n]
+                }
+              @when-negative |
+                assume less_than(n, ZERO) {
+                  @n-negative |
+                    less_than(n, ZERO)
+                    [by hypothesis when-negative]
+                  @abs-is-neg-n |
+                    abs(n) = neg(n)
+                    [by specialize absOfNegative(n) n-negative]
+                  @neg-n-is-abs |
+                    neg(n) = abs(n)
+                    [by symmetry abs-is-neg-n]
+                  @divides-n-iff-neg-n |
+                    divides(d, n) iff divides(d, neg(n))
+                    [by specialize dividesNeg(d, n)]
+                  @divides-abs-negative |
+                    divides(d, n) iff divides(d, abs(n))
+                    [by rewrite neg-n-is-abs divides-n-iff-neg-n]
+                }
+            }
+        }
+      @discharge-n |
+        forall n: Int; divides(d, n) iff divides(d, abs(n))
+        [by forall_intro generalize-n]
+    }
+  @conclusion |
+    forall d, n: Int; divides(d, n) iff divides(d, abs(n))
+    [by forall_intro generalize-d]
+qed
+
+// -- the gcd bridge: d | b -> (d | a iff d | mod(a, b)) ---------------------
+//
+// For b > 0 with d | b: writing q = div(a,b), r = mod(a,b), divModProperty gives
+// b·q + r = a, so r = a − b·q [subAddCancel] and a = b·q + r. d | b -> d | b·q
+// [dividesMul]. Forward: d|a, d|b·q -> d|r [dividesSubtracts on r = a − b·q].
+// Backward: d|b·q, d|r -> d|a [dividesAdd on a = b·q + r].
+theorem dividesModStep: forall b, d, a: Int; less_than(ZERO, b) -> divides(d, b) ->
+  (divides(d, a) iff divides(d, mod(a, b)))
+proof
+  @generalize-b |
+    fix b: Int {
+      @generalize-d |
+        fix d: Int {
+          @generalize-a |
+            fix a: Int {
+              @given-b-positive |
+                assume less_than(ZERO, b) {
+                  @given-d-divides-b |
+                    assume divides(d, b) {
+                      @b-positive |
+                        less_than(ZERO, b)
+                        [by hypothesis given-b-positive]
+                      @d-divides-b |
+                        divides(d, b)
+                        [by hypothesis given-d-divides-b]
+                      @a-decomposes |
+                        add(mul(b, div(a, b)), mod(a, b)) = a
+                        [by specialize divModProperty(b, a) b-positive]
+                      @d-divides-b-times-quotient |
+                        divides(d, mul(b, div(a, b)))
+                        [by specialize dividesMul(d, b, div(a, b)) d-divides-b]
+                      @decomposition-commutes |
+                        add(mul(b, div(a, b)), mod(a, b)) = add(mod(a, b), mul(b, div(a, b)))
+                        [by specialize addIsCommutative(mul(b, div(a, b)), mod(a, b))]
+                      @a-is-decomposition |
+                        a = add(mul(b, div(a, b)), mod(a, b))
+                        [by symmetry a-decomposes]
+                      @a-is-remainder-plus-multiple |
+                        a = add(mod(a, b), mul(b, div(a, b)))
+                        [by rewrite decomposition-commutes a-is-decomposition]
+                      // r = a − b·q: with a = r + b·q, this is add-then-sub
+                      // cancellation, sub(add(r, b·q), b·q) = r.
+                      @cancel-multiple |
+                        sub(add(mod(a, b), mul(b, div(a, b))), mul(b, div(a, b))) = mod(a, b)
+                        [by specialize subOfAddCancel(mod(a, b), mul(b, div(a, b)))]
+                      @remainder-plus-multiple-is-a |
+                        add(mod(a, b), mul(b, div(a, b))) = a
+                        [by symmetry a-is-remainder-plus-multiple]
+                      @remainder-is-a-minus-multiple |
+                        sub(a, mul(b, div(a, b))) = mod(a, b)
+                        [by rewrite remainder-plus-multiple-is-a cancel-multiple]
+
+                      // FORWARD: d|a -> d|r.  d|a, d|b·q -> d|(a − b·q) = d|r.
+                      @when-d-divides-a |
+                        assume divides(d, a) {
+                          @d-divides-a |
+                            divides(d, a)
+                            [by hypothesis when-d-divides-a]
+                          @d-divides-a-minus-multiple |
+                            divides(d, sub(a, mul(b, div(a, b))))
+                            [by specialize dividesSubtracts(d, a, mul(b, div(a, b))) d-divides-a d-divides-b-times-quotient]
+                          @d-divides-remainder |
+                            divides(d, mod(a, b))
+                            [by rewrite remainder-is-a-minus-multiple d-divides-a-minus-multiple]
+                        }
+                      @dividing-a-implies-dividing-remainder |
+                        divides(d, a) -> divides(d, mod(a, b))
+                        [by implies_intro when-d-divides-a]
+
+                      // BACKWARD: d|r -> d|a.  d|b·q, d|r -> d|(b·q + r) = d|a.
+                      @when-d-divides-remainder |
+                        assume divides(d, mod(a, b)) {
+                          @d-divides-remainder |
+                            divides(d, mod(a, b))
+                            [by hypothesis when-d-divides-remainder]
+                          @d-divides-multiple-plus-remainder |
+                            divides(d, add(mul(b, div(a, b)), mod(a, b)))
+                            [by specialize dividesAdd(d, mul(b, div(a, b)), mod(a, b)) d-divides-b-times-quotient d-divides-remainder]
+                          @d-divides-a |
+                            divides(d, a)
+                            [by rewrite a-decomposes d-divides-multiple-plus-remainder]
+                        }
+                      @dividing-remainder-implies-dividing-a |
+                        divides(d, mod(a, b)) -> divides(d, a)
+                        [by implies_intro when-d-divides-remainder]
+
+                      @divisibility-transfers-both-ways |
+                        divides(d, a) iff divides(d, mod(a, b))
+                        [by iff_intro dividing-a-implies-dividing-remainder dividing-remainder-implies-dividing-a]
+                    }
+                  @dividing-b-implies-transfer |
+                    divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
+                    [by implies_intro given-d-divides-b]
+                }
+              @positive-implies-transfer |
+                less_than(ZERO, b) -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
+                [by implies_intro given-b-positive]
+            }
+          @discharge-a |
+            forall a: Int; less_than(ZERO, b) -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
+            [by forall_intro generalize-a]
+        }
+      @discharge-d |
+        forall d, a: Int; less_than(ZERO, b) -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
+        [by forall_intro generalize-d]
+    }
+  @conclusion |
+    forall b, d, a: Int; less_than(ZERO, b) -> divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
+    [by forall_intro generalize-b]
+qed
+
+// -- remainder uniqueness (modIntro) ----------------------------------------
+//
+// quotientCannotBeLess: a strictly larger quotient overshoots the remainder
+// bound. If q1 < q2, the gap contributes a full extra b to the r1 side, forcing
+// r1 ≥ b — contradicting r1 < b. (ℤ port: r2 must be given nonneg, since the
+// final contradiction — add(b·k, r2) can't be < 0 — needs add(b·k, r2) ≥ 0,
+// which ℕ gets for free but ℤ derives from nonneg(b·k) [b>0, k≥0] and nonneg r2.)
+theorem quotientCannotBeLess: forall b, r1, q1, q2, r2: Int;
+  less_than(ZERO, b) -> less_than(r1, b) -> is_nonneg(r2) ->
+  add(mul(b, q1), r1) = add(mul(b, q2), r2) ->
+  (not less_than(q1, q2))
+proof
+  @generalize-b |
+    fix b: Int {
+      @generalize-r1 |
+        fix r1: Int {
+          @generalize-q1 |
+            fix q1: Int {
+              @generalize-q2 |
+                fix q2: Int {
+                  @generalize-r2 |
+                    fix r2: Int {
+                      @given-b-positive |
+                        assume less_than(ZERO, b) {
+                          @given-r1-below-b |
+                            assume less_than(r1, b) {
+                              @given-r2-nonneg |
+                                assume is_nonneg(r2) {
+                                  @given-decompositions-equal |
+                                    assume add(mul(b, q1), r1) = add(mul(b, q2), r2) {
+                                      @given-q1-below-q2 |
+                                        assume less_than(q1, q2) {
+                                          @decompositions-equal |
+                                            add(mul(b, q1), r1) = add(mul(b, q2), r2)
+                                            [by hypothesis given-decompositions-equal]
+                                          @q1-below-q2 |
+                                            less_than(q1, q2)
+                                            [by hypothesis given-q1-below-q2]
+                                          @b-positive |
+                                            less_than(ZERO, b)
+                                            [by hypothesis given-b-positive]
+                                          @b-nonneg |
+                                            is_nonneg(b)
+                                            [by specialize positiveIsNonneg(b) b-positive]
+                                          @r1-below-b-restated |
+                                            less_than(r1, b)
+                                            [by hypothesis given-r1-below-b]
+                                          @r2-nonneg |
+                                            is_nonneg(r2)
+                                            [by hypothesis given-r2-nonneg]
+                                          // q1 < q2 -> exists k: nonneg(k) and add(q1, succ(k)) = q2
+                                          @gap-exists |
+                                            exists w: Int; is_nonneg(w) and add(q1, succ(w)) = q2
+                                            [by specialize lessThanElim(q1, q2) q1-below-q2]
+                                          @with-gap-k |
+                                            unpack k: Int from gap-exists {
+                                              @gap-facts |
+                                                is_nonneg(k) and add(q1, succ(k)) = q2
+                                                [by hypothesis with-gap-k]
+                                              @k-nonneg |
+                                                is_nonneg(k)
+                                                [by and_elim_left gap-facts]
+                                              @q2-is-q1-plus-successor-gap |
+                                                add(q1, succ(k)) = q2
+                                                [by and_elim_right gap-facts]
+                                              @q2-as-gap-sum |
+                                                q2 = add(q1, succ(k))
+                                                [by symmetry q2-is-q1-plus-successor-gap]
+                                              // expand mul(b, q2) over the gap: distribute, then mulSuccRight.
+                                              @b-times-q2-includes-a-full-b |
+                                                mul(b, q2) = add(mul(b, q1), add(mul(b, k), b))
+                                                [by simplify q2-as-gap-sum mulAddDistribLeft mulSuccRight]
+                                              // b·q1 + r1 = b·q2 + r2 = (b·q1 + (b·k + b)) + r2.
+                                              // Reassociate to pull out the common b·q1 prefix, then
+                                              // cancel it: r1 = (b·k + b) + r2.
+                                              @rhs-with-full-b |
+                                                add(mul(b, q2), r2) = add(add(mul(b, q1), add(mul(b, k), b)), r2)
+                                                [by rewrite b-times-q2-includes-a-full-b decompositions-equal-refl]
+                                              @decompositions-equal-refl |
+                                                add(mul(b, q2), r2) = add(mul(b, q2), r2)
+                                                [by reflexivity]
+                                              @rhs-reassociates |
+                                                add(add(mul(b, q1), add(mul(b, k), b)), r2) = add(mul(b, q1), add(add(mul(b, k), b), r2))
+                                                [by specialize addIsAssociative(mul(b, q1), add(mul(b, k), b), r2)]
+                                              @common-prefix |
+                                                add(mul(b, q1), r1) = add(mul(b, q1), add(add(mul(b, k), b), r2))
+                                                [by chain decompositions-equal rhs-with-full-b rhs-reassociates]
+                                              @cancel-prefix |
+                                                add(mul(b, q1), r1) = add(mul(b, q1), add(add(mul(b, k), b), r2)) -> r1 = add(add(mul(b, k), b), r2)
+                                                [by specialize addCancelLeft(mul(b, q1), r1, add(add(mul(b, k), b), r2))]
+                                              @r1-equals-gap-plus-r2 |
+                                                r1 = add(add(mul(b, k), b), r2)
+                                                [by modus_ponens cancel-prefix common-prefix]
+                                              // rearrange (b·k + b) + r2 to b + (b·k + r2):
+                                              // (b·k + b) = (b + b·k) [comm], reassociate with r2.
+                                              @gap-base-commutes |
+                                                add(mul(b, k), b) = add(b, mul(b, k))
+                                                [by specialize addIsCommutative(mul(b, k), b)]
+                                              @gap-base-reassociates |
+                                                add(add(b, mul(b, k)), r2) = add(b, add(mul(b, k), r2))
+                                                [by specialize addIsAssociative(b, mul(b, k), r2)]
+                                              @r1-is-b-plus-remainder |
+                                                r1 = add(b, add(mul(b, k), r2))
+                                                [by chain r1-equals-gap-plus-r2 gap-base-commutes gap-base-reassociates]
+                                              // less_than(r1, b) with r1 = b + Y: rewrite b as b + 0
+                                              // on the right, then cancel the b, giving Y < 0.
+                                              @b-plus-remainder-below-b |
+                                                less_than(add(b, add(mul(b, k), r2)), b)
+                                                [by rewrite r1-is-b-plus-remainder r1-below-b-restated]
+                                              @b-equals-b-plus-zero |
+                                                add(b, ZERO) = b
+                                                [by specialize addZeroRight(b)]
+                                              @b-as-b-plus-zero |
+                                                b = add(b, ZERO)
+                                                [by symmetry b-equals-b-plus-zero]
+                                              @b-plus-remainder-below-b-plus-zero |
+                                                less_than(add(b, add(mul(b, k), r2)), add(b, ZERO))
+                                                [by rewrite b-as-b-plus-zero b-plus-remainder-below-b]
+                                              @remainder-below-zero |
+                                                less_than(add(mul(b, k), r2), ZERO)
+                                                [by specialize lessThanAddCancelLeft(b, add(mul(b, k), r2), ZERO) b-plus-remainder-below-b-plus-zero]
+                                              // but b·k + r2 ≥ 0: b>0 and k≥0 give b·k≥0, plus r2≥0.
+                                              @b-times-k-nonneg |
+                                                is_nonneg(mul(b, k))
+                                                [by specialize productOfNonnegativesIsNonneg(b, k) b-nonneg k-nonneg]
+                                              @remainder-nonneg |
+                                                is_nonneg(add(mul(b, k), r2))
+                                                [by specialize nonnegAdd(mul(b, k), r2) b-times-k-nonneg r2-nonneg]
+                                              @remainder-not-below-zero |
+                                                not less_than(add(mul(b, k), r2), ZERO)
+                                                [by specialize nonnegNotLessThanZero(add(mul(b, k), r2)) remainder-nonneg]
+                                              @contradiction |
+                                                not less_than(q1, q2)
+                                                [by absurd remainder-below-zero remainder-not-below-zero]
+                                            }
+                                          @not-below-discharged |
+                                            not less_than(q1, q2)
+                                            [by exists_elim with-gap-k]
+                                          @q1-below-q2-restated |
+                                            less_than(q1, q2)
+                                            [by hypothesis given-q1-below-q2]
+                                        }
+                                      @q1-not-below-q2 |
+                                        not less_than(q1, q2)
+                                        [by not_intro given-q1-below-q2 q1-below-q2-restated not-below-discharged]
+                                    }
+                                  @equal-forces-not-below |
+                                    add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+                                    [by implies_intro given-decompositions-equal]
+                                }
+                              @r2-nonneg-forces-not-below |
+                                is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+                                [by implies_intro given-r2-nonneg]
+                            }
+                          @r1-below-forces-not-below |
+                            less_than(r1, b) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+                            [by implies_intro given-r1-below-b]
+                        }
+                      @positive-forces-not-below |
+                        less_than(ZERO, b) -> less_than(r1, b) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+                        [by implies_intro given-b-positive]
+                    }
+                  @discharge-r2 |
+                    forall r2: Int; less_than(ZERO, b) -> less_than(r1, b) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+                    [by forall_intro generalize-r2]
+                }
+              @discharge-q2 |
+                forall q2, r2: Int; less_than(ZERO, b) -> less_than(r1, b) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+                [by forall_intro generalize-q2]
+            }
+          @discharge-q1 |
+            forall q1, q2, r2: Int; less_than(ZERO, b) -> less_than(r1, b) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+            [by forall_intro generalize-q1]
+        }
+      @discharge-r1 |
+        forall r1, q1, q2, r2: Int; less_than(ZERO, b) -> less_than(r1, b) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+        [by forall_intro generalize-r1]
+    }
+  @conclusion |
+    forall b, r1, q1, q2, r2: Int; less_than(ZERO, b) -> less_than(r1, b) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> (not less_than(q1, q2))
+    [by forall_intro generalize-b]
+qed
+
+// With both r1, r2 in [0, b) neither quotient can be strictly less than the
+// other, so the quotients are equal. (ℤ: both remainders must be given nonneg,
+// since quotientCannotBeLess is applied with roles swapped.)
+theorem quotientUnique: forall b, r1, r2, q1, q2: Int;
+  less_than(ZERO, b) -> less_than(r1, b) -> less_than(r2, b) ->
+  is_nonneg(r1) -> is_nonneg(r2) ->
+  add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+proof
+  @generalize-b |
+    fix b: Int {
+      @generalize-r1 |
+        fix r1: Int {
+          @generalize-r2 |
+            fix r2: Int {
+              @generalize-q1 |
+                fix q1: Int {
+                  @generalize-q2 |
+                    fix q2: Int {
+                      @given-b-positive |
+                        assume less_than(ZERO, b) {
+                          @given-r1-below-b |
+                            assume less_than(r1, b) {
+                              @given-r2-below-b |
+                                assume less_than(r2, b) {
+                                  @given-r1-nonneg |
+                                    assume is_nonneg(r1) {
+                                      @given-r2-nonneg |
+                                        assume is_nonneg(r2) {
+                                          @given-decompositions-equal |
+                                            assume add(mul(b, q1), r1) = add(mul(b, q2), r2) {
+                                              @b-positive |
+                                                less_than(ZERO, b)
+                                                [by hypothesis given-b-positive]
+                                              @r1-below-b |
+                                                less_than(r1, b)
+                                                [by hypothesis given-r1-below-b]
+                                              @r2-below-b |
+                                                less_than(r2, b)
+                                                [by hypothesis given-r2-below-b]
+                                              @r1-nonneg |
+                                                is_nonneg(r1)
+                                                [by hypothesis given-r1-nonneg]
+                                              @r2-nonneg |
+                                                is_nonneg(r2)
+                                                [by hypothesis given-r2-nonneg]
+                                              @decompositions-equal |
+                                                add(mul(b, q1), r1) = add(mul(b, q2), r2)
+                                                [by hypothesis given-decompositions-equal]
+                                              // neither quotient can be strictly below the other.
+                                              @q1-not-below-q2 |
+                                                not less_than(q1, q2)
+                                                [by specialize quotientCannotBeLess(b, r1, q1, q2, r2) b-positive r1-below-b r2-nonneg decompositions-equal]
+                                              @decompositions-equal-flipped |
+                                                add(mul(b, q2), r2) = add(mul(b, q1), r1)
+                                                [by symmetry decompositions-equal]
+                                              @q2-not-below-q1 |
+                                                not less_than(q2, q1)
+                                                [by specialize quotientCannotBeLess(b, r2, q2, q1, r1) b-positive r2-below-b r1-nonneg decompositions-equal-flipped]
+                                              @q1-q2-trichotomy |
+                                                less_than(q1, q2) or q1 = q2 or less_than(q2, q1)
+                                                [by specialize trichotomy(q1, q2)]
+                                              @quotients-are-equal |
+                                                q1 = q2
+                                                case q1-q2-trichotomy {
+                                                  @when-q1-below-q2 |
+                                                    assume less_than(q1, q2) {
+                                                      @q1-below-q2 |
+                                                        less_than(q1, q2)
+                                                        [by hypothesis when-q1-below-q2]
+                                                      @equal-by-contradiction |
+                                                        q1 = q2
+                                                        [by absurd q1-below-q2 q1-not-below-q2]
+                                                    }
+                                                  @when-quotients-equal |
+                                                    assume q1 = q2 {
+                                                      @equal-directly |
+                                                        q1 = q2
+                                                        [by hypothesis when-quotients-equal]
+                                                    }
+                                                  @when-q2-below-q1 |
+                                                    assume less_than(q2, q1) {
+                                                      @q2-below-q1 |
+                                                        less_than(q2, q1)
+                                                        [by hypothesis when-q2-below-q1]
+                                                      @equal-by-reverse-contradiction |
+                                                        q1 = q2
+                                                        [by absurd q2-below-q1 q2-not-below-q1]
+                                                    }
+                                                }
+                                            }
+                                          @equal-forces-equal-quotients |
+                                            add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                                            [by implies_intro given-decompositions-equal]
+                                        }
+                                      @r2-nonneg-forces |
+                                        is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                                        [by implies_intro given-r2-nonneg]
+                                    }
+                                  @r1-nonneg-forces |
+                                    is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                                    [by implies_intro given-r1-nonneg]
+                                }
+                              @r2-below-forces |
+                                less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                                [by implies_intro given-r2-below-b]
+                            }
+                          @r1-below-forces |
+                            less_than(r1, b) -> less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                            [by implies_intro given-r1-below-b]
+                        }
+                      @positive-forces |
+                        less_than(ZERO, b) -> less_than(r1, b) -> less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                        [by implies_intro given-b-positive]
+                    }
+                  @discharge-q2 |
+                    forall q2: Int; less_than(ZERO, b) -> less_than(r1, b) -> less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                    [by forall_intro generalize-q2]
+                }
+              @discharge-q1 |
+                forall q1, q2: Int; less_than(ZERO, b) -> less_than(r1, b) -> less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+                [by forall_intro generalize-q1]
+            }
+          @discharge-r2 |
+            forall r2, q1, q2: Int; less_than(ZERO, b) -> less_than(r1, b) -> less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+            [by forall_intro generalize-r2]
+        }
+      @discharge-r1 |
+        forall r1, r2, q1, q2: Int; less_than(ZERO, b) -> less_than(r1, b) -> less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+        [by forall_intro generalize-r1]
+    }
+  @conclusion |
+    forall b, r1, r2, q1, q2: Int; less_than(ZERO, b) -> less_than(r1, b) -> less_than(r2, b) -> is_nonneg(r1) -> is_nonneg(r2) -> add(mul(b, q1), r1) = add(mul(b, q2), r2) -> q1 = q2
+    [by forall_intro generalize-b]
+qed
+
+// modIntro / remainder uniqueness: if you exhibit q, r with 0 ≤ r < b and
+// b·q + r = a, then mod(a, b) = r (and div = q en route).
+theorem modIntro: forall b, r, q, a: Int;
+  less_than(ZERO, b) -> less_than(r, b) -> is_nonneg(r) ->
+  add(mul(b, q), r) = a -> mod(a, b) = r
+proof
+  @generalize-b |
+    fix b: Int {
+      @generalize-r |
+        fix r: Int {
+          @generalize-q |
+            fix q: Int {
+              @generalize-a |
+                fix a: Int {
+                  @given-b-positive |
+                    assume less_than(ZERO, b) {
+                      @given-r-below-b |
+                        assume less_than(r, b) {
+                          @given-r-nonneg |
+                            assume is_nonneg(r) {
+                              @given-decomposition-equals-a |
+                                assume add(mul(b, q), r) = a {
+                                  @b-positive |
+                                    less_than(ZERO, b)
+                                    [by hypothesis given-b-positive]
+                                  @r-below-b |
+                                    less_than(r, b)
+                                    [by hypothesis given-r-below-b]
+                                  @r-nonneg |
+                                    is_nonneg(r)
+                                    [by hypothesis given-r-nonneg]
+                                  @decomposition-equals-a |
+                                    add(mul(b, q), r) = a
+                                    [by hypothesis given-decomposition-equals-a]
+                                  // the canonical decomposition: b·div(a,b) + mod(a,b) = a
+                                  @a-canonically-decomposes |
+                                    add(mul(b, div(a, b)), mod(a, b)) = a
+                                    [by specialize divModProperty(b, a) b-positive]
+                                  @canonical-remainder-below-b |
+                                    less_than(mod(a, b), b)
+                                    [by specialize modBound(b, a) b-positive]
+                                  @canonical-remainder-nonneg |
+                                    is_nonneg(mod(a, b))
+                                    [by specialize modNonneg(b, a) b-positive]
+                                  // equate the two decompositions.
+                                  @decompositions-agree |
+                                    add(mul(b, q), r) = add(mul(b, div(a, b)), mod(a, b))
+                                    [by chain decomposition-equals-a a-canonically-decomposes]
+                                  // quotientUnique gives q = div(a, b).
+                                  @quotient-equals-canonical |
+                                    q = div(a, b)
+                                    [by specialize quotientUnique(b, r, mod(a, b), q, div(a, b)) b-positive r-below-b canonical-remainder-below-b r-nonneg canonical-remainder-nonneg decompositions-agree]
+                                  // b·q + r = b·q + mod, cancel to r = mod.
+                                  @decompositions-share-multiple |
+                                    add(mul(b, q), r) = add(mul(b, q), mod(a, b))
+                                    [by chain decompositions-agree quotient-equals-canonical]
+                                  @cancel-multiple |
+                                    add(mul(b, q), r) = add(mul(b, q), mod(a, b)) -> r = mod(a, b)
+                                    [by specialize addCancelLeft(mul(b, q), r, mod(a, b))]
+                                  @r-equals-remainder |
+                                    r = mod(a, b)
+                                    [by modus_ponens cancel-multiple decompositions-share-multiple]
+                                  @remainder-equals-r |
+                                    mod(a, b) = r
+                                    [by symmetry r-equals-remainder]
+                                }
+                              @decomposition-determines-remainder |
+                                add(mul(b, q), r) = a -> mod(a, b) = r
+                                [by implies_intro given-decomposition-equals-a]
+                            }
+                          @nonneg-remainder-determines |
+                            is_nonneg(r) -> add(mul(b, q), r) = a -> mod(a, b) = r
+                            [by implies_intro given-r-nonneg]
+                        }
+                      @bounded-remainder-determines |
+                        less_than(r, b) -> is_nonneg(r) -> add(mul(b, q), r) = a -> mod(a, b) = r
+                        [by implies_intro given-r-below-b]
+                    }
+                  @positive-determines |
+                    less_than(ZERO, b) -> less_than(r, b) -> is_nonneg(r) -> add(mul(b, q), r) = a -> mod(a, b) = r
+                    [by implies_intro given-b-positive]
+                }
+              @discharge-a |
+                forall a: Int; less_than(ZERO, b) -> less_than(r, b) -> is_nonneg(r) -> add(mul(b, q), r) = a -> mod(a, b) = r
+                [by forall_intro generalize-a]
+            }
+          @discharge-q |
+            forall q, a: Int; less_than(ZERO, b) -> less_than(r, b) -> is_nonneg(r) -> add(mul(b, q), r) = a -> mod(a, b) = r
+            [by forall_intro generalize-q]
+        }
+      @discharge-r |
+        forall r, q, a: Int; less_than(ZERO, b) -> less_than(r, b) -> is_nonneg(r) -> add(mul(b, q), r) = a -> mod(a, b) = r
+        [by forall_intro generalize-r]
+    }
+  @conclusion |
+    forall b, r, q, a: Int; less_than(ZERO, b) -> less_than(r, b) -> is_nonneg(r) -> add(mul(b, q), r) = a -> mod(a, b) = r
+    [by forall_intro generalize-b]
+qed
+
+// -- the Euclidean algorithm (concrete gcd) ---------------------------------
+//
+// gcd(a, b) by the Euclidean recursion: gcd(a, 0) = a; gcd(a, b) = gcd(b, a mod b)
+// for b > 0. gcdAbs sign-normalizes the second argument so the recursion (which
+// only fires for b > 0) extends to all integers. Correctness is the pair
+// gcdDividesBoth (gcd is a common divisor) + gcdGreatest (every common divisor
+// divides it); both proved for nonneg b by strong induction on the DECREASING
+// modulus, then lifted to all b via abs.
+func gcd(a: Int, b: Int): Int
+axiom gcdZero: forall a: Int; gcd(a, ZERO) = a
+axiom gcdStep: forall b, a: Int; less_than(ZERO, b) -> gcd(a, b) = gcd(b, mod(a, b))
+axiom gcdAbs: forall b, a: Int; gcd(a, b) = gcd(a, abs(b))
+
+// gcd(a, b) divides both a and b, for nonneg b. Strong induction on b via
+// nonnegStrongInduction: base b = 0 uses gcdZero + dividesRefl/dividesZero; the
+// b = succ(m) arm recurses gcd(a, b) = gcd(b, mod(a,b)) [gcdStep], the modulus
+// is nonneg and below b [modBound/modNonneg] so the IH applies, and dividesModStep
+// carries divisibility of the modulus back to a.
+theorem gcdDividesBothNonneg: forall a, b: Int; is_nonneg(b) ->
+  (divides(gcd(a, b), a) and divides(gcd(a, b), b))
+proof
+  @induction-step |
+    fix b: Int {
+      @given-b-nonneg |
+        assume is_nonneg(b) {
+          @given-strong-inductive-hypothesis |
+            assume forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a: Int; divides(gcd(a, m), a) and divides(gcd(a, m), m)) {
+              @strong-inductive-hypothesis |
+                forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a: Int; divides(gcd(a, m), a) and divides(gcd(a, m), m))
+                [by hypothesis given-strong-inductive-hypothesis]
+              @b-nonneg |
+                is_nonneg(b)
+                [by hypothesis given-b-nonneg]
+              @generalize-a |
+                fix a: Int {
+                  @b-is-zero-or-successor |
+                    b = ZERO or (exists mm: Int; is_nonneg(mm) and b = succ(mm))
+                    [by specialize nonnegCases(b) b-nonneg]
+                  @when-b-is-zero |
+                    assume b = ZERO {
+                      @b-is-zero |
+                        b = ZERO
+                        [by hypothesis when-b-is-zero]
+                      @gcd-with-zero-is-itself |
+                        gcd(a, ZERO) = a
+                        [by specialize gcdZero(a)]
+                      @a-divides-a |
+                        divides(a, a)
+                        [by specialize dividesRefl(a)]
+                      @a-is-gcd-with-zero |
+                        a = gcd(a, ZERO)
+                        [by symmetry gcd-with-zero-is-itself]
+                      @gcd-divides-a |
+                        divides(gcd(a, ZERO), a)
+                        [by rewrite a-is-gcd-with-zero a-divides-a]
+                      @gcd-divides-zero |
+                        divides(gcd(a, ZERO), ZERO)
+                        [by specialize dividesZero(gcd(a, ZERO))]
+                      @zero-is-b |
+                        ZERO = b
+                        [by symmetry b-is-zero]
+                      @gcd-divides-a-at-b |
+                        divides(gcd(a, b), a)
+                        [by rewrite zero-is-b gcd-divides-a]
+                      @gcd-divides-b |
+                        divides(gcd(a, b), b)
+                        [by rewrite zero-is-b gcd-divides-zero]
+                      @gcd-divides-both-when-zero |
+                        divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                        [by and_intro gcd-divides-a-at-b gcd-divides-b]
+                    }
+                  @when-b-is-successor |
+                    assume exists mm: Int; is_nonneg(mm) and b = succ(mm) {
+                      @predecessor-exists |
+                        exists mm: Int; is_nonneg(mm) and b = succ(mm)
+                        [by hypothesis when-b-is-successor]
+                      @with-predecessor-bp |
+                        unpack bp: Int from predecessor-exists {
+                          @predecessor-facts |
+                            is_nonneg(bp) and b = succ(bp)
+                            [by hypothesis with-predecessor-bp]
+                          @bp-nonneg |
+                            is_nonneg(bp)
+                            [by and_elim_left predecessor-facts]
+                          @b-is-successor-of-bp |
+                            b = succ(bp)
+                            [by and_elim_right predecessor-facts]
+                          @successor-bp-positive |
+                            less_than(ZERO, succ(bp))
+                            [by specialize succOfNonnegIsPositive(bp) bp-nonneg]
+                          @successor-bp-is-b |
+                            succ(bp) = b
+                            [by symmetry b-is-successor-of-bp]
+                          @b-is-positive |
+                            less_than(ZERO, b)
+                            [by rewrite successor-bp-is-b successor-bp-positive]
+                          @gcd-recurses |
+                            gcd(a, b) = gcd(b, mod(a, b))
+                            [by specialize gcdStep(b, a) b-is-positive]
+                          @mod-is-below-b |
+                            less_than(mod(a, b), b)
+                            [by specialize modBound(b, a) b-is-positive]
+                          @mod-is-nonneg |
+                            is_nonneg(mod(a, b))
+                            [by specialize modNonneg(b, a) b-is-positive]
+                          @inductive-hypothesis-at-mod |
+                            is_nonneg(mod(a, b)) -> less_than(mod(a, b), b) -> (forall aa: Int; divides(gcd(aa, mod(a, b)), aa) and divides(gcd(aa, mod(a, b)), mod(a, b)))
+                            [by forall_elim(mod(a, b)) strong-inductive-hypothesis]
+                          @gcd-divides-both-at-mod |
+                            forall aa: Int; divides(gcd(aa, mod(a, b)), aa) and divides(gcd(aa, mod(a, b)), mod(a, b))
+                            [by tautology inductive-hypothesis-at-mod mod-is-nonneg mod-is-below-b]
+                          @gcd-b-mod-divides-both |
+                            divides(gcd(b, mod(a, b)), b) and divides(gcd(b, mod(a, b)), mod(a, b))
+                            [by forall_elim(b) gcd-divides-both-at-mod]
+                          @gcd-b-mod-divides-b |
+                            divides(gcd(b, mod(a, b)), b)
+                            [by and_elim_left gcd-b-mod-divides-both]
+                          @gcd-b-mod-divides-mod |
+                            divides(gcd(b, mod(a, b)), mod(a, b))
+                            [by and_elim_right gcd-b-mod-divides-both]
+                          @gcd-b-mod-is-gcd-a-b |
+                            gcd(b, mod(a, b)) = gcd(a, b)
+                            [by symmetry gcd-recurses]
+                          @gcd-divides-b |
+                            divides(gcd(a, b), b)
+                            [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-b]
+                          @gcd-divides-mod |
+                            divides(gcd(a, b), mod(a, b))
+                            [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-mod]
+                          @mod-crossing-holds-if-divides-b |
+                            divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
+                            [by specialize dividesModStep(b, gcd(a, b), a) b-is-positive]
+                          @mod-crossing-holds |
+                            divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b))
+                            [by modus_ponens mod-crossing-holds-if-divides-b gcd-divides-b]
+                          @divides-mod-implies-divides-a |
+                            divides(gcd(a, b), mod(a, b)) -> divides(gcd(a, b), a)
+                            [by iff_elim_backward mod-crossing-holds]
+                          @gcd-divides-a |
+                            divides(gcd(a, b), a)
+                            [by modus_ponens divides-mod-implies-divides-a gcd-divides-mod]
+                          @gcd-divides-both-when-successor |
+                            divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                            [by and_intro gcd-divides-a gcd-divides-b]
+                        }
+                      @gcd-divides-both-in-successor-case |
+                        divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                        [by exists_elim with-predecessor-bp]
+                    }
+                  @gcd-divides-both-at-a-and-b |
+                    divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                    [by or_elim b-is-zero-or-successor when-b-is-zero when-b-is-successor]
+                }
+              @discharge-a |
+                forall a: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                [by forall_intro generalize-a]
+            }
+          @induction-step-at-b |
+            (forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a: Int; divides(gcd(a, m), a) and divides(gcd(a, m), m))) -> forall a: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+            [by implies_intro given-strong-inductive-hypothesis]
+        }
+      @induction-step-guarded |
+        is_nonneg(b) -> (forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a: Int; divides(gcd(a, m), a) and divides(gcd(a, m), m))) -> forall a: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+        [by implies_intro given-b-nonneg]
+    }
+  @induction-step-for-all-k |
+    forall b: Int; is_nonneg(b) -> (forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a: Int; divides(gcd(a, m), a) and divides(gcd(a, m), m))) -> forall a: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+    [by forall_intro induction-step]
+  @gcd-divides-both-swapped |
+    forall b: Int; is_nonneg(b) -> forall a: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+    [by instantiate nonnegStrongInduction((fun n: Int => forall a: Int; divides(gcd(a, n), a) and divides(gcd(a, n), n))) induction-step-for-all-k]
+  // re-quantify in first-appearance order (a before b). The swapped form is
+  // forall b; nonneg(b) -> forall a; …, so peel b (+ discharge nonneg) then a.
+  @reorder-a |
+    fix a: Int {
+      @reorder-b |
+        fix b: Int {
+          @given-b-nonneg-reorder |
+            assume is_nonneg(b) {
+              @b-nonneg-reorder |
+                is_nonneg(b)
+                [by hypothesis given-b-nonneg-reorder]
+              @gcd-divides-both-at-b |
+                is_nonneg(b) -> forall aa: Int; divides(gcd(aa, b), aa) and divides(gcd(aa, b), b)
+                [by forall_elim(b) gcd-divides-both-swapped]
+              @gcd-divides-both-for-all-a |
+                forall aa: Int; divides(gcd(aa, b), aa) and divides(gcd(aa, b), b)
+                [by modus_ponens gcd-divides-both-at-b b-nonneg-reorder]
+              @gcd-divides-both-reordered |
+                divides(gcd(a, b), a) and divides(gcd(a, b), b)
+                [by forall_elim(a) gcd-divides-both-for-all-a]
+            }
+          @gcd-divides-both-if-nonneg |
+            is_nonneg(b) -> (divides(gcd(a, b), a) and divides(gcd(a, b), b))
+            [by implies_intro given-b-nonneg-reorder]
+        }
+      @reorder-discharge-b |
+        forall b: Int; is_nonneg(b) -> (divides(gcd(a, b), a) and divides(gcd(a, b), b))
+        [by forall_intro reorder-b]
+    }
+  @conclusion |
+    forall a, b: Int; is_nonneg(b) -> (divides(gcd(a, b), a) and divides(gcd(a, b), b))
+    [by forall_intro reorder-a]
+qed
+
+// Every common divisor of a and b divides gcd(a, b), for nonneg b. Same strong
+// induction on the modulus: at b = succ(m), dividesModStep sends d | a to
+// d | mod(a,b), the IH gives d | gcd(b, mod(a,b)) = gcd(a,b).
+theorem gcdGreatestNonneg: forall d, a, b: Int;
+  is_nonneg(b) -> divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+proof
+  @induction-step |
+    fix b: Int {
+      @given-b-nonneg |
+        assume is_nonneg(b) {
+          @given-strong-inductive-hypothesis |
+            assume forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a, d: Int; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m))) {
+              @strong-inductive-hypothesis |
+                forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a, d: Int; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))
+                [by hypothesis given-strong-inductive-hypothesis]
+              @b-nonneg |
+                is_nonneg(b)
+                [by hypothesis given-b-nonneg]
+              @generalize-a |
+                fix a: Int {
+                  @generalize-d |
+                    fix d: Int {
+                      @given-d-divides-a |
+                        assume divides(d, a) {
+                          @given-d-divides-b |
+                            assume divides(d, b) {
+                              @d-divides-a |
+                                divides(d, a)
+                                [by hypothesis given-d-divides-a]
+                              @d-divides-b |
+                                divides(d, b)
+                                [by hypothesis given-d-divides-b]
+                              @b-is-zero-or-successor |
+                                b = ZERO or (exists mm: Int; is_nonneg(mm) and b = succ(mm))
+                                [by specialize nonnegCases(b) b-nonneg]
+                              @when-b-is-zero |
+                                assume b = ZERO {
+                                  @b-is-zero |
+                                    b = ZERO
+                                    [by hypothesis when-b-is-zero]
+                                  @gcd-with-zero-is-itself |
+                                    gcd(a, ZERO) = a
+                                    [by specialize gcdZero(a)]
+                                  @a-is-gcd-with-zero |
+                                    a = gcd(a, ZERO)
+                                    [by symmetry gcd-with-zero-is-itself]
+                                  @d-divides-gcd-with-zero |
+                                    divides(d, gcd(a, ZERO))
+                                    [by rewrite a-is-gcd-with-zero d-divides-a]
+                                  @zero-is-b |
+                                    ZERO = b
+                                    [by symmetry b-is-zero]
+                                  @d-divides-gcd-when-zero |
+                                    divides(d, gcd(a, b))
+                                    [by rewrite zero-is-b d-divides-gcd-with-zero]
+                                }
+                              @when-b-is-successor |
+                                assume exists mm: Int; is_nonneg(mm) and b = succ(mm) {
+                                  @predecessor-exists |
+                                    exists mm: Int; is_nonneg(mm) and b = succ(mm)
+                                    [by hypothesis when-b-is-successor]
+                                  @with-predecessor-bp |
+                                    unpack bp: Int from predecessor-exists {
+                                      @predecessor-facts |
+                                        is_nonneg(bp) and b = succ(bp)
+                                        [by hypothesis with-predecessor-bp]
+                                      @bp-nonneg |
+                                        is_nonneg(bp)
+                                        [by and_elim_left predecessor-facts]
+                                      @b-is-successor-of-bp |
+                                        b = succ(bp)
+                                        [by and_elim_right predecessor-facts]
+                                      @successor-bp-positive |
+                                        less_than(ZERO, succ(bp))
+                                        [by specialize succOfNonnegIsPositive(bp) bp-nonneg]
+                                      @successor-bp-is-b |
+                                        succ(bp) = b
+                                        [by symmetry b-is-successor-of-bp]
+                                      @b-is-positive |
+                                        less_than(ZERO, b)
+                                        [by rewrite successor-bp-is-b successor-bp-positive]
+                                      @gcd-recurses |
+                                        gcd(a, b) = gcd(b, mod(a, b))
+                                        [by specialize gcdStep(b, a) b-is-positive]
+                                      @mod-crossing-holds-if-divides-b |
+                                        divides(d, b) -> (divides(d, a) iff divides(d, mod(a, b)))
+                                        [by specialize dividesModStep(b, d, a) b-is-positive]
+                                      @mod-crossing-holds |
+                                        divides(d, a) iff divides(d, mod(a, b))
+                                        [by modus_ponens mod-crossing-holds-if-divides-b d-divides-b]
+                                      @divides-a-implies-divides-mod |
+                                        divides(d, a) -> divides(d, mod(a, b))
+                                        [by iff_elim_forward mod-crossing-holds]
+                                      @d-divides-mod |
+                                        divides(d, mod(a, b))
+                                        [by modus_ponens divides-a-implies-divides-mod d-divides-a]
+                                      @mod-is-below-b |
+                                        less_than(mod(a, b), b)
+                                        [by specialize modBound(b, a) b-is-positive]
+                                      @mod-is-nonneg |
+                                        is_nonneg(mod(a, b))
+                                        [by specialize modNonneg(b, a) b-is-positive]
+                                      @inductive-hypothesis-at-mod |
+                                        is_nonneg(mod(a, b)) -> less_than(mod(a, b), b) -> (forall aa, dd: Int; divides(dd, aa) -> divides(dd, mod(a, b)) -> divides(dd, gcd(aa, mod(a, b))))
+                                        [by forall_elim(mod(a, b)) strong-inductive-hypothesis]
+                                      @greatest-at-mod |
+                                        forall aa, dd: Int; divides(dd, aa) -> divides(dd, mod(a, b)) -> divides(dd, gcd(aa, mod(a, b)))
+                                        [by tautology inductive-hypothesis-at-mod mod-is-nonneg mod-is-below-b]
+                                      @greatest-at-mod-b-d |
+                                        divides(d, b) -> divides(d, mod(a, b)) -> divides(d, gcd(b, mod(a, b)))
+                                        [by forall_elim(b, d) greatest-at-mod]
+                                      @divides-mod-implies-divides-gcd-b-mod |
+                                        divides(d, mod(a, b)) -> divides(d, gcd(b, mod(a, b)))
+                                        [by modus_ponens greatest-at-mod-b-d d-divides-b]
+                                      @d-divides-gcd-b-mod |
+                                        divides(d, gcd(b, mod(a, b)))
+                                        [by modus_ponens divides-mod-implies-divides-gcd-b-mod d-divides-mod]
+                                      @gcd-b-mod-is-gcd-a-b |
+                                        gcd(b, mod(a, b)) = gcd(a, b)
+                                        [by symmetry gcd-recurses]
+                                      @d-divides-gcd-when-successor |
+                                        divides(d, gcd(a, b))
+                                        [by rewrite gcd-b-mod-is-gcd-a-b d-divides-gcd-b-mod]
+                                    }
+                                  @d-divides-gcd-in-successor-case |
+                                    divides(d, gcd(a, b))
+                                    [by exists_elim with-predecessor-bp]
+                                }
+                              @d-divides-gcd |
+                                divides(d, gcd(a, b))
+                                [by or_elim b-is-zero-or-successor when-b-is-zero when-b-is-successor]
+                            }
+                          @d-divides-b-implies-d-divides-gcd |
+                            divides(d, b) -> divides(d, gcd(a, b))
+                            [by implies_intro given-d-divides-b]
+                        }
+                      @d-common-divisor-implies-d-divides-gcd |
+                        divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                        [by implies_intro given-d-divides-a]
+                    }
+                  @discharge-d |
+                    forall d: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                    [by forall_intro generalize-d]
+                }
+              @discharge-a |
+                forall a, d: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                [by forall_intro generalize-a]
+            }
+          @induction-step-at-b |
+            (forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a, d: Int; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))) -> forall a, d: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+            [by implies_intro given-strong-inductive-hypothesis]
+        }
+      @induction-step-guarded |
+        is_nonneg(b) -> (forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a, d: Int; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))) -> forall a, d: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+        [by implies_intro given-b-nonneg]
+    }
+  @induction-step-for-all-k |
+    forall b: Int; is_nonneg(b) -> (forall m: Int; is_nonneg(m) -> less_than(m, b) -> (forall a, d: Int; divides(d, a) -> divides(d, m) -> divides(d, gcd(a, m)))) -> forall a, d: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by forall_intro induction-step]
+  @gcd-greatest-swapped |
+    forall b: Int; is_nonneg(b) -> forall a, d: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by instantiate nonnegStrongInduction((fun n: Int => forall a, d: Int; divides(d, a) -> divides(d, n) -> divides(d, gcd(a, n)))) induction-step-for-all-k]
+  // re-quantify in first-appearance order (d before a before b).
+  @reorder-d |
+    fix d: Int {
+      @reorder-a |
+        fix a: Int {
+          @reorder-b |
+            fix b: Int {
+              @given-b-nonneg-reorder |
+                assume is_nonneg(b) {
+                  @b-nonneg-reorder |
+                    is_nonneg(b)
+                    [by hypothesis given-b-nonneg-reorder]
+                  @greatest-at-b |
+                    is_nonneg(b) -> forall aa, dd: Int; divides(dd, aa) -> divides(dd, b) -> divides(dd, gcd(aa, b))
+                    [by forall_elim(b) gcd-greatest-swapped]
+                  @greatest-for-all-a-d |
+                    forall aa, dd: Int; divides(dd, aa) -> divides(dd, b) -> divides(dd, gcd(aa, b))
+                    [by modus_ponens greatest-at-b b-nonneg-reorder]
+                  @greatest-at-a-d |
+                    divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                    [by forall_elim(a, d) greatest-for-all-a-d]
+                }
+              @greatest-if-nonneg |
+                is_nonneg(b) -> (divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b)))
+                [by implies_intro given-b-nonneg-reorder]
+            }
+          @reorder-discharge-b |
+            forall b: Int; is_nonneg(b) -> (divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b)))
+            [by forall_intro reorder-b]
+        }
+      @reorder-discharge-a |
+        forall a, b: Int; is_nonneg(b) -> (divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b)))
+        [by forall_intro reorder-a]
+    }
+  @conclusion |
+    forall d, a, b: Int; is_nonneg(b) -> divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by forall_intro reorder-d]
+qed
+
+// gcd(a, b) divides both a and b, for ALL integers b. gcdAbs sends gcd(a, b) to
+// gcd(a, abs b) with abs(b) nonneg, so the nonneg core applies; dividesAbs
+// carries divisibility of abs(b) back to b.
+theorem gcdDividesBoth: forall a, b: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @abs-b-nonneg |
+            is_nonneg(abs(b))
+            [by specialize absNonneg(b)]
+          @gcd-abs-divides-both |
+            divides(gcd(a, abs(b)), a) and divides(gcd(a, abs(b)), abs(b))
+            [by specialize gcdDividesBothNonneg(a, abs(b)) abs-b-nonneg]
+          @gcd-is-gcd-abs |
+            gcd(a, b) = gcd(a, abs(b))
+            [by specialize gcdAbs(b, a)]
+          @gcd-abs-is-gcd |
+            gcd(a, abs(b)) = gcd(a, b)
+            [by symmetry gcd-is-gcd-abs]
+          // rewrite gcd(a, abs b) back to gcd(a, b) in both conjuncts.
+          @gcd-divides-both-abs |
+            divides(gcd(a, b), a) and divides(gcd(a, b), abs(b))
+            [by rewrite gcd-abs-is-gcd gcd-abs-divides-both]
+          @gcd-divides-a |
+            divides(gcd(a, b), a)
+            [by and_elim_left gcd-divides-both-abs]
+          @gcd-divides-abs-b |
+            divides(gcd(a, b), abs(b))
+            [by and_elim_right gcd-divides-both-abs]
+          // divides(·, abs b) -> divides(·, b) via dividesAbs backward.
+          @divides-abs-iff |
+            divides(gcd(a, b), b) iff divides(gcd(a, b), abs(b))
+            [by specialize dividesAbs(gcd(a, b), b)]
+          @divides-abs-implies-divides-b |
+            divides(gcd(a, b), abs(b)) -> divides(gcd(a, b), b)
+            [by iff_elim_backward divides-abs-iff]
+          @gcd-divides-b |
+            divides(gcd(a, b), b)
+            [by modus_ponens divides-abs-implies-divides-b gcd-divides-abs-b]
+          @gcd-divides-both |
+            divides(gcd(a, b), a) and divides(gcd(a, b), b)
+            [by and_intro gcd-divides-a gcd-divides-b]
+        }
+      @discharge-b |
+        forall b: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Int; divides(gcd(a, b), a) and divides(gcd(a, b), b)
+    [by forall_intro generalize-a]
+qed
+
+// Every common divisor of a and b divides gcd(a, b), for ALL integers b. Convert
+// d | b to d | abs(b) [dividesAbs forward], apply the nonneg core at abs(b),
+// then rewrite gcd(a, abs b) back to gcd(a, b).
+theorem gcdGreatest: forall d, a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+proof
+  @generalize-d |
+    fix d: Int {
+      @generalize-a |
+        fix a: Int {
+          @generalize-b |
+            fix b: Int {
+              @given-d-divides-a |
+                assume divides(d, a) {
+                  @given-d-divides-b |
+                    assume divides(d, b) {
+                      @d-divides-a |
+                        divides(d, a)
+                        [by hypothesis given-d-divides-a]
+                      @d-divides-b |
+                        divides(d, b)
+                        [by hypothesis given-d-divides-b]
+                      @abs-b-nonneg |
+                        is_nonneg(abs(b))
+                        [by specialize absNonneg(b)]
+                      @divides-abs-iff |
+                        divides(d, b) iff divides(d, abs(b))
+                        [by specialize dividesAbs(d, b)]
+                      @divides-b-implies-divides-abs |
+                        divides(d, b) -> divides(d, abs(b))
+                        [by iff_elim_forward divides-abs-iff]
+                      @d-divides-abs-b |
+                        divides(d, abs(b))
+                        [by modus_ponens divides-b-implies-divides-abs d-divides-b]
+                      @d-divides-gcd-abs |
+                        divides(d, gcd(a, abs(b)))
+                        [by specialize gcdGreatestNonneg(d, a, abs(b)) abs-b-nonneg d-divides-a d-divides-abs-b]
+                      @gcd-is-gcd-abs |
+                        gcd(a, b) = gcd(a, abs(b))
+                        [by specialize gcdAbs(b, a)]
+                      @gcd-abs-is-gcd |
+                        gcd(a, abs(b)) = gcd(a, b)
+                        [by symmetry gcd-is-gcd-abs]
+                      @d-divides-gcd |
+                        divides(d, gcd(a, b))
+                        [by rewrite gcd-abs-is-gcd d-divides-gcd-abs]
+                    }
+                  @d-divides-b-implies-gcd |
+                    divides(d, b) -> divides(d, gcd(a, b))
+                    [by implies_intro given-d-divides-b]
+                }
+              @d-common-implies-gcd |
+                divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+                [by implies_intro given-d-divides-a]
+            }
+          @discharge-b |
+            forall b: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+            [by forall_intro generalize-b]
+        }
+      @discharge-a |
+        forall a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+        [by forall_intro generalize-a]
+    }
+  @conclusion |
+    forall d, a, b: Int; divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
+    [by forall_intro generalize-d]
 qed
 
 // A nonnegative integer that is not positive must be ZERO. nonnegCases splits it
