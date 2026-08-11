@@ -411,6 +411,11 @@ pub fn addTests(
     // over the well-known peano axioms — the default check accepts them
     ctx.okSilent(&.{ "check", "tests/cases/arithmetic_cert.bpa" });
 
+    // additive-inverse cancellation across a separated summand: `add(a, sub(b,a))
+    // = b` normalizes to a {a, b, neg(a)} multiset that reduces to {b} — the
+    // equation certifier must cancel a with neg(a) (a `neg`-leaf tower).
+    ctx.okSilent(&.{ "check", "tests/cases/arithmetic_cert_neg_cancel.bpa" });
+
     // Cooper-replay layer 2 (witness direction): a `forall x; exists y; …`
     // goal with a period-1 Cooper trace elaborates fully — the cooper link
     // picks a boundary witness and emits exists_intro over an or-intro arm.

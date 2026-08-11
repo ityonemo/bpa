@@ -2781,7 +2781,7 @@ pub const Elaborator = struct {
         const node = self.pool.get(body);
         if (node == .eq) {
             if (self.pool.alphaEq(node.eq.lhs, node.eq.rhs)) return .refl;
-            const eq = (try self.planEquation(symbols, rules, term_rule_count, comm_idx, swap_idx, node.eq.lhs, node.eq.rhs)) orelse return null;
+            const eq = (try self.planEquation(symbols, rules, term_rule_count, comm_idx, swap_idx, node.eq.lhs, node.eq.rhs, loc)) orelse return null;
             return .{ .eq = eq };
         }
         if (node == .pred and symIs(node.pred.sym, symbols.less_than) and node.pred.args_len == 2) {
@@ -2869,14 +2869,14 @@ pub const Elaborator = struct {
         var leaves: std.ArrayList(TermId) = .empty;
         while (true) {
             const node = self.pool.get(cur);
-            if (node == .fvar) {
+            if (self.isTowerLeaf(symbols, cur)) {
                 try leaves.append(self.arena, cur);
                 break;
             }
             if (node != .app) return null;
             if (symIs(node.app.sym, symbols.add) and node.app.args_len == 2) {
                 const args = self.pool.args(node.app);
-                if (self.pool.get(args[0]) != .fvar) return null; // not right-nested
+                if (!self.isTowerLeaf(symbols, args[0])) return null; // not right-nested
                 try leaves.append(self.arena, args[0]);
                 cur = args[1];
                 continue;
@@ -2888,6 +2888,17 @@ pub const Elaborator = struct {
             return null;
         }
         return .{ .succs = succs, .leaves = leaves.items };
+    }
+
+    /// A tower summand leaf is a free variable or its negation `neg(fvar)` — the
+    /// latter lets additive-inverse pairs (x and neg(x)) meet and cancel.
+    fn isTowerLeaf(self: *Elaborator, symbols: presburger_mod.Symbols, t: TermId) bool {
+        const node = self.pool.get(t);
+        if (node == .fvar) return true;
+        if (node == .app and symIs(node.app.sym, symbols.neg) and node.app.args_len == 1) {
+            return self.pool.get(self.pool.args(node.app)[0]) == .fvar;
+        }
+        return false;
     }
 
     pub fn buildComb(self: *Elaborator, symbols: presburger_mod.Symbols, leaves: []const TermId) ElabError!?TermId {
@@ -2969,6 +2980,178 @@ pub const Elaborator = struct {
         return whole;
     }
 
+    /// Statement id behind a rule/fact source (axiom or theorem); null for a step.
+    fn sourceStatementId(src: simplify_mod.Source) ?StatementId {
+        return switch (src) {
+            .axiom => |a| a.id,
+            .theorem => |t| t.id,
+            .step => null,
+        };
+    }
+
+    /// Index of the well-known rule `name` within `rules` (matched by statement
+    /// id, so the certifier reuses the rewrite it already loaded). Null when the
+    /// theory doesn't provide it.
+    fn ruleIndex(self: *Elaborator, rules: []const simplify_mod.Rule, name_text: []const u8, loc: u32) ElabError!?usize {
+        const fact = (try self.wellKnownFact(name_text, loc)) orelse return null;
+        const want = sourceStatementId(fact.source) orelse return null;
+        for (rules, 0..) |r, i| {
+            if (sourceStatementId(r.source)) |id| {
+                if (id == want) return i;
+            }
+        }
+        return null;
+    }
+
+    /// Cancel additive-inverse pairs in a sorted tower `succ^k(sum)`: for each
+    /// `neg(x)` leaf with a matching `x` leaf, bubble `x` to sit immediately
+    /// before `neg(x)` (addLeftSwap/addIsCommutative), collapse the adjacent
+    /// pair with addNegRight (`add(x, neg(x)) = 0`), then drop the ZERO
+    /// (addZeroLeft/addZeroRight). Every step is a trace rewrite, so the whole
+    /// cancellation is kernel-checked. Returns the reduced whole term.
+    fn cancelInverses(
+        self: *Elaborator,
+        symbols: presburger_mod.Symbols,
+        rules: []const simplify_mod.Rule,
+        comm_idx: ?usize,
+        swap_idx: ?usize,
+        succs: usize,
+        whole0: TermId,
+        trace: *std.ArrayList(simplify_mod.Rewrite),
+        loc: u32,
+    ) ElabError!?TermId {
+        if (symbols.neg == null or symbols.add == null or symbols.zero == null) return whole0;
+        const neg_idx = (try self.ruleIndex(rules, "addNegRight", loc)) orelse return whole0;
+        const zero_left = try self.ruleIndex(rules, "addZeroLeft", loc);
+        const zero_right = try self.ruleIndex(rules, "addZeroRight", loc);
+
+        var whole = whole0;
+        // re-derive the leaf list from the sorted whole (below the succ prefix).
+        outer: while (true) {
+            const tower = (try self.parseTower(symbols, whole)) orelse return whole;
+            const leaves = tower.leaves;
+            // find a neg(x) leaf j and a positive x leaf i (i != j)
+            var pair: ?struct { i: usize, j: usize } = null;
+            for (leaves, 0..) |lj, j| {
+                const nj = self.pool.get(lj);
+                if (nj != .app or !symIs(nj.app.sym, symbols.neg)) continue;
+                const inner = self.pool.args(nj.app)[0];
+                for (leaves, 0..) |li, i| {
+                    if (i == j) continue;
+                    if (self.pool.alphaEq(li, inner)) {
+                        pair = .{ .i = i, .j = j };
+                        break;
+                    }
+                }
+                if (pair != null) break;
+            }
+            const p = pair orelse return whole; // no inverse pairs left
+
+            // bubble leaf p.i to sit immediately before p.j (adjacent). We only
+            // need x directly before neg(x); move whichever is left rightward /
+            // the right one leftward using adjacent swaps.
+            var order = try self.arena.dupe(TermId, leaves);
+            // target: place x (order[lo]) and neg(x) (order[hi]) adjacent as
+            // [x, neg(x)] at positions (hi-1, hi). Move x rightward to hi-1.
+            var lo = p.i;
+            var hi = p.j;
+            if (lo > hi) {
+                const tmp = lo;
+                lo = hi;
+                hi = tmp;
+            }
+            // move order[lo] up to position hi-1 by adjacent swaps
+            var pos = lo;
+            while (pos + 1 < hi) : (pos += 1) {
+                const tail_pair = pos + 2 == order.len;
+                const rule_idx = (if (tail_pair) comm_idx else swap_idx) orelse return null;
+                const before = whole;
+                const sub_before = (try self.buildComb(symbols, order[pos..])) orelse return null;
+                std.mem.swap(TermId, &order[pos], &order[pos + 1]);
+                const sub_after = (try self.buildComb(symbols, order[pos..])) orelse return null;
+                const after = (try self.buildTower(symbols, succs, (try self.buildComb(symbols, order)) orelse return null)) orelse return null;
+                const rule = rules[rule_idx];
+                const bindings = (try simplify_mod.matchRule(self.arena, self.pool, self.env, rule, rule.lhs, sub_before)) orelse return null;
+                try trace.append(self.arena, .{ .before = before, .after = after, .rule_idx = rule_idx, .bindings = bindings, .inst_lhs = sub_before, .inst_rhs = sub_after });
+                whole = after;
+            }
+            // now order[hi-1] = x and order[hi] = neg(x) are adjacent. Ensure
+            // the positive is the one at hi-1 (x, neg(x)); if reversed, we'd need
+            // addNegLeft — but our sort puts fvars before neg-apps, so x precedes.
+            const xpos = hi - 1;
+            if (!self.pool.alphaEq(order[xpos + 1], try self.pool.addApp(.app, symbols.neg.?, &.{order[xpos]}))) return null;
+
+            // collapse add(x, neg(x)) → ZERO with addNegRight, in place.
+            const before_cancel = whole;
+            const zero = try self.pool.addApp(.app, symbols.zero.?, &.{});
+            // the sub-term at xpos is add(x, add(neg(x), rest)) or add(x, neg(x))
+            // (tail). addNegRight rewrites add(x, neg(x)) → 0.
+            const x = order[xpos];
+            const negx = order[xpos + 1];
+            const pair_term = try self.pool.addApp(.app, symbols.add.?, &.{ x, negx });
+            const neg_rule = rules[neg_idx];
+            const neg_bindings = (try simplify_mod.matchRule(self.arena, self.pool, self.env, neg_rule, neg_rule.lhs, pair_term)) orelse return null;
+            // new leaf list: drop x and neg(x), insert ZERO at xpos (as a base
+            // when tail, or a summand otherwise). Rebuild via a ZERO-bearing comb.
+            const is_tail = xpos + 2 == order.len;
+            var reduced: std.ArrayList(TermId) = .empty;
+            for (order, 0..) |lv, k| {
+                if (k == xpos or k == xpos + 1) continue;
+                try reduced.append(self.arena, lv);
+            }
+            // build the after-term: the pair collapsed to ZERO.
+            const after_cancel = blk: {
+                if (is_tail) {
+                    // ...+ x + neg(x)  →  ...+ 0 ; comb of reduced leaves then + 0
+                    const comb0 = (try self.buildCombWithZeroTail(symbols, reduced.items)) orelse return null;
+                    break :blk (try self.buildTower(symbols, succs, comb0)) orelse return null;
+                } else {
+                    // x + (neg(x) + rest)  →  0 + rest ; build reduced with a
+                    // leading ZERO summand at xpos is not needed — 0 + rest folds.
+                    const restComb = (try self.buildComb(symbols, order[xpos + 2 ..])) orelse return null;
+                    const withZero = try self.pool.addApp(.app, symbols.add.?, &.{ zero, restComb });
+                    const head = (try self.buildCombPrefix(symbols, order[0..xpos], withZero)) orelse return null;
+                    break :blk (try self.buildTower(symbols, succs, head)) orelse return null;
+                }
+            };
+            try trace.append(self.arena, .{ .before = before_cancel, .after = after_cancel, .rule_idx = neg_idx, .bindings = neg_bindings, .inst_lhs = pair_term, .inst_rhs = zero });
+            whole = after_cancel;
+
+            // drop the ZERO: add(0, rest) → rest (addZeroLeft) or add(rest, 0) →
+            // rest (addZeroRight). Normalize the whole with just the zero rules.
+            const zl = zero_left orelse return null;
+            const zr = zero_right orelse return null;
+            const zero_rules = [_]simplify_mod.Rule{ rules[zl], rules[zr] };
+            const zres = simplify_mod.normalize(self.arena, self.pool, self.env, &zero_rules, whole, 1000) catch return null;
+            try trace.appendSlice(self.arena, zres.trace);
+            whole = zres.nf;
+            continue :outer;
+        }
+    }
+
+    /// buildComb but with a trailing ZERO base: l0 + (l1 + ... + (l_{n-1} + 0)).
+    fn buildCombWithZeroTail(self: *Elaborator, symbols: presburger_mod.Symbols, leaves: []const TermId) ElabError!?TermId {
+        const zero = try self.pool.addApp(.app, symbols.zero orelse return null, &.{});
+        var cur = zero;
+        var i = leaves.len;
+        while (i > 0) {
+            i -= 1;
+            cur = try self.pool.addApp(.app, symbols.add orelse return null, &.{ leaves[i], cur });
+        }
+        return cur;
+    }
+
+    /// Right-nest `prefix` leaves onto an existing tail term.
+    fn buildCombPrefix(self: *Elaborator, symbols: presburger_mod.Symbols, prefix: []const TermId, tail: TermId) ElabError!?TermId {
+        var cur = tail;
+        var i = prefix.len;
+        while (i > 0) {
+            i -= 1;
+            cur = try self.pool.addApp(.app, symbols.add orelse return null, &.{ prefix[i], cur });
+        }
+        return cur;
+    }
+
     /// Plan a kernel-checked proof of s = t: normalize both sides with the
     /// terminating rules, then sort the residual sums. Null when the sides
     /// do not join.
@@ -2981,6 +3164,7 @@ pub const Elaborator = struct {
         swap_idx: ?usize,
         s: TermId,
         t: TermId,
+        loc: u32,
     ) ElabError!?EqCert {
         const rs = simplify_mod.normalize(self.arena, self.pool, self.env, rules[0..term_rule_count], s, 1000) catch |e| switch (e) {
             error.Limit => return null,
@@ -2996,10 +3180,15 @@ pub const Elaborator = struct {
 
         var trace_s: std.ArrayList(simplify_mod.Rewrite) = .empty;
         try trace_s.appendSlice(self.arena, rs.trace);
-        const sorted_s = (try self.sortTrace(symbols, rules, comm_idx, swap_idx, tower_s, &trace_s)) orelse return null;
+        var sorted_s = (try self.sortTrace(symbols, rules, comm_idx, swap_idx, tower_s, &trace_s)) orelse return null;
         var trace_t: std.ArrayList(simplify_mod.Rewrite) = .empty;
         try trace_t.appendSlice(self.arena, rt.trace);
-        const sorted_t = (try self.sortTrace(symbols, rules, comm_idx, swap_idx, tower_t, &trace_t)) orelse return null;
+        var sorted_t = (try self.sortTrace(symbols, rules, comm_idx, swap_idx, tower_t, &trace_t)) orelse return null;
+        // cancel additive-inverse pairs (x + neg(x) → 0) in each sorted sum, so
+        // e.g. {a, b, neg(a)} reduces to {b}. Emits addNegRight + zero-drop
+        // rewrites into the trace (kernel-checked like every other rewrite).
+        sorted_s = (try self.cancelInverses(symbols, rules, comm_idx, swap_idx, tower_s.succs, sorted_s, &trace_s, loc)) orelse return null;
+        sorted_t = (try self.cancelInverses(symbols, rules, comm_idx, swap_idx, tower_t.succs, sorted_t, &trace_t, loc)) orelse return null;
         // same multiset of variables (and same tower) iff the sorted forms agree
         if (!self.pool.alphaEq(sorted_s, sorted_t)) return null;
         return .{
@@ -3056,7 +3245,7 @@ pub const Elaborator = struct {
         const add_sym = symbols.add orelse return null;
         const succ_d = try self.pool.addApp(.app, succ_sym, &.{d});
         const eq_lhs = try self.pool.addApp(.app, add_sym, &.{ s, succ_d });
-        const eq = (try self.planEquation(symbols, rules, term_rule_count, comm_idx, swap_idx, eq_lhs, t)) orelse return null;
+        const eq = (try self.planEquation(symbols, rules, term_rule_count, comm_idx, swap_idx, eq_lhs, t, loc)) orelse return null;
         const eq_formula = try self.pool.add(.{ .eq = .{ .lhs = eq_lhs, .rhs = t } });
 
         // lessThanIntro, matched structurally so any binder order works

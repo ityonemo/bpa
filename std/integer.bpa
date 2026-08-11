@@ -2689,28 +2689,11 @@ proof
     fix a: Int {
       @generalize-b |
         fix b: Int {
-          @sub-is-b-plus-neg-a |
-            sub(b, a) = add(b, neg(a))
-            [by specialize definitionOfSubtraction(b, a)]
-          @regroup-a-b-neg-a |
-            add(add(a, b), neg(a)) = add(a, add(b, neg(a)))
-            [by specialize addIsAssociative(a, b, neg(a))]
-          @b-plus-a-flips |
-            add(b, a) = add(a, b)
-            [by specialize addIsCommutative(b, a)]
-          @regroup-b-a-neg-a |
-            add(add(b, a), neg(a)) = add(b, add(a, neg(a)))
-            [by specialize addIsAssociative(b, a, neg(a))]
-          @a-plus-neg-a-vanishes |
-            add(a, neg(a)) = ZERO
-            [by specialize addNegRight(a)]
-          @b-plus-zero-is-b |
-            add(b, ZERO) = b
-            [by specialize addZeroRight(b)]
-          // a + (b + (-a)) = (a + b) + (-a) = (b + a) + (-a) = b + (a + (-a)) = b + 0 = b.
+          // a + (b + (-a)) = b: a linear ℤ identity — the arithmetic certifier
+          // cancels the a/(-a) inverse pair across the intervening b.
           @conclusion-diff-reaches |
             add(a, sub(b, a)) = b
-            [by chain sub-is-b-plus-neg-a regroup-a-b-neg-a b-plus-a-flips regroup-b-a-neg-a a-plus-neg-a-vanishes b-plus-zero-is-b]
+            [by arithmetic]
         }
       @discharge-b |
         forall b: Int; add(a, sub(b, a)) = b
