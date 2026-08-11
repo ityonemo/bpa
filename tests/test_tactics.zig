@@ -449,6 +449,11 @@ pub fn addTests(
     // certificate — no --fast, no acceleration.
     ctx.okSilent(&.{ "check", "tests/cases/cooper_gap.bpa" });
 
+    // negative ℤ witness: `exists y; x = succ(y)` certifies STRICT with y = prev(x)
+    // (built as a prev-tower, discharged via succPrev) — a witness the ℕ-only
+    // succ-tower builder could not construct.
+    ctx.okSilent(&.{ "check", "tests/cases/cooper_negative_witness.bpa" });
+
     // Case D: a `fallback(<thm>)` on a goal the arithmetic CERTIFIER CHAIN can
     // discharge itself is REDUNDANT — strict `check` rejects it. (Distinct from
     // cooper_gap, where the certifier DECLINES so the fallback is legitimate.)

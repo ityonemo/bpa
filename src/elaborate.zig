@@ -2914,6 +2914,19 @@ pub const Elaborator = struct {
         return cur;
     }
 
+    /// A SIGNED tower: succ^n(comb) for n ≥ 0, prev^|n|(comb) for n < 0. The
+    /// negative direction needs the ℤ `prev` symbol (absent for ℕ, where a
+    /// negative offset is genuinely unbuildable → null). The certifier's
+    /// normalizer collapses succ/prev via succPrev/prevSucc.
+    pub fn buildTowerSigned(self: *Elaborator, symbols: presburger_mod.Symbols, offset: i128, comb: TermId) ElabError!?TermId {
+        if (offset >= 0) return self.buildTower(symbols, @intCast(offset), comb);
+        const prev_sym = symbols.prev orelse return null;
+        var cur = comb;
+        var n = -offset;
+        while (n > 0) : (n -= 1) cur = try self.pool.addApp(.app, prev_sym, &.{cur});
+        return cur;
+    }
+
     /// Bubble-sort a tower's summands, appending one rewrite per adjacent
     /// swap (addLeftSwap inside the sum, addIsCommutative for the final
     /// pair). Returns the sorted whole term, or null when a needed sort

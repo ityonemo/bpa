@@ -759,11 +759,11 @@ fn planDisjunction(self: *Elaborator, symbols: presburger_mod.Symbols, ar: Arith
 }
 
 /// Reconstruct a boundary witness `boundaries[i] + j` (a linear form over
-/// the fixed variables) as a Nat term. Layer 2 handles the single-free-
-/// variable case: coeff 0 (a constant `succ^(konst+j)(ZERO)`) or coeff 1 on
-/// the one eigenvariable (`succ^(konst+j)(x)`). A negative total offset or a
-/// higher coefficient is not a buildable Nat term — return null (that
-/// candidate is skipped).
+/// the fixed variables) as a term. Layer 2 handles the single-free-variable
+/// case: coeff 0 (a constant `succ^(konst+j)(ZERO)` / `prev^…(ZERO)`) or coeff 1
+/// on the one eigenvariable (`succ^(konst+j)(x)` / `prev^…(x)`). A NEGATIVE total
+/// offset builds a `prev`-tower over ℤ (null for ℕ, which has no prev); a higher
+/// coefficient is out of layer-2 scope → null.
 fn buildWitness(self: *Elaborator, symbols: presburger_mod.Symbols, replay: presburger_mod.Replay, dump: presburger_mod.LinearDump, j: i128, fix_vars: []const term.Node.Fvar) ElabError!?TermId {
     // find the (at most one) free var with a nonzero coefficient. A boundary
     // coeff is indexed by presburger variable id; `free_ids[p]` is the id of
@@ -779,14 +779,12 @@ fn buildWitness(self: *Elaborator, symbols: presburger_mod.Symbols, replay: pres
         fix_index = p;
     }
     const offset = dump.konst + j;
-    if (offset < 0) return null;
-    const succs: usize = @intCast(offset);
     const zero_sym = symbols.zero orelse return null;
     const base = if (fix_index) |p| blk: {
         if (p >= fix_vars.len) return null;
         break :blk try self.pool.add(.{ .fvar = fix_vars[p] });
     } else try self.pool.addApp(.app, zero_sym, &.{});
-    return try self.buildTower(symbols, succs, base);
+    return try self.buildTowerSigned(symbols, offset, base);
 }
 
 /// Prove `exists_body` (an `exists y; disjunction`) in `block` by finding a
@@ -949,14 +947,14 @@ fn witnessCandidates(self: *Elaborator, symbols: presburger_mod.Symbols, ih_witn
     var out: std.ArrayList(TermId) = .empty;
     const zero_sym = symbols.zero orelse return out.items;
     const zero = try self.pool.addApp(.app, zero_sym, &.{});
-    // constant towers ZERO..3 (base case classes)
-    for (0..4) |k| {
-        if (try self.buildTower(symbols, k, zero)) |w| try out.append(self.arena, w);
+    // constant towers around ZERO: succ^0..3 and (over ℤ) prev^1..3 (base classes)
+    for ([_]i128{ 0, 1, 2, 3, -1, -2, -3 }) |off| {
+        if (try self.buildTowerSigned(symbols, off, zero)) |w| try out.append(self.arena, w);
     }
-    // shifted IH witness (step case classes)
+    // shifted IH witness, both directions (step case classes)
     if (ih_witness) |y0| {
-        for (0..3) |k| {
-            if (try self.buildTower(symbols, k, y0)) |w| try out.append(self.arena, w);
+        for ([_]i128{ 0, 1, 2, -1, -2 }) |off| {
+            if (try self.buildTowerSigned(symbols, off, y0)) |w| try out.append(self.arena, w);
         }
     }
     return out.items;
