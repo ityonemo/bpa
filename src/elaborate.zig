@@ -4422,3 +4422,108 @@ test "de Bruijn indices correct under nested binders" {
     try testing.expectEqual(term.Node{ .bvar = 1 }, ctx.pool.get(ctx.pool.args(lhs_app)[0]));
     try testing.expectEqual(term.Node{ .bvar = 0 }, ctx.pool.get(ctx.pool.args(lhs_app)[1]));
 }
+
+// --- arithmetic equation-certifier (planEquation) regression harness ------
+//
+// The `[by arithmetic]` equation certifier normalizes both sides to a sorted
+// tower of leaves and joins them. These tests pin the SHAPE CATEGORIES that
+// occur across the whole std/aata corpus (captured by instrumenting
+// planEquation), so a change to parseTower / sortTrace / cancelInverses can't
+// silently regress them. Each theorem below certifies STRICT today (empty sink).
+
+/// A ℤ-flavoured vocabulary + the exact rewrite lemmas the arithmetic certifier
+/// pulls in (wk_term_rule_names + addIsCommutative/addLeftSwap), so `[by
+/// arithmetic]` can build kernel certificates for equation goals.
+const arith_prelude =
+    \\sort Int
+    \\const ZERO: Int
+    \\const ONE: Int
+    \\func succ(n: Int): Int
+    \\func prev(n: Int): Int
+    \\func add(a: Int, b: Int): Int
+    \\func mul(a: Int, b: Int): Int
+    \\func neg(a: Int): Int
+    \\func sub(a: Int, b: Int): Int
+    \\func f(x: Int): Int
+    \\pred less_than(a: Int, b: Int)
+    \\axiom definitionOfSubtraction: forall a, b: Int; sub(a, b) = add(a, neg(b))
+    \\axiom addZeroLeft: forall b: Int; add(ZERO, b) = b
+    \\axiom addZeroRight: forall n: Int; add(n, ZERO) = n
+    \\axiom addSuccLeft: forall a, b: Int; add(succ(a), b) = succ(add(a, b))
+    \\axiom addSuccRight: forall a, b: Int; add(a, succ(b)) = succ(add(a, b))
+    \\axiom mulZeroLeft: forall b: Int; mul(ZERO, b) = ZERO
+    \\axiom mulZeroRight: forall n: Int; mul(n, ZERO) = ZERO
+    \\axiom mulSuccLeft: forall a, b: Int; mul(succ(a), b) = add(mul(a, b), b)
+    \\axiom mulSuccRight: forall a, b: Int; mul(a, succ(b)) = add(mul(a, b), a)
+    \\axiom oneIsSuccZero: ONE = succ(ZERO)
+    \\axiom addIsAssociative: forall a, b, c: Int; add(add(a, b), c) = add(a, add(b, c))
+    \\axiom addIsCommutative: forall a, b: Int; add(a, b) = add(b, a)
+    \\axiom addLeftSwap: forall x, y, r: Int; add(x, add(y, r)) = add(y, add(x, r))
+    \\axiom addNegRight: forall n: Int; add(n, neg(n)) = ZERO
+    \\axiom addNegLeft: forall n: Int; add(neg(n), n) = ZERO
+    \\axiom negNeg: forall n: Int; neg(neg(n)) = n
+    \\
+;
+
+fn expectCertifies(source: []const u8) !void {
+    var ctx = try TestCtx.run(testing.allocator, source);
+    defer ctx.deinit(testing.allocator);
+    if (ctx.sink.list.items.len != 0) {
+        std.debug.print("unexpected diagnostic: {s}\n", .{ctx.firstMessage()});
+        return error.CertifierRegressed;
+    }
+}
+
+test "arith certifier: reassociation and commutation of a plain add-sum" {
+    // the dominant corpus shape: pure fvar sums reordered by assoc/comm/swap.
+    try expectCertifies(arith_prelude ++
+        \\theorem t: forall a, b, c: Int; add(add(a, b), c) = add(b, add(c, a))
+        \\proof
+        \\  @ga | fix a: Int { @gb | fix b: Int { @gc | fix c: Int {
+        \\    @c | add(add(a, b), c) = add(b, add(c, a)) [by arithmetic]
+        \\  } @dc | forall c: Int; add(add(a, b), c) = add(b, add(c, a)) [by forall_intro gc] }
+        \\    @db | forall b, c: Int; add(add(a, b), c) = add(b, add(c, a)) [by forall_intro gb] }
+        \\  @conclusion | forall a, b, c: Int; add(add(a, b), c) = add(b, add(c, a)) [by forall_intro ga]
+        \\qed
+    );
+}
+
+test "arith certifier: succ-tower + mul-by-constant fold" {
+    // succ prefixes and mul(2, n) → n + n (a constant-coefficient product).
+    try expectCertifies(arith_prelude ++
+        \\theorem t: forall n: Int; mul(succ(succ(ZERO)), n) = add(n, n)
+        \\proof
+        \\  @gn | fix n: Int {
+        \\    @c | mul(succ(succ(ZERO)), n) = add(n, n) [by arithmetic]
+        \\  }
+        \\  @conclusion | forall n: Int; mul(succ(succ(ZERO)), n) = add(n, n) [by forall_intro gn]
+        \\qed
+    );
+}
+
+test "arith certifier: sub fully cancels (sub(add(a,b),b) = a)" {
+    // sub unfolds to add(·, neg ·); the neg leaf cancels its positive, leaving a.
+    try expectCertifies(arith_prelude ++
+        \\theorem t: forall a, b: Int; sub(add(a, b), b) = a
+        \\proof
+        \\  @ga | fix a: Int { @gb | fix b: Int {
+        \\    @c | sub(add(a, b), b) = a [by arithmetic]
+        \\  } @db | forall b: Int; sub(add(a, b), b) = a [by forall_intro gb] }
+        \\  @conclusion | forall a, b: Int; sub(add(a, b), b) = a [by forall_intro ga]
+        \\qed
+    );
+}
+
+test "arith certifier: additive-inverse pair cancels across a separated leaf" {
+    // add(a, sub(b, a)) → {a, b, neg(a)} reduces to {b}: the a/neg(a) pair must
+    // cancel across the intervening b (cancelInverses).
+    try expectCertifies(arith_prelude ++
+        \\theorem t: forall a, b: Int; add(a, sub(b, a)) = b
+        \\proof
+        \\  @ga | fix a: Int { @gb | fix b: Int {
+        \\    @c | add(a, sub(b, a)) = b [by arithmetic]
+        \\  } @db | forall b: Int; add(a, sub(b, a)) = b [by forall_intro gb] }
+        \\  @conclusion | forall a, b: Int; add(a, sub(b, a)) = b [by forall_intro ga]
+        \\qed
+    );
+}
