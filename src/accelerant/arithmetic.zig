@@ -342,7 +342,18 @@ fn arithmeticFallback(self: *Elaborator, fb: lexer.Token, goal: TermId) ElabErro
             try self.inheritHoles(t.holes);
             return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = fb.start } };
         },
-        .axiom => return self.fail(fb.start, "fallback cites an axiom '{s}'; use a theorem", .{self.text(fb)}),
+        // an axiom (including a `hole`, which is an axiom-kind statement) is a
+        // legitimate fallback: it discharges the goal by fiat. A hole propagates
+        // its taint, so the whole proof is marked resting-on-a-hole and rejected
+        // outside --draft — exactly the escape hatch for a goal the certifier
+        // can't yet certify.
+        .axiom => |a| {
+            if (!self.pool.alphaEq(a.formula, goal)) {
+                return self.fail(fb.start, "fallback axiom '{s}' does not prove this goal", .{self.text(fb)});
+            }
+            if (a.is_hole) try self.inheritHoles(a.holes);
+            return .{ .axiom_ref = .{ .stmt = stmt_id, .loc = fb.start } };
+        },
         .schema => return self.fail(fb.start, "fallback cites a schema '{s}'; use a theorem", .{self.text(fb)}),
     }
 }

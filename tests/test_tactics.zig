@@ -468,6 +468,12 @@ pub fn addTests(
     // `--draft` suppresses it (WIP: don't nag about redundant fallbacks yet).
     ctx.okSilent(&.{ "check", "--draft", "tests/cases/arithmetic_fallback_redundant_bad.bpa" });
 
+    // a `fallback(<axiom-or-hole>)` is accepted (not only theorems): the goal has
+    // an opaque subterm the certifier can't discharge, so the arithmetic step
+    // falls back to a `hole` (an axiom-kind statement). The proof rests on the
+    // hole → rejected strict, accepted under --draft with the hole disclosed.
+    ctx.okSilent(&.{ "check", "--draft", "tests/cases/arithmetic_fallback_axiom.bpa" });
+
     // arithmetic × SCHEMA: Case D fires from inside a schema body too — the
     // declaration-time wellformedness self-check (instantiate at opaque params,
     // run the proof) exercises arithmeticJustification, so a redundant `fallback`

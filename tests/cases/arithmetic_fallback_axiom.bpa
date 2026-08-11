@@ -1,0 +1,25 @@
+// `[by arithmetic fallback(<axiom-or-hole>)]`: a fallback may cite an AXIOM (a
+// hole is an axiom-kind statement), not only a theorem. Here the goal has an
+// opaque subterm f(x): `[by arithmetic]` DECIDES it (f(x) abstracts to an atom)
+// but the certifier cannot build a kernel proof, so it declines — and the hole
+// `opaqueCancelHole` discharges the step by fiat. The proof therefore rests on a
+// hole: rejected under strict `bpa check`, accepted under `--draft`. The fallback
+// axiom must prove the goal exactly (a wrong shape is a hard error).
+sort Int
+const ZERO: Int
+func succ(n: Int): Int
+func prev(n: Int): Int
+func add(a: Int, b: Int): Int
+func neg(a: Int): Int
+func sub(a: Int, b: Int): Int
+func f(x: Int): Int
+pred less_than(a: Int, b: Int)
+
+hole opaqueCancelHole: forall a, x: Int; sub(add(a, f(x)), f(x)) = a
+
+theorem opaqueCancel: forall a, x: Int; sub(add(a, f(x)), f(x)) = a
+proof
+  @conclusion |
+    forall a, x: Int; sub(add(a, f(x)), f(x)) = a
+    [by arithmetic fallback(opaqueCancelHole)]
+qed
