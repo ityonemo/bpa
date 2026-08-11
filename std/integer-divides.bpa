@@ -168,7 +168,6 @@ theorem lessThanIrreflexive = order.lessThanIrreflexive
 theorem lessThanTransitive = order.lessThanTransitive
 theorem lessOrEqualSplit = order.lessOrEqualSplit
 theorem mulNegRight = ring.mulNegRight
-theorem addDiffReaches = order.addDiffReaches
 theorem subAddCancel = order.subAddCancel
 theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl

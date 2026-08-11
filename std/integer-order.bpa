@@ -87,13 +87,12 @@ axiom lessThanElim: forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d
 define less_or_equal(a: Int, b: Int) = less_than(a, b) or a = b
 
 // -- subtraction facts (ring algebra, moved down to std/integer.bpa) ---------
-// sub(a,a)=0, (a-b)+b=a, and a+(b-a)=b are ring-only; they now live in the ring
-// layer and are re-aliased here so `order.subSelf` / `order.subAddCancel` /
-// `order.addDiffReaches` still resolve for downstream files.
+// sub(a,a)=0 and (a-b)+b=a are ring-only; they now live in the ring layer and
+// are re-aliased here so `order.subSelf` / `order.subAddCancel` still resolve for
+// downstream files.
 
 theorem subSelf = integer.subSelf
 theorem subAddCancel = integer.subAddCancel
-theorem addDiffReaches = integer.addDiffReaches
 
 // -- the order theory -------------------------------------------------------
 

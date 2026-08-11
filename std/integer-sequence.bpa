@@ -61,7 +61,6 @@ theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
 theorem lessOrEqualSplit = order.lessOrEqualSplit
 theorem lessOrEqualAntisymmetric = order.lessOrEqualAntisymmetric
-theorem addDiffReaches = order.addDiffReaches
 theorem addNegRight = order.addNegRight
 theorem oneAtMostPositive = int_divides.oneAtMostPositive
 theorem atMostGivesNonnegDifference = int_divides.atMostGivesNonnegDifference

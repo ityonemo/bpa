@@ -2649,26 +2649,3 @@ proof
     forall a, b: Int; add(sub(a, b), b) = a
     [by forall_intro generalize-a]
 qed
-
-// The difference reaches: add(a, sub(b, a)) = b. Since sub(b, a) = b + (-a),
-// add(a, b + (-a)) reassociates and commutes to b + (a + (-a)) = b + 0 = b.
-theorem addDiffReaches: forall a, b: Int; add(a, sub(b, a)) = b
-proof
-  @generalize-a |
-    fix a: Int {
-      @generalize-b |
-        fix b: Int {
-          // a + (b + (-a)) = b: a linear ℤ identity — the arithmetic certifier
-          // cancels the a/(-a) inverse pair across the intervening b.
-          @conclusion-diff-reaches |
-            add(a, sub(b, a)) = b
-            [by arithmetic]
-        }
-      @discharge-b |
-        forall b: Int; add(a, sub(b, a)) = b
-        [by forall_intro generalize-b]
-    }
-  @conclusion |
-    forall a, b: Int; add(a, sub(b, a)) = b
-    [by forall_intro generalize-a]
-qed
