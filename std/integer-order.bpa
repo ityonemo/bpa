@@ -33,6 +33,9 @@ theorem addIsAssociative = ring.addIsAssociative
 theorem addNegRight = ring.addNegRight
 
 theorem addNegLeft = ring.addNegLeft
+// addLeftSwap feeds the `arithmetic` equation certifier (reorders a sum to bring
+// an inverse pair adjacent); needed for the sub-cancellation goals below.
+theorem addLeftSwap = ring.addLeftSwap
 theorem induction = integer.induction
 
 // mul recursion + negation axioms/lemmas, for the sign lemmas less_than.
@@ -1547,7 +1550,7 @@ proof
             [by specialize signTrichotomy(sub(b, a))]
           @a-plus-difference-is-b |
             add(a, sub(b, a)) = b
-            [by specialize addDiffReaches(a, b)]
+            [by arithmetic]
           @a-plus-zero-is-a |
             add(a, ZERO) = a
             [by specialize addZeroRight(a)]
