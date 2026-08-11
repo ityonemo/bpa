@@ -73,7 +73,7 @@ fn render(w: *std.Io.Writer, source: []const u8, toks: []const Token) std.Io.Wri
         const wants_new_line: bool, const indent: u32 = decide: {
             switch (tok.tag) {
                 // inside [by ...], `axiom`/`theorem`/`model` are citations, not decls
-                .keyword_import, .keyword_forward, .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_theorem, .keyword_model => {
+                .keyword_import, .keyword_forward, .keyword_sort, .keyword_const, .keyword_define, .keyword_func, .keyword_pred, .keyword_axiom, .keyword_theorem, .keyword_hole, .keyword_model => {
                     if (in_bracket) break :decide .{ false, 0 };
                     break :decide .{ true, 0 };
                 },
@@ -253,6 +253,13 @@ test "declarations normalize to one per line at column 0" {
     try expectFmt(
         "sort   Nat\n  const ZERO:Nat\nfunc succ( n:Nat ):Nat\naxiom a:forall b:Nat ;succ(b)!=ZERO\n",
         "sort Nat\nconst ZERO: Nat\nfunc succ(n: Nat): Nat\naxiom a: forall b: Nat; succ(b) != ZERO\n",
+    );
+}
+
+test "a `hole` declaration is top-level: resets to column 0" {
+    try expectFmt(
+        "pred p\n  hole h: p\n",
+        "pred p\nhole h: p\n",
     );
 }
 
