@@ -185,12 +185,22 @@ inverse pairs (`cancelInverses`): bubble `x` adjacent-before `neg(x)`, collapse 
 gate `tests/cases/arithmetic_cert_neg_cancel.bpa`; unlocked migrating
 `std/integer.bpa` `addDiffReaches` (27-line chain → one `[by arithmetic]`).
 
+**LANDED (84ac3be) — opaque compound leaves in the equation certifier.** `isTowerLeaf`
+now accepts an opaque atom (`isOpaqueAtom`: an app whose head isn't part of the sum
+structure — a foreign `f(x)`/`mod(a,b)`, or a surviving nonlinear `mul`) and `neg(<leaf>)`
+recursively. `cancelInverses` is order-aware (addNegRight vs addNegLeft) and bubbles the
+cancelled pair to the TAIL (`emitSwap`) so `add(x, neg(x))` is a genuine innermost subterm
+— fixing a non-kernel-checking certificate for two-plus opaque leaves. So a goal like
+`sub(add(a, f(x)), f(x)) = a` certifies STRICT. Guarded by a corpus-captured regression
+harness (6 planEquation shape tests) + `arithmetic_cert_opaque_leaf.bpa`. This is the
+mechanism the gcd port's `sub(a, mul(b,q)) = mod(a,b)` step needs — its `subOfAddCancel`
+detour can now be dropped (follow-up).
+
 ## Deferred (explicitly out of scope)
-- **Certifying abstracted-atom goals** — extend the equation certifier so strict
-  `bpa check` (not just `--fast`) discharges opaque-atom arithmetic. Unlocks replacing
-  the gcd port's manual `subOfAddCancel` detour with `[by arithmetic(integer)]`.
+- **Drop the gcd port's `subOfAddCancel` detour** — now that opaque-atom equations
+  certify, `dividesModStep`'s sub step can be plain `[by arithmetic(integer)]`.
 - **Broader corpus migration** — sweep more hand-proved sub/order ladders to
-  `[by arithmetic]` (a fixture must alias `addLeftSwap`+`addIsCommutative`+`addNegRight`+
-  `addZeroLeft/Right` for the certifier to reorder+cancel; certifier-rule-input lemmas
-  like `addIsCommutative` itself stay hand-proved to avoid circularity).
+  `[by arithmetic]` (a fixture must have `addLeftSwap`+`addIsCommutative`+`addNegRight/Left`+
+  `addZeroLeft/Right` in scope; certifier-rule-input lemmas like `addIsCommutative` itself
+  stay hand-proved to avoid circularity).
 - Dense-ℚ quantifier elimination (Fourier–Motzkin) — the ℚ quantified case.
