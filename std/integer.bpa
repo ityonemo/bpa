@@ -2626,26 +2626,3 @@ proof
     forall a: Int; sub(a, a) = ZERO
     [by forall_intro generalize-a]
 qed
-
-// (a - b) + b = a: subtraction inverts addition. sub(a,b)+b = (a+(-b))+b
-// = a+((-b)+b) = a+0 = a. Uses associativity, commutativity (for (-b)+b=0
-// from b+(-b)=0), and the inverse law.
-theorem subAddCancel: forall a, b: Int; add(sub(a, b), b) = a
-proof
-  @generalize-a |
-    fix a: Int {
-      @generalize-b |
-        fix b: Int {
-          // (a + (-b)) + b = a: a linear ℤ cancellation.
-          @conclusion-cancel |
-            add(sub(a, b), b) = a
-            [by arithmetic]
-        }
-      @discharge-b |
-        forall b: Int; add(sub(a, b), b) = a
-        [by forall_intro generalize-b]
-    }
-  @conclusion |
-    forall a, b: Int; add(sub(a, b), b) = a
-    [by forall_intro generalize-a]
-qed

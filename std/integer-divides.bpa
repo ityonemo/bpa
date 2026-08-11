@@ -168,7 +168,6 @@ theorem lessThanIrreflexive = order.lessThanIrreflexive
 theorem lessThanTransitive = order.lessThanTransitive
 theorem lessOrEqualSplit = order.lessOrEqualSplit
 theorem mulNegRight = ring.mulNegRight
-theorem subAddCancel = order.subAddCancel
 theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
 theorem mulIsCommutative = order.mulIsCommutative
@@ -3607,7 +3606,7 @@ qed
 // -- the gcd bridge: d | b -> (d | a iff d | mod(a, b)) ---------------------
 //
 // For b > 0 with d | b: writing q = div(a,b), r = mod(a,b), divModProperty gives
-// b·q + r = a, so r = a − b·q [subAddCancel] and a = b·q + r. d | b -> d | b·q
+// b·q + r = a, so r = a − b·q (linear cancellation) and a = b·q + r. d | b -> d | b·q
 // [dividesMul]. Forward: d|a, d|b·q -> d|r [dividesSubtracts on r = a − b·q].
 // Backward: d|b·q, d|r -> d|a [dividesAdd on a = b·q + r].
 theorem dividesModStep: forall b, d, a: Int; less_than(ZERO, b) -> divides(d, b) ->
