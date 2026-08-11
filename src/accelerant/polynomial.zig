@@ -201,7 +201,7 @@ fn polyCanon(self: *Elaborator, pr: PolyRules, x: TermId) ElabError!?simplify_mo
     //    so run only the sort phase (sortTrace), not acPlan's re-nest.
     var leaves: std.ArrayList(TermId) = .empty;
     try self.flattenSum(pr.add_sym, mono_sum, &leaves);
-    const sorted = (try self.sortTrace(add_symbols, pr.rules, pr.add_comm, pr.add_swap, .{ .succs = 0, .leaves = leaves.items }, &trace)) orelse return null;
+    const sorted = (try self.sortTrace(add_symbols, pr.rules, pr.add_comm, pr.add_swap, .{ .offset = 0, .leaves = leaves.items }, &trace)) orelse return null;
     return .{ .nf = sorted, .trace = trace.items };
 }
 

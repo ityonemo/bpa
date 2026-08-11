@@ -2601,7 +2601,7 @@ pub const Elaborator = struct {
             r.rule_idx = rw.rule_idx + assoc_idx;
             try trace.append(self.arena, r);
         }
-        const sorted = (try self.sortTrace(symbols, rules, comm_idx, swap_idx, .{ .succs = 0, .leaves = leaves.items }, &trace)) orelse return null;
+        const sorted = (try self.sortTrace(symbols, rules, comm_idx, swap_idx, .{ .offset = 0, .leaves = leaves.items }, &trace)) orelse return null;
         return .{ .sorted = sorted, .trace = trace.items };
     }
 
@@ -2744,6 +2744,13 @@ pub const Elaborator = struct {
         "definitionOfSubtraction", "negNeg",   "negAdd",
         "addNegRight",             "addNegLeft",
         "prevSucc",                "succPrev",
+        // numeral-summand lifting: a `neg(succ^n(ZERO))` summand reduces (negSucc/
+        // negZero) to a `prev`-tower, which addPrevLeft/Right float up to the tower
+        // prefix — so `add(ONE, sub(b, ONE))` normalizes to succ/prev over {b} and
+        // parseTower's signed offset matches the physical term. negPrev handles the
+        // `neg(prev ...)` direction symmetrically.
+        "negSucc",                 "negZero",  "negPrev",
+        "addPrevLeft",             "addPrevRight",
     };
 
     const EqCert = struct {
@@ -2853,17 +2860,63 @@ pub const Elaborator = struct {
         return .{ .source = source, .binders = binders.items, .lhs = body, .rhs = body, .formula = formula };
     }
 
-    const Tower = struct { succs: usize, leaves: []const TermId };
+    const Tower = struct { offset: i128, leaves: []const TermId };
 
-    /// Parse succ^k(right-nested sum of variables) or succ^k(ZERO); anything
-    /// else is outside the certificate fragment.
+    /// If `t` is a NUMERAL — `succ^n(ZERO)` (→ +n), `prev^n(ZERO)` (→ −n), or a
+    /// `neg(...)` of one (sign flipped) — return its signed value; else null. This
+    /// is how a bare constant like `ONE` = succ(ZERO) sitting as a summand folds
+    /// into the tower's constant offset instead of riding as an (uncancellable)
+    /// leaf. `ZERO` itself is 0.
+    fn numeralValue(self: *Elaborator, symbols: presburger_mod.Symbols, t: TermId) ?i128 {
+        var cur = t;
+        var sign: i128 = 1;
+        // peel any number of leading neg(...) (each flips the sign).
+        while (true) {
+            const node = self.pool.get(cur);
+            if (node == .app and symIs(node.app.sym, symbols.neg) and node.app.args_len == 1) {
+                sign = -sign;
+                cur = self.pool.args(node.app)[0];
+                continue;
+            }
+            break;
+        }
+        var mag: i128 = 0;
+        while (true) {
+            const node = self.pool.get(cur);
+            if (node == .app and symIs(node.app.sym, symbols.succ) and node.app.args_len == 1) {
+                mag += 1;
+                cur = self.pool.args(node.app)[0];
+                continue;
+            }
+            if (node == .app and symIs(node.app.sym, symbols.prev) and node.app.args_len == 1) {
+                mag -= 1;
+                cur = self.pool.args(node.app)[0];
+                continue;
+            }
+            break;
+        }
+        const node = self.pool.get(cur);
+        if (node == .app and symIs(node.app.sym, symbols.zero) and node.app.args_len == 0)
+            return sign * mag;
+        return null;
+    }
+
+    /// Parse succ^j(prev^k(right-nested sum of leaves)) with numeral summands
+    /// folded into a signed constant offset; anything else is outside the
+    /// certificate fragment. The offset accumulates the leading succ/prev prefix
+    /// PLUS every numeral summand (succ^n(ZERO), prev^n(ZERO), or neg of one).
     fn parseTower(self: *Elaborator, symbols: presburger_mod.Symbols, t: TermId) ElabError!?Tower {
-        var succs: usize = 0;
+        var offset: i128 = 0;
         var cur = t;
         while (true) {
             const node = self.pool.get(cur);
             if (node == .app and symIs(node.app.sym, symbols.succ) and node.app.args_len == 1) {
-                succs += 1;
+                offset += 1;
+                cur = self.pool.args(node.app)[0];
+                continue;
+            }
+            if (node == .app and symIs(node.app.sym, symbols.prev) and node.app.args_len == 1) {
+                offset -= 1;
                 cur = self.pool.args(node.app)[0];
                 continue;
             }
@@ -2872,6 +2925,11 @@ pub const Elaborator = struct {
         var leaves: std.ArrayList(TermId) = .empty;
         while (true) {
             const node = self.pool.get(cur);
+            // a numeral summand (incl. a bare ZERO tail) folds into the offset.
+            if (self.numeralValue(symbols, cur)) |v| {
+                offset += v;
+                break;
+            }
             if (self.isTowerLeaf(symbols, cur)) {
                 try leaves.append(self.arena, cur);
                 break;
@@ -2879,18 +2937,19 @@ pub const Elaborator = struct {
             if (node != .app) return null;
             if (symIs(node.app.sym, symbols.add) and node.app.args_len == 2) {
                 const args = self.pool.args(node.app);
+                if (self.numeralValue(symbols, args[0])) |v| {
+                    offset += v; // numeral summand: fold, don't emit a leaf
+                    cur = args[1];
+                    continue;
+                }
                 if (!self.isTowerLeaf(symbols, args[0])) return null; // not right-nested
                 try leaves.append(self.arena, args[0]);
                 cur = args[1];
                 continue;
             }
-            if (symIs(node.app.sym, symbols.zero) and node.app.args_len == 0) {
-                if (leaves.items.len != 0) return null; // ZERO inside a sum is not normal
-                break;
-            }
             return null;
         }
-        return .{ .succs = succs, .leaves = leaves.items };
+        return .{ .offset = offset, .leaves = leaves.items };
     }
 
     /// A tower summand leaf is a free variable, an OPAQUE atom (a foreign
@@ -2972,7 +3031,7 @@ pub const Elaborator = struct {
         trace: *std.ArrayList(simplify_mod.Rewrite),
     ) ElabError!?TermId {
         const leaves = try self.arena.dupe(TermId, tower.leaves);
-        var whole = (try self.buildTower(symbols, tower.succs, (try self.buildComb(symbols, leaves)) orelse return null)) orelse return null;
+        var whole = (try self.buildTowerSigned(symbols, tower.offset, (try self.buildComb(symbols, leaves)) orelse return null)) orelse return null;
         if (leaves.len > 1) {
             for (0..leaves.len - 1) |pass| {
                 for (0..leaves.len - 1 - pass) |i| {
@@ -2985,7 +3044,7 @@ pub const Elaborator = struct {
                     const sub_before = (try self.buildComb(symbols, leaves[i..])) orelse return null;
                     std.mem.swap(TermId, &leaves[i], &leaves[i + 1]);
                     const sub_after = (try self.buildComb(symbols, leaves[i..])) orelse return null;
-                    const after = (try self.buildTower(symbols, tower.succs, (try self.buildComb(symbols, leaves)) orelse return null)) orelse return null;
+                    const after = (try self.buildTowerSigned(symbols, tower.offset, (try self.buildComb(symbols, leaves)) orelse return null)) orelse return null;
                     const rule = rules[rule_idx];
                     const bindings = (try simplify_mod.matchRule(self.arena, self.pool, self.env, rule, rule.lhs, sub_before)) orelse return null;
                     try trace.append(self.arena, .{
@@ -3042,7 +3101,7 @@ pub const Elaborator = struct {
         rules: []const simplify_mod.Rule,
         comm_idx: ?usize,
         swap_idx: ?usize,
-        succs: usize,
+        offset: i128,
         order: []TermId,
         pos: usize,
         whole: TermId,
@@ -3056,7 +3115,7 @@ pub const Elaborator = struct {
         const sub_before = (try self.buildComb(symbols, order[pos..])) orelse return null;
         std.mem.swap(TermId, &order[pos], &order[pos + 1]);
         const sub_after = (try self.buildComb(symbols, order[pos..])) orelse return null;
-        const after = (try self.buildTower(symbols, succs, (try self.buildComb(symbols, order)) orelse return null)) orelse return null;
+        const after = (try self.buildTowerSigned(symbols, offset, (try self.buildComb(symbols, order)) orelse return null)) orelse return null;
         const rule = rules[rule_idx];
         const bindings = (try simplify_mod.matchRule(self.arena, self.pool, self.env, rule, rule.lhs, sub_before)) orelse return null;
         try trace.append(self.arena, .{ .before = whole, .after = after, .rule_idx = rule_idx, .bindings = bindings, .inst_lhs = sub_before, .inst_rhs = sub_after });
@@ -3075,7 +3134,7 @@ pub const Elaborator = struct {
         rules: []const simplify_mod.Rule,
         comm_idx: ?usize,
         swap_idx: ?usize,
-        succs: usize,
+        offset: i128,
         whole0: TermId,
         trace: *std.ArrayList(simplify_mod.Rewrite),
         loc: u32,
@@ -3124,12 +3183,12 @@ pub const Elaborator = struct {
             // move order[hi] rightward to n-1
             var pos = hi;
             while (pos + 1 < n) : (pos += 1) {
-                whole = (try self.emitSwap(symbols, rules, comm_idx, swap_idx, succs, order, pos, whole, trace)) orelse return null;
+                whole = (try self.emitSwap(symbols, rules, comm_idx, swap_idx, offset, order, pos, whole, trace)) orelse return null;
             }
             // move order[lo] rightward to n-2 (positions below hi are unshifted)
             pos = lo;
             while (pos + 1 < n - 1) : (pos += 1) {
-                whole = (try self.emitSwap(symbols, rules, comm_idx, swap_idx, succs, order, pos, whole, trace)) orelse return null;
+                whole = (try self.emitSwap(symbols, rules, comm_idx, swap_idx, offset, order, pos, whole, trace)) orelse return null;
             }
             // the pair now occupies the last two slots. Positive-first (x, neg(x)
             // → addNegRight) or negative-first (neg(x), x → addNegLeft)?
@@ -3153,7 +3212,7 @@ pub const Elaborator = struct {
             // after-term: drop the pair, leave `…+ ZERO` (reduced leaves then +0).
             const reduced = order[0..xpos];
             const comb0 = (try self.buildCombWithZeroTail(symbols, reduced)) orelse return null;
-            const after_cancel = (try self.buildTower(symbols, succs, comb0)) orelse return null;
+            const after_cancel = (try self.buildTowerSigned(symbols, offset, comb0)) orelse return null;
             try trace.append(self.arena, .{ .before = before_cancel, .after = after_cancel, .rule_idx = rule_idx, .bindings = neg_bindings, .inst_lhs = pair_term, .inst_rhs = zero });
             whole = after_cancel;
 
@@ -3205,7 +3264,7 @@ pub const Elaborator = struct {
         };
         const tower_s = (try self.parseTower(symbols, rs.nf)) orelse return null;
         const tower_t = (try self.parseTower(symbols, rt.nf)) orelse return null;
-        if (tower_s.succs != tower_t.succs) return null;
+        if (tower_s.offset != tower_t.offset) return null;
 
         var trace_s: std.ArrayList(simplify_mod.Rewrite) = .empty;
         try trace_s.appendSlice(self.arena, rs.trace);
@@ -3216,8 +3275,8 @@ pub const Elaborator = struct {
         // cancel additive-inverse pairs (x + neg(x) → 0) in each sorted sum, so
         // e.g. {a, b, neg(a)} reduces to {b}. Emits addNegRight + zero-drop
         // rewrites into the trace (kernel-checked like every other rewrite).
-        sorted_s = (try self.cancelInverses(symbols, rules, comm_idx, swap_idx, tower_s.succs, sorted_s, &trace_s, loc)) orelse return null;
-        sorted_t = (try self.cancelInverses(symbols, rules, comm_idx, swap_idx, tower_t.succs, sorted_t, &trace_t, loc)) orelse return null;
+        sorted_s = (try self.cancelInverses(symbols, rules, comm_idx, swap_idx, tower_s.offset, sorted_s, &trace_s, loc)) orelse return null;
+        sorted_t = (try self.cancelInverses(symbols, rules, comm_idx, swap_idx, tower_t.offset, sorted_t, &trace_t, loc)) orelse return null;
         // same multiset of variables (and same tower) iff the sorted forms agree
         if (!self.pool.alphaEq(sorted_s, sorted_t)) return null;
         return .{
@@ -3256,7 +3315,7 @@ pub const Elaborator = struct {
         };
         const tower_s = (try self.parseTower(symbols, rs.nf)) orelse return null;
         const tower_t = (try self.parseTower(symbols, rt.nf)) orelse return null;
-        if (tower_t.succs < tower_s.succs + 1) return null;
+        if (tower_t.offset < tower_s.offset + 1) return null;
 
         // multiset difference t - s: every s-leaf must be consumed
         var remaining: std.ArrayList(TermId) = .empty;
@@ -3269,7 +3328,7 @@ pub const Elaborator = struct {
         }
 
         const d_comb = (try self.buildComb(symbols, remaining.items)) orelse return null;
-        const d = (try self.buildTower(symbols, tower_t.succs - tower_s.succs - 1, d_comb)) orelse return null;
+        const d = (try self.buildTowerSigned(symbols, tower_t.offset - tower_s.offset - 1, d_comb)) orelse return null;
         const succ_sym = symbols.succ orelse return null;
         const add_sym = symbols.add orelse return null;
         const succ_d = try self.pool.addApp(.app, succ_sym, &.{d});
@@ -4491,6 +4550,13 @@ const arith_prelude =
     \\axiom addNegRight: forall n: Int; add(n, neg(n)) = ZERO
     \\axiom addNegLeft: forall n: Int; add(neg(n), n) = ZERO
     \\axiom negNeg: forall n: Int; neg(neg(n)) = n
+    \\axiom addPrevLeft: forall a, b: Int; add(prev(a), b) = prev(add(a, b))
+    \\axiom addPrevRight: forall a, b: Int; add(a, prev(b)) = prev(add(a, b))
+    \\axiom negZero: neg(ZERO) = ZERO
+    \\axiom negSucc: forall n: Int; neg(succ(n)) = prev(neg(n))
+    \\axiom negPrev: forall n: Int; neg(prev(n)) = succ(neg(n))
+    \\axiom prevSucc: forall n: Int; prev(succ(n)) = n
+    \\axiom succPrev: forall n: Int; succ(prev(n)) = n
     \\
 ;
 
@@ -4585,6 +4651,39 @@ test "arith certifier: TWO opaque leaves, one cancels (the gcd-step shape)" {
         \\    @c | add(f(x), sub(h(y), f(x))) = h(y) [by arithmetic]
         \\  } @dy | forall y: Int; add(f(x), sub(h(y), f(x))) = h(y) [by forall_intro gy] }
         \\  @conclusion | forall x, y: Int; add(f(x), sub(h(y), f(x))) = h(y) [by forall_intro gx]
+        \\qed
+    );
+}
+
+test "arith certifier: numeral summand cancels (add(ONE, sub(b, ONE)) = b)" {
+    // ONE = succ(ZERO) appears as an INNER summand of the sum, not the top-level
+    // succ prefix. add(ONE, sub(b, ONE)) → {ONE, b, neg(ONE)} must reduce to {b}
+    // by cancelling ONE with neg(ONE) — the tower parser folds the numeral summand
+    // into the constant offset so the pair meets. Same shape as the separated-leaf
+    // test but with a numeral in the fvar's place.
+    try expectCertifies(arith_prelude ++
+        \\theorem t: forall b: Int; add(ONE, sub(b, ONE)) = b
+        \\proof
+        \\  @gb | fix b: Int {
+        \\    @c | add(ONE, sub(b, ONE)) = b [by arithmetic]
+        \\  }
+        \\  @conclusion | forall b: Int; add(ONE, sub(b, ONE)) = b [by forall_intro gb]
+        \\qed
+    );
+}
+
+test "arith certifier: net-nonzero numeral offset (add(ONE, n) = succ(n))" {
+    // a numeral summand that does NOT cancel: add(ONE, n) = succ(n). ONE=succ(ZERO)
+    // contributes +1 to the tower's (signed) constant offset; the RHS succ(n) is a
+    // +1 prefix over {n}. Both sides normalize to offset +1 over {n}. Distinguishes
+    // the signed-offset fold from a mere numeral-as-cancellable-leaf.
+    try expectCertifies(arith_prelude ++
+        \\theorem t: forall n: Int; add(ONE, n) = succ(n)
+        \\proof
+        \\  @gn | fix n: Int {
+        \\    @c | add(ONE, n) = succ(n) [by arithmetic]
+        \\  }
+        \\  @conclusion | forall n: Int; add(ONE, n) = succ(n) [by forall_intro gn]
         \\qed
     );
 }

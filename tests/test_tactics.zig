@@ -416,6 +416,12 @@ pub fn addTests(
     // equation certifier must cancel a with neg(a) (a `neg`-leaf tower).
     ctx.okSilent(&.{ "check", "tests/cases/arithmetic_cert_neg_cancel.bpa" });
 
+    // numeral summand: `add(ONE, sub(b, ONE)) = b` — the ONE / neg(ONE) inverse
+    // pair must cancel even though ONE is a `succ(ZERO)` tower sitting as an inner
+    // summand (not the top-level succ prefix). parseTower folds the numeral into
+    // the tower's constant offset so the pair meets and cancels.
+    ctx.okSilent(&.{ "check", "tests/cases/arithmetic_cert_numeral_leaf.bpa" });
+
     // diagnostic: the SAME goal with `addLeftSwap` omitted from scope must report
     // the specific missing rewrite lemma ("theory lacks lemma 'addLeftSwap'"), not
     // the generic "form not in certification scope" (which reads as "wrong shape"
