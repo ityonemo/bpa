@@ -2612,17 +2612,3 @@ qed
 
 func sub(a: Int, b: Int): Int
 axiom definitionOfSubtraction: forall a, b: Int; sub(a, b) = add(a, neg(b))
-
-// a - a = 0: sub(a, a) = a + (-a) = 0.
-theorem subSelf: forall a: Int; sub(a, a) = ZERO
-proof
-  @generalize-a |
-    fix a: Int {
-      @conclusion-sub |
-        sub(a, a) = ZERO
-        [by simplify definitionOfSubtraction addNegRight]
-    }
-  @conclusion |
-    forall a: Int; sub(a, a) = ZERO
-    [by forall_intro generalize-a]
-qed

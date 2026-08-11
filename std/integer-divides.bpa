@@ -128,7 +128,6 @@ axiom prevSucc = integer.prevSucc
 axiom definitionOfSubtraction = order.definitionOfSubtraction
 axiom addSuccLeft = integer.addSuccLeft
 axiom addPrevLeft = integer.addPrevLeft
-theorem subSelf = order.subSelf
 
 define TWO = succ(ONE)
 define THREE = succ(TWO)
@@ -1250,12 +1249,9 @@ proof
                         sub(mul(a, x), mul(a, y)) = sub(mul(a, y), mul(a, y))
                         [by rewrite products-equal reflexivity-of-collapse]
                       // a·y − a·y = 0
-                      @self-difference-rule |
-                        forall n: Int; sub(n, n) = ZERO
-                        [by theorem subSelf]
                       @collapsed-difference-is-zero |
                         sub(mul(a, y), mul(a, y)) = ZERO
-                        [by forall_elim(mul(a, y)) self-difference-rule]
+                        [by arithmetic]
                       @product-difference-collapses |
                         mul(a, sub(x, y)) = sub(mul(a, y), mul(a, y))
                         [by rewrite difference-collapses product-of-difference]
@@ -1893,12 +1889,9 @@ proof
                                                       @difference-of-equal-products |
                                                         sub(mul(b, q1), mul(b, q2)) = sub(mul(b, q1), mul(b, q1))
                                                         [by rewrite products-equal-flipped products-difference-reflexive]
-                                                      @self-difference-is-zero |
-                                                        forall n: Int; sub(n, n) = ZERO
-                                                        [by theorem subSelf]
                                                       @product-self-difference-zero |
                                                         sub(mul(b, q1), mul(b, q1)) = ZERO
-                                                        [by forall_elim(mul(b, q1)) self-difference-is-zero]
+                                                        [by arithmetic]
                                                       @products-difference-zero |
                                                         sub(mul(b, q1), mul(b, q2)) = ZERO
                                                         [by rewrite product-self-difference-zero difference-of-equal-products]

@@ -60,9 +60,9 @@ axiom nonnegSuccNotZero = nonnegatives.nonnegSuccNotZero
 theorem nonnegCases = nonnegatives.nonnegCases
 
 // -- subtraction: sub(a, b) = a + (-b) --------------------------------------
-// Subtraction is RING vocabulary (`a + (-b)`), so it and its ring-only facts
-// now live in the ring layer, std/integer.bpa. Re-aliased here so the order
-// theory below and downstream files keep seeing `order.sub` / `order.subSelf`.
+// Subtraction is RING vocabulary (`a + (-b)`), so it now lives in the ring
+// layer, std/integer.bpa. Re-aliased here so the order theory below and
+// downstream files keep seeing `order.sub`.
 
 func sub = integer.sub
 axiom definitionOfSubtraction = integer.definitionOfSubtraction
@@ -85,12 +85,6 @@ axiom lessThanElim: forall a, b: Int; less_than(a, b) -> exists d: Int; nonneg(d
 // `lessOrEqualIsGapExistential` (less_than) proves this body is identical to the old
 // nonnegative-gap-existential characterization `exists d; nonneg(d) and add(a, d) = b`.
 define less_or_equal(a: Int, b: Int) = less_than(a, b) or a = b
-
-// -- subtraction facts (ring algebra, moved down to std/integer.bpa) ---------
-// sub(a,a)=0 is ring-only; it now lives in the ring layer and is re-aliased here
-// so `order.subSelf` still resolves for downstream files.
-
-theorem subSelf = integer.subSelf
 
 // -- the order theory -------------------------------------------------------
 
