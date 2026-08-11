@@ -156,11 +156,10 @@ theorem lessOrEqualAntisymmetric = order.lessOrEqualAntisymmetric
 axiom nonnegZero = nonneg.nonnegZero
 axiom nonnegSucc = nonneg.nonnegSucc
 theorem addNegRight = ring.addNegRight
-// addNegLeft + addLeftSwap early: the `arithmetic` equation certifier needs them
-// (and addNegRight) in scope to cancel a neg/positive pair and reorder a sum. A
-// rule the certifier can't resolve (because it's declared later, or absent) is
-// silently dropped from its rule set, so a linear goal fails to certify here
-// even though it certifies where the rule is in scope.
+// addNegLeft + addLeftSwap (and addNegRight above) feed the `arithmetic` equation
+// certifier: it needs them in scope to cancel a neg/positive pair and reorder a
+// sum. A rule the certifier can't resolve is silently dropped from its rule set,
+// so a linear goal fails to certify without it.
 theorem addNegLeft = ring.addNegLeft
 theorem addLeftSwap = ring.addLeftSwap
 theorem addCancelLeft = order.addCancelLeft
@@ -171,7 +170,6 @@ theorem lessOrEqualSplit = order.lessOrEqualSplit
 theorem mulNegRight = ring.mulNegRight
 theorem addDiffReaches = order.addDiffReaches
 theorem subAddCancel = order.subAddCancel
-theorem subOfAddCancel = integer.subOfAddCancel
 theorem lessThanToLessOrEqual = order.lessThanToLessOrEqual
 theorem lessOrEqualRefl = order.lessOrEqualRefl
 theorem mulIsCommutative = order.mulIsCommutative
