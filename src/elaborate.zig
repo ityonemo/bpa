@@ -2817,17 +2817,7 @@ pub const Elaborator = struct {
         const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
         switch (stmt) {
             .axiom => |a| return .{ .formula = a.formula, .source = .{ .axiom = .{ .id = stmt_id, .loc = loc } } },
-            .theorem => |t| {
-                // The `.proven` gate is intentionally dropped: it is redundant with
-                // the kernel's own `cites unproven theorem` check (kernel.zig
-                // theorem_ref), which is the real soundness backstop. Keeping it here
-                // only caused an earlier-but-not-yet-proven rule lemma to be silently
-                // dropped from the certifier's rule set. The `.accelerated` guard
-                // STAYS — it is a "don't launder accelerated taint into a strict
-                // certificate" policy, not redundant with the kernel.
-                if (t.accelerated.len != 0) return null;
-                return .{ .formula = t.formula, .source = .{ .theorem = .{ .id = stmt_id, .loc = loc } } };
-            },
+            .theorem => |t| return .{ .formula = t.formula, .source = .{ .theorem = .{ .id = stmt_id, .loc = loc } } },
             .schema => return null,
         }
     }
