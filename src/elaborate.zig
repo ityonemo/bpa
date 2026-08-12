@@ -1026,10 +1026,46 @@ pub const Elaborator = struct {
     /// references (dependencies lower first); a citation cycle is a located
     /// error. Ties break by textual order, so already-ordered proofs lower
     /// identically to before.
+    /// A unit of pending lowering work. The block-nesting recursion
+    /// (`lowerSteps → lowerOneStep → lowerSteps` for assume/fix/unpack steps) is
+    /// linearized onto an explicit heap stack of these, so lowering a proof of any
+    /// nesting depth cannot overflow the native call stack. LIFO discipline: for a
+    /// block step we push its `.exit_block` FIRST then its children in reverse topo
+    /// order, so children pop in topo order and the exit (closeBlock + optional
+    /// scope.pop) fires exactly when the block's subtree is fully drained. The block
+    /// + its subtree therefore occupy a CONTIGUOUS `[first_step, last_step)` step
+    /// span (the invariant `kernel.zig` checkEigen/lastFormula/checkClosedBlockRef
+    /// rely on) — because `newBlock` (which stamps `first_step`) runs at POP time,
+    /// and nothing but this block's own children can append a step above it.
+    const WorkItem = union(enum) {
+        lower_step: struct { step: *const ast.Step, block_id: kernel.BlockId },
+        exit_block: struct { block_id: kernel.BlockId, pop_scope: bool },
+    };
+
+    /// Seed the entry block's siblings and run the iterative lowering loop. The
+    /// work-stack is a LOCAL (not an Elaborator field) so schema-instantiate
+    /// re-entrancy (a nested checkProofSteps) and per-arm case drives each get an
+    /// independent stack. No longer self-recurses.
     fn lowerSteps(self: *Elaborator, low: *Lowering, steps: []const ast.Step, block_id: kernel.BlockId) ElabError!void {
-        // map each sibling label to its textual index, catching duplicates
-        // within this block and shadowing of an enclosing-scope label (Zig's
-        // no-shadowing rule; disjoint sibling blocks may still reuse a name).
+        var stack: std.ArrayList(WorkItem) = .empty;
+        try self.pushBlockBody(low, &stack, steps, block_id);
+        while (stack.pop()) |item| {
+            switch (item) {
+                .exit_block => |e| {
+                    self.closeBlock(low, e.block_id);
+                    if (e.pop_scope) _ = self.scope.pop();
+                },
+                .lower_step => |ls| try self.driveOneStep(low, &stack, ls.step, ls.block_id),
+            }
+        }
+    }
+
+    /// Validate the sibling group's labels (no duplicates, no shadowing of an
+    /// enclosing label), topo-sort them, and push each as a `.lower_step` in REVERSE
+    /// topo order so they pop in topo order. Runs at block-enter (the root seed and
+    /// each block-opening step's driveOneStep), exactly where `lowerSteps` did this
+    /// per sibling-group before.
+    fn pushBlockBody(self: *Elaborator, low: *Lowering, stack: *std.ArrayList(WorkItem), steps: []const ast.Step, block_id: kernel.BlockId) ElabError!void {
         var index_of: std.AutoHashMapUnmanaged(StrId, usize) = .empty;
         for (steps, 0..) |*s, i| {
             const label = try self.internTok(s.label);
@@ -1043,8 +1079,10 @@ pub const Elaborator = struct {
             gop.value_ptr.* = i;
         }
         const order = try self.topoSortSteps(steps, index_of);
-        for (order) |i| {
-            try self.lowerOneStep(low, &steps[i], block_id);
+        var i = order.len;
+        while (i > 0) {
+            i -= 1;
+            try stack.append(self.arena, .{ .lower_step = .{ .step = &steps[order[i]], .block_id = block_id } });
         }
     }
 
@@ -1167,59 +1205,63 @@ pub const Elaborator = struct {
     /// Lower one sibling step (claim or sub-block). Its label's real id is
     /// recorded here; because callers lower in topological order, any label
     /// this step cites is already resolved.
-    fn lowerOneStep(self: *Elaborator, low: *Lowering, s: *const ast.Step, block_id: kernel.BlockId) ElabError!void {
+    /// Lower one step. The three BLOCK arms (assume/fix/unpack) do their ENTER work
+    /// (elaborate/bind/newBlock/label) then SCHEDULE the block's exit + children onto
+    /// `stack` instead of recursing — pushing `.exit_block` first so it pops last
+    /// (after the whole subtree). The `.claim`/`.case` arms are byte-identical to the
+    /// old recursive `lowerOneStep` (no scheduling; `.case`'s emitCaseTree stays
+    /// recursive, bounded by arm count, not proof depth).
+    fn driveOneStep(self: *Elaborator, low: *Lowering, stack: *std.ArrayList(WorkItem), s: *const ast.Step, block_id: kernel.BlockId) ElabError!void {
         const label = try self.internTok(s.label);
-        {
-            switch (s.body) {
-                .assume => |blk| {
-                    const tcc_start = self.pending_tccs.items.len;
-                    const f = try self.requireProp(try self.elaborateExpr(blk.formula), blk.formula);
-                    // the assumption's guards are owed in the PARENT context
-                    try self.dischargeTccs(low, block_id, tcc_start);
-                    const b = try self.newBlock(low, label, block_id, .{ .assume = f.id });
-                    low.labels.put(self.arena, label, .{ .block = b }) catch return error.OutOfMemory;
-                    try self.lowerSteps(low, blk.steps, b);
-                    self.closeBlock(low, b);
-                },
-                .fix => |blk| {
-                    const v = try self.bindProofVar(blk.name, blk.sort);
-                    // a PREDICATED fix (`fix h: H`) carries the guard `inH(h)` on the
-                    // block: it becomes the block's hypothesis (`[by predicate <lbl>]`)
-                    // and the antecedent of the `forall_intro` conclusion.
-                    const guard = try self.fixGuard(blk.sort, v);
-                    const b = try self.newBlock(low, label, block_id, .{ .fix = .{ .v = v, .guard = guard } });
-                    low.labels.put(self.arena, label, .{ .block = b }) catch return error.OutOfMemory;
-                    try self.lowerSteps(low, blk.steps, b);
-                    self.closeBlock(low, b);
-                    _ = self.scope.pop();
-                },
-                .unpack => |blk| {
-                    const source = try self.resolveStepRef(low, blk.from);
-                    const v = try self.bindProofVar(blk.name, blk.sort);
-                    const b = try self.newBlock(low, label, block_id, .{ .unpack = .{ .v = v, .source = source } });
-                    low.labels.put(self.arena, label, .{ .block = b }) catch return error.OutOfMemory;
-                    try self.lowerSteps(low, blk.steps, b);
-                    self.closeBlock(low, b);
-                    _ = self.scope.pop();
-                },
-                .claim => |c| {
-                    const tcc_start = self.pending_tccs.items.len;
-                    const f = try self.requireProp(try self.elaborateExpr(c.formula), c.formula);
-                    const just = try self.lowerJustification(low, block_id, f.id, c);
-                    // guards owed by the claim (and by rule arguments/schema
-                    // instances) are discharged in this step's context
-                    try self.dischargeTccs(low, block_id, tcc_start);
-                    low.labels.put(self.arena, label, .{ .step = @enumFromInt(low.steps.items.len) }) catch return error.OutOfMemory;
-                    try low.steps.append(self.arena, .{
-                        .formula = f.id,
-                        .just = just,
-                        .block = block_id,
-                        .label = label,
-                        .loc = s.label.start,
-                    });
-                },
-                .case => |c| try self.lowerCase(low, s, block_id, label, c),
-            }
+        switch (s.body) {
+            .assume => |blk| {
+                const tcc_start = self.pending_tccs.items.len;
+                const f = try self.requireProp(try self.elaborateExpr(blk.formula), blk.formula);
+                // the assumption's guards are owed in the PARENT context
+                try self.dischargeTccs(low, block_id, tcc_start);
+                const b = try self.newBlock(low, label, block_id, .{ .assume = f.id });
+                low.labels.put(self.arena, label, .{ .block = b }) catch return error.OutOfMemory;
+                // exit under the children (no scope frame for assume), then children.
+                try stack.append(self.arena, .{ .exit_block = .{ .block_id = b, .pop_scope = false } });
+                try self.pushBlockBody(low, stack, blk.steps, b);
+            },
+            .fix => |blk| {
+                const v = try self.bindProofVar(blk.name, blk.sort);
+                // a PREDICATED fix (`fix h: H`) carries the guard `inH(h)` on the
+                // block: it becomes the block's hypothesis (`[by predicate <lbl>]`)
+                // and the antecedent of the `forall_intro` conclusion.
+                const guard = try self.fixGuard(blk.sort, v);
+                const b = try self.newBlock(low, label, block_id, .{ .fix = .{ .v = v, .guard = guard } });
+                low.labels.put(self.arena, label, .{ .block = b }) catch return error.OutOfMemory;
+                // exit pops the eigenvariable scope frame AFTER the subtree drains.
+                try stack.append(self.arena, .{ .exit_block = .{ .block_id = b, .pop_scope = true } });
+                try self.pushBlockBody(low, stack, blk.steps, b);
+            },
+            .unpack => |blk| {
+                const source = try self.resolveStepRef(low, blk.from);
+                const v = try self.bindProofVar(blk.name, blk.sort);
+                const b = try self.newBlock(low, label, block_id, .{ .unpack = .{ .v = v, .source = source } });
+                low.labels.put(self.arena, label, .{ .block = b }) catch return error.OutOfMemory;
+                try stack.append(self.arena, .{ .exit_block = .{ .block_id = b, .pop_scope = true } });
+                try self.pushBlockBody(low, stack, blk.steps, b);
+            },
+            .claim => |c| {
+                const tcc_start = self.pending_tccs.items.len;
+                const f = try self.requireProp(try self.elaborateExpr(c.formula), c.formula);
+                const just = try self.lowerJustification(low, block_id, f.id, c);
+                // guards owed by the claim (and by rule arguments/schema
+                // instances) are discharged in this step's context
+                try self.dischargeTccs(low, block_id, tcc_start);
+                low.labels.put(self.arena, label, .{ .step = @enumFromInt(low.steps.items.len) }) catch return error.OutOfMemory;
+                try low.steps.append(self.arena, .{
+                    .formula = f.id,
+                    .just = just,
+                    .block = block_id,
+                    .label = label,
+                    .loc = s.label.start,
+                });
+            },
+            .case => |c| try self.lowerCase(low, s, block_id, label, c),
         }
     }
 
@@ -1305,7 +1347,31 @@ pub const Elaborator = struct {
 
     pub fn closeBlock(self: *Elaborator, low: *Lowering, id: kernel.BlockId) void {
         _ = self;
-        low.blocks.items[@intFromEnum(id)].last_step = @intCast(low.steps.items.len);
+        const blk = &low.blocks.items[@intFromEnum(id)];
+        blk.last_step = @intCast(low.steps.items.len);
+        // Contiguity tripwire (Debug only): the iterative work-stack must give this
+        // block + its whole subtree a CONTIGUOUS [first_step, last_step) span — the
+        // kernel's checkEigen/lastFormula/checkClosedBlockRef rely on it. Every step
+        // in the range must belong to this block or a descendant of it; none may
+        // belong to an unrelated (ancestor/sibling) block.
+        if (std.debug.runtime_safety) {
+            const self_idx = @intFromEnum(id);
+            var i: usize = blk.first_step;
+            while (i < blk.last_step) : (i += 1) {
+                // Walk this step's block up its ancestor chain. Blocks are allocated
+                // in DFS order, so a descendant's index always exceeds its ancestor's;
+                // the walk strictly decreases and must pass THROUGH `id` iff the step
+                // lies in this block's subtree. Stop once the index drops to/below
+                // `self_idx` — hitting `id` means in-subtree, anything else is an
+                // interleaving bug the contiguity invariant forbids.
+                var bi = @intFromEnum(low.steps.items[i].block);
+                while (bi > self_idx) {
+                    // a descendant (index > self_idx) always has a non-null parent.
+                    bi = @intFromEnum(low.blocks.items[bi].parent.?);
+                }
+                std.debug.assert(bi == self_idx);
+            }
+        }
     }
 
     /// fix/unpack variable. Zig's rule: no *shadowing* — the name must be fresh
