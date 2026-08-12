@@ -1,15 +1,20 @@
-// std/group-power.bpa — group powers g^n over a Nat exponent, layered on top
-// of std/group.bpa (the pure abstract group theory) and std/peano.bpa (the
-// naturals). This is the group analogue of std/integer-ring.bpa's layering
-// over std/integer.bpa: the primitive theory stays untouched, and the power
+// std/group-power.bpa — integer powers g^n over a ℤ exponent, layered on top of
+// std/group.bpa (the pure abstract group theory) and std/integer.bpa (the
+// integers). This is the group analogue of std/integer-ring.bpa's layering over
+// std/integer.bpa: the primitive group theory stays untouched, and the power
 // function plus its exponent laws are defined and proved here.
 //
-// pow(g, n) is g composed with itself n times (g^0 = E, g^(n+1) = g^n · g).
-// The foundational law is powAdd: g^(m+n) = g^m · g^n, proved by induction on
-// the exponent n with g and m fixed.
+// The EXPONENT is an integer, not a group element — g^n for n ∈ ℤ, where a
+// NEGATIVE exponent means repeated multiplication by the inverse. So the power
+// is ℤ-recursive in BOTH directions: g^0 = E, g^(n+1) = g^n · g (step up by g),
+// g^(n−1) = g^n · g⁻¹ (step down by the inverse). Judson defines it piecewise
+// over ℕ (g^n = n copies of g, g^{−n} = n copies of g⁻¹); this single two-sided
+// ℤ-recursive function is the equivalent, and it is what the laws — stated for
+// all m, n ∈ ℤ — quantify over. The laws are proved by bidirectional integer
+// induction (base + successor step + predecessor step).
 
 import group <<< "std/group.bpa"
-import peano <<< "std/peano.bpa"
+import integer <<< "std/integer.bpa"
 
 // -- the group structure ----------------------------------------------------
 
@@ -18,105 +23,51 @@ const E = group.E
 func op = group.op
 func inverse = group.inverse
 axiom opAssoc = group.opAssoc
+axiom opIdentityLeft = group.opIdentityLeft
 theorem opIdentityRight = group.opIdentityRight
+theorem opInverseRight = group.opInverseRight
 
-// -- the natural-number exponents -------------------------------------------
+// -- the integer exponents --------------------------------------------------
 
-sort Nat = peano.Nat
-const ZERO = peano.ZERO
-func succ = peano.succ
-func add = peano.add
-axiom induction = peano.induction
-theorem addZeroRight = peano.addZeroRight
-theorem addSuccRight = peano.addSuccRight
+sort Int = integer.Int
+const ZERO = integer.ZERO
+func succ = integer.succ
+func prev = integer.prev
+func add = integer.add
+theorem induction = integer.induction
+theorem addZeroRight = integer.addZeroRight
+theorem addSuccRight = integer.addSuccRight
+theorem addPrevRight = integer.addPrevRight
 
-// -- group powers -----------------------------------------------------------
+// -- group powers over a ℤ exponent -----------------------------------------
 
-func pow(g: Grp, n: Nat): Grp
-axiom powZero: forall g: Grp; pow(g, ZERO) = E
-axiom powSucc: forall g: Grp; forall n: Nat; pow(g, succ(n)) = op(pow(g, n), g)
+func power(g: Grp, n: Int): Grp
+axiom powerZero: forall g: Grp; power(g, ZERO) = E
+axiom powerSucc: forall g: Grp; forall n: Int; power(g, succ(n)) = op(power(g, n), g)
+axiom powerPrev: forall g: Grp; forall n: Int; power(g, prev(n)) = op(power(g, n), inverse(g))
 
-// The exponent law g^(m+n) = g^m · g^n, by induction on n (g, m fixed).
-// base n=0: both sides collapse to g^m (add(m,0)=m; g^0=E cancels on the
-// right). step: add(m, succ k) = succ(add(m,k)), unfold pow twice and reassoc
-// so the inductive hypothesis g^(m+k) = g^m·g^k lands.
-theorem powAdd: forall g: Grp; forall m, n: Nat; pow(g, add(m, n)) = op(pow(g, m), pow(g, n))
+// -- sanity: g^1 = g -------------------------------------------------------
+// ONE = succ(ZERO), so g^1 = g^(succ 0) = op(g^0, g) = op(E, g) = g.
+theorem powerOne: forall g: Grp; power(g, succ(ZERO)) = g
 proof
   @generalize-g |
     fix g: Grp {
-      @generalize-m |
-        fix m: Nat {
-          // base case: add(m, ZERO) = m, and op(pow(g, m), pow(g, ZERO))
-          // collapses to pow(g, m) via powZero + opIdentityRight.
-          @add-m-zero |
-            add(m, ZERO) = m
-            [by specialize addZeroRight(m)]
-          @pow-g-zero-is-identity |
-            pow(g, ZERO) = E
-            [by specialize powZero(g)]
-          @op-with-identity |
-            op(pow(g, m), E) = pow(g, m)
-            [by specialize opIdentityRight(pow(g, m))]
-          // pow(g, add(m, ZERO)) = pow(g, m) = op(pow(g, m), E) = op(pow(g, m), pow(g, ZERO))
-          @base-case |
-            pow(g, add(m, ZERO)) = op(pow(g, m), pow(g, ZERO))
-            [by chain add-m-zero op-with-identity pow-g-zero-is-identity]
-
-          // inductive step: assume g^(m+k) = g^m·g^k, show it for succ(k).
-          @induction-step |
-            fix k: Nat {
-              @given-inductive-hypothesis |
-                assume pow(g, add(m, k)) = op(pow(g, m), pow(g, k)) {
-                  @inductive-hypothesis |
-                    pow(g, add(m, k)) = op(pow(g, m), pow(g, k))
-                    [by hypothesis given-inductive-hypothesis]
-
-                  @pow-at-successor |
-                    forall a: Grp; forall n: Nat; pow(a, succ(n)) = op(pow(a, n), a)
-                    [by axiom powSucc]
-                  // the exponent add(m, succ k) unfolds to succ(add(m, k)).
-                  @exponent-unfolds |
-                    add(m, succ(k)) = succ(add(m, k))
-                    [by specialize addSuccRight(m, k)]
-
-                  // unfold pow at succ(add(m, k)).
-                  @lhs-unfolds |
-                    pow(g, succ(add(m, k))) = op(pow(g, add(m, k)), g)
-                    [by forall_elim(g, add(m, k)) pow-at-successor]
-
-                  // reassociate op(op(g^m, g^k), g) = op(g^m, op(g^k, g)).
-                  @reassociates |
-                    op(op(pow(g, m), pow(g, k)), g) = op(pow(g, m), op(pow(g, k), g))
-                    [by specialize opAssoc(pow(g, m), pow(g, k), g)]
-
-                  // fold op(g^k, g) back into g^(succ k) via powSucc.
-                  @right-factor-unfolds |
-                    pow(g, succ(k)) = op(pow(g, k), g)
-                    [by forall_elim(g, k) pow-at-successor]
-
-                  // pow(g, add(m, succ k)) = pow(g, succ(add(m, k))) = op(g^(m+k), g)
-                  //   = op(op(g^m, g^k), g) = op(g^m, op(g^k, g)) = op(g^m, g^(succ k))
-                  @succ-case |
-                    pow(g, add(m, succ(k))) = op(pow(g, m), pow(g, succ(k)))
-                    [by chain exponent-unfolds lhs-unfolds inductive-hypothesis reassociates right-factor-unfolds]
-                }
-              @induction-step-at-k |
-                pow(g, add(m, k)) = op(pow(g, m), pow(g, k)) -> pow(g, add(m, succ(k))) = op(pow(g, m), pow(g, succ(k)))
-                [by implies_intro given-inductive-hypothesis]
-            }
-          @induction-step-for-all-k |
-            forall k: Nat; pow(g, add(m, k)) = op(pow(g, m), pow(g, k)) -> pow(g, add(m, succ(k))) = op(pow(g, m), pow(g, succ(k)))
-            [by forall_intro induction-step]
-
-          @powers-add-over-m-and-all-n |
-            forall n: Nat; pow(g, add(m, n)) = op(pow(g, m), pow(g, n))
-            [by instantiate induction((fun k: Nat => pow(g, add(m, k)) = op(pow(g, m), pow(g, k)))) base-case induction-step-for-all-k]
-        }
-      @discharge-m |
-        forall m, n: Nat; pow(g, add(m, n)) = op(pow(g, m), pow(g, n))
-        [by forall_intro generalize-m]
+      @power-succ-zero |
+        power(g, succ(ZERO)) = op(power(g, ZERO), g)
+        [by specialize powerSucc(g, ZERO)]
+      @power-zero-is-identity |
+        power(g, ZERO) = E
+        [by specialize powerZero(g)]
+      @identity-left |
+        op(E, g) = g
+        [by specialize opIdentityLeft(g)]
+      // g^(succ 0) = op(g^0, g) = op(E, g) = g. chain folds g^0 → E (congruence)
+      // and then op(E, g) → g.
+      @conclusion-power-one |
+        power(g, succ(ZERO)) = g
+        [by chain power-succ-zero power-zero-is-identity identity-left]
     }
   @conclusion |
-    forall g: Grp; forall m, n: Nat; pow(g, add(m, n)) = op(pow(g, m), pow(g, n))
+    forall g: Grp; power(g, succ(ZERO)) = g
     [by forall_intro generalize-g]
 qed
