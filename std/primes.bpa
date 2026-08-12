@@ -711,12 +711,9 @@ proof
                                       @p-divides-sum |
                                         does_divide(p, add(mul(mul(a, b), r), mul(p, mul(b, s))))
                                         [by specialize dividesAdd(p, mul(mul(a, b), r), mul(p, mul(b, s))) p-divides-product-times-r p-divides-p-times-bs]
-                                      @sum-is-b |
-                                        add(mul(mul(a, b), r), mul(p, mul(b, s))) = b
-                                        [by symmetry b-splits-into-product-and-p-multiple]
                                       @p-divides-b |
                                         does_divide(p, b)
-                                        [by rewrite sum-is-b p-divides-sum]
+                                        [by rewrite b-splits-into-product-and-p-multiple p-divides-sum]
                                       @conclusion-p-divides-b |
                                         does_divide(p, a) or does_divide(p, b)
                                         [by or_intro_right p-divides-b]

@@ -251,12 +251,9 @@ proof
                         sub(add(mod(a, b), mul(b, div(a, b))), mul(b, div(a, b))) = mod(a, b)
                         [by specialize subAddCancel(mod(a, b), mul(b, div(a, b)))]
                       // rewrite add(r, x) -> a using a-is-remainder-plus-multiple (backwards)
-                      @remainder-plus-multiple-is-a |
-                        add(mod(a, b), mul(b, div(a, b))) = a
-                        [by symmetry a-is-remainder-plus-multiple]
                       @remainder-is-a-minus-multiple |
                         sub(a, mul(b, div(a, b))) = mod(a, b)
-                        [by rewrite remainder-plus-multiple-is-a remainder-recovered-by-subtraction]
+                        [by rewrite a-is-remainder-plus-multiple remainder-recovered-by-subtraction]
 
                       // FORWARD: d|a -> d|r.  d|a, d|mul(b,q) -> d|sub(a, mul(b,q)) = d|r.
                       @when-d-divides-a |
@@ -397,12 +394,9 @@ proof
                                           @b-equals-b-plus-zero |
                                             add(b, ZERO) = b
                                             [by specialize addZeroRight(b)]
-                                          @b-as-b-plus-zero |
-                                            b = add(b, ZERO)
-                                            [by symmetry b-equals-b-plus-zero]
                                           @b-plus-remainder-below-b-plus-zero |
                                             less_than(add(b, add(mul(b, k), r2)), add(b, ZERO))
-                                            [by rewrite b-as-b-plus-zero b-plus-remainder-below-b]
+                                            [by rewrite b-equals-b-plus-zero b-plus-remainder-below-b]
                                           @remainder-below-zero |
                                             less_than(add(mul(b, k), r2), ZERO)
                                             [by specialize lessThanAddCancelLeft(b, add(mul(b, k), r2), ZERO) b-plus-remainder-below-b-plus-zero]
@@ -702,24 +696,18 @@ proof
                   @a-divides-a |
                     divides(a, a)
                     [by specialize dividesRefl(a)]
-                  @a-is-gcd-with-zero |
-                    a = gcd(a, ZERO)
-                    [by symmetry gcd-with-zero-is-itself]
                   @gcd-divides-a |
                     divides(gcd(a, ZERO), a)
-                    [by rewrite a-is-gcd-with-zero a-divides-a]
+                    [by rewrite gcd-with-zero-is-itself a-divides-a]
                   @gcd-divides-zero |
                     divides(gcd(a, ZERO), ZERO)
                     [by specialize dividesZero(gcd(a, ZERO))]
-                  @zero-is-b |
-                    ZERO = b
-                    [by symmetry b-is-zero]
                   @gcd-divides-a-at-b |
                     divides(gcd(a, b), a)
-                    [by rewrite zero-is-b gcd-divides-a]
+                    [by rewrite b-is-zero gcd-divides-a]
                   @gcd-divides-b |
                     divides(gcd(a, b), b)
-                    [by rewrite zero-is-b gcd-divides-zero]
+                    [by rewrite b-is-zero gcd-divides-zero]
                   @gcd-divides-both-when-zero |
                     divides(gcd(a, b), a) and divides(gcd(a, b), b)
                     [by and_intro gcd-divides-a-at-b gcd-divides-b]
@@ -737,12 +725,9 @@ proof
                       @successor-bp-is-nonzero |
                         succ(bp) != ZERO
                         [by specialize succNotZero(bp)]
-                      @successor-bp-is-b |
-                        succ(bp) = b
-                        [by symmetry b-is-successor-of-bp]
                       @b-is-nonzero |
                         b != ZERO
-                        [by rewrite successor-bp-is-b successor-bp-is-nonzero]
+                        [by rewrite b-is-successor-of-bp successor-bp-is-nonzero]
                       @gcd-recurses |
                         gcd(a, b) = gcd(b, mod(a, b))
                         [by specialize gcdStep(b, a) b-is-nonzero]
@@ -764,15 +749,12 @@ proof
                       @gcd-b-mod-divides-mod |
                         divides(gcd(b, mod(a, b)), mod(a, b))
                         [by and_elim_right gcd-b-mod-divides-both]
-                      @gcd-b-mod-is-gcd-a-b |
-                        gcd(b, mod(a, b)) = gcd(a, b)
-                        [by symmetry gcd-recurses]
                       @gcd-divides-b |
                         divides(gcd(a, b), b)
-                        [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-b]
+                        [by rewrite gcd-recurses gcd-b-mod-divides-b]
                       @gcd-divides-mod |
                         divides(gcd(a, b), mod(a, b))
-                        [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-mod]
+                        [by rewrite gcd-recurses gcd-b-mod-divides-mod]
                       @mod-crossing-holds-if-divides-b |
                         divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
                         [by specialize dividesModStep(b, gcd(a, b), a) b-is-nonzero]
@@ -864,18 +846,12 @@ proof
                               @gcd-with-zero-is-itself |
                                 gcd(a, ZERO) = a
                                 [by specialize gcdZero(a)]
-                              @a-is-gcd-with-zero |
-                                a = gcd(a, ZERO)
-                                [by symmetry gcd-with-zero-is-itself]
                               @d-divides-gcd-with-zero |
                                 divides(d, gcd(a, ZERO))
-                                [by rewrite a-is-gcd-with-zero d-divides-a]
-                              @zero-is-b |
-                                ZERO = b
-                                [by symmetry b-is-zero]
+                                [by rewrite gcd-with-zero-is-itself d-divides-a]
                               @d-divides-gcd-when-zero |
                                 divides(d, gcd(a, b))
-                                [by rewrite zero-is-b d-divides-gcd-with-zero]
+                                [by rewrite b-is-zero d-divides-gcd-with-zero]
                             }
                           @when-b-is-successor |
                             assume exists mm: Nat; b = succ(mm) {
@@ -890,12 +866,9 @@ proof
                                   @successor-bp-is-nonzero |
                                     succ(bp) != ZERO
                                     [by specialize succNotZero(bp)]
-                                  @successor-bp-is-b |
-                                    succ(bp) = b
-                                    [by symmetry b-is-successor-of-bp]
                                   @b-is-nonzero |
                                     b != ZERO
-                                    [by rewrite successor-bp-is-b successor-bp-is-nonzero]
+                                    [by rewrite b-is-successor-of-bp successor-bp-is-nonzero]
                                   @gcd-recurses |
                                     gcd(a, b) = gcd(b, mod(a, b))
                                     [by specialize gcdStep(b, a) b-is-nonzero]
@@ -929,12 +902,9 @@ proof
                                   @d-divides-gcd-b-mod |
                                     divides(d, gcd(b, mod(a, b)))
                                     [by modus_ponens divides-mod-implies-divides-gcd-b-mod d-divides-mod]
-                                  @gcd-b-mod-is-gcd-a-b |
-                                    gcd(b, mod(a, b)) = gcd(a, b)
-                                    [by symmetry gcd-recurses]
                                   @d-divides-gcd-when-successor |
                                     divides(d, gcd(a, b))
-                                    [by rewrite gcd-b-mod-is-gcd-a-b d-divides-gcd-b-mod]
+                                    [by rewrite gcd-recurses d-divides-gcd-b-mod]
                                 }
                               @d-divides-gcd-in-successor-case |
                                 divides(d, gcd(a, b))

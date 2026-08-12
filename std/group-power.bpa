@@ -332,12 +332,9 @@ proof
                   @mul-succ |
                     mul(m, succ(k)) = add(mul(m, k), m)
                     [by specialize mulSuccRight(m, k)]
-                  @mul-succ-flipped |
-                    add(mul(m, k), m) = mul(m, succ(k))
-                    [by symmetry mul-succ]
                   @exponent-succ |
                     power(g, add(mul(m, k), m)) = power(g, mul(m, succ(k)))
-                    [by rewrite mul-succ-flipped exponent-succ-refl]
+                    [by rewrite mul-succ exponent-succ-refl]
                   @exponent-succ-refl |
                     power(g, add(mul(m, k), m)) = power(g, add(mul(m, k), m))
                     [by reflexivity]
@@ -382,12 +379,9 @@ proof
                   @mul-prev |
                     mul(m, prev(k)) = add(mul(m, k), neg(m))
                     [by specialize mulPrevRight(m, k)]
-                  @mul-prev-flipped |
-                    add(mul(m, k), neg(m)) = mul(m, prev(k))
-                    [by symmetry mul-prev]
                   @exponent-prev |
                     power(g, add(mul(m, k), neg(m))) = power(g, mul(m, prev(k)))
-                    [by rewrite mul-prev-flipped exponent-prev-refl]
+                    [by rewrite mul-prev exponent-prev-refl]
                   @exponent-prev-refl |
                     power(g, add(mul(m, k), neg(m))) = power(g, add(mul(m, k), neg(m)))
                     [by reflexivity]
@@ -700,24 +694,18 @@ proof
                     power(op(g, h), succ(k)) = op(op(power(g, k), g), op(power(h, k), h))
                     [by rewrite factors-regroup product-with-inductive-hypothesis]
                   // g^(succ k) = op(g^k, g); h^(succ k) = op(h^k, h) — refold each base.
-                  @g-power-refolds |
-                    op(power(g, k), g) = power(g, succ(k))
-                    [by symmetry g-power-succ]
                   @g-power-succ |
                     power(g, succ(k)) = op(power(g, k), g)
                     [by specialize powerSucc(g, k)]
-                  @h-power-refolds |
-                    op(power(h, k), h) = power(h, succ(k))
-                    [by symmetry h-power-succ]
                   @h-power-succ |
                     power(h, succ(k)) = op(power(h, k), h)
                     [by specialize powerSucc(h, k)]
                   @g-factor-refolded |
                     power(op(g, h), succ(k)) = op(power(g, succ(k)), op(power(h, k), h))
-                    [by rewrite g-power-refolds product-regrouped-by-base]
+                    [by rewrite g-power-succ product-regrouped-by-base]
                   @conclusion-successor |
                     power(op(g, h), succ(k)) = op(power(g, succ(k)), power(h, succ(k)))
-                    [by rewrite h-power-refolds g-factor-refolded]
+                    [by rewrite h-power-succ g-factor-refolded]
                 }
               @inductive-hypothesis-implies-successor |
                 power(op(g, h), k) = op(power(g, k), power(h, k)) -> power(op(g, h), succ(k)) = op(power(g, succ(k)), power(h, succ(k)))
@@ -765,24 +753,18 @@ proof
                     power(op(g, h), prev(k)) = op(op(power(g, k), inverse(g)), op(power(h, k), inverse(h)))
                     [by rewrite factors-regroup product-with-ordered-inverses]
                   // g^(prev k) = op(g^k, g⁻¹); h^(prev k) = op(h^k, h⁻¹) — refold each base.
-                  @g-power-refolds |
-                    op(power(g, k), inverse(g)) = power(g, prev(k))
-                    [by symmetry g-power-prev]
                   @g-power-prev |
                     power(g, prev(k)) = op(power(g, k), inverse(g))
                     [by specialize powerPrev(g, k)]
-                  @h-power-refolds |
-                    op(power(h, k), inverse(h)) = power(h, prev(k))
-                    [by symmetry h-power-prev]
                   @h-power-prev |
                     power(h, prev(k)) = op(power(h, k), inverse(h))
                     [by specialize powerPrev(h, k)]
                   @conclusion-predecessor-g |
                     power(op(g, h), prev(k)) = op(power(g, prev(k)), op(power(h, k), inverse(h)))
-                    [by rewrite g-power-refolds product-regrouped-by-base]
+                    [by rewrite g-power-prev product-regrouped-by-base]
                   @conclusion-predecessor |
                     power(op(g, h), prev(k)) = op(power(g, prev(k)), power(h, prev(k)))
-                    [by rewrite h-power-refolds conclusion-predecessor-g]
+                    [by rewrite h-power-prev conclusion-predecessor-g]
                 }
               @inductive-hypothesis-implies-predecessor |
                 power(op(g, h), k) = op(power(g, k), power(h, k)) -> power(op(g, h), prev(k)) = op(power(g, prev(k)), power(h, prev(k)))

@@ -118,15 +118,12 @@ proof
   @one-is-succ-zero |
     ONE = succ(ZERO)
     [by axiom oneIsSuccZero]
-  @succ-zero-is-one |
-    succ(ZERO) = ONE
-    [by symmetry one-is-succ-zero]
   @succ-zero-nonneg |
     is_nonneg(succ(ZERO))
     [by theorem nonnegSuccZero]
   @conclusion |
     is_nonneg(ONE)
-    [by rewrite succ-zero-is-one succ-zero-nonneg]
+    [by rewrite one-is-succ-zero succ-zero-nonneg]
 qed
 
 // -- fold-structure theorems transferred from the abstract fold -------------
@@ -242,12 +239,9 @@ proof
           @product-up-to-succ-k |
             productUpTo(s, succ(k)) = mul(productUpTo(s, k), at(s, k))
             [by specialize productUpToSucc(s, k) k-nonneg]
-          @succ-product-is-product-times-entry |
-            mul(productUpTo(s, k), at(s, k)) = productUpTo(s, succ(k))
-            [by symmetry product-up-to-succ-k]
           @entry-divides-succ-product |
             does_divide(at(s, k), productUpTo(s, succ(k)))
-            [by rewrite succ-product-is-product-times-entry divides-product-times-entry]
+            [by rewrite product-up-to-succ-k divides-product-times-entry]
         }
       @discharge-k |
         forall k: NonNegZ; does_divide(at(s, k), productUpTo(s, succ(k)))
@@ -348,9 +342,6 @@ proof
                                   @product-up-to-succ-k |
                                     productUpTo(s, succ(k)) = mul(productUpTo(s, k), at(s, k))
                                     [by specialize productUpToSucc(s, k) k-nonneg]
-                                  @succ-product-is-product-times-entry |
-                                    mul(productUpTo(s, k), at(s, k)) = productUpTo(s, succ(k))
-                                    [by symmetry product-up-to-succ-k]
                                   // i < k: inductive hypothesis, then dividesMul.
                                   @when-i-less_than-k |
                                     assume less_than(i, k) {
@@ -368,7 +359,7 @@ proof
                                         [by specialize dividesMul(at(s, i), productUpTo(s, k), at(s, k)) entry-i-divides-product]
                                       @entry-divides-succ-product |
                                         does_divide(at(s, i), productUpTo(s, succ(k)))
-                                        [by rewrite succ-product-is-product-times-entry entry-divides-succ-product-when-less_than]
+                                        [by rewrite product-up-to-succ-k entry-divides-succ-product-when-less_than]
                                     }
                                   // i = k: the last entry divides the succ product.
                                   @when-i-equals-k |
@@ -376,15 +367,12 @@ proof
                                       @i-equals-k |
                                         i = k
                                         [by hypothesis when-i-equals-k]
-                                      @k-equals-i |
-                                        k = i
-                                        [by symmetry i-equals-k]
                                       @entry-k-divides-succ-product |
                                         does_divide(at(s, k), productUpTo(s, succ(k)))
                                         [by specialize lastEntryDividesProduct(s, k) k-nonneg]
                                       @entry-divides-succ-product |
                                         does_divide(at(s, i), productUpTo(s, succ(k)))
-                                        [by rewrite k-equals-i entry-k-divides-succ-product]
+                                        [by rewrite i-equals-k entry-k-divides-succ-product]
                                     }
                                   @entry-divides-succ-product |
                                     does_divide(at(s, i), productUpTo(s, succ(k)))

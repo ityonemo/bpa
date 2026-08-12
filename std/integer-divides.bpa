@@ -197,15 +197,12 @@ proof
           @b-times-zero-is-zero |
             mul(b, ZERO) = ZERO
             [by specialize mulZeroRight(b)]
-          @zero-is-b-times-zero |
-            ZERO = mul(b, ZERO)
-            [by symmetry b-times-zero-is-zero]
           @zero-is-nonneg |
             is_nonneg(ZERO)
             [by axiom nonnegZero]
           @base-case |
             is_nonneg(mul(b, ZERO))
-            [by rewrite zero-is-b-times-zero zero-is-nonneg]
+            [by rewrite b-times-zero-is-zero zero-is-nonneg]
           // step: nonneg(mul(b, k)) -> nonneg(mul(b, succ k)), since
           // mul(b, succ k) = add(mul(b, k), b), a sum of nonnegatives.
           @induction-step |
@@ -223,12 +220,9 @@ proof
                       @product-plus-b-nonneg |
                         is_nonneg(add(mul(b, k), b))
                         [by specialize nonnegAdd(mul(b, k), b) product-nonneg b-nonneg]
-                      @successor-product-is-sum |
-                        add(mul(b, k), b) = mul(b, succ(k))
-                        [by symmetry b-times-successor-k]
                       @grown-product-nonneg |
                         is_nonneg(mul(b, succ(k)))
-                        [by rewrite successor-product-is-sum product-plus-b-nonneg]
+                        [by rewrite b-times-successor-k product-plus-b-nonneg]
                     }
                   @product-nonneg-implies-grown-product-nonneg |
                     is_nonneg(mul(b, k)) -> is_nonneg(mul(b, succ(k)))
@@ -429,12 +423,9 @@ proof
                                           @neg-product-reflexive |
                                             neg(mul(b, k)) = neg(mul(b, k))
                                             [by reflexivity]
-                                          @b-times-k-is-m |
-                                            mul(b, k) = m
-                                            [by symmetry m-is-b-times-k]
                                           @neg-product-is-neg-m |
                                             neg(mul(b, k)) = neg(m)
-                                            [by rewrite b-times-k-is-m neg-product-reflexive]
+                                            [by rewrite m-is-b-times-k neg-product-reflexive]
                                           @b-times-negk-is-neg-m |
                                             mul(b, neg(k)) = neg(m)
                                             [by rewrite neg-product-is-neg-m b-times-negk-is-neg-product]
@@ -540,16 +531,13 @@ proof
                                           @k-is-successor-gap |
                                             succ(e) = k
                                             [by rewrite zero-plus-succ-gap gap-reaches-k]
-                                          @k-as-successor-gap |
-                                            k = succ(e)
-                                            [by symmetry k-is-successor-gap]
                                           // m = b*succ(e) = b*e + b.
                                           @b-times-succ-gap |
                                             mul(b, succ(e)) = add(mul(b, e), b)
                                             [by specialize mulSuccRight(b, e)]
                                           @m-is-b-times-succ-gap |
                                             m = mul(b, succ(e))
-                                            [by rewrite k-as-successor-gap m-is-b-times-k]
+                                            [by rewrite k-is-successor-gap m-is-b-times-k]
                                           @m-is-product-plus-b |
                                             m = add(mul(b, e), b)
                                             [by rewrite b-times-succ-gap m-is-b-times-succ-gap]
@@ -572,12 +560,9 @@ proof
                                           @b-plus-zero-is-b |
                                             add(b, ZERO) = b
                                             [by specialize addZeroRight(b)]
-                                          @b-as-b-plus-zero |
-                                            b = add(b, ZERO)
-                                            [by symmetry b-plus-zero-is-b]
                                           @b-plus-product-less_than-b-plus-zero |
                                             less_than(add(b, mul(b, e)), add(b, ZERO))
-                                            [by rewrite b-as-b-plus-zero b-plus-product-less_than-b]
+                                            [by rewrite b-plus-zero-is-b b-plus-product-less_than-b]
                                           @common-prefix-cancels-order |
                                             forall c, x, y: Int; less_than(add(c, x), add(c, y)) -> less_than(x, y)
                                             [by theorem lessThanAddCancelLeft]
@@ -758,12 +743,9 @@ proof
                       @partial-less_than-partial-plus-b |
                         less_than(mul(b, d), add(mul(b, d), b))
                         [by rewrite partial-plus-zero-is-partial partial-plus-zero-less_than-partial-plus-b]
-                      @partial-plus-b-is-product |
-                        add(mul(b, d), b) = mul(b, k)
-                        [by symmetry product-is-partial-plus-b]
                       @partial-less_than-product |
                         less_than(mul(b, d), mul(b, k))
-                        [by rewrite partial-plus-b-is-product partial-less_than-partial-plus-b]
+                        [by rewrite product-is-partial-plus-b partial-less_than-partial-plus-b]
                       // split 0 <= mul(b, d): either 0 < mul(b, d) (transit) or 0 = mul(b, d).
                       @zero-plus-partial-is-partial |
                         add(ZERO, mul(b, d)) = mul(b, d)
@@ -818,12 +800,9 @@ proof
                               @partial-is-zero |
                                 ZERO = mul(b, d)
                                 [by hypothesis when-partial-zero]
-                              @partial-is-zero-flipped |
-                                mul(b, d) = ZERO
-                                [by symmetry partial-is-zero]
                               @conclusion-product-positive |
                                 less_than(ZERO, mul(b, k))
-                                [by rewrite partial-is-zero-flipped partial-less_than-product]
+                                [by rewrite partial-is-zero partial-less_than-product]
                             }
                         }
                     }
@@ -1041,12 +1020,9 @@ proof
                               @x-equals-y |
                                 x = y
                                 [by hypothesis when-x-equals-y]
-                              @y-equals-x |
-                                y = x
-                                [by symmetry x-equals-y]
                               @conclusion-x-less_than-z |
                                 less_than(x, z)
-                                [by rewrite y-equals-x y-less_than-z]
+                                [by rewrite x-equals-y y-less_than-z]
                             }
                         }
                     }
@@ -1107,12 +1083,9 @@ proof
                   @successor-gap-nonneg |
                     is_nonneg(succ(d))
                     [by modus_ponens successor-gap-nonneg-if gap-nonneg]
-                  @successor-gap-is-difference |
-                    succ(d) = sub(y, x)
-                    [by symmetry difference-is-successor-gap]
                   @conclusion-difference-nonneg |
                     is_nonneg(sub(y, x))
-                    [by rewrite successor-gap-is-difference successor-gap-nonneg]
+                    [by rewrite difference-is-successor-gap successor-gap-nonneg]
                 }
               @difference-nonneg |
                 is_nonneg(sub(y, x))
@@ -1732,12 +1705,9 @@ proof
                                                         r1 = r2
                                                         [by tautology remainders-equal-if b-positive r1-nonneg r1-less_than-b r2-nonneg r2-less_than-b decompositions-equal]
                                                       // substitute r2 = r1 and cancel the common remainder.
-                                                      @r2-is-r1 |
-                                                        r2 = r1
-                                                        [by symmetry remainders-equal]
                                                       @decompositions-equal-same-remainder |
                                                         add(mul(b, q1), r1) = add(mul(b, q2), r1)
-                                                        [by rewrite r2-is-r1 decompositions-equal]
+                                                        [by rewrite remainders-equal decompositions-equal]
                                                       @addition-commutes |
                                                         forall u, v: Int; add(u, v) = add(v, u)
                                                         [by theorem addIsCommutative]
@@ -1769,12 +1739,9 @@ proof
                                                       @products-difference-reflexive |
                                                         sub(mul(b, q1), mul(b, q2)) = sub(mul(b, q1), mul(b, q2))
                                                         [by reflexivity]
-                                                      @products-equal-flipped |
-                                                        mul(b, q2) = mul(b, q1)
-                                                        [by symmetry products-equal]
                                                       @difference-of-equal-products |
                                                         sub(mul(b, q1), mul(b, q2)) = sub(mul(b, q1), mul(b, q1))
-                                                        [by rewrite products-equal-flipped products-difference-reflexive]
+                                                        [by rewrite products-equal products-difference-reflexive]
                                                       @product-self-difference-zero |
                                                         sub(mul(b, q1), mul(b, q1)) = ZERO
                                                         [by arithmetic]
@@ -1894,12 +1861,9 @@ proof
               @prefixed-difference-is-larger |
                 add(add(p, y), sub(x, y)) = add(p, x)
                 [by rewrite inner-difference-reaches prefixed-difference-associates]
-              @larger-is-prefixed-difference |
-                add(p, x) = add(add(p, y), sub(x, y))
-                [by symmetry prefixed-difference-is-larger]
               @two-differences-prefixed-equal |
                 add(add(p, y), sub(add(p, x), add(p, y))) = add(add(p, y), sub(x, y))
-                [by rewrite larger-is-prefixed-difference prefixed-larger-reaches]
+                [by rewrite prefixed-difference-is-larger prefixed-larger-reaches]
               @cancel-prefixed-difference |
                 add(add(p, y), sub(add(p, x), add(p, y))) = add(add(p, y), sub(x, y)) -> sub(add(p, x), add(p, y)) = sub(x, y)
                 [by forall_elim(add(p, y), sub(add(p, x), add(p, y)), sub(x, y)) cancel-prefix]
@@ -1956,12 +1920,9 @@ proof
                   @difference-is-gap |
                     sub(y, x) = d
                     [by arithmetic gap-reaches-y]
-                  @gap-is-difference |
-                    d = sub(y, x)
-                    [by symmetry difference-is-gap]
                   @conclusion-difference-nonneg |
                     is_nonneg(sub(y, x))
-                    [by rewrite gap-is-difference gap-nonneg]
+                    [by rewrite difference-is-gap gap-nonneg]
                 }
               @difference-nonneg |
                 is_nonneg(sub(y, x))
@@ -2219,12 +2180,9 @@ proof
           @a-b-two-reassociated |
             mul(mul(a, b), TWO) = mul(a, mul(b, TWO))
             [by specialize mulIsAssociative(a, b, TWO)]
-          @a-b-two-reassociated-flipped |
-            mul(a, mul(b, TWO)) = mul(mul(a, b), TWO)
-            [by symmetry a-b-two-reassociated]
           @left-is-ab-times-two |
             mul(a, mul(TWO, b)) = mul(mul(a, b), TWO)
-            [by rewrite a-b-two-reassociated-flipped left-inner-swapped]
+            [by rewrite a-b-two-reassociated left-inner-swapped]
           // b·(2·a) = b·(a·2) = (b·a)·2 = (a·b)·2
           @two-a-is-a-two |
             mul(TWO, a) = mul(a, TWO)
@@ -2238,24 +2196,18 @@ proof
           @b-a-two-reassociated |
             mul(mul(b, a), TWO) = mul(b, mul(a, TWO))
             [by specialize mulIsAssociative(b, a, TWO)]
-          @b-a-two-reassociated-flipped |
-            mul(b, mul(a, TWO)) = mul(mul(b, a), TWO)
-            [by symmetry b-a-two-reassociated]
           @right-is-ba-times-two |
             mul(b, mul(TWO, a)) = mul(mul(b, a), TWO)
-            [by rewrite b-a-two-reassociated-flipped right-inner-swapped]
+            [by rewrite b-a-two-reassociated right-inner-swapped]
           @b-a-is-a-b |
             mul(b, a) = mul(a, b)
             [by specialize mulIsCommutative(b, a)]
           @right-is-ab-times-two |
             mul(b, mul(TWO, a)) = mul(mul(a, b), TWO)
             [by rewrite b-a-is-a-b right-is-ba-times-two]
-          @right-is-ab-times-two-flipped |
-            mul(mul(a, b), TWO) = mul(b, mul(TWO, a))
-            [by symmetry right-is-ab-times-two]
           @conclusion-swap |
             mul(a, mul(TWO, b)) = mul(b, mul(TWO, a))
-            [by rewrite right-is-ab-times-two-flipped left-is-ab-times-two]
+            [by rewrite right-is-ab-times-two left-is-ab-times-two]
         }
       @discharge-b |
         forall b: Int; mul(a, mul(TWO, b)) = mul(b, mul(TWO, a))
@@ -2389,12 +2341,9 @@ proof
           @neg-difference-is-commuted-sum |
             neg(sub(x, y)) = add(y, neg(x))
             [by rewrite sums-commute left-unfolds]
-          @sub-y-x-is-commuted-sum |
-            add(y, neg(x)) = sub(y, x)
-            [by symmetry right-unfolds]
           @conclusion-swap |
             neg(sub(x, y)) = sub(y, x)
-            [by rewrite sub-y-x-is-commuted-sum neg-difference-is-commuted-sum]
+            [by rewrite right-unfolds neg-difference-is-commuted-sum]
         }
       @discharge-y |
         forall y: Int; neg(sub(x, y)) = sub(y, x)
@@ -2569,12 +2518,9 @@ proof
                       @b-less_than-b-plus-b |
                         less_than(b, add(b, b))
                         [by specialize lessThanSelfPlusPositive(b, b) b-positive]
-                      @b-plus-b-is-two-b |
-                        add(b, b) = mul(TWO, b)
-                        [by symmetry two-b-is-b-plus-b]
                       @b-less_than-two-b |
                         less_than(b, mul(TWO, b))
-                        [by rewrite b-plus-b-is-two-b b-less_than-b-plus-b]
+                        [by rewrite two-b-is-b-plus-b b-less_than-b-plus-b]
                       @one-less_than-two-b |
                         less_than(ONE, mul(TWO, b))
                         [by specialize atMostThenLessThan(ONE, b, mul(TWO, b)) one-at-most-b b-less_than-two-b]
@@ -2585,12 +2531,9 @@ proof
                       @neg-of-one-minus-two-b-is-two-b-minus-one |
                         neg(sub(ONE, mul(TWO, b))) = sub(mul(TWO, b), ONE)
                         [by specialize negOfDifferenceSwaps(ONE, mul(TWO, b))]
-                      @two-b-minus-one-is-neg |
-                        sub(mul(TWO, b), ONE) = neg(sub(ONE, mul(TWO, b)))
-                        [by symmetry neg-of-one-minus-two-b-is-two-b-minus-one]
                       @neg-one-minus-two-b-nonneg |
                         is_nonneg(neg(sub(ONE, mul(TWO, b))))
-                        [by rewrite two-b-minus-one-is-neg two-b-minus-one-nonneg]
+                        [by rewrite neg-of-one-minus-two-b-is-two-b-minus-one two-b-minus-one-nonneg]
                       // product of the two nonpositive factors is nonneg.
                       @nonpositive-factors-give-nonneg-product |
                         forall x, y: Int; is_nonneg(neg(x)) -> is_nonneg(neg(y)) -> is_nonneg(mul(x, y))
@@ -2601,12 +2544,9 @@ proof
                       @product-nonneg |
                         is_nonneg(mul(a, sub(ONE, mul(TWO, b))))
                         [by tautology product-nonneg-if neg-a-nonneg neg-one-minus-two-b-nonneg]
-                      @product-is-member |
-                        mul(a, sub(ONE, mul(TWO, b))) = sub(a, mul(b, mul(TWO, a)))
-                        [by symmetry member-is-product]
                       @member-nonneg |
                         is_nonneg(sub(a, mul(b, mul(TWO, a))))
-                        [by rewrite product-is-member product-nonneg]
+                        [by rewrite member-is-product product-nonneg]
                       // exhibit k = 2a so the member is in S.
                       @member-reflexive-again |
                         sub(a, mul(b, mul(TWO, a))) = sub(a, mul(b, mul(TWO, a)))
@@ -2653,12 +2593,9 @@ proof
                       @bq-plus-difference-is-a |
                         add(mul(b, quot), sub(a, mul(b, quot))) = a
                         [by arithmetic]
-                      @difference-is-remainder |
-                        sub(a, mul(b, quot)) = rem
-                        [by symmetry remainder-is-a-minus-bq]
                       @bq-plus-remainder-is-a |
                         add(mul(b, quot), rem) = a
-                        [by rewrite difference-is-remainder bq-plus-difference-is-a]
+                        [by rewrite remainder-is-a-minus-bq bq-plus-difference-is-a]
                       @decomposition-holds |
                         a = add(mul(b, quot), rem)
                         [by symmetry bq-plus-remainder-is-a]
@@ -2692,12 +2629,9 @@ proof
                                   @b-at-most-b |
                                     at_most(b, b)
                                     [by specialize lessOrEqualRefl(b)]
-                                  @b-equals-rem |
-                                    b = rem
-                                    [by symmetry rem-equals-b]
                                   @conclusion-b-at-most-rem |
                                     at_most(b, rem)
-                                    [by rewrite b-equals-rem b-at-most-b]
+                                    [by rewrite rem-equals-b b-at-most-b]
                                 }
                               @when-b-less_than-rem |
                                 assume less_than(b, rem) {
@@ -2873,12 +2807,9 @@ proof
                       @a-minus-b-is-a-plus-neg-b |
                         sub(a, b) = add(a, neg(b))
                         [by specialize definitionOfSubtraction(a, b)]
-                      @a-plus-neg-b-is-a-minus-b |
-                        add(a, neg(b)) = sub(a, b)
-                        [by symmetry a-minus-b-is-a-plus-neg-b]
                       @d-divides-a-minus-b |
                         divides(d, sub(a, b))
-                        [by rewrite a-plus-neg-b-is-a-minus-b d-divides-a-plus-neg-b]
+                        [by rewrite a-minus-b-is-a-plus-neg-b d-divides-a-plus-neg-b]
                     }
                   @d-divides-b-implies-divides-difference |
                     divides(d, b) -> divides(d, sub(a, b))
@@ -3172,36 +3103,27 @@ proof
               @abs-is-n |
                 abs(n) = n
                 [by specialize absOfNonneg(n) n-nonneg]
-              @n-is-abs |
-                n = abs(n)
-                [by symmetry abs-is-n]
               @abs-nonneg-positive |
                 is_nonneg(abs(n))
-                [by rewrite n-is-abs n-nonneg]
+                [by rewrite abs-is-n n-nonneg]
             }
           @when-zero |
             assume n = ZERO {
               @n-is-zero |
                 n = ZERO
                 [by hypothesis when-zero]
-              @zero-is-n |
-                ZERO = n
-                [by symmetry n-is-zero]
               @zero-nonneg |
                 is_nonneg(ZERO)
                 [by axiom nonnegZero]
               @n-nonneg |
                 is_nonneg(n)
-                [by rewrite zero-is-n zero-nonneg]
+                [by rewrite n-is-zero zero-nonneg]
               @abs-is-n |
                 abs(n) = n
                 [by specialize absOfNonneg(n) n-nonneg]
-              @n-is-abs |
-                n = abs(n)
-                [by symmetry abs-is-n]
               @abs-nonneg-zero |
                 is_nonneg(abs(n))
-                [by rewrite n-is-abs n-nonneg]
+                [by rewrite abs-is-n n-nonneg]
             }
           @when-negative |
             assume less_than(n, ZERO) {
@@ -3214,12 +3136,9 @@ proof
               @abs-is-neg-n |
                 abs(n) = neg(n)
                 [by specialize absOfNegative(n) n-negative]
-              @neg-n-is-abs |
-                neg(n) = abs(n)
-                [by symmetry abs-is-neg-n]
               @abs-nonneg-negative |
                 is_nonneg(abs(n))
-                [by rewrite neg-n-is-abs neg-n-nonneg]
+                [by rewrite abs-is-neg-n neg-n-nonneg]
             }
         }
     }
@@ -3401,42 +3320,33 @@ proof
                   @abs-is-n |
                     abs(n) = n
                     [by specialize absOfNonneg(n) n-nonneg]
-                  @n-is-abs |
-                    n = abs(n)
-                    [by symmetry abs-is-n]
                   @divides-n-iff-n |
                     divides(d, n) iff divides(d, n)
                     [by tautology]
                   @divides-abs-positive |
                     divides(d, n) iff divides(d, abs(n))
-                    [by rewrite n-is-abs divides-n-iff-n]
+                    [by rewrite abs-is-n divides-n-iff-n]
                 }
               @when-zero |
                 assume n = ZERO {
                   @n-is-zero |
                     n = ZERO
                     [by hypothesis when-zero]
-                  @zero-is-n |
-                    ZERO = n
-                    [by symmetry n-is-zero]
                   @zero-nonneg |
                     is_nonneg(ZERO)
                     [by axiom nonnegZero]
                   @n-nonneg |
                     is_nonneg(n)
-                    [by rewrite zero-is-n zero-nonneg]
+                    [by rewrite n-is-zero zero-nonneg]
                   @abs-is-n |
                     abs(n) = n
                     [by specialize absOfNonneg(n) n-nonneg]
-                  @n-is-abs |
-                    n = abs(n)
-                    [by symmetry abs-is-n]
                   @divides-n-iff-n |
                     divides(d, n) iff divides(d, n)
                     [by tautology]
                   @divides-abs-zero |
                     divides(d, n) iff divides(d, abs(n))
-                    [by rewrite n-is-abs divides-n-iff-n]
+                    [by rewrite abs-is-n divides-n-iff-n]
                 }
               @when-negative |
                 assume less_than(n, ZERO) {
@@ -3446,15 +3356,12 @@ proof
                   @abs-is-neg-n |
                     abs(n) = neg(n)
                     [by specialize absOfNegative(n) n-negative]
-                  @neg-n-is-abs |
-                    neg(n) = abs(n)
-                    [by symmetry abs-is-neg-n]
                   @divides-n-iff-neg-n |
                     divides(d, n) iff divides(d, neg(n))
                     [by specialize dividesNeg(d, n)]
                   @divides-abs-negative |
                     divides(d, n) iff divides(d, abs(n))
-                    [by rewrite neg-n-is-abs divides-n-iff-neg-n]
+                    [by rewrite abs-is-neg-n divides-n-iff-neg-n]
                 }
             }
         }
@@ -3656,12 +3563,9 @@ proof
                       @cancel-multiple |
                         sub(add(mod(a, b), mul(b, div(a, b))), mul(b, div(a, b))) = mod(a, b)
                         [by arithmetic]
-                      @remainder-plus-multiple-is-a |
-                        add(mod(a, b), mul(b, div(a, b))) = a
-                        [by symmetry a-is-remainder-plus-multiple]
                       @remainder-is-a-minus-multiple |
                         sub(a, mul(b, div(a, b))) = mod(a, b)
-                        [by rewrite remainder-plus-multiple-is-a cancel-multiple]
+                        [by rewrite a-is-remainder-plus-multiple cancel-multiple]
 
                       // FORWARD: d|a -> d|r.  d|a, d|b·q -> d|(a − b·q) = d|r.
                       @when-d-divides-a |
@@ -3834,12 +3738,9 @@ proof
                                               @b-equals-b-plus-zero |
                                                 add(b, ZERO) = b
                                                 [by specialize addZeroRight(b)]
-                                              @b-as-b-plus-zero |
-                                                b = add(b, ZERO)
-                                                [by symmetry b-equals-b-plus-zero]
                                               @b-plus-remainder-below-b-plus-zero |
                                                 less_than(add(b, add(mul(b, k), r2)), add(b, ZERO))
-                                                [by rewrite b-as-b-plus-zero b-plus-remainder-below-b]
+                                                [by rewrite b-equals-b-plus-zero b-plus-remainder-below-b]
                                               @remainder-below-zero |
                                                 less_than(add(mul(b, k), r2), ZERO)
                                                 [by specialize lessThanAddCancelLeft(b, add(mul(b, k), r2), ZERO) b-plus-remainder-below-b-plus-zero]
@@ -4188,24 +4089,18 @@ proof
                       @a-divides-a |
                         divides(a, a)
                         [by specialize dividesRefl(a)]
-                      @a-is-gcd-with-zero |
-                        a = gcd(a, ZERO)
-                        [by symmetry gcd-with-zero-is-itself]
                       @gcd-divides-a |
                         divides(gcd(a, ZERO), a)
-                        [by rewrite a-is-gcd-with-zero a-divides-a]
+                        [by rewrite gcd-with-zero-is-itself a-divides-a]
                       @gcd-divides-zero |
                         divides(gcd(a, ZERO), ZERO)
                         [by specialize dividesZero(gcd(a, ZERO))]
-                      @zero-is-b |
-                        ZERO = b
-                        [by symmetry b-is-zero]
                       @gcd-divides-a-at-b |
                         divides(gcd(a, b), a)
-                        [by rewrite zero-is-b gcd-divides-a]
+                        [by rewrite b-is-zero gcd-divides-a]
                       @gcd-divides-b |
                         divides(gcd(a, b), b)
-                        [by rewrite zero-is-b gcd-divides-zero]
+                        [by rewrite b-is-zero gcd-divides-zero]
                       @gcd-divides-both-when-zero |
                         divides(gcd(a, b), a) and divides(gcd(a, b), b)
                         [by and_intro gcd-divides-a-at-b gcd-divides-b]
@@ -4229,12 +4124,9 @@ proof
                           @successor-bp-positive |
                             less_than(ZERO, succ(bp))
                             [by specialize succOfNonnegIsPositive(bp) bp-nonneg]
-                          @successor-bp-is-b |
-                            succ(bp) = b
-                            [by symmetry b-is-successor-of-bp]
                           @b-is-positive |
                             less_than(ZERO, b)
-                            [by rewrite successor-bp-is-b successor-bp-positive]
+                            [by rewrite b-is-successor-of-bp successor-bp-positive]
                           @gcd-recurses |
                             gcd(a, b) = gcd(b, mod(a, b))
                             [by specialize gcdStep(b, a) b-is-positive]
@@ -4259,15 +4151,12 @@ proof
                           @gcd-b-mod-divides-mod |
                             divides(gcd(b, mod(a, b)), mod(a, b))
                             [by and_elim_right gcd-b-mod-divides-both]
-                          @gcd-b-mod-is-gcd-a-b |
-                            gcd(b, mod(a, b)) = gcd(a, b)
-                            [by symmetry gcd-recurses]
                           @gcd-divides-b |
                             divides(gcd(a, b), b)
-                            [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-b]
+                            [by rewrite gcd-recurses gcd-b-mod-divides-b]
                           @gcd-divides-mod |
                             divides(gcd(a, b), mod(a, b))
-                            [by rewrite gcd-b-mod-is-gcd-a-b gcd-b-mod-divides-mod]
+                            [by rewrite gcd-recurses gcd-b-mod-divides-mod]
                           @mod-crossing-holds-if-divides-b |
                             divides(gcd(a, b), b) -> (divides(gcd(a, b), a) iff divides(gcd(a, b), mod(a, b)))
                             [by specialize dividesModStep(b, gcd(a, b), a) b-is-positive]
@@ -4387,18 +4276,12 @@ proof
                                   @gcd-with-zero-is-itself |
                                     gcd(a, ZERO) = a
                                     [by specialize gcdZero(a)]
-                                  @a-is-gcd-with-zero |
-                                    a = gcd(a, ZERO)
-                                    [by symmetry gcd-with-zero-is-itself]
                                   @d-divides-gcd-with-zero |
                                     divides(d, gcd(a, ZERO))
-                                    [by rewrite a-is-gcd-with-zero d-divides-a]
-                                  @zero-is-b |
-                                    ZERO = b
-                                    [by symmetry b-is-zero]
+                                    [by rewrite gcd-with-zero-is-itself d-divides-a]
                                   @d-divides-gcd-when-zero |
                                     divides(d, gcd(a, b))
-                                    [by rewrite zero-is-b d-divides-gcd-with-zero]
+                                    [by rewrite b-is-zero d-divides-gcd-with-zero]
                                 }
                               @when-b-is-successor |
                                 assume exists mm: Int; is_nonneg(mm) and b = succ(mm) {
@@ -4419,12 +4302,9 @@ proof
                                       @successor-bp-positive |
                                         less_than(ZERO, succ(bp))
                                         [by specialize succOfNonnegIsPositive(bp) bp-nonneg]
-                                      @successor-bp-is-b |
-                                        succ(bp) = b
-                                        [by symmetry b-is-successor-of-bp]
                                       @b-is-positive |
                                         less_than(ZERO, b)
-                                        [by rewrite successor-bp-is-b successor-bp-positive]
+                                        [by rewrite b-is-successor-of-bp successor-bp-positive]
                                       @gcd-recurses |
                                         gcd(a, b) = gcd(b, mod(a, b))
                                         [by specialize gcdStep(b, a) b-is-positive]
@@ -4461,12 +4341,9 @@ proof
                                       @d-divides-gcd-b-mod |
                                         divides(d, gcd(b, mod(a, b)))
                                         [by modus_ponens divides-mod-implies-divides-gcd-b-mod d-divides-mod]
-                                      @gcd-b-mod-is-gcd-a-b |
-                                        gcd(b, mod(a, b)) = gcd(a, b)
-                                        [by symmetry gcd-recurses]
                                       @d-divides-gcd-when-successor |
                                         divides(d, gcd(a, b))
-                                        [by rewrite gcd-b-mod-is-gcd-a-b d-divides-gcd-b-mod]
+                                        [by rewrite gcd-recurses d-divides-gcd-b-mod]
                                     }
                                   @d-divides-gcd-in-successor-case |
                                     divides(d, gcd(a, b))
@@ -4563,13 +4440,10 @@ proof
           @gcd-is-gcd-abs |
             gcd(a, b) = gcd(a, abs(b))
             [by specialize gcdAbs(b, a)]
-          @gcd-abs-is-gcd |
-            gcd(a, abs(b)) = gcd(a, b)
-            [by symmetry gcd-is-gcd-abs]
           // rewrite gcd(a, abs b) back to gcd(a, b) in both conjuncts.
           @gcd-divides-both-abs |
             divides(gcd(a, b), a) and divides(gcd(a, b), abs(b))
-            [by rewrite gcd-abs-is-gcd gcd-abs-divides-both]
+            [by rewrite gcd-is-gcd-abs gcd-abs-divides-both]
           @gcd-divides-a |
             divides(gcd(a, b), a)
             [by and_elim_left gcd-divides-both-abs]
@@ -4638,12 +4512,9 @@ proof
                       @gcd-is-gcd-abs |
                         gcd(a, b) = gcd(a, abs(b))
                         [by specialize gcdAbs(b, a)]
-                      @gcd-abs-is-gcd |
-                        gcd(a, abs(b)) = gcd(a, b)
-                        [by symmetry gcd-is-gcd-abs]
                       @d-divides-gcd |
                         divides(d, gcd(a, b))
-                        [by rewrite gcd-abs-is-gcd d-divides-gcd-abs]
+                        [by rewrite gcd-is-gcd-abs d-divides-gcd-abs]
                     }
                   @d-divides-b-implies-gcd |
                     divides(d, b) -> divides(d, gcd(a, b))
@@ -5000,12 +4871,9 @@ proof
                                                   @d-equals-remainder |
                                                     d = rem
                                                     [by hypothesis when-d-equals-remainder]
-                                                  @remainder-equals-d |
-                                                    rem = d
-                                                    [by symmetry d-equals-remainder]
                                                   @conclusion-d-less_than-itself |
                                                     less_than(d, d)
-                                                    [by rewrite remainder-equals-d remainder-less_than-d]
+                                                    [by rewrite d-equals-remainder remainder-less_than-d]
                                                 }
                                             }
                                         }
@@ -5125,12 +4993,9 @@ proof
                                                   @d-equals-remainder |
                                                     d = rem2
                                                     [by hypothesis when-d-equals-remainder]
-                                                  @remainder-equals-d |
-                                                    rem2 = d
-                                                    [by symmetry d-equals-remainder]
                                                   @conclusion-d-less_than-itself |
                                                     less_than(d, d)
-                                                    [by rewrite remainder-equals-d remainder-less_than-d]
+                                                    [by rewrite d-equals-remainder remainder-less_than-d]
                                                 }
                                             }
                                         }
@@ -5185,12 +5050,9 @@ proof
                                           @e-divides-combination |
                                             divides(e, add(mul(a, r), mul(b, s)))
                                             [by specialize dividesAdd(e, mul(a, r), mul(b, s)) e-divides-ar e-divides-bs]
-                                          @combination-is-d |
-                                            add(mul(a, r), mul(b, s)) = d
-                                            [by symmetry d-equals-combination]
                                           @conclusion-e-divides-d |
                                             divides(e, d)
-                                            [by rewrite combination-is-d e-divides-combination]
+                                            [by rewrite d-equals-combination e-divides-combination]
                                         }
                                       @e-divides-b-implies-e-divides-d |
                                         divides(e, b) -> divides(e, d)

@@ -545,12 +545,9 @@ proof
               @zero-below-succ-m |
                 less_than(ZERO, succ(m0))
                 [by specialize lessThanIntro(ZERO, m0, succ(m0)) zero-gap-reaches-succ-m]
-              @succ-m-equals-b |
-                succ(m0) = bb
-                [by symmetry b-is-succ-m]
               @zero-below-b |
                 less_than(ZERO, bb)
-                [by rewrite succ-m-equals-b zero-below-succ-m]
+                [by rewrite b-is-succ-m zero-below-succ-m]
               @below-or-equal |
                 less_than(ZERO, bb) or ZERO = bb
                 [by or_intro_left zero-below-b]
@@ -630,12 +627,9 @@ proof
                               @succ-k-below-succ-m |
                                 less_than(succ(k), succ(m1))
                                 [by specialize succPreservesOrder(k, m1) k-below-m]
-                              @succ-m-equals-b |
-                                succ(m1) = b2
-                                [by symmetry b-is-succ-m]
                               @succ-k-below-b |
                                 less_than(succ(k), b2)
-                                [by rewrite succ-m-equals-b succ-k-below-succ-m]
+                                [by rewrite b-is-succ-m succ-k-below-succ-m]
                               @below-or-equal |
                                 less_than(succ(k), b2) or succ(k) = b2
                                 [by or_intro_left succ-k-below-b]
@@ -651,12 +645,9 @@ proof
                               @succ-k-equals-succ-m |
                                 succ(k) = succ(m1)
                                 [by simplify k-equals-m]
-                              @succ-m-equals-b |
-                                succ(m1) = b2
-                                [by symmetry b-is-succ-m]
                               @succ-k-equals-b |
                                 succ(k) = b2
-                                [by rewrite succ-m-equals-b succ-k-equals-succ-m]
+                                [by rewrite b-is-succ-m succ-k-equals-succ-m]
                               @below-or-equal |
                                 less_than(succ(k), b2) or succ(k) = b2
                                 [by or_intro_right succ-k-equals-b]
@@ -676,12 +667,9 @@ proof
                           @succ-m-below-succ-k |
                             less_than(succ(m1), succ(k))
                             [by specialize succPreservesOrder(m1, k) m-below-k]
-                          @succ-m-equals-b |
-                            succ(m1) = b2
-                            [by symmetry b-is-succ-m]
                           @b-below-succ-k |
                             less_than(b2, succ(k))
-                            [by rewrite succ-m-equals-b succ-m-below-succ-k]
+                            [by rewrite b-is-succ-m succ-m-below-succ-k]
                           @trichotomy-at-succ-k |
                             less_than(succ(k), b2) or succ(k) = b2 or less_than(b2, succ(k))
                             [by or_intro_right b-below-succ-k]
@@ -1077,12 +1065,9 @@ proof
                           @m-equals-k |
                             m1 = k
                             [by hypothesis when-m-equals-k]
-                          @k-equals-m |
-                            k = m1
-                            [by symmetry m-equals-k]
                           @prop-m |
                             prop(m1)
-                            [by rewrite k-equals-m prop-k]
+                            [by rewrite m-equals-k prop-k]
                         }
                       @prop-m |
                         prop(m1)
@@ -1489,16 +1474,13 @@ proof
                               @a-equals-b |
                                 a = b
                                 [by hypothesis when-a-equals-b]
-                              @b-equals-a |
-                                b = a
-                                [by symmetry a-equals-b]
                               // le(b,c) with a = b gives le(a,c) by rewriting b -> a
                               @b-at-most-c |
                                 less_or_equal(b, c)
                                 [by hypothesis given-b-at-most-c]
                               @conclusion-a-at-most-c |
                                 less_or_equal(a, c)
-                                [by rewrite b-equals-a b-at-most-c]
+                                [by rewrite a-equals-b b-at-most-c]
                             }
                         }
                     }
@@ -1684,18 +1666,12 @@ proof
                                   @scaled |
                                     less_than(mul(succ(cp), a), mul(succ(cp), b))
                                     [by specialize multiplicationPreservesOrder(a, b, cp) a-lt-b]
-                                  @cp-back |
-                                    succ(cp) = c
-                                    [by symmetry c-equals-succ-cp]
                                   @scaled-c |
                                     less_than(mul(c, a), mul(c, b))
-                                    [by rewrite cp-back scaled]
-                                  @products-equal-sym |
-                                    mul(c, b) = mul(c, a)
-                                    [by symmetry products-equal]
+                                    [by rewrite c-equals-succ-cp scaled]
                                   @self-lt |
                                     less_than(mul(c, a), mul(c, a))
-                                    [by rewrite products-equal-sym scaled-c]
+                                    [by rewrite products-equal scaled-c]
                                   @not-self-lt |
                                     not less_than(mul(c, a), mul(c, a))
                                     [by specialize lessThanIrreflexive(mul(c, a))]
@@ -1717,12 +1693,9 @@ proof
                                   @scaled |
                                     less_than(mul(succ(cp), b), mul(succ(cp), a))
                                     [by specialize multiplicationPreservesOrder(b, a, cp) b-lt-a]
-                                  @cp-back |
-                                    succ(cp) = c
-                                    [by symmetry c-equals-succ-cp]
                                   @scaled-c |
                                     less_than(mul(c, b), mul(c, a))
-                                    [by rewrite cp-back scaled]
+                                    [by rewrite c-equals-succ-cp scaled]
                                   @self-lt |
                                     less_than(mul(c, b), mul(c, b))
                                     [by rewrite products-equal scaled-c]

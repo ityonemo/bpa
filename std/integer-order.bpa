@@ -173,12 +173,9 @@ proof
           @a-plus-zero-is-a |
             add(a, ZERO) = a
             [by specialize addZeroRight(a)]
-          @a-is-a-plus-zero |
-            a = add(a, ZERO)
-            [by symmetry a-plus-zero-is-a]
           @base-case |
             nonneg(add(a, ZERO))
-            [by rewrite a-is-a-plus-zero a-nonneg]
+            [by rewrite a-plus-zero-is-a a-nonneg]
           // step: nonneg(add(a, k)) -> nonneg(add(a, succ k)).
           @induction-step |
             fix k: Int {
@@ -195,12 +192,9 @@ proof
                       @grown-sum-is-successor |
                         add(a, succ(k)) = succ(add(a, k))
                         [by specialize addSuccRight(a, k)]
-                      @successor-sum-is-grown-sum |
-                        succ(add(a, k)) = add(a, succ(k))
-                        [by symmetry grown-sum-is-successor]
                       @grown-sum-nonneg |
                         nonneg(add(a, succ(k)))
-                        [by rewrite successor-sum-is-grown-sum succ-sum-nonneg]
+                        [by rewrite grown-sum-is-successor succ-sum-nonneg]
                     }
                   @sum-nonneg-implies-grown-sum-nonneg |
                     nonneg(add(a, k)) -> nonneg(add(a, succ(k)))
@@ -299,12 +293,9 @@ proof
               @n-plus-zero-is-n |
                 add(n, ZERO) = n
                 [by specialize addZeroRight(n)]
-              @n-is-n-plus-zero |
-                n = add(n, ZERO)
-                [by symmetry n-plus-zero-is-n]
               @gap-equals-zero-suffix |
                 add(n, succ(d0)) = add(n, ZERO)
-                [by rewrite n-is-n-plus-zero gap-witnesses-self]
+                [by rewrite n-plus-zero-is-n gap-witnesses-self]
               @succ-gap-is-zero |
                 succ(d0) = ZERO
                 [by specialize addCancelLeft(n, succ(d0), ZERO) gap-equals-zero-suffix]
@@ -677,15 +668,12 @@ proof
                               @a-equals-b |
                                 a = b
                                 [by hypothesis when-a-equals-b]
-                              @b-equals-a |
-                                b = a
-                                [by symmetry a-equals-b]
                               @b-at-most-c |
                                 less_or_equal(b, c)
                                 [by hypothesis given-b-at-most-c]
                               @conclusion-a-at-most-c |
                                 less_or_equal(a, c)
-                                [by rewrite b-equals-a b-at-most-c]
+                                [by rewrite a-equals-b b-at-most-c]
                             }
                         }
                     }
@@ -1384,12 +1372,9 @@ proof
                           @zero-less_than-succ-zero |
                             less_than(ZERO, succ(ZERO))
                             [by specialize lessThanIntro(ZERO, ZERO, succ(ZERO)) zero-is-nonneg zero-plus-succ-zero]
-                          @zero-equals-k |
-                            ZERO = k
-                            [by symmetry k-is-zero]
                           @zero-less_than-succ-k |
                             less_than(ZERO, succ(k))
-                            [by rewrite zero-equals-k zero-less_than-succ-zero]
+                            [by rewrite k-is-zero zero-less_than-succ-zero]
                           @less_than-or-equal |
                             less_than(ZERO, succ(k)) or succ(k) = ZERO
                             [by or_intro_left zero-less_than-succ-k]
@@ -1718,15 +1703,12 @@ proof
           @a-times-zero-is-zero |
             mul(a, ZERO) = ZERO
             [by specialize mulZeroRight(a)]
-          @zero-is-a-times-zero |
-            ZERO = mul(a, ZERO)
-            [by symmetry a-times-zero-is-zero]
           @zero-is-nonneg |
             nonneg(ZERO)
             [by axiom nonnegZero]
           @base-case |
             nonneg(mul(a, ZERO))
-            [by rewrite zero-is-a-times-zero zero-is-nonneg]
+            [by rewrite a-times-zero-is-zero zero-is-nonneg]
           // step: nonneg(mul(a, k)) -> nonneg(mul(a, succ k)), since
           // mul(a, succ k) = add(mul(a, k), a), a sum of nonnegatives.
           @induction-step |
@@ -1744,12 +1726,9 @@ proof
                       @product-plus-a-nonneg |
                         nonneg(add(mul(a, k), a))
                         [by specialize nonnegAdd(mul(a, k), a) product-nonneg a-nonneg]
-                      @successor-product-is-sum |
-                        add(mul(a, k), a) = mul(a, succ(k))
-                        [by symmetry a-times-successor-k]
                       @grown-product-nonneg |
                         nonneg(mul(a, succ(k)))
-                        [by rewrite successor-product-is-sum product-plus-a-nonneg]
+                        [by rewrite a-times-successor-k product-plus-a-nonneg]
                     }
                   @product-nonneg-implies-grown-product-nonneg |
                     nonneg(mul(a, k)) -> nonneg(mul(a, succ(k)))
@@ -1948,9 +1927,6 @@ proof
   @one-is-succ-zero |
     ONE = succ(ZERO)
     [by axiom oneIsSuccZero]
-  @succ-zero-is-one |
-    succ(ZERO) = ONE
-    [by symmetry one-is-succ-zero]
   @zero-nonneg |
     nonneg(ZERO)
     [by axiom nonnegZero]
@@ -1959,7 +1935,7 @@ proof
     [by specialize addZeroLeft(succ(ZERO))]
   @zero-plus-succ-zero-is-one |
     add(ZERO, succ(ZERO)) = ONE
-    [by rewrite succ-zero-is-one zero-plus-succ-zero-is-succ-zero]
+    [by rewrite one-is-succ-zero zero-plus-succ-zero-is-succ-zero]
   @conclusion |
     less_than(ZERO, ONE)
     [by specialize lessThanIntro(ZERO, ZERO, ONE) zero-nonneg zero-plus-succ-zero-is-one]
@@ -2151,12 +2127,9 @@ proof
                           @zero-plus-successor-is-successor |
                             add(ZERO, succ(m)) = succ(m)
                             [by forall_elim(succ(m)) add-zero-left]
-                          @successor-is-x |
-                            succ(m) = x
-                            [by symmetry x-is-successor]
                           @zero-plus-successor-is-x |
                             add(ZERO, succ(m)) = x
-                            [by rewrite successor-is-x zero-plus-successor-is-successor]
+                            [by rewrite x-is-successor zero-plus-successor-is-successor]
                           @x-is-positive |
                             less_than(ZERO, x)
                             [by specialize lessThanIntro(ZERO, m, x) gap-nonneg zero-plus-successor-is-x]

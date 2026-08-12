@@ -102,15 +102,12 @@ proof
                       @two-as-succ |
                         add(ONE, ONE) = succ(add(ZERO, ONE))
                         [by simplify addSuccLeft oneIsSuccZero]
-                      @succ-as-two |
-                        succ(add(ZERO, ONE)) = add(ONE, ONE)
-                        [by symmetry two-as-succ]
                       @succ-form-not-zero |
                         succ(add(ZERO, ONE)) != ZERO
                         [by specialize succNotZero(add(ZERO, ONE))]
                       @two-nonzero |
                         TWO != ZERO
-                        [by rewrite succ-as-two succ-form-not-zero]
+                        [by rewrite two-as-succ succ-form-not-zero]
                       @two-ksq-eq-qsq |
                         mul(TWO, mul(k, k)) = mul(q, q)
                         [by specialize mulCancelLeft(TWO, mul(TWO, mul(k, k)), mul(q, q)) two-nonzero two-two-ksq-eq-two-qsq]

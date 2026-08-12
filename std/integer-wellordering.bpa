@@ -403,12 +403,9 @@ proof
                                   @m-equals-k |
                                     m1 = k
                                     [by hypothesis when-m-equals-k]
-                                  @k-equals-m |
-                                    k = m1
-                                    [by symmetry m-equals-k]
                                   @prop-m |
                                     prop(m1)
-                                    [by rewrite k-equals-m prop-k]
+                                    [by rewrite m-equals-k prop-k]
                                 }
                               @prop-m |
                                 prop(m1)

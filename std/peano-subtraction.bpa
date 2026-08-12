@@ -316,12 +316,9 @@ proof
                       @succ-d-is-b |
                         succ(d0) = b
                         [by rewrite gap-is-succ-d gap-sums-to-b]
-                      @b-is-succ-d |
-                        b = succ(d0)
-                        [by symmetry succ-d-is-b]
                       @cancel-recovers-a-via-gap |
                         add(sub(a, b), succ(d0)) = a
-                        [by rewrite b-is-succ-d cancel-recovers-a]
+                        [by rewrite succ-d-is-b cancel-recovers-a]
                       @sub-is-below-a |
                         less_than(sub(a, b), a)
                         [by specialize lessThanIntro(sub(a, b), d0, a) cancel-recovers-a-via-gap]
