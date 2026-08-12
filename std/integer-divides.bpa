@@ -260,18 +260,9 @@ proof
                   @n-nonneg |
                     is_nonneg(n)
                     [by hypothesis given-n-nonneg]
-                  @product-nonneg-for-b |
-                    is_nonneg(b) -> forall k: Int; is_nonneg(k) -> is_nonneg(mul(b, k))
-                    [by forall_elim(b) b-nonneg-gives-product-nonneg]
-                  @product-nonneg-all-k |
-                    forall k: Int; is_nonneg(k) -> is_nonneg(mul(b, k))
-                    [by modus_ponens product-nonneg-for-b b-nonneg]
-                  @product-nonneg-if-n-nonneg |
-                    is_nonneg(n) -> is_nonneg(mul(b, n))
-                    [by forall_elim(n) product-nonneg-all-k]
                   @conclusion-product-nonneg |
                     is_nonneg(mul(b, n))
-                    [by modus_ponens product-nonneg-if-n-nonneg n-nonneg]
+                    [by specialize b-nonneg-gives-product-nonneg(b, n) b-nonneg n-nonneg]
                 }
               @n-nonneg-gives-product-nonneg |
                 is_nonneg(n) -> is_nonneg(mul(b, n))
@@ -2126,12 +2117,9 @@ proof
                       @witness-is-member |
                         exists k: Int; w = sub(a, mul(b, k))
                         [by and_elim_right witness-nonneg-and-member]
-                      @witness-not-member-if-nonneg |
-                        is_nonneg(w) -> (not (exists k: Int; w = sub(a, mul(b, k))))
-                        [by forall_elim(w) nothing-nonneg-is-member]
                       @witness-not-member |
                         not (exists k: Int; w = sub(a, mul(b, k)))
-                        [by modus_ponens witness-not-member-if-nonneg witness-nonneg]
+                        [by specialize nothing-nonneg-is-member(w) witness-nonneg]
                       @contradiction |
                         exists least: Int; is_nonneg(least) and (exists k: Int; least = sub(a, mul(b, k))) and (forall m: Int; is_nonneg(m) -> (exists k: Int; m = sub(a, mul(b, k))) -> at_most(least, m))
                         [by absurd witness-is-member witness-not-member]
@@ -4210,15 +4198,9 @@ proof
               @b-nonneg-reorder |
                 is_nonneg(b)
                 [by hypothesis given-b-nonneg-reorder]
-              @gcd-divides-both-at-b |
-                is_nonneg(b) -> forall aa: Int; divides(gcd(aa, b), aa) and divides(gcd(aa, b), b)
-                [by forall_elim(b) gcd-divides-both-swapped]
-              @gcd-divides-both-for-all-a |
-                forall aa: Int; divides(gcd(aa, b), aa) and divides(gcd(aa, b), b)
-                [by modus_ponens gcd-divides-both-at-b b-nonneg-reorder]
               @gcd-divides-both-reordered |
                 divides(gcd(a, b), a) and divides(gcd(a, b), b)
-                [by forall_elim(a) gcd-divides-both-for-all-a]
+                [by specialize gcd-divides-both-swapped(b, a) b-nonneg-reorder]
             }
           @gcd-divides-both-if-nonneg |
             is_nonneg(b) -> (divides(gcd(a, b), a) and divides(gcd(a, b), b))
@@ -4332,15 +4314,9 @@ proof
                                       @greatest-at-mod |
                                         forall aa, dd: Int; divides(dd, aa) -> divides(dd, mod(a, b)) -> divides(dd, gcd(aa, mod(a, b)))
                                         [by tautology inductive-hypothesis-at-mod mod-is-nonneg mod-is-below-b]
-                                      @greatest-at-mod-b-d |
-                                        divides(d, b) -> divides(d, mod(a, b)) -> divides(d, gcd(b, mod(a, b)))
-                                        [by forall_elim(b, d) greatest-at-mod]
-                                      @divides-mod-implies-divides-gcd-b-mod |
-                                        divides(d, mod(a, b)) -> divides(d, gcd(b, mod(a, b)))
-                                        [by modus_ponens greatest-at-mod-b-d d-divides-b]
                                       @d-divides-gcd-b-mod |
                                         divides(d, gcd(b, mod(a, b)))
-                                        [by modus_ponens divides-mod-implies-divides-gcd-b-mod d-divides-mod]
+                                        [by specialize greatest-at-mod(b, d) d-divides-b d-divides-mod]
                                       @d-divides-gcd-when-successor |
                                         divides(d, gcd(a, b))
                                         [by rewrite gcd-recurses d-divides-gcd-b-mod]
@@ -4395,15 +4371,9 @@ proof
                   @b-nonneg-reorder |
                     is_nonneg(b)
                     [by hypothesis given-b-nonneg-reorder]
-                  @greatest-at-b |
-                    is_nonneg(b) -> forall aa, dd: Int; divides(dd, aa) -> divides(dd, b) -> divides(dd, gcd(aa, b))
-                    [by forall_elim(b) gcd-greatest-swapped]
-                  @greatest-for-all-a-d |
-                    forall aa, dd: Int; divides(dd, aa) -> divides(dd, b) -> divides(dd, gcd(aa, b))
-                    [by modus_ponens greatest-at-b b-nonneg-reorder]
                   @greatest-at-a-d |
                     divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b))
-                    [by forall_elim(a, d) greatest-for-all-a-d]
+                    [by specialize gcd-greatest-swapped(b, a, d) b-nonneg-reorder]
                 }
               @greatest-if-nonneg |
                 is_nonneg(b) -> (divides(d, a) -> divides(d, b) -> divides(d, gcd(a, b)))

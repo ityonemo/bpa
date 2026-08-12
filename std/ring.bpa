@@ -120,12 +120,9 @@ proof
       @cancel-right |
         forall b, x, c: Ring; add(b, x) = add(c, x) -> b = c
         [by model(AdditiveGroup) group.cancelRight]
-      @cancel-at |
-        add(ZERO, mul(a, ZERO)) = add(mul(a, ZERO), mul(a, ZERO)) -> ZERO = mul(a, ZERO)
-        [by forall_elim(ZERO, mul(a, ZERO), mul(a, ZERO)) cancel-right]
       @zero-is-product |
         ZERO = mul(a, ZERO)
-        [by modus_ponens cancel-at sum-equals-doubled]
+        [by specialize cancel-right(ZERO, mul(a, ZERO), mul(a, ZERO)) sum-equals-doubled]
       @conclusion-product-zero |
         mul(a, ZERO) = ZERO
         [by symmetry zero-is-product]
@@ -160,12 +157,9 @@ proof
       @cancel-right |
         forall b, x, c: Ring; add(b, x) = add(c, x) -> b = c
         [by model(AdditiveGroup) group.cancelRight]
-      @cancel-at |
-        add(ZERO, mul(ZERO, a)) = add(mul(ZERO, a), mul(ZERO, a)) -> ZERO = mul(ZERO, a)
-        [by forall_elim(ZERO, mul(ZERO, a), mul(ZERO, a)) cancel-right]
       @zero-is-product |
         ZERO = mul(ZERO, a)
-        [by modus_ponens cancel-at sum-equals-doubled]
+        [by specialize cancel-right(ZERO, mul(ZERO, a), mul(ZERO, a)) sum-equals-doubled]
       @conclusion-product-zero |
         mul(ZERO, a) = ZERO
         [by symmetry zero-is-product]
@@ -259,12 +253,9 @@ proof
           @inverse-unique |
             forall x, y: Ring; add(x, y) = ZERO -> y = neg(x)
             [by model(AdditiveGroup) group.inverseUnique]
-          @inverse-unique-at |
-            add(mul(a, b), mul(neg(a), b)) = ZERO -> mul(neg(a), b) = neg(mul(a, b))
-            [by forall_elim(mul(a, b), mul(neg(a), b)) inverse-unique]
           @conclusion-neg-left |
             mul(neg(a), b) = neg(mul(a, b))
-            [by modus_ponens inverse-unique-at sum-of-products-is-zero]
+            [by specialize inverse-unique(mul(a, b), mul(neg(a), b)) sum-of-products-is-zero]
         }
       @discharge-b |
         forall b: Ring; mul(neg(a), b) = neg(mul(a, b))

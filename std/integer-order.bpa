@@ -233,18 +233,9 @@ proof
                   @b-nonneg |
                     nonneg(bb)
                     [by hypothesis given-b-nonneg]
-                  @sum-nonneg-for-a |
-                    nonneg(a) -> forall b: Int; nonneg(b) -> nonneg(add(a, b))
-                    [by forall_elim(a) a-nonneg-gives-sum-nonneg]
-                  @sum-nonneg-all-b |
-                    forall b: Int; nonneg(b) -> nonneg(add(a, b))
-                    [by modus_ponens sum-nonneg-for-a a-nonneg]
-                  @sum-nonneg-if-b-nonneg |
-                    nonneg(bb) -> nonneg(add(a, bb))
-                    [by forall_elim(bb) sum-nonneg-all-b]
                   @conclusion-sum-nonneg |
                     nonneg(add(a, bb))
-                    [by modus_ponens sum-nonneg-if-b-nonneg b-nonneg]
+                    [by specialize a-nonneg-gives-sum-nonneg(a, bb) a-nonneg b-nonneg]
                 }
               @b-nonneg-implies-sum-nonneg |
                 nonneg(bb) -> nonneg(add(a, bb))
@@ -1767,18 +1758,9 @@ proof
                   @b-nonneg |
                     nonneg(bb)
                     [by hypothesis given-b-nonneg]
-                  @product-nonneg-for-a |
-                    nonneg(a) -> forall b: Int; nonneg(b) -> nonneg(mul(a, b))
-                    [by forall_elim(a) a-nonneg-gives-product-nonneg]
-                  @product-nonneg-all-b |
-                    forall b: Int; nonneg(b) -> nonneg(mul(a, b))
-                    [by modus_ponens product-nonneg-for-a a-nonneg]
-                  @product-nonneg-if-b-nonneg |
-                    nonneg(bb) -> nonneg(mul(a, bb))
-                    [by forall_elim(bb) product-nonneg-all-b]
                   @conclusion-product-nonneg |
                     nonneg(mul(a, bb))
-                    [by modus_ponens product-nonneg-if-b-nonneg b-nonneg]
+                    [by specialize a-nonneg-gives-product-nonneg(a, bb) a-nonneg b-nonneg]
                 }
               @b-nonneg-implies-product-nonneg |
                 nonneg(bb) -> nonneg(mul(a, bb))

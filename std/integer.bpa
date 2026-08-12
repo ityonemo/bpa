@@ -402,12 +402,9 @@ proof
                         neg(succ(x)) = k
                         [by chain negation-of-successor-x prev-of-neg-x-is-k]
                       // IH at succ(x): neg(k) = succ(x).
-                      @inductive-hypothesis-at-successor-x |
-                        neg(succ(x)) = k -> neg(k) = succ(x)
-                        [by forall_elim(succ(x)) inductive-hypothesis]
                       @negation-of-k-is-successor-x |
                         neg(k) = succ(x)
-                        [by modus_ponens inductive-hypothesis-at-successor-x negation-of-successor-x-is-k]
+                        [by specialize inductive-hypothesis(succ(x)) negation-of-successor-x-is-k]
                       // neg(succ k) = prev(neg k) = prev(succ x) = x.
                       @negation-of-successor-k |
                         neg(succ(k)) = prev(neg(k))
@@ -479,15 +476,12 @@ proof
               @preimage-of-neg-n |
                 forall x: Int; neg(x) = neg(n) -> neg(neg(n)) = x
                 [by specialize negPreimageIsNegation(neg(n)) neg-n-nonneg]
-              @preimage-at-n |
-                neg(n) = neg(n) -> neg(neg(n)) = n
-                [by forall_elim(n) preimage-of-neg-n]
               @neg-n-reflexive |
                 neg(n) = neg(n)
                 [by reflexivity]
               @double-negation-is-n |
                 neg(neg(n)) = n
-                [by modus_ponens preimage-at-n neg-n-reflexive]
+                [by specialize preimage-of-neg-n(n) neg-n-reflexive]
             }
         }
     }
@@ -598,9 +592,6 @@ proof
                   @sign-split |
                     nonneg(n) or nonneg(neg(n))
                     [by forall_elim(n) intCases-fact]
-                  @nonneg-arm-conclusion |
-                    nonneg(n) -> prop(n)
-                    [by forall_elim(n) nonneg-induction-on-prop]
                   @double-negation-of-n |
                     neg(neg(n)) = n
                     [by forall_elim(n) negNeg-fact]
@@ -614,19 +605,16 @@ proof
                             [by hypothesis when-n-nonneg]
                           @prop-at-n-nonneg-arm |
                             prop(n)
-                            [by modus_ponens nonneg-arm-conclusion n-nonneg]
+                            [by specialize nonneg-induction-on-prop(n) n-nonneg]
                         }
                       @when-neg-n-nonneg |
                         assume nonneg(neg(n)) {
                           @neg-n-nonneg |
                             nonneg(neg(n))
                             [by hypothesis when-neg-n-nonneg]
-                          @reflected-arm-at-neg-n |
-                            nonneg(neg(n)) -> prop(neg(neg(n)))
-                            [by forall_elim(neg(n)) reflected-nonneg-induction]
                           @prop-at-double-negation |
                             prop(neg(neg(n)))
-                            [by modus_ponens reflected-arm-at-neg-n neg-n-nonneg]
+                            [by specialize reflected-nonneg-induction(neg(n)) neg-n-nonneg]
                           @prop-at-n-neg-arm |
                             prop(n)
                             [by rewrite double-negation-of-n prop-at-double-negation]

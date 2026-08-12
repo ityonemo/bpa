@@ -1031,12 +1031,9 @@ proof
               @strong-step |
                 forall n: Nat; (forall m: Nat; less_than(m, n) -> prop(m)) -> prop(n)
                 [by hypothesis given-strong-step]
-              @prop-below-k-implies-prop-k |
-                (forall m: Nat; less_than(m, k) -> prop(m)) -> prop(k)
-                [by forall_elim(k) strong-step]
               @prop-k |
                 prop(k)
-                [by modus_ponens prop-below-k-implies-prop-k inductive-hypothesis]
+                [by specialize strong-step(k) inductive-hypothesis]
               // Q(succ k): forall m; m < succ k -> prop(m)
               @generalize-m |
                 fix m1: Nat {
@@ -1053,12 +1050,9 @@ proof
                           @m-below-k |
                             less_than(m1, k)
                             [by hypothesis when-m-below-k]
-                          @prop-m-if-below-k |
-                            less_than(m1, k) -> prop(m1)
-                            [by forall_elim(m1) inductive-hypothesis]
                           @prop-m |
                             prop(m1)
-                            [by modus_ponens prop-m-if-below-k m-below-k]
+                            [by specialize inductive-hypothesis(m1) m-below-k]
                         }
                       @when-m-equals-k |
                         assume m1 = k {
@@ -1100,15 +1094,12 @@ proof
           @prop-holds-below-succ-n |
             forall m: Nat; less_than(m, succ(n1)) -> prop(m)
             [by forall_elim(succ(n1)) prop-holds-below-every-n]
-          @prop-n-if-below-succ-n |
-            less_than(n1, succ(n1)) -> prop(n1)
-            [by forall_elim(n1) prop-holds-below-succ-n]
           @n-below-succ-n |
             less_than(n1, succ(n1))
             [by specialize lessThanSelf(n1)]
           @prop-n |
             prop(n1)
-            [by modus_ponens prop-n-if-below-succ-n n-below-succ-n]
+            [by specialize prop-holds-below-succ-n(n1) n-below-succ-n]
         }
       @prop-holds-for-all |
         forall n: Nat; prop(n)
@@ -1812,12 +1803,9 @@ proof
                                       @m-below-n |
                                         less_than(m, n)
                                         [by hypothesis when-m-below-n]
-                                      @m-below-n-fails |
-                                        less_than(m, n) -> (not prop(m))
-                                        [by forall_elim(m) all-below-fail]
                                       @m-fails |
                                         not prop(m)
-                                        [by modus_ponens m-below-n-fails m-below-n]
+                                        [by specialize all-below-fail(m) m-below-n]
                                       @conclusion-n-le-m |
                                         less_or_equal(n, m)
                                         [by absurd m-satisfies m-fails]

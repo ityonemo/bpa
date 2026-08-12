@@ -422,15 +422,9 @@ proof
               @k-nonneg |
                 is_nonneg(k)
                 [by hypothesis given-k-nonneg]
-              @predicate-at-k-guarded |
-                is_nonneg(k) -> (is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> less_than(i, k) -> does_divide(at(s, i), productUpTo(s, k))))
-                [by forall_elim(k) predicate-holds-on-nonnegs]
-              @predicate-at-k |
-                is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> less_than(i, k) -> does_divide(at(s, i), productUpTo(s, k)))
-                [by modus_ponens predicate-at-k-guarded k-nonneg]
               @entries-below-k-divide |
                 forall i: Int; is_nonneg(i) -> less_than(i, k) -> does_divide(at(s, i), productUpTo(s, k))
-                [by modus_ponens predicate-at-k k-nonneg]
+                [by specialize predicate-holds-on-nonnegs(k) k-nonneg k-nonneg]
             }
           @k-nonneg-gives-entries-divide |
             is_nonneg(k) -> (forall i: Int; is_nonneg(i) -> less_than(i, k) -> does_divide(at(s, i), productUpTo(s, k)))

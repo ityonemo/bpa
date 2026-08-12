@@ -228,12 +228,9 @@ proof
                           @cp-below-succ-k |
                             less_than(cp, succ(k))
                             [by specialize succReflectsOrder(cp, succ(k)) succ-cp-below-succ-succ-k]
-                          @cancel-at-cp-if-below |
-                            less_than(cp, succ(k)) -> add(sub(k, cp), cp) = k
-                            [by forall_elim(cp) inductive-hypothesis]
                           @cancel-at-cp |
                             add(sub(k, cp), cp) = k
-                            [by modus_ponens cancel-at-cp-if-below cp-below-succ-k]
+                            [by specialize inductive-hypothesis(cp) cp-below-succ-k]
                           @cancel-both-when-successor |
                             add(sub(succ(k), cc), cc) = succ(k)
                             [by simplify b-is-succ-cp subSuccSucc addSuccRight cancel-at-cp]

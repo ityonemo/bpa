@@ -1059,24 +1059,12 @@ proof
           @k-nonneg-final |
             is_nonneg(k)
             [by hypothesis given-k-nonneg-final]
-          @guarded-claim-at-k |
-            is_nonneg(k) -> (is_nonneg(k) -> (forall s: Seq; forall p: Int;
-              is_prime(p)
-              -> does_divide(p, productUpTo(s, k))
-              -> (exists i: Int; is_nonneg(i) and (less_than(i, k) and does_divide(p, at(s, i))))))
-            [by forall_elim(k) guarded-claim-on-nonnegs]
-          @once-guarded-claim-at-k |
-            is_nonneg(k) -> (forall s: Seq; forall p: Int;
-              is_prime(p)
-              -> does_divide(p, productUpTo(s, k))
-              -> (exists i: Int; is_nonneg(i) and (less_than(i, k) and does_divide(p, at(s, i)))))
-            [by modus_ponens guarded-claim-at-k k-nonneg-final]
           @claim-at-k |
             forall s: Seq; forall p: Int;
               is_prime(p)
               -> does_divide(p, productUpTo(s, k))
               -> (exists i: Int; is_nonneg(i) and (less_than(i, k) and does_divide(p, at(s, i))))
-            [by modus_ponens once-guarded-claim-at-k k-nonneg-final]
+            [by specialize guarded-claim-on-nonnegs(k) k-nonneg-final k-nonneg-final]
         }
       @k-nonneg-gives-claim |
         is_nonneg(k) -> (forall s: Seq; forall p: Int;
@@ -1277,12 +1265,9 @@ proof
                             less_than(ONE, p)
                             [by and_elim_left p-is-prime]
                           // p is one of the listed primes, so p | product.
-                          @complete-at-p |
-                            is_prime(p) -> inSeqBefore(p, primes, count)
-                            [by forall_elim(p) list-is-complete]
                           @p-in-list |
                             inSeqBefore(p, primes, count)
-                            [by modus_ponens complete-at-p p-is-prime]
+                            [by specialize list-is-complete(p) p-is-prime]
                           @p-divides-product |
                             does_divide(p, productUpTo(primes, count))
                             [by specialize memberDividesProduct(primes, count, p) count-nonneg p-in-list]

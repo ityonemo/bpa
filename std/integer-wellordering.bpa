@@ -451,12 +451,9 @@ proof
               @succ-n-nonneg |
                 nonneg(succ(n1))
                 [by specialize nonnegSucc(n1) n-nonneg]
-              @prop-holds-less_than-succ-n-if-nonneg |
-                nonneg(succ(n1)) -> forall m: Int; nonneg(m) -> less_than(m, succ(n1)) -> prop(m)
-                [by forall_elim(succ(n1)) prop-holds-less_than-every-n]
               @prop-holds-less_than-succ-n |
                 forall m: Int; nonneg(m) -> less_than(m, succ(n1)) -> prop(m)
-                [by modus_ponens prop-holds-less_than-succ-n-if-nonneg succ-n-nonneg]
+                [by specialize prop-holds-less_than-every-n(succ(n1)) succ-n-nonneg]
               @prop-n-if-nonneg-less_than-succ-n |
                 nonneg(n1) -> less_than(n1, succ(n1)) -> prop(n1)
                 [by forall_elim(n1) prop-holds-less_than-succ-n]
@@ -641,12 +638,9 @@ proof
               @witness-satisfies |
                 prop(w0)
                 [by and_elim_right witness-nonneg-and-satisfies]
-              @witness-fails-if-nonneg |
-                nonneg(w0) -> (not prop(w0))
-                [by forall_elim(w0) nothing-nonneg-satisfies]
               @witness-fails |
                 not prop(w0)
-                [by modus_ponens witness-fails-if-nonneg witness-nonneg]
+                [by specialize nothing-nonneg-satisfies(w0) witness-nonneg]
               @contradiction |
                 exists least: Int; nonneg(least) and prop(least) and (forall m: Int; nonneg(m) -> prop(m) -> less_or_equal(least, m))
                 [by absurd witness-satisfies witness-fails]
