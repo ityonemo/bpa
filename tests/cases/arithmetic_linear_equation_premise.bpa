@@ -1,0 +1,78 @@
+// A linear-equation goal derivable by CANCELLATION from a linear-equation premise,
+// over OPAQUE nonlinear leaves. The equation certifier used to decline this (it
+// normalizes by congruence rewriting — the premise-as-rewrite-rule never fires on
+// the goal, and `neg(mod)` / `mod` read as unrelated leaves). The linear-equation
+// certifier parses goal + premise into linear forms over the opaque leaves
+// (`sub`/`neg` become ±1 coefficients; `mod(r,n)`, `div(r,n)`, `mul(n,div(r,n))`
+// are opaque atoms) and certifies the goal as a linear combination of the premise
+// — here goal = (−1)·premise. Must verify STRICT (no --fast, no fallback).
+sort Int
+const ZERO: Int
+const ONE: Int
+func succ(n: Int): Int
+func prev(n: Int): Int
+func add(a: Int, b: Int): Int
+func mul(a: Int, b: Int): Int
+func neg(a: Int): Int
+func sub(a: Int, b: Int): Int
+func div(a: Int, b: Int): Int
+func mod(a: Int, b: Int): Int
+pred less_than(a: Int, b: Int)
+
+axiom definitionOfSubtraction: forall a, b: Int; sub(a, b) = add(a, neg(b))
+axiom addZeroLeft: forall b: Int; add(ZERO, b) = b
+axiom addZeroRight: forall n: Int; add(n, ZERO) = n
+axiom addSuccLeft: forall a, b: Int; add(succ(a), b) = succ(add(a, b))
+axiom addSuccRight: forall a, b: Int; add(a, succ(b)) = succ(add(a, b))
+axiom mulZeroLeft: forall b: Int; mul(ZERO, b) = ZERO
+axiom mulZeroRight: forall n: Int; mul(n, ZERO) = ZERO
+axiom mulSuccLeft: forall a, b: Int; mul(succ(a), b) = add(mul(a, b), b)
+axiom mulSuccRight: forall a, b: Int; mul(a, succ(b)) = add(mul(a, b), a)
+axiom addIsAssociative: forall a, b, c: Int; add(add(a, b), c) = add(a, add(b, c))
+axiom addIsCommutative: forall a, b: Int; add(a, b) = add(b, a)
+axiom addLeftSwap: forall a, b, c: Int; add(a, add(b, c)) = add(b, add(a, c))
+axiom negNeg: forall a: Int; neg(neg(a)) = a
+axiom negAdd: forall a, b: Int; neg(add(a, b)) = add(neg(a), neg(b))
+axiom addNegRight: forall a: Int; add(a, neg(a)) = ZERO
+axiom addNegLeft: forall a: Int; add(neg(a), a) = ZERO
+axiom negZero: neg(ZERO) = ZERO
+axiom negSucc: forall a: Int; neg(succ(a)) = prev(neg(a))
+axiom negPrev: forall a: Int; neg(prev(a)) = succ(neg(a))
+axiom prevSucc: forall a: Int; prev(succ(a)) = a
+axiom succPrev: forall a: Int; succ(prev(a)) = a
+axiom addPrevLeft: forall a, b: Int; add(prev(a), b) = prev(add(a, b))
+axiom addPrevRight: forall a, b: Int; add(a, prev(b)) = prev(add(a, b))
+axiom oneIsSuccZero: ONE = succ(ZERO)
+
+// the division-property shape: n·q + r = a, so a − r = n·q.
+axiom divModProperty: forall b, a: Int; add(mul(b, div(a, b)), mod(a, b)) = a
+
+theorem remainderDifferenceIsMultiple: forall n, r: Int;
+  add(mul(n, div(r, n)), mod(r, n)) = r ->
+  sub(r, mod(r, n)) = mul(n, div(r, n))
+proof
+  @generalize-n |
+    fix n: Int {
+      @generalize-r |
+        fix r: Int {
+          @given-division-property |
+            assume add(mul(n, div(r, n)), mod(r, n)) = r {
+              @division-property |
+                add(mul(n, div(r, n)), mod(r, n)) = r
+                [by hypothesis given-division-property]
+              @remainder-difference |
+                sub(r, mod(r, n)) = mul(n, div(r, n))
+                [by arithmetic division-property]
+            }
+          @conclusion-implies |
+            add(mul(n, div(r, n)), mod(r, n)) = r -> sub(r, mod(r, n)) = mul(n, div(r, n))
+            [by implies_intro given-division-property]
+        }
+      @discharge-r |
+        forall r: Int; add(mul(n, div(r, n)), mod(r, n)) = r -> sub(r, mod(r, n)) = mul(n, div(r, n))
+        [by forall_intro generalize-r]
+    }
+  @conclusion |
+    forall n, r: Int; add(mul(n, div(r, n)), mod(r, n)) = r -> sub(r, mod(r, n)) = mul(n, div(r, n))
+    [by forall_intro generalize-n]
+qed
