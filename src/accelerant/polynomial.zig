@@ -102,6 +102,8 @@ const PolyRules = struct {
     add_swap: usize,
     add_sym: term.SymId,
     mul_sym: term.SymId,
+    neg_sym: ?term.SymId,
+    zero_sym: ?term.SymId,
 };
 
 fn polyRules(self: *Elaborator, loc: u32) ElabError!?PolyRules {
@@ -137,6 +139,12 @@ fn polyRules(self: *Elaborator, loc: u32) ElabError!?PolyRules {
         if (try self.wellKnownRule(nm, loc)) |r| try rules.append(self.arena, r);
     }
     const fold_end = rules.items.len;
+    // additive-inverse cancellation rules (x + neg(x) = 0), resolved by name by
+    // cancelInverses; append them (past fold_end so they DON'T run in the
+    // distribute/fold normalize) only in a ring theory — cancelInverses itself
+    // self-guards when neg/zero are absent, so their absence is harmless.
+    if (try self.wellKnownRule("addNegRight", loc)) |r| try rules.append(self.arena, r);
+    if (try self.wellKnownRule("addNegLeft", loc)) |r| try rules.append(self.arena, r);
     // the two operator triples (assoc/comm/swap), appended after the folds.
     const triples = [_]struct { assoc: []const u8, comm: []const u8, swap: []const u8 }{
         .{ .assoc = "mulIsAssociative", .comm = "mulIsCommutative", .swap = "mulLeftSwap" },
@@ -159,6 +167,8 @@ fn polyRules(self: *Elaborator, loc: u32) ElabError!?PolyRules {
         .mul_assoc = idx[0], .mul_comm = idx[1], .mul_swap = idx[2],
         .add_assoc = idx[3], .add_comm = idx[4], .add_swap = idx[5],
         .add_sym = add_sym, .mul_sym = mul_sym,
+        .neg_sym = try self.wellKnownSym("neg"),
+        .zero_sym = try self.wellKnownSym("ZERO"),
     };
 }
 
@@ -215,7 +225,26 @@ fn polyCanon(self: *Elaborator, pr: PolyRules, x: TermId) ElabError!?simplify_mo
     //    so run only the sort phase (sortTrace), not acPlan's re-nest.
     var leaves: std.ArrayList(TermId) = .empty;
     try self.flattenSum(pr.add_sym, mono_sum, &leaves);
-    const sorted = (try self.sortTrace(add_symbols, pr.rules, pr.add_comm, pr.add_swap, .{ .offset = 0, .leaves = leaves.items }, &trace)) orelse return null;
+    var sorted = (try self.sortTrace(add_symbols, pr.rules, pr.add_comm, pr.add_swap, .{ .offset = 0, .leaves = leaves.items }, &trace)) orelse return null;
+
+    // 5) cancel additive-inverse monomials (m + neg(m) → 0) in the sorted sum,
+    //    emitting addNegRight/addNegLeft + zero-drop rewrites into the trace
+    //    (kernel-checked). Reuses the linear engine's cancelInverses on the sum
+    //    (monomials are its leaves); a FULL symbols struct is required so its
+    //    parseTower classifies monomials as leaves (not numeral offsets) — succ/
+    //    prev/one absent would misparse. Self-guards when neg/zero absent (peano).
+    if (pr.neg_sym != null and pr.zero_sym != null) {
+        const cancel_symbols: presburger_mod.Symbols = .{
+            .add = pr.add_sym,
+            .mul = pr.mul_sym,
+            .neg = pr.neg_sym,
+            .zero = pr.zero_sym,
+            .one = try self.wellKnownSym("ONE"),
+            .succ = try self.wellKnownSym("succ"),
+            .prev = try self.wellKnownSym("prev"),
+        };
+        sorted = (try self.cancelInverses(cancel_symbols, pr.rules, pr.add_comm, pr.add_swap, 0, sorted, &trace, 0)) orelse return null;
+    }
     return .{ .nf = sorted, .trace = trace.items };
 }
 
@@ -354,11 +383,31 @@ fn polyNormForm(self: *Elaborator, ns: PolyNorm, x0: TermId) ElabError!TermId {
     const x = try pushNeg(self, ns, x0);
     // gather the sum's monomials (each a normalized product of atoms),
     // sort by termOrder, drop ZERO terms, rebuild right-nested.
-    var monos: std.ArrayList(TermId) = .empty;
-    try polyMonomials(self, ns, x, &monos);
-    // drop additive ZEROs
+    var raw: std.ArrayList(TermId) = .empty;
+    try polyMonomials(self, ns, x, &raw);
+    // cancel additive inverses: a monomial `m` and its negation `neg(m)` sum to
+    // ZERO and drop out (mirrors the strict cancelInverses phase). A consumed
+    // slot is set to null so each partner is used at most once.
+    var slots = try self.arena.alloc(?TermId, raw.items.len);
+    for (raw.items, 0..) |m, i| slots[i] = m;
+    if (ns.neg_sym != null) {
+        for (slots, 0..) |si, i| {
+            const mi = si orelse continue;
+            const neg_mi = try negateMonomial(self, ns, mi);
+            for (slots[i + 1 ..], i + 1..) |sj, j| {
+                const mj = sj orelse continue;
+                if (self.pool.alphaEq(mj, neg_mi)) {
+                    slots[i] = null;
+                    slots[j] = null;
+                    break;
+                }
+            }
+        }
+    }
+    // drop additive ZEROs and canceled slots
     var kept: std.ArrayList(TermId) = .empty;
-    for (monos.items) |m| {
+    for (slots) |s| {
+        const m = s orelse continue;
         if (ns.zero_sym != null and isSym(self, m, ns.zero_sym.?)) continue;
         try kept.append(self.arena, m);
     }

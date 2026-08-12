@@ -3194,7 +3194,7 @@ pub const Elaborator = struct {
     /// (`add(x, neg(x)) = 0`), then drop the ZERO (addZeroLeft/addZeroRight).
     /// Every step is a trace rewrite, so the whole cancellation is kernel-
     /// checked. Returns the reduced whole term.
-    fn cancelInverses(
+    pub fn cancelInverses(
         self: *Elaborator,
         symbols: presburger_mod.Symbols,
         rules: []const simplify_mod.Rule,
@@ -3288,7 +3288,15 @@ pub const Elaborator = struct {
             const zr = zero_right orelse return null;
             const zero_rules = [_]simplify_mod.Rule{ rules[zl], rules[zr] };
             const zres = simplify_mod.normalize(self.arena, self.pool, self.env, &zero_rules, whole, 1000) catch return null;
-            try trace.appendSlice(self.arena, zres.trace);
+            // zres.trace's rule_idx is relative to the 2-element `zero_rules`
+            // (0 = addZeroLeft, 1 = addZeroRight); rebase to the caller's full
+            // `rules` array (zl/zr) before appending, or the join cites the
+            // wrong rule (only accidentally correct when zl,zr == 0,1).
+            for (zres.trace) |rw| {
+                var r = rw;
+                r.rule_idx = if (rw.rule_idx == 0) zl else zr;
+                try trace.append(self.arena, r);
+            }
             whole = zres.nf;
             continue :outer;
         }
