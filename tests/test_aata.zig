@@ -59,6 +59,11 @@ pub fn addTests(
     // both aliased from std/integer-wellordering.bpa (proved there from ordinary
     // induction). No hole; the file checks WITHOUT --draft.
     ctx.okSilent(&.{ "check", "aata/2.1-induction.md" });
+    // §2.1 exercises: Judson's Ch2 induction exercises segregated out. Ex 5
+    // (3 | 10ⁿ⁺¹+10ⁿ+1) and Ex 9 (geometric sum 1+2+…+2ⁿ = 2ⁿ⁺¹−1) proved by
+    // nonneg-induction; the rest forwarded (induction-principle equivalence) or
+    // deferred (Σ / factorial / reals / cardinality). std used liberally.
+    ctx.okSilent(&.{ "check", "aata/2.1-induction-exercises.md" });
     // §2.2 The Division Algorithm: Ch1-style — the proofs now live in
     // std/integer-divides.bpa; this file aliases them and narrates. Existence
     // over all of ℤ + uniqueness.
