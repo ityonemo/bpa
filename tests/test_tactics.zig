@@ -45,6 +45,18 @@ pub fn addTests(
     // sides with different expansions → located error, exit 1 (not accelerated)
     ctx.fail(&.{ "check", "tests/cases/polynomial_bad.bpa" }, "tests/cases/polynomial_bad.bpa:18:9: error: polynomial: sides expand differently: 'add(mul(b, b), add(mul(b, a), add(mul(b, a), mul(a, a))))' vs 'add(mul(b, b), mul(a, a))'\n");
 
+    // `polynomial` expands sub/neg (definitionOfSubtraction + neg-folds push neg
+    // to the leaves), cancels additive inverses (t + neg(t) → 0), and folds
+    // numeral coefficients (q+q → 2·q, 2q+2q → 4q) — strict cert + --fast parity.
+    ctx.okSilent(&.{ "check", "tests/cases/polynomial_neg.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/polynomial_inverse.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/polynomial_coeff.bpa" });
+    ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_neg.bpa" });
+    ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_inverse.bpa" });
+    ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_coeff.bpa" });
+    // a wrong coefficient (q+q claimed = 3·q) is still rejected — real arithmetic.
+    ctx.fail(&.{ "check", "tests/cases/polynomial_coeff_bad.bpa" }, "POLYNOMIAL_COEFF_BAD_ERROR_PLACEHOLDER");
+
     // `ext(theory)`: the extensionality tactic, one tactic over two models —
     // reduce an equation to its pointwise obligation via the theory's
     // extensionality lemma, unfold the operators, close the residue. SET model

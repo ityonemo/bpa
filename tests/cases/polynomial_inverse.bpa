@@ -1,0 +1,29 @@
+// `polynomial` cancelling additive inverses: a `t + neg(t)` pair (for any atom or
+// monomial `t`) folds to ZERO via addNegRight/addNegLeft + zero-drop, reusing the
+// same kernel-traced cancellation the linear engine uses. This is the residual
+// move behind aata/3.1 mult-well-definedness (ar + neg(ar) vanishes).
+import int_divides <<< "std/integer-divides.bpa"
+
+sort Int = int_divides.Int
+const ZERO = int_divides.ZERO
+func add = int_divides.add
+func mul = int_divides.mul
+func neg = int_divides.neg
+
+// a monomial plus its negation cancels: a·r + neg(a·r) = 0.
+theorem monomialCancelsItsNegation: forall a, r: Int;
+  add(mul(a, r), neg(mul(a, r))) = ZERO
+proof
+  @conclusion |
+    forall a, r: Int; add(mul(a, r), neg(mul(a, r))) = ZERO
+    [by polynomial_quantified(int_divides)]
+qed
+
+// cancellation surrounded by a surviving term: x + (a·r + neg(a·r)) = x.
+theorem cancelLeavesRemainder: forall a, r, x: Int;
+  add(x, add(mul(a, r), neg(mul(a, r)))) = x
+proof
+  @conclusion |
+    forall a, r, x: Int; add(x, add(mul(a, r), neg(mul(a, r)))) = x
+    [by polynomial_quantified(int_divides)]
+qed
