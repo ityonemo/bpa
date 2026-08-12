@@ -119,13 +119,25 @@ tactic is now name-agnostic. That episode is the canonical example of this rule.
   certifier decline (soft), surfaced at the terminal.
 - **Fallback**: `[by arithmetic ... fallback(<thm>)]` names a manually-proven
   theorem to cite when the certifier chain declines a valid goal — instead of
-  the hard error (default) or the accelerated verdict (`--fast`). The kernel
-  checks `<thm>`'s statement α-matches the goal, so the step stays
+  the hard error (default) or the accelerated verdict (`--fast`). The step stays
   **kernel-checked** (not accelerated), and any accelerated-tactic names `<thm>`
   itself carries are inherited. This is for goals the Presburger procedure
   *decides* but no certifier can *emit* — e.g. multi-fixed-variable `∀∀∃`
   (`tests/cases/cooper_gap.bpa`: `sumParity` reduces to the cooper-certified
   single-variable `evenOrOddArith` via a hand proof, and `fallback` cites it).
+  The matcher accepts `<thm>` in either of two forms — **every goal `arithmetic`
+  can decide is fallback-supportable**:
+  1. **α-equal**: `<thm>`'s statement IS the goal → cite it directly.
+  2. **specialized instance**: the goal is `<thm>` instantiated —
+     `<thm> = ∀x⃗; A₁ -> … -> Aₘ -> C`, and `C` at some witnesses `x⃗` α-equals
+     the goal. The matcher infers `x⃗` by first-order-matching `C` against the
+     goal, discharges each antecedent `Aᵢ(x⃗)` from a supplied ref whose formula
+     matches it (order-independent; the step's other refs are the `arithmetic`
+     decision premises), and EMITS a `theorem_ref → forall_elim(x⃗) →
+     modus_ponens(refs)` chain the KERNEL re-checks — so a mis-inferred witness
+     can never pass. (`tests/cases/arithmetic_fallback_specialize.bpa`;
+     `std/integer-divides.bpa`'s `modDifferenceIsMultiple`, cited at `b:=n, a:=r`
+     from `aata/2.2-division-algorithm-exercises.md`.)
   `fallback` is a contextual modifier on `arithmetic` only (not a keyword —
   `fallback` is an ordinary identifier elsewhere); it is the
   decision-vs-certification escape hatch for a decision-backed procedure, so

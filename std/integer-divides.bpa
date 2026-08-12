@@ -2966,6 +2966,57 @@ axiom divModProperty: forall b, a: Int; less_than(ZERO, b) -> add(mul(b, div(a, 
 axiom modBound: forall b, a: Int; less_than(ZERO, b) -> less_than(mod(a, b), b)
 axiom modNonneg: forall b, a: Int; less_than(ZERO, b) -> is_nonneg(mod(a, b))
 
+// a − (a mod b) = b·(a div b), a linear rearrangement of divModProperty. The
+// `arithmetic` engine decides it but the equation certifier declines the
+// premise-carrying `sub = mul` form; this proven ∀-lemma is the fallback target
+// for downstream `[by arithmetic fallback(modDifferenceIsMultiple) <divModProperty-step>]`.
+theorem modDifferenceIsMultiple: forall b, a: Int;
+  less_than(ZERO, b) -> sub(a, mod(a, b)) = mul(b, div(a, b))
+proof
+  @generalize-b |
+    fix b: Int {
+      @generalize-a |
+        fix a: Int {
+          @given-b-positive |
+            assume less_than(ZERO, b) {
+              @b-positive |
+                less_than(ZERO, b)
+                [by hypothesis given-b-positive]
+              @division-property |
+                add(mul(b, div(a, b)), mod(a, b)) = a
+                [by specialize divModProperty(b, a) b-positive]
+              @mod-plus-difference-is-a |
+                add(mod(a, b), sub(a, mod(a, b))) = a
+                [by arithmetic]
+              @division-property-commutes |
+                add(mul(b, div(a, b)), mod(a, b)) = add(mod(a, b), mul(b, div(a, b)))
+                [by specialize addIsCommutative(mul(b, div(a, b)), mod(a, b))]
+              @mod-plus-quotient-is-a |
+                add(mod(a, b), mul(b, div(a, b))) = a
+                [by rewrite division-property-commutes division-property]
+              @a-is-mod-plus-quotient |
+                a = add(mod(a, b), mul(b, div(a, b)))
+                [by symmetry mod-plus-quotient-is-a]
+              @common-prefix-sums-agree |
+                add(mod(a, b), sub(a, mod(a, b))) = add(mod(a, b), mul(b, div(a, b)))
+                [by rewrite a-is-mod-plus-quotient mod-plus-difference-is-a]
+              @conclusion-difference-is-multiple |
+                sub(a, mod(a, b)) = mul(b, div(a, b))
+                [by specialize addCancelLeft(mod(a, b), sub(a, mod(a, b)), mul(b, div(a, b))) common-prefix-sums-agree]
+            }
+          @b-positive-implies |
+            less_than(ZERO, b) -> sub(a, mod(a, b)) = mul(b, div(a, b))
+            [by implies_intro given-b-positive]
+        }
+      @discharge-a |
+        forall a: Int; less_than(ZERO, b) -> sub(a, mod(a, b)) = mul(b, div(a, b))
+        [by forall_intro generalize-a]
+    }
+  @conclusion |
+    forall b, a: Int; less_than(ZERO, b) -> sub(a, mod(a, b)) = mul(b, div(a, b))
+    [by forall_intro generalize-b]
+qed
+
 // -- moved from the sequence/prime chapter: subtraction + divisor bounds ---
 
 // d | a and d | b give d | (a − b): d | (−b) because −b = mul(b, −1) is a

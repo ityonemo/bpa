@@ -328,33 +328,174 @@ pub fn arithCertCore(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId
     self.closeBlock(low, blocks.items[0]);
     return .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } };
 }
-fn arithmeticFallback(self: *Elaborator, fb: lexer.Token, goal: TermId) ElabError!kernel.Justification {
+fn arithmeticFallback(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, fb: lexer.Token, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     const stmt_id = self.env.findStatementId(self.file, try self.internTok(fb)) orelse
         return self.fail(fb.start, "fallback names unknown theorem '{s}'", .{self.text(fb)});
     const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
-    switch (stmt) {
-        .theorem => |t| {
+    const formula: TermId, const cite_just: kernel.Justification, const is_hole: bool = switch (stmt) {
+        .theorem => |t| blk: {
             if (!t.proven) return self.fail(fb.start, "fallback theorem '{s}' is not proven", .{self.text(fb)});
-            if (!self.pool.alphaEq(t.formula, goal)) {
-                return self.fail(fb.start, "fallback theorem '{s}' does not prove this goal", .{self.text(fb)});
-            }
             try self.inheritAccelerated(t.accelerated);
             try self.inheritHoles(t.holes);
-            return .{ .theorem_ref = .{ .stmt = stmt_id, .loc = fb.start } };
+            break :blk .{ t.formula, .{ .theorem_ref = .{ .stmt = stmt_id, .loc = fb.start } }, false };
         },
         // an axiom (including a `hole`, which is an axiom-kind statement) is a
         // legitimate fallback: it discharges the goal by fiat. A hole propagates
         // its taint, so the whole proof is marked resting-on-a-hole and rejected
         // outside --draft — exactly the escape hatch for a goal the certifier
         // can't yet certify.
-        .axiom => |a| {
-            if (!self.pool.alphaEq(a.formula, goal)) {
-                return self.fail(fb.start, "fallback axiom '{s}' does not prove this goal", .{self.text(fb)});
-            }
-            if (a.is_hole) try self.inheritHoles(a.holes);
-            return .{ .axiom_ref = .{ .stmt = stmt_id, .loc = fb.start } };
-        },
+        .axiom => |a| .{ a.formula, .{ .axiom_ref = .{ .stmt = stmt_id, .loc = fb.start } }, a.is_hole },
         .schema => return self.fail(fb.start, "fallback cites a schema '{s}'; use a theorem", .{self.text(fb)}),
+    };
+
+    // FAST PATH: the fallback's statement IS the goal (alpha-equal). No
+    // specialization — cite it directly (the original behaviour).
+    if (self.pool.alphaEq(formula, goal)) {
+        if (is_hole) try self.inheritHoles(self.env.statements.items[@intFromEnum(stmt_id)].axiom.holes);
+        return cite_just;
+    }
+
+    // SPECIALIZE PATH: the goal is an INSTANCE of the fallback theorem —
+    // `∀x₁…xₙ; A₁ -> … -> Aₘ -> C`, where C at some witnesses x⃗ is the goal and
+    // each Aᵢ (at those witnesses) is supplied as a step ref. `arithmetic` already
+    // DECIDED the goal, so this only needs to reconstruct the elim/mp chain; the
+    // kernel re-checks every emitted step, so a mis-inferred witness cannot pass.
+    //
+    // Peel the ∀ prefix into fresh pattern fvars, then split the leading `->`
+    // antecedents from the final consequent.
+    var pattern_vars: std.ArrayList(StrId) = .empty;
+    var f = formula;
+    while (true) {
+        const node = self.pool.get(f);
+        if (node == .quant and node.quant.q == .forall) {
+            const name = try self.freshNamed("fallback-var");
+            const fv = try self.pool.add(.{ .fvar = .{ .name = name, .sort = node.quant.sort } });
+            try pattern_vars.append(self.arena, name);
+            f = try self.pool.open(node.quant.body, fv);
+        } else break;
+    }
+    var antecedents: std.ArrayList(TermId) = .empty;
+    while (true) {
+        const node = self.pool.get(f);
+        if (node == .bin and node.bin.op == .implies) {
+            try antecedents.append(self.arena, node.bin.lhs);
+            f = node.bin.rhs;
+        } else break;
+    }
+    // Infer the witness for each pattern var by first-order matching the
+    // consequent against the goal.
+    var binds: std.AutoHashMapUnmanaged(StrId, TermId) = .empty;
+    if (!try matchPattern(self, pattern_vars.items, f, goal, &binds)) {
+        return self.fail(fb.start, "fallback theorem '{s}' does not prove this goal (its conclusion does not match, even after specialization)", .{self.text(fb)});
+    }
+    // Every pattern var must be pinned (no free-floating binder the consequent
+    // didn't constrain — that would be an ambiguous specialization).
+    var witnesses = try self.arena.alloc(TermId, pattern_vars.items.len);
+    for (pattern_vars.items, 0..) |pv, i| {
+        witnesses[i] = binds.get(pv) orelse
+            return self.fail(fb.start, "fallback theorem '{s}' does not prove this goal (variable unconstrained by the conclusion)", .{self.text(fb)});
+    }
+    if (is_hole) try self.inheritHoles(self.env.statements.items[@intFromEnum(stmt_id)].axiom.holes);
+
+    // For each fallback antecedent, substitute the inferred witnesses and find the
+    // supplied ref whose formula matches it. The step's refs serve two roles here:
+    // some are `arithmetic`-decision premises (they anchored the goal), others
+    // discharge the fallback theorem's `->` antecedents. We pick, per antecedent,
+    // the ref that proves it — order-independent — so the writer need not separate
+    // the two groups.
+    for (antecedents.items) |ant_raw| {
+        var ant = ant_raw;
+        for (pattern_vars.items, witnesses) |pv, w| ant = try self.pool.substFvar(ant, pv, w);
+        var matched = false;
+        for (c.refs) |ref| {
+            const rid = try self.resolveStepRef(low, ref);
+            if (self.pool.alphaEq(low.steps.items[@intFromEnum(rid.id)].formula, ant)) {
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            return self.fail(fb.start, "fallback theorem '{s}' needs a hypothesis '{s}' — supply it as a ref to the arithmetic step", .{ self.text(fb), try self.renderTerm(ant) });
+        }
+    }
+
+    // Emit: cite the theorem, forall_elim at each witness (peeling the ∀ prefix),
+    // then modus_ponens each antecedent against its matching ref.
+    var cur = try self.emitStep(low, block_id, fb.start, formula, cite_just);
+    var cur_formula = formula;
+    for (witnesses) |w| {
+        const node = self.pool.get(cur_formula);
+        const opened = try self.pool.open(node.quant.body, w);
+        cur = try self.emitStep(low, block_id, fb.start, opened, .{ .forall_elim = .{ .step = cur, .with = w, .with_loc = fb.start } });
+        cur_formula = opened;
+    }
+    for (antecedents.items) |ant_raw| {
+        const node = self.pool.get(cur_formula);
+        var ant = ant_raw;
+        for (pattern_vars.items, witnesses) |pv, w| ant = try self.pool.substFvar(ant, pv, w);
+        // find the matching ref (guaranteed to exist by the check above).
+        var chosen: kernel.SRef = undefined;
+        for (c.refs) |ref| {
+            const rid = try self.resolveStepRef(low, ref);
+            if (self.pool.alphaEq(low.steps.items[@intFromEnum(rid.id)].formula, ant)) {
+                chosen = rid;
+                break;
+            }
+        }
+        cur = try self.emitStep(low, block_id, fb.start, node.bin.rhs, .{ .modus_ponens = .{ .implication = cur, .antecedent = chosen } });
+        cur_formula = node.bin.rhs;
+    }
+    // The final step's formula must be the goal (kernel will confirm); return its
+    // justification as this step's own.
+    return low.steps.items[@intFromEnum(cur.id)].just;
+}
+
+/// First-order match: bind each `pattern` fvar (by name) to a witness term such
+/// that substituting the bindings into `pat` yields `target`. Non-pattern fvars,
+/// symbols, and structure must match exactly. A pattern var already bound must
+/// bind consistently (alpha-equal witnesses). Returns false on any mismatch.
+fn matchPattern(self: *Elaborator, pattern: []const StrId, pat: TermId, target: TermId, binds: *std.AutoHashMapUnmanaged(StrId, TermId)) ElabError!bool {
+    const pn = self.pool.get(pat);
+    // a bare pattern var: bind (or check consistency).
+    if (pn == .fvar) {
+        for (pattern) |pv| {
+            if (pv == pn.fvar.name) {
+                if (binds.get(pv)) |prev| return self.pool.alphaEq(prev, target);
+                try binds.put(self.arena, pv, target);
+                return true;
+            }
+        }
+        // a non-pattern fvar: must match exactly.
+        const tn = self.pool.get(target);
+        return tn == .fvar and tn.fvar.name == pn.fvar.name and tn.fvar.sort == pn.fvar.sort;
+    }
+    const tn = self.pool.get(target);
+    if (std.meta.activeTag(pn) != std.meta.activeTag(tn)) return false;
+    switch (pn) {
+        .bvar => return pn.bvar == tn.bvar,
+        .fvar => unreachable, // handled above
+        .app => |a| {
+            if (a.sym != tn.app.sym or a.args_len != tn.app.args_len) return false;
+            for (self.pool.args(a), self.pool.args(tn.app)) |pa, ta| {
+                if (!try matchPattern(self, pattern, pa, ta, binds)) return false;
+            }
+            return true;
+        },
+        .pred => |a| {
+            if (a.sym != tn.pred.sym or a.args_len != tn.pred.args_len) return false;
+            for (self.pool.args(a), self.pool.args(tn.pred)) |pa, ta| {
+                if (!try matchPattern(self, pattern, pa, ta, binds)) return false;
+            }
+            return true;
+        },
+        .eq => |p| return (try matchPattern(self, pattern, p.lhs, tn.eq.lhs, binds)) and
+            (try matchPattern(self, pattern, p.rhs, tn.eq.rhs, binds)),
+        .not => |t| return matchPattern(self, pattern, t, tn.not, binds),
+        .bin => |b| return b.op == tn.bin.op and
+            (try matchPattern(self, pattern, b.lhs, tn.bin.lhs, binds)) and
+            (try matchPattern(self, pattern, b.rhs, tn.bin.rhs, binds)),
+        .quant => |q| return q.q == tn.quant.q and q.sort == tn.quant.sort and
+            (try matchPattern(self, pattern, q.body, tn.quant.body, binds)),
     }
 }
 
@@ -1682,7 +1823,7 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
             // accelerated verdict (taint, no certificate) without running the
             // certifiers. A `fallback(<thm>)` still resolves to its manual proof.
             if (!self.verify.certify_arithmetic) {
-                if (c.fallback) |fb| return arithmeticFallback(self, fb, goal);
+                if (c.fallback) |fb| return arithmeticFallback(self, low, block_id, fb, goal, c);
                 var reasons: [certifiers.len]Reason = undefined;
                 @memset(&reasons, .out_of_scope);
                 return arithmeticTerminal(self, loc, &reasons);
@@ -1707,7 +1848,7 @@ fn arithmeticJustification(self: *Elaborator, low: *Lowering, block_id: kernel.B
             // every certifier declined: valid but not certifiable here. A
             // `fallback(<thm>)` cites a manual proof (proven); else hard error
             // (default) listing why each link declined.
-            if (c.fallback) |fb| return arithmeticFallback(self, fb, goal);
+            if (c.fallback) |fb| return arithmeticFallback(self, low, block_id, fb, goal, c);
             return arithmeticTerminal(self, loc, &body.reasons);
         },
         .countermodel => |cm| {

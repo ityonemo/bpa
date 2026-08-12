@@ -499,6 +499,14 @@ pub fn addTests(
     // hole → rejected strict, accepted under --draft with the hole disclosed.
     ctx.okSilent(&.{ "check", "--draft", "tests/cases/arithmetic_fallback_axiom.bpa" });
 
+    // a `fallback(<forall-theorem>)` on a SPECIALIZED goal (an instance of the
+    // theorem, not alpha-equal): the matcher peels the ∀ prefix (inferring the
+    // witnesses by matching the conclusion against the goal) and discharges any
+    // leading `->` antecedents from the step's refs, emitting a kernel-certified
+    // forall_elim+modus_ponens chain. Verifies STRICT (the fallback targets are
+    // axiom-proven, no holes) — so the emitted specialization really re-checks.
+    ctx.okSilent(&.{ "check", "tests/cases/arithmetic_fallback_specialize.bpa" });
+
     // arithmetic × SCHEMA: Case D fires from inside a schema body too — the
     // declaration-time wellformedness self-check (instantiate at opaque params,
     // run the proof) exercises arithmeticJustification, so a redundant `fallback`

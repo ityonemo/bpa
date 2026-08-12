@@ -1,0 +1,59 @@
+// `[by arithmetic fallback(<forall-theorem>)]` where the goal is a SPECIALIZED
+// INSTANCE of the fallback theorem — NOT alpha-equal to it. This exercises the
+// fallback matcher's specialization path: `arithmetic` DECIDES the instance, the
+// certifier declines (the goal mentions `less_than`, whose intro rule is out of
+// scope), and the fallback theorem proves the goal at inferred witnesses. The
+// accelerant emits a certified `theorem_ref → forall_elim(witness)* →
+// modus_ponens(ref)*` chain that the KERNEL re-checks — so it verifies STRICT (no
+// --draft, no holes): a mis-inferred witness could never pass.
+sort Int
+const ZERO: Int
+const FIVE: Int
+func succ(n: Int): Int
+pred less_than(a: Int, b: Int)
+
+// The order primitive the certifier needs is provided as an AXIOM (so the
+// fallback targets are genuinely proven — the file checks strict). The certifier
+// still declines `less_than` goals because it has no built-in `less_than`
+// introduction; `arithmetic` decides them and falls back to these lemmas.
+axiom lessThanSucc: forall a: Int; less_than(a, succ(a))
+
+// A genuine ∀-theorem `arithmetic` decides but the certifier can't emit; proven
+// from the axiom. This is the fallback target for the specialized goal below.
+theorem bound: forall a: Int; less_than(a, succ(a))
+proof
+  @conclusion |
+    forall a: Int; less_than(a, succ(a))
+    [by axiom lessThanSucc]
+qed
+
+// SPECIALIZED goal: `less_than(FIVE, succ(FIVE))` is the instance of `bound` at
+// a := FIVE. `arithmetic` decides it; `fallback(bound)` peels the ∀ (inferring
+// the witness FIVE) and emits `forall_elim(FIVE) bound`.
+theorem fiveBelowSix: less_than(FIVE, succ(FIVE))
+proof
+  @conclusion |
+    less_than(FIVE, succ(FIVE))
+    [by arithmetic fallback(bound)]
+qed
+
+// ANTECEDENT form: a theorem whose consequent, after discharging a `->` premise,
+// is an instance of the goal. The fallback peels the ∀ AND discharges the premise
+// from the supplied ref.
+axiom stepUp: forall a: Int; less_than(a, succ(a)) -> less_than(a, succ(succ(a)))
+theorem boundedAbove: forall a: Int; less_than(a, succ(a)) -> less_than(a, succ(succ(a)))
+proof
+  @conclusion |
+    forall a: Int; less_than(a, succ(a)) -> less_than(a, succ(succ(a)))
+    [by axiom stepUp]
+qed
+
+theorem fiveBelowSeven: less_than(FIVE, succ(succ(FIVE)))
+proof
+  @premise |
+    less_than(FIVE, succ(FIVE))
+    [by theorem fiveBelowSix]
+  @conclusion |
+    less_than(FIVE, succ(succ(FIVE)))
+    [by arithmetic fallback(boundedAbove) premise]
+qed
