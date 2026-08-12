@@ -73,6 +73,11 @@ pub fn addTests(
     // std/integer-divides.bpa; this file aliases them and narrates. Existence
     // over all of ℤ + uniqueness.
     ctx.okSilent(&.{ "check", "aata/2.2-division-algorithm.md" });
+    // §2.2 exercises: Ex 16/18 (Bézout ⟹ coprime, all three coprimality claims),
+    // Ex 22 (unique residue mod n via the division algorithm), Ex 23 (lcm exists
+    // & unique, from std/integer-divides's lcm). Deferred: gcd·lcm product (24,25),
+    // product-of-coprimes (26). std used liberally.
+    ctx.okSilent(&.{ "check", "aata/2.2-division-algorithm-exercises.md" });
     // §2.3 Primes: stub for the GCD/Bézout/Euclid/FTA material to come; imports
     // the division library and aliases the two headline theorems.
     ctx.okSilent(&.{ "check", "aata/2.3-primes.md" });
