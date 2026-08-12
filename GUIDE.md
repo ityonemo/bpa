@@ -1176,10 +1176,23 @@ Like `arithmetic`, it is **theory-parameterized**: `polynomial(peano)` resolves
 the ring vocabulary (`add`/`mul`) and lemmas against the named upstream module,
 independent of local aliases; bare `polynomial` resolves against local scope.
 **Under a `forall` prefix**, use `polynomial_quantified` (peels the binders).
-Scope: identities only (`=`), whole-number coefficients (ℕ); `succ`-towers are
-opaque atoms (unfold `succ(x) = add(x, ONE)` first if a `succ`-shaped identity
-must expand), and cancellation (`x·a = x·b ⊢ a = b`) is not an identity — that
-stays with `mulCancel`/`arithmetic`.
+
+In a **ring theory** (`neg`/`sub` and their lemmas in scope, e.g. `integer`),
+`polynomial` also:
+- **expands `sub`/`neg`** — `sub(a,b)` unfolds to `add(a, neg(b))` and `neg`
+  pushes to the leaves (`neg(a·b) = neg(a)·b`, `neg(neg x) = x`), so
+  `a·(b−c) = a·b − a·c` certifies in one step;
+- **cancels additive inverses** — `t + neg(t) → 0`, so `a·r + neg(a·r) = 0`;
+- **folds numeral coefficients by expansion** — a `succ`-tower coefficient
+  expands into repeated addition (`mul(TWO, q)` and `add(q, q)` meet at the same
+  sum), so `2q + 2q = 4q`, `(2q)² = 4q²`, and `(2q+1)² = 4q² + 4q + 1` certify
+  directly. (In a pure-ℕ theory like `peano`, `neg`/`sub` are absent and those
+  folds are simply skipped — `polynomial(peano)` is unchanged.)
+
+Scope: identities only (`=`); cancellation (`x·a = x·b ⊢ a = b`) is not an
+identity — that stays with `mulCancel`/`arithmetic`. `neg(x)` on a bare variable
+stays an opaque atom (the coefficient model is unsigned), so `x + neg(x)` cancels
+but `polynomial` does not reason about the *sign* of an isolated `neg` variable.
 
 **The `--fast` accelerated path**: on a theory too thin to certify (`add`/`mul` declared
 but the ring lemmas absent), the default declines ("needs `mulAddDistribLeft`

@@ -108,7 +108,7 @@ qed
 - `simplify` — equational rewriting to a shared normal form (always emits kernel steps).
 - `assoc_commut` / `assoc_commut_quantified` — reorder an A/C sum; bare = add/mul, `(assoc,comm,swap)` for a custom op; `_quantified` peels a `forall` prefix.
 - `assoc(assocLemma)` — associativity-ONLY equality (required lemma arg; no commutativity).
-- `polynomial(theory)` — nonlinear `add`/`mul` identity by canonical expansion.
+- `polynomial(theory)` — nonlinear `add`/`mul` identity by canonical expansion. In a **ring theory** (`neg`/`sub` in scope) it also expands `sub`/`neg`, cancels inverses (`t+neg(t)→0`), and folds numeral coefficients by expansion (`2q+2q=4q`, `(2q+1)²=4q²+4q+1`); pure-ℕ (`peano`) unaffected.
 - `specialize HEAD(args) hyps…` — apply a `forall`-quantified fact in one step (∀-elim at args + modus_ponens each hyp; emits the kernel chain). `HEAD` may be a declared THEOREM/AXIOM name **or a LOCAL STEP LABEL** (a `forall`-shaped assumed/derived step) — no need to hand-roll `forall_elim`+`modus_ponens` for a local universal.
 - `ext` — extensionality reduction (sets/functions) → propositional residue.
 - `tautology refs…` — propositional consequence (decides iff goals; consumes iff/`and`/`or`/`->` hyps). Atom cap 16.
