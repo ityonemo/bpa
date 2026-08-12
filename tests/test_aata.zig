@@ -18,6 +18,11 @@ pub fn addTests(
     // proofs in std/group.bpa (the .md is book-notation presentation; the checked
     // derivations live in std) — verified (proven; no accelerated tactic).
     ctx.okSilent(&.{ "check", "aata/3.2-groups.md" });
+    // §3.2 exercises: migrated out of the main text. Proves Ex 25 (conjugation
+    // power a·bⁿ·a⁻¹ = (aba⁻¹)ⁿ over a ℤ exponent) and Ex 33 ((ab)²=a²b² ⟹
+    // abelian); forwards cancellation / exponent laws / xa=b to §3.2; defers the
+    // concrete-structure exercises (ℤ_n, matrices, reals, counting).
+    ctx.okSilent(&.{ "check", "aata/3.2-groups-exercises.md" });
 
     // AATA §3.3 Subgroups: the literate transliteration of the subgroup definition,
     // the one-step subgroup test (both directions), and the intersection-of-
