@@ -105,4 +105,10 @@ pub fn addTests(
     // §2.3 Primes: stub for the GCD/Bézout/Euclid/FTA material to come; imports
     // the division library and aliases the two headline theorems.
     ctx.okSilent(&.{ "check", "aata/2.3-primes.md" });
+    // §2.3 exercises: Ex 20 (every perfect square is 4k or 4k+1, via the division
+    // algorithm at divisor 2 + the odd-square identity). Ex 27 forwarded (Euclid's
+    // Lemma, in the main text / std/primes). Deferred: Fibonacci, FTA perfect
+    // squares, Mersenne, Dirichlet forms, √2 (see examples/sqrt2.bpa). std used
+    // liberally.
+    ctx.okSilent(&.{ "check", "aata/2.3-primes-exercises.md" });
 }
