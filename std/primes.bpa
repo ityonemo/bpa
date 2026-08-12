@@ -169,7 +169,7 @@ proof
                     [by hypothesis with-quotient-k]
                   @e-times-k-is-neg-e-times-neg-k |
                     mul(e, k) = mul(neg(e), neg(k))
-                    [by simplify mulNegLeft mulNegRight negNeg]
+                    [by polynomial]
                   @n-is-neg-e-times-neg-k |
                     n = mul(neg(e), neg(k))
                     [by rewrite e-times-k-is-neg-e-times-neg-k n-is-e-times-k]
