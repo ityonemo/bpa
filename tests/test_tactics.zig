@@ -53,9 +53,7 @@ pub fn addTests(
     ctx.okSilent(&.{ "check", "tests/cases/polynomial_coeff.bpa" });
     ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_neg.bpa" });
     ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_inverse.bpa" });
-    // --fast coefficient expansion parity lands in Stage 4 (polyNormForm must
-    // expand mul(succ^n(base), x) structurally like the strict fold):
-    //   ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_coeff.bpa" });
+    ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_coeff.bpa" });
     // a wrong coefficient (q+q claimed = 3·q) is still rejected: q+q expands to
     // add(q, q), 3·q to add(q, add(q, q)) — real repeated-addition arithmetic.
     ctx.fail(&.{ "check", "tests/cases/polynomial_coeff_bad.bpa" }, "tests/cases/polynomial_coeff_bad.bpa:15:9: error: polynomial: sides expand differently: 'add(q, q)' vs 'add(q, add(q, q))'\n");

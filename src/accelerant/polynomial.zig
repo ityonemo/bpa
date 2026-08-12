@@ -276,7 +276,8 @@ fn polynomialEquation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockI
         const one_sym = try self.wellKnownSym("ONE");
         const neg_sym = try self.wellKnownSym("neg");
         const sub_sym = try self.wellKnownSym("sub");
-        const ns = PolyNorm{ .add_sym = add_sym, .mul_sym = mul_sym, .zero_sym = zero_sym, .one_sym = one_sym, .neg_sym = neg_sym, .sub_sym = sub_sym };
+        const succ_sym = try self.wellKnownSym("succ");
+        const ns = PolyNorm{ .add_sym = add_sym, .mul_sym = mul_sym, .zero_sym = zero_sym, .one_sym = one_sym, .neg_sym = neg_sym, .sub_sym = sub_sym, .succ_sym = succ_sym };
         const ns_s = try polyNormForm(self, ns, s0);
         const ns_t = try polyNormForm(self, ns, t0);
         if (!self.pool.alphaEq(ns_s, ns_t)) {
@@ -323,7 +324,42 @@ const PolyNorm = struct {
     one_sym: ?term.SymId,
     neg_sym: ?term.SymId = null,
     sub_sym: ?term.SymId = null,
+    succ_sym: ?term.SymId = null,
 };
+
+/// Structural mirror of the strict path's mulSuccLeft/mulSuccRight folds: expand
+/// a numeral coefficient `mul(succ(a), b) → add(mul(a,b), b)` (and the right
+/// mirror) so `mul(TWO, q)` becomes `add(q, q)`, matching the strict normal form.
+/// Bottom-up to fixpoint; each rewrite strips one succ so it terminates.
+fn expandSucc(self: *Elaborator, ns: PolyNorm, x: TermId) ElabError!TermId {
+    if (ns.succ_sym == null) return x;
+    const node = self.pool.get(x);
+    if (node != .app) return x;
+    if (Elaborator.symIs(node.app.sym, ns.mul_sym) and node.app.args_len == 2) {
+        const a = try expandSucc(self, ns, self.pool.args(node.app)[0]);
+        const b = try expandSucc(self, ns, self.pool.args(node.app)[1]);
+        const an = self.pool.get(a);
+        // mul(succ(a'), b) → add(mul(a', b), b)
+        if (an == .app and Elaborator.symIs(an.app.sym, ns.succ_sym) and an.app.args_len == 1) {
+            const a_inner = self.pool.args(an.app)[0];
+            const prod = try expandSucc(self, ns, try self.pool.addApp(.app, ns.mul_sym, &.{ a_inner, b }));
+            return try self.pool.addApp(.app, ns.add_sym, &.{ prod, b });
+        }
+        const bn = self.pool.get(b);
+        // mul(a, succ(b')) → add(mul(a, b'), a)
+        if (bn == .app and Elaborator.symIs(bn.app.sym, ns.succ_sym) and bn.app.args_len == 1) {
+            const b_inner = self.pool.args(bn.app)[0];
+            const prod = try expandSucc(self, ns, try self.pool.addApp(.app, ns.mul_sym, &.{ a, b_inner }));
+            return try self.pool.addApp(.app, ns.add_sym, &.{ prod, a });
+        }
+        return try self.pool.addApp(.app, ns.mul_sym, &.{ a, b });
+    }
+    if (node.app.args_len == 0) return x;
+    const args = self.pool.args(node.app);
+    var new_args = try self.arena.alloc(TermId, args.len);
+    for (args, 0..) |arg, i| new_args[i] = try expandSucc(self, ns, arg);
+    return try self.pool.addApp(.app, node.app.sym, new_args);
+}
 
 /// Structural mirror of the strict path's neg/sub fold rules, applied WITHOUT
 /// citing a lemma (the --fast path decides, it doesn't certify). Rewrites
@@ -387,7 +423,7 @@ fn pushNeg(self: *Elaborator, ns: PolyNorm, x: TermId) ElabError!TermId {
 fn polyNormForm(self: *Elaborator, ns: PolyNorm, x0: TermId) ElabError!TermId {
     // push neg to the leaves / eliminate sub first, so distribution sees the
     // real mul/add structure (mirrors the strict fold set).
-    const x = try pushNeg(self, ns, x0);
+    const x = try expandSucc(self, ns, try pushNeg(self, ns, x0));
     // gather the sum's monomials (each a normalized product of atoms),
     // sort by termOrder, drop ZERO terms, rebuild right-nested.
     var raw: std.ArrayList(TermId) = .empty;
