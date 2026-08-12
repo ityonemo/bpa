@@ -122,6 +122,20 @@ fn polyRules(self: *Elaborator, loc: u32) ElabError!?PolyRules {
             return self.fail(loc, "polynomial: needs {s} in scope", .{nm});
         try rules.append(self.arena, r);
     }
+    // OPTIONAL neg/sub folds: in a ring theory these push `neg` toward the leaves
+    // (negAdd/negSucc/negPrev/negNeg/mulNegLeft/mulNegRight) and eliminate `sub`
+    // (definitionOfSubtraction), all shrinking/orienting rewrites that run in the
+    // same normalize-to-fixpoint pass. Absent in a pure-ℕ theory (peano has no
+    // neg/sub) — skip a null one rather than failing, so polynomial(peano) stays
+    // green. `neg(atom)` stays an opaque atom (the coefficient model is unsigned).
+    const optional_fold_names = [_][]const u8{
+        "definitionOfSubtraction",
+        "negAdd",     "negZero", "negSucc", "negPrev", "negNeg",
+        "mulNegLeft", "mulNegRight",
+    };
+    for (optional_fold_names) |nm| {
+        if (try self.wellKnownRule(nm, loc)) |r| try rules.append(self.arena, r);
+    }
     const fold_end = rules.items.len;
     // the two operator triples (assoc/comm/swap), appended after the folds.
     const triples = [_]struct { assoc: []const u8, comm: []const u8, swap: []const u8 }{
@@ -224,7 +238,9 @@ fn polynomialEquation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockI
             return self.fail(loc, "polynomial: arithmetic vocabulary (add, mul) not in scope", .{});
         const zero_sym = try self.wellKnownSym("ZERO");
         const one_sym = try self.wellKnownSym("ONE");
-        const ns = PolyNorm{ .add_sym = add_sym, .mul_sym = mul_sym, .zero_sym = zero_sym, .one_sym = one_sym };
+        const neg_sym = try self.wellKnownSym("neg");
+        const sub_sym = try self.wellKnownSym("sub");
+        const ns = PolyNorm{ .add_sym = add_sym, .mul_sym = mul_sym, .zero_sym = zero_sym, .one_sym = one_sym, .neg_sym = neg_sym, .sub_sym = sub_sym };
         const ns_s = try polyNormForm(self, ns, s0);
         const ns_t = try polyNormForm(self, ns, t0);
         if (!self.pool.alphaEq(ns_s, ns_t)) {
@@ -264,11 +280,78 @@ fn polynomialEquation(self: *Elaborator, low: *Lowering, block_id: kernel.BlockI
 // lemmas + kernel recheck). Deterministic, so its output is a true canonical
 // form; two terms are semiring-equal iff their normal forms are alphaEq.
 
-const PolyNorm = struct { add_sym: term.SymId, mul_sym: term.SymId, zero_sym: ?term.SymId, one_sym: ?term.SymId };
+const PolyNorm = struct {
+    add_sym: term.SymId,
+    mul_sym: term.SymId,
+    zero_sym: ?term.SymId,
+    one_sym: ?term.SymId,
+    neg_sym: ?term.SymId = null,
+    sub_sym: ?term.SymId = null,
+};
+
+/// Structural mirror of the strict path's neg/sub fold rules, applied WITHOUT
+/// citing a lemma (the --fast path decides, it doesn't certify). Rewrites
+/// bottom-up to push `neg` toward the leaves and eliminate `sub`, so the mul/add
+/// structure underneath is exposed identically to the certified normal form:
+///   sub(a,b) → add(a, neg(b));  neg(add u v) → add(neg u, neg v);
+///   neg(neg x) → x;  neg(mul a b) → mul(a, neg b);  neg(ZERO) → ZERO.
+/// A `neg` wrapping a bare atom is left in place (an opaque neg-atom).
+fn pushNeg(self: *Elaborator, ns: PolyNorm, x: TermId) ElabError!TermId {
+    const node = self.pool.get(x);
+    if (node != .app) return x;
+    const sym = node.app.sym;
+    // sub(a,b) → add(a, neg(b)), then recurse.
+    if (ns.sub_sym != null and Elaborator.symIs(sym, ns.sub_sym) and node.app.args_len == 2) {
+        const args = self.pool.args(node.app);
+        const a = args[0];
+        const b = args[1];
+        if (ns.neg_sym) |neg| {
+            const nb = try self.pool.addApp(.app, neg, &.{b});
+            const rebuilt = try self.pool.addApp(.app, ns.add_sym, &.{ a, nb });
+            return pushNeg(self, ns, rebuilt);
+        }
+    }
+    // neg(inner): distribute over the inner structure.
+    if (ns.neg_sym != null and Elaborator.symIs(sym, ns.neg_sym) and node.app.args_len == 1) {
+        const inner = try pushNeg(self, ns, self.pool.args(node.app)[0]);
+        const in = self.pool.get(inner);
+        if (in == .app) {
+            // neg(add(u,v)) → add(neg u, neg v)
+            if (Elaborator.symIs(in.app.sym, ns.add_sym) and in.app.args_len == 2) {
+                const ia = self.pool.args(in.app);
+                const u = ia[0];
+                const v = ia[1];
+                const nu = try pushNeg(self, ns, try self.pool.addApp(.app, ns.neg_sym.?, &.{u}));
+                const nv = try pushNeg(self, ns, try self.pool.addApp(.app, ns.neg_sym.?, &.{v}));
+                return try self.pool.addApp(.app, ns.add_sym, &.{ nu, nv });
+            }
+            // neg(neg(x)) → x
+            if (Elaborator.symIs(in.app.sym, ns.neg_sym) and in.app.args_len == 1) {
+                return self.pool.args(in.app)[0];
+            }
+            // neg(ZERO) → ZERO
+            if (ns.zero_sym != null and isSym(self, inner, ns.zero_sym.?)) return inner;
+        }
+        // neg over a product or a bare atom: keep `neg` OUTSIDE (matching the
+        // strict path's mulNegLeft/mulNegRight normal form `neg(mul(...))`); the
+        // monomial machinery sorts the factors under the neg and pulls the sign
+        // to a top-level wrapper. Only add/neg/zero are pushed through above.
+        return try self.pool.addApp(.app, ns.neg_sym.?, &.{inner});
+    }
+    // otherwise recurse into children, rebuilding.
+    if (node.app.args_len == 0) return x;
+    const args = self.pool.args(node.app);
+    var new_args = try self.arena.alloc(TermId, args.len);
+    for (args, 0..) |arg, i| new_args[i] = try pushNeg(self, ns, arg);
+    return try self.pool.addApp(.app, sym, new_args);
+}
 
 /// Canonicalize `x` to a sorted sum of sorted monomials. Recursion:
 /// normalize children, distribute mul over add, sort, fold 0/1.
-fn polyNormForm(self: *Elaborator, ns: PolyNorm, x: TermId) ElabError!TermId {
+fn polyNormForm(self: *Elaborator, ns: PolyNorm, x0: TermId) ElabError!TermId {
+    // push neg to the leaves / eliminate sub first, so distribution sees the
+    // real mul/add structure (mirrors the strict fold set).
+    const x = try pushNeg(self, ns, x0);
     // gather the sum's monomials (each a normalized product of atoms),
     // sort by termOrder, drop ZERO terms, rebuild right-nested.
     var monos: std.ArrayList(TermId) = .empty;
@@ -319,17 +402,42 @@ fn polyMonomials(self: *Elaborator, ns: PolyNorm, x: TermId, out: *std.ArrayList
         }
         return;
     }
+    // neg(inner): collect inner's monomials and negate each canonically. After
+    // pushNeg, a `neg` wraps only a product-or-atom (never an add), so the inner
+    // set is a single sorted monomial; wrapping it in `neg` around the SORTED core
+    // matches the strict path's `neg(mul(...))` normal form.
+    if (node == .app and ns.neg_sym != null and Elaborator.symIs(node.app.sym, ns.neg_sym) and node.app.args_len == 1) {
+        const inner = self.pool.args(node.app)[0];
+        var inner_monos: std.ArrayList(TermId) = .empty;
+        try polyMonomials(self, ns, inner, &inner_monos);
+        for (inner_monos.items) |m| try out.append(self.arena, try negateMonomial(self, ns, m));
+        return;
+    }
     // an atom (variable, constant, or opaque application): a monomial with
     // one factor. Fold multiplicative identity later; here it stands alone.
     try out.append(self.arena, x);
+}
+
+/// Wrap a sorted monomial `m` in `neg`, canonically: neg(neg(x)) → x, and
+/// neg(ZERO) → ZERO. Otherwise `neg(m)` (neg outside the sorted core), matching
+/// the strict path's mulNegLeft/mulNegRight normal form.
+fn negateMonomial(self: *Elaborator, ns: PolyNorm, m: TermId) ElabError!TermId {
+    if (ns.neg_sym == null) return m;
+    const node = self.pool.get(m);
+    if (node == .app and Elaborator.symIs(node.app.sym, ns.neg_sym) and node.app.args_len == 1) {
+        return self.pool.args(node.app)[0]; // neg(neg(x)) → x
+    }
+    if (ns.zero_sym != null and isSym(self, m, ns.zero_sym.?)) return m; // neg(0) → 0
+    return try self.pool.addApp(.app, ns.neg_sym.?, &.{m});
 }
 
 /// Multiply two already-normalized monomials: flatten both into factor
 /// lists, drop ONE factors, ZERO-annihilate, sort, rebuild right-nested.
 fn polyMonomialProduct(self: *Elaborator, ns: PolyNorm, a: TermId, b: TermId) ElabError!TermId {
     var factors: std.ArrayList(TermId) = .empty;
-    try polyFactors(self, ns, a, &factors);
-    try polyFactors(self, ns, b, &factors);
+    var negative = false;
+    negative = (try polyFactors(self, ns, a, &factors)) != negative;
+    negative = (try polyFactors(self, ns, b, &factors)) != negative;
     var kept: std.ArrayList(TermId) = .empty;
     for (factors.items) |f| {
         if (ns.zero_sym != null and isSym(self, f, ns.zero_sym.?)) {
@@ -339,17 +447,23 @@ fn polyMonomialProduct(self: *Elaborator, ns: PolyNorm, a: TermId, b: TermId) El
         if (ns.one_sym != null and isSym(self, f, ns.one_sym.?)) continue;
         try kept.append(self.arena, f);
     }
+    var core: TermId = undefined;
     if (kept.items.len == 0) {
-        if (ns.one_sym) |o| return try self.pool.addApp(.app, o, &.{});
-        // no ONE symbol: fall back to a (both were ONE-less already)
-        return a;
+        core = if (ns.one_sym) |o| try self.pool.addApp(.app, o, &.{}) else a;
+    } else {
+        self.sortTerms(kept.items);
+        core = try self.buildRightNested(ns.mul_sym, kept.items);
     }
-    self.sortTerms(kept.items);
-    return try self.buildRightNested(ns.mul_sym, kept.items);
+    // lift the accumulated sign to a single top-level `neg` (matching strict's
+    // mulNegLeft/mulNegRight normal form `neg(mul(sorted core))`).
+    return if (negative) try negateMonomial(self, ns, core) else core;
 }
 
-/// Flatten a mul-tree into its factor list (atoms).
-fn polyFactors(self: *Elaborator, ns: PolyNorm, x: TermId, out: *std.ArrayList(TermId)) ElabError!void {
+/// Flatten a mul-tree into its factor list (atoms), peeling `neg` wrappers and
+/// returning the accumulated SIGN (true = an odd number of negs were stripped).
+/// A `neg(x)` factor contributes its sign and flattens `x`'s factors, so
+/// `mul(a, neg(c))` and `neg(mul(a, c))` reduce to the same {a, c} with sign −.
+fn polyFactors(self: *Elaborator, ns: PolyNorm, x: TermId, out: *std.ArrayList(TermId)) ElabError!bool {
     const node = self.pool.get(x);
     if (node == .app and Elaborator.symIs(node.app.sym, ns.mul_sym) and node.app.args_len == 2) {
         // copy the arg ids before recursing (pool.args aliases pool.extra,
@@ -357,11 +471,16 @@ fn polyFactors(self: *Elaborator, ns: PolyNorm, x: TermId, out: *std.ArrayList(T
         const fargs = self.pool.args(node.app);
         const f0 = fargs[0];
         const f1 = fargs[1];
-        try polyFactors(self, ns, f0, out);
-        try polyFactors(self, ns, f1, out);
-        return;
+        const s0 = try polyFactors(self, ns, f0, out);
+        const s1 = try polyFactors(self, ns, f1, out);
+        return s0 != s1;
+    }
+    if (node == .app and ns.neg_sym != null and Elaborator.symIs(node.app.sym, ns.neg_sym) and node.app.args_len == 1) {
+        const inner_sign = try polyFactors(self, ns, self.pool.args(node.app)[0], out);
+        return !inner_sign; // this neg flips the sign
     }
     try out.append(self.arena, x);
+    return false;
 }
 
 fn isSym(self: *Elaborator, t: TermId, sym: term.SymId) bool {
