@@ -154,7 +154,103 @@ fn arithmeticCertificate(self: *Elaborator, low: *Lowering, block_id: kernel.Blo
             .elim = null,
         });
     }
-    return arithCertCore(self, low, block_id, goal, premises.items, symbols, loc);
+    if (try arithCertCore(self, low, block_id, goal, premises.items, symbols, loc)) |just| return just;
+    // The rewrite-normalizer declined. Try the LINEAR-COMBINATION path: an
+    // equation goal that follows by cancelling an equality PREMISE (e.g.
+    // sub(a,r) = mul(b,q) from the premise add(mul(b,q), r) = a). The normalizer
+    // can't fire a premise equation as a rewrite when its sides don't occur
+    // literally in the goal — but the goal IS a linear combination of it.
+    return premiseCombinationCert(self, low, block_id, goal, premises.items, symbols, loc);
+}
+
+/// Certify an equation goal `G_l = G_r` as a linear combination of a single
+/// equality PREMISE `P_l = P_r`: it holds iff `add(P_l, G_l) = add(P_r, G_r)` is
+/// a pure additive identity (the premise contributes ±1). Emit that identity via
+/// the existing join, then rewrite the premise and cancel:
+///   combined:  add(P_l, G_l) = add(P_r, G_r)          [pure identity, emitJoin]
+///   rewrite P_l→P_r using the premise:  add(P_r, G_l) = add(P_r, G_r)
+///   addCancelLeft(P_r, G_l, G_r):        G_l = G_r
+/// Every emitted step is kernel-checked; a mis-combination fails the join.
+fn premiseCombinationCert(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, premises: []CertPremise, symbols: presburger_mod.Symbols, loc: u32) ElabError!?kernel.Justification {
+    const add_sym = symbols.add orelse return null;
+    // need the well-known left-cancellation lemma to finish.
+    const cancel = (try self.wellKnownFact("addCancelLeft", loc)) orelse return null;
+
+    // the goal must be `forall …; G_l = G_r` (peel the prefix into fix blocks).
+    const u = try self.peelUniversal(goal, "arith");
+    const body_node = self.pool.get(u.body);
+    if (body_node != .eq) return null;
+    const gl = body_node.eq.lhs;
+    const gr = body_node.eq.rhs;
+
+    // build the normalizing rule set (the well-known term rules + AC), exactly as
+    // arithCertCore does for a premise-free identity — NO premise rules here.
+    var rules: std.ArrayList(simplify_mod.Rule) = .empty;
+    for (Elaborator.wk_term_rule_names) |wk| {
+        if (try self.wellKnownRule(wk, loc)) |r| try rules.append(self.arena, r);
+    }
+    if (rules.items.len == 0) return null;
+    const term_rule_count = rules.items.len;
+    var comm_idx: ?usize = null;
+    var swap_idx: ?usize = null;
+    if (try self.wellKnownRule("addIsCommutative", loc)) |r| {
+        comm_idx = rules.items.len;
+        try rules.append(self.arena, r);
+    }
+    if (try self.wellKnownRule("addLeftSwap", loc)) |r| {
+        swap_idx = rules.items.len;
+        try rules.append(self.arena, r);
+    }
+
+    // find an equality premise whose combined identity add(P_l,G_l)=add(P_r,G_r)
+    // certifies, and whose sides are visible at this scope (a step ref).
+    for (premises) |p| {
+        const pn = self.pool.get(p.formula);
+        if (pn != .eq) continue;
+        if (p.step == null) continue; // need a step to cite for the rewrite + cancel
+        const pl = pn.eq.lhs;
+        const pr = pn.eq.rhs;
+        const comb_lhs = try self.pool.addApp(.app, add_sym, &.{ pl, gl });
+        const comb_rhs = try self.pool.addApp(.app, add_sym, &.{ pr, gr });
+        const eq_plan = (try self.planEquation(symbols, rules.items, term_rule_count, comm_idx, swap_idx, comb_lhs, comb_rhs, loc)) orelse continue;
+
+        // PLAN OK — emit inside the peeled fix blocks.
+        var blocks: std.ArrayList(kernel.BlockId) = .empty;
+        var parent = block_id;
+        for (u.fix_vars) |fv| {
+            const b = try self.newBlock(low, try self.freshNamed("arithmetic"), parent, .{ .fix = .{ .v = fv } });
+            try blocks.append(self.arena, b);
+            parent = b;
+        }
+        // combined identity: add(P_l, G_l) = add(P_r, G_r)
+        const comb_formula = try self.pool.add(.{ .eq = .{ .lhs = comb_lhs, .rhs = comb_rhs } });
+        const comb_just = try self.emitJoin(low, parent, loc, rules.items, comb_lhs, comb_rhs, eq_plan.rs, eq_plan.rt);
+        const comb_ref = try self.emitStep(low, parent, loc, comb_formula, comb_just);
+        // the premise, cited at this scope.
+        const prem_ref = p.step.?;
+        // rewrite P_l→P_r in the combined identity's LHS: add(P_r, G_l) = add(P_r, G_r)
+        const rewritten_formula = try self.pool.add(.{ .eq = .{ .lhs = comb_rhs_with_pl_replaced: {
+            break :comb_rhs_with_pl_replaced try self.pool.addApp(.app, add_sym, &.{ pr, gl });
+        }, .rhs = comb_rhs } });
+        const rewritten_ref = try self.emitStep(low, parent, loc, rewritten_formula, .{ .rewrite = .{ .equation = prem_ref, .target = comb_ref } });
+        // addCancelLeft(P_r, G_l, G_r): add(P_r,G_l)=add(P_r,G_r) -> G_l=G_r.
+        const cancel_inst = try self.emitInstance(low, parent, loc, try self.strippedRule(cancel.formula, cancel.source), &.{ pr, gl, gr });
+        const goal_formula = try self.pool.add(.{ .eq = .{ .lhs = gl, .rhs = gr } });
+        const carry: kernel.Justification = .{ .modus_ponens = .{ .implication = cancel_inst, .antecedent = rewritten_ref } };
+
+        // forall_intro fold up.
+        if (blocks.items.len == 0) return carry;
+        _ = try self.emitStep(low, blocks.items[blocks.items.len - 1], loc, goal_formula, carry);
+        var i = blocks.items.len;
+        while (i > 1) {
+            i -= 1;
+            self.closeBlock(low, blocks.items[i]);
+            _ = try self.emitStep(low, blocks.items[i - 1], loc, u.opened[i], .{ .forall_intro = .{ .id = blocks.items[i], .loc = loc } });
+        }
+        self.closeBlock(low, blocks.items[0]);
+        return .{ .forall_intro = .{ .id = blocks.items[0], .loc = loc } };
+    }
+    return null;
 }
 
 /// The planning and emission core shared by the surface certificate and

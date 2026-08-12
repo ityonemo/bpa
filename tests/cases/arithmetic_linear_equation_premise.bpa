@@ -31,6 +31,7 @@ axiom mulSuccRight: forall a, b: Int; mul(a, succ(b)) = add(mul(a, b), a)
 axiom addIsAssociative: forall a, b, c: Int; add(add(a, b), c) = add(a, add(b, c))
 axiom addIsCommutative: forall a, b: Int; add(a, b) = add(b, a)
 axiom addLeftSwap: forall a, b, c: Int; add(a, add(b, c)) = add(b, add(a, c))
+axiom addCancelLeft: forall c, a, b: Int; add(c, a) = add(c, b) -> a = b
 axiom negNeg: forall a: Int; neg(neg(a)) = a
 axiom negAdd: forall a, b: Int; neg(add(a, b)) = add(neg(a), neg(b))
 axiom addNegRight: forall a: Int; add(a, neg(a)) = ZERO

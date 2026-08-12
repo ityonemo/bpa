@@ -173,7 +173,16 @@ tactic is now name-agnostic. That episode is the canonical example of this rule.
   steps) enter by witness substitution: each order premise is
   `lessThanElim`-unpacked and its flipped witness equation becomes a
   ground rewrite rule, so difference-logic chains (including transitivity)
-  certify; the conclusion exports back through `exists_elim`. *Mixed
+  certify; the conclusion exports back through `exists_elim`. When the
+  rewrite-normalizer declines an equation goal that nonetheless follows by
+  CANCELLING an equality premise — the premise's sides don't occur literally in
+  the goal, so no rewrite fires, but the goal is a linear COMBINATION of it (e.g.
+  `sub(a, r) = mul(b, q)` from `add(mul(b,q), r) = a`) — the *premise-combination*
+  path (`premiseCombinationCert`) certifies it: for a premise `P_l = P_r` and goal
+  `G_l = G_r` it proves the pure identity `add(P_l, G_l) = add(P_r, G_r)` via the
+  ordinary equation join, rewrites `P_l→P_r` with the premise, and closes with
+  `addCancelLeft` — all kernel-checked, so a wrong combination fails the join.
+  Needs `addIsCommutative`/`addLeftSwap`/`addCancelLeft` in scope. *Mixed
   skeletons* (D2) replay as tautology-style case splits whose boolean dead
   ends close by deriving the conflicting arithmetic literal from the
   branch's assumptions, then `absurd`. *Farkas* (`src/farkas.zig`) certifies

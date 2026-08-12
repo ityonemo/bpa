@@ -3309,7 +3309,7 @@ pub const Elaborator = struct {
     /// Plan a kernel-checked proof of s = t: normalize both sides with the
     /// terminating rules, then sort the residual sums. Null when the sides
     /// do not join.
-    fn planEquation(
+    pub fn planEquation(
         self: *Elaborator,
         symbols: presburger_mod.Symbols,
         rules: []const simplify_mod.Rule,

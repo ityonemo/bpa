@@ -507,6 +507,14 @@ pub fn addTests(
     // axiom-proven, no holes) — so the emitted specialization really re-checks.
     ctx.okSilent(&.{ "check", "tests/cases/arithmetic_fallback_specialize.bpa" });
 
+    // linear-equation-combination certifier: an equation goal that follows by
+    // CANCELLING an equality PREMISE (sub(a,r) = mul(b,q) from the premise
+    // add(mul(b,q),r) = a) over opaque leaves. The rewrite-normalizer can't fire
+    // the premise as a rewrite, but the goal is a linear combination of it: the
+    // certifier proves the identity add(P_l,G_l)=add(P_r,G_r), rewrites the
+    // premise, and cancels — a kernel-checked chain. Verifies STRICT.
+    ctx.okSilent(&.{ "check", "tests/cases/arithmetic_linear_equation_premise.bpa" });
+
     // arithmetic × SCHEMA: Case D fires from inside a schema body too — the
     // declaration-time wellformedness self-check (instantiate at opaque params,
     // run the proof) exercises arithmeticJustification, so a redundant `fallback`
