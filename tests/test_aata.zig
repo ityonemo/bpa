@@ -13,6 +13,15 @@ pub fn addTests(
 ) void {
     const ctx = Ctx.init(b, exe, test_step);
 
+    // AATA §3.1 Integers mod n: the ℤ_n arithmetic proposition (all six parts)
+    // modeled as ℤ-congruence n | (a−b) over the plain Int sort.
+    ctx.okSilent(&.{ "check", "aata/3.1-integers-mod-n.md" });
+    // §3.1 exercises: the ℤ_n structural laws (Ex 19–24 — additive/multiplicative
+    // identity, inverses, well-definedness, associativity, distributivity) proved
+    // as ℤ-congruences; Ex 22's well-definedness carries the ab−a'b' split. std used
+    // liberally.
+    ctx.okSilent(&.{ "check", "aata/3.1-integers-mod-n-exercises.md" });
+
     // AATA group theory: the literate translation of Groups basic-properties (5
     // propositions) + 5 in-scope exercises. The 10 theorems now ALIAS the library
     // proofs in std/group.bpa (the .md is book-notation presentation; the checked
@@ -30,6 +39,12 @@ pub fn addTests(
     // concrete example subgroups (ℚ*, SL₂, ℤ₄, ℤ₂×ℤ₂) are summarized, not formalized
     // (Tier-3 carriers). Proven; no accelerated tactic.
     ctx.okSilent(&.{ "check", "aata/3.3-subgroups.md" });
+    // §3.3 exercises: the abstract subgroup-criterion ones proved by the
+    // three-closure pattern — Ex 48 (center Z(G)), 53 (centralizer C(H)), 54
+    // (conjugate gHg⁻¹), plus Ex 49 and Ex 51 (equational abelian-ness). Ex 45
+    // (H∩K) forwarded to the main text; concrete-group ones (S₃, D₄, Q₈, …)
+    // deferred. std used liberally.
+    ctx.okSilent(&.{ "check", "aata/3.3-subgroups-exercises.md" });
 
     // AATA set theory: the literate transliteration of Chapter 1 §1.2.1
     // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2
