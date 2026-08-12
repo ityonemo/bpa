@@ -606,8 +606,14 @@ pub const Kernel = struct {
                         try self.render(eq_step.formula),
                     });
                 }
-                if (!self.rewriteMatches(target.formula, step.formula, node.eq.lhs, node.eq.rhs)) {
-                    return self.fail(step.loc, "rewrite cannot derive '{s}' from '{s}' using '{s}'", .{
+                // Bidirectional: a true equation `a = b` licenses substitution in
+                // EITHER direction (equality is symmetric — this is `symmetry`
+                // then `rewrite` folded into one rule, so it proves nothing new).
+                // Try lhs->rhs, then rhs->lhs.
+                if (!self.rewriteMatches(target.formula, step.formula, node.eq.lhs, node.eq.rhs) and
+                    !self.rewriteMatches(target.formula, step.formula, node.eq.rhs, node.eq.lhs))
+                {
+                    return self.fail(step.loc, "rewrite cannot derive '{s}' from '{s}' using '{s}' (tried both orientations)", .{
                         try self.render(step.formula),
                         try self.render(target.formula),
                         try self.render(eq_step.formula),
@@ -626,8 +632,12 @@ pub const Kernel = struct {
                 };
                 // replace sub-proposition P with Q at any position (subformula
                 // congruence — the SAME walker as `=`-rewrite, props not terms).
-                if (!self.rewriteMatches(target.formula, step.formula, pq.p, pq.q)) {
-                    return self.fail(step.loc, "iff_rewrite cannot derive '{s}' from '{s}' using '{s}'", .{
+                // Bidirectional: `P iff Q` licenses replacing P by Q OR Q by P
+                // (a biconditional is symmetric — like the `=`-rewrite case).
+                if (!self.rewriteMatches(target.formula, step.formula, pq.p, pq.q) and
+                    !self.rewriteMatches(target.formula, step.formula, pq.q, pq.p))
+                {
+                    return self.fail(step.loc, "iff_rewrite cannot derive '{s}' from '{s}' using '{s}' (tried both orientations)", .{
                         try self.render(step.formula),
                         try self.render(target.formula),
                         try self.render(bicond_step.formula),

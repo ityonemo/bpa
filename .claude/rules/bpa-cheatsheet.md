@@ -81,8 +81,8 @@ qed
 | `double_negation STEP` | 1 | `not not P` → `P` |
 | `reflexivity` | 0 | `t = t` |
 | `symmetry STEP` | 1 | `x=y` → `y=x` |
-| `rewrite EQ TARGET` | 2 | replace EQ's lhs by rhs in TARGET |
-| `iff_rewrite BICOND TARGET` | 2 | from `P iff Q`, replace sub-prop P by Q in TARGET (any position). Kernel-checked, no taint |
+| `rewrite EQ TARGET` | 2 | replace EQ's lhs by rhs (or rhs by lhs) in TARGET — **bidirectional**, no `symmetry` needed to reorient |
+| `iff_rewrite BICOND TARGET` | 2 | from `P iff Q`, replace sub-prop P by Q (or Q by P) in TARGET (any position). Bidirectional, kernel-checked, no taint |
 | `instantiate NAME(args) refs…` | schema + premise refs | monomorphize a schema; refs discharge its leading antecedents |
 
 `case <disj-step> { @when-left| assume A { … } @when-right| assume B { … } }` — the 3-way (or N-way) disjunction eliminator. Use this instead of trying to give `or_elim` more than 2 arms.

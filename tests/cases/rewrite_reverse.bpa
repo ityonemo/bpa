@@ -1,0 +1,47 @@
+// Bidirectional `rewrite`: an equation cited in the "wrong" orientation for the
+// goal still works, without a preceding `symmetry` flip. Here `@b-equals-a` is
+// `B = A`, and we rewrite the target `B = C` to `A = C` — that needs replacing
+// `B` (the equation's LEFT... no: RIGHT side) with `A`. The kernel now tries both
+// `lhs->rhs` and `rhs->lhs`, so `[by rewrite b-equals-a b-equals-c]` derives
+// `A = C` even though `B = A` is oriented rhs->lhs relative to the substitution.
+sort Thing
+const A: Thing
+const B: Thing
+const C: Thing
+axiom bEqA: B = A
+axiom bEqC: B = C
+
+// A = C, by rewriting B->A in `B = C` using the equation `B = A` cited as-is
+// (its lhs B is what we replace, giving A) — this is the FORWARD case, kept as a
+// control that both directions still handle the ordinary orientation.
+theorem forwardControl: A = C
+proof
+  @b-equals-a |
+    B = A
+    [by axiom bEqA]
+  @b-equals-c |
+    B = C
+    [by axiom bEqC]
+  @conclusion |
+    A = C
+    [by rewrite b-equals-a b-equals-c]
+qed
+
+// The REVERSE case: cite `A = B` (call it aEqB) and rewrite the target `B = C`.
+// To turn `B = C` into `A = C` we must replace `B` with `A` — but `A = B` has B
+// on its RIGHT. The directional kernel would need `[by symmetry]` first; the
+// bidirectional kernel accepts it directly via the rhs->lhs orientation.
+axiom aEqB: A = B
+
+theorem reverseCase: A = C
+proof
+  @a-equals-b |
+    A = B
+    [by axiom aEqB]
+  @b-equals-c |
+    B = C
+    [by axiom bEqC]
+  @conclusion |
+    A = C
+    [by rewrite a-equals-b b-equals-c]
+qed

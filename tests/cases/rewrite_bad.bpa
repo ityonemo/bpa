@@ -1,0 +1,26 @@
+// NEGATIVE: bidirectional `rewrite` must still REJECT a claim not reachable in
+// EITHER orientation. The equation is `A = B`; the target is `A = C`; the claim
+// is `B = D`. Replacing A by B (or B by A) in `A = C` can produce `B = C` or
+// `A = C`, never `B = D` (D is unrelated). Both orientations are tried and both
+// fail, so the kernel rejects it — the bidirectional change is a superset of
+// acceptance, not a hole.
+sort Thing
+const A: Thing
+const B: Thing
+const C: Thing
+const D: Thing
+axiom aEqB: A = B
+axiom aEqC: A = C
+
+theorem bad: B = D
+proof
+  @a-equals-b |
+    A = B
+    [by axiom aEqB]
+  @a-equals-c |
+    A = C
+    [by axiom aEqC]
+  @conclusion |
+    B = D
+    [by rewrite a-equals-b a-equals-c]
+qed

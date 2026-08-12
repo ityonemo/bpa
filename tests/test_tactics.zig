@@ -346,11 +346,21 @@ pub fn addTests(
     // kernel-checked rule (no --fast taint), sound because iff is a congruence.
     ctx.okSilent(&.{ "check", "tests/cases/iff_rewrite.bpa" });
 
-    // it is SOUND: the claim must be reachable by replacing P with Q…
-    ctx.fail(&.{ "check", "tests/cases/iff_rewrite_bad.bpa" }, "tests/cases/iff_rewrite_bad.bpa:17:12: error: iff_rewrite cannot derive 'R' from 'P' using '(P -> Q) and (Q -> P)'\n");
+    // it is SOUND: the claim must be reachable by replacing P with Q (or Q with P
+    // — iff_rewrite is bidirectional) — an unrelated claim is rejected in BOTH.
+    ctx.fail(&.{ "check", "tests/cases/iff_rewrite_bad.bpa" }, "tests/cases/iff_rewrite_bad.bpa:17:12: error: iff_rewrite cannot derive 'R' from 'P' using '(P -> Q) and (Q -> P)' (tried both orientations)\n");
 
     // …and its first argument must be a biconditional, not a plain implication.
     ctx.fail(&.{ "check", "tests/cases/iff_rewrite_notbicond.bpa" }, "tests/cases/iff_rewrite_notbicond.bpa:14:26: error: iff_rewrite expects a biconditional '(P -> Q) and (Q -> P)', got 'P -> Q'\n");
+
+    // BIDIRECTIONAL rewrite: an equation / biconditional cited in the "wrong"
+    // orientation for the goal still rewrites — no preceding `symmetry` needed.
+    // The kernel tries lhs->rhs then rhs->lhs (sound: equality/iff are symmetric).
+    ctx.okSilent(&.{ "check", "tests/cases/rewrite_reverse.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/iff_rewrite_reverse.bpa" });
+    // …but a claim reachable in NEITHER orientation is still rejected (the change
+    // is a superset of acceptance, not a hole).
+    ctx.fail(&.{ "check", "tests/cases/rewrite_bad.bpa" }, "tests/cases/rewrite_bad.bpa:23:4: error: rewrite cannot derive 'B = D' from 'A = C' using 'A = B' (tried both orientations)\n");
 
     // Milestone C: arithmetic accelerated tactic — Presburger quantifier elimination
     ctx.ok(&.{ "check", "--fast", "tests/cases/arithmetic.bpa" },

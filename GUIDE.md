@@ -857,11 +857,12 @@ of a term with itself).
 
 ### RULE: rewrite
 
-`[by rewrite EQ TARGET]` — two refs: an equation `a = b` and a target step `P[a]`;
-replaces occurrences of the equation's **left** side `a` with its **right** side `b`
-in the target, concluding `P[b]`. Directional — orient with `symmetry` first if you
-need `b → a`. (The tactic `simplify` rewrites both sides to a common form when a
-single directed `rewrite` is awkward.)
+`[by rewrite EQ TARGET]` — two refs: an equation `a = b` and a target step; replaces
+occurrences of `a` with `b` — **or** `b` with `a` — in the target. **Bidirectional:**
+the kernel tries both orientations, so you do **not** need a preceding `symmetry`
+step just to reorient the equation (a true `a = b` licenses substituting either
+way). A claim reachable in NEITHER direction is rejected. (The tactic `simplify`
+rewrites both sides to a common form when many rewrites would be needed.)
 
 ```bpa
 @rewritten |
@@ -873,9 +874,9 @@ single directed `rewrite` is awkward.)
 
 `[by iff_rewrite BICOND TARGET]` — two refs: a biconditional `P iff Q` and a target
 step; the **propositional analogue of `rewrite`**. It replaces the sub-proposition
-`P` by `Q` at any position in the target — **under connectives and quantifiers**,
-which plain `rewrite` (a term-equation rule) cannot reach. A kernel-checked rule
-with **no accelerant taint**.
+`P` by `Q` — **or `Q` by `P`** (bidirectional, like `rewrite`) — at any position in
+the target, **under connectives and quantifiers**, which plain `rewrite` (a
+term-equation rule) cannot reach. A kernel-checked rule with **no accelerant taint**.
 
 ```bpa
 @rewritten |
