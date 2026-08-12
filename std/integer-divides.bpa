@@ -45,6 +45,7 @@ theorem addZeroRight = ring.addZeroRight
 axiom mulZeroLeft = integer.mulZeroLeft
 theorem mulZeroRight = ring.mulZeroRight
 theorem mulSuccRight = ring.mulSuccRight
+axiom mulSuccLeft = integer.mulSuccLeft
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
 theorem mulOneRight = ring.mulOneRight

@@ -50,13 +50,15 @@ pub fn addTests(
     // numeral coefficients (q+q → 2·q, 2q+2q → 4q) — strict cert + --fast parity.
     ctx.okSilent(&.{ "check", "tests/cases/polynomial_neg.bpa" });
     ctx.okSilent(&.{ "check", "tests/cases/polynomial_inverse.bpa" });
+    ctx.okSilent(&.{ "check", "tests/cases/polynomial_coeff.bpa" });
     ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_neg.bpa" });
     ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_inverse.bpa" });
-    // coefficient folding (q+q → 2·q) lands in Stage 3/4; these gates are enabled
-    // there once collectMonomials/collectFast are wired:
-    //   ctx.okSilent(&.{ "check", "tests/cases/polynomial_coeff.bpa" });
+    // --fast coefficient expansion parity lands in Stage 4 (polyNormForm must
+    // expand mul(succ^n(base), x) structurally like the strict fold):
     //   ctx.okSilent(&.{ "check", "--fast", "tests/cases/polynomial_coeff.bpa" });
-    //   ctx.fail(&.{ "check", "tests/cases/polynomial_coeff_bad.bpa" }, "<located error>");
+    // a wrong coefficient (q+q claimed = 3·q) is still rejected: q+q expands to
+    // add(q, q), 3·q to add(q, add(q, q)) — real repeated-addition arithmetic.
+    ctx.fail(&.{ "check", "tests/cases/polynomial_coeff_bad.bpa" }, "tests/cases/polynomial_coeff_bad.bpa:15:9: error: polynomial: sides expand differently: 'add(q, q)' vs 'add(q, add(q, q))'\n");
 
     // `ext(theory)`: the extensionality tactic, one tactic over two models —
     // reduce an equation to its pointwise obligation via the theory's

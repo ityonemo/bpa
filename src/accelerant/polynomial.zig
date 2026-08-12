@@ -130,10 +130,17 @@ fn polyRules(self: *Elaborator, loc: u32) ElabError!?PolyRules {
     // same normalize-to-fixpoint pass. Absent in a pure-ℕ theory (peano has no
     // neg/sub) — skip a null one rather than failing, so polynomial(peano) stays
     // green. `neg(atom)` stays an opaque atom (the coefficient model is unsigned).
+    // numeral-coefficient folding via EXPANSION: mulSuccLeft/mulSuccRight expand
+    // mul(succ^n(base), x) into a sum of copies of x (each application strips one
+    // succ, strictly reducing → terminating). So `mul(TWO, q)` and `add(q, q)`
+    // both expand to the same `add(q, q)` — a numeral coefficient dissolves into
+    // repeated addition, no bespoke coefficient-collection phase needed. Optional:
+    // peano HAS these (they stay as before); a ring theory adds nothing new.
     const optional_fold_names = [_][]const u8{
         "definitionOfSubtraction",
-        "negAdd",     "negZero", "negSucc", "negPrev", "negNeg",
+        "negAdd",     "negZero",     "negSucc",     "negPrev", "negNeg",
         "mulNegLeft", "mulNegRight",
+        "mulSuccLeft", "mulSuccRight",
     };
     for (optional_fold_names) |nm| {
         if (try self.wellKnownRule(nm, loc)) |r| try rules.append(self.arena, r);
