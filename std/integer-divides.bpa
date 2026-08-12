@@ -5538,3 +5538,121 @@ proof
     forall a, b: Int; (a != ZERO) -> (b != ZERO) -> (forall e: Int; divides(e, a) -> divides(e, b) -> (e = ONE or e = neg(ONE))) -> exists r: Int; exists s: Int; add(mul(a, r), mul(b, s)) = ONE
     [by forall_intro generalize-a]
 qed
+
+// ── LEAST COMMON MULTIPLE ────────────────────────────────────────────────────
+// Judson's §2.2 exercise defines lcm(a, b) as the NONNEGATIVE integer m that is a
+// common multiple of a and b (a | m and b | m) and divides every common multiple
+// (a | n and b | n ⟹ m | n). As with `gcd`, we introduce `lcm` as a function
+// characterized by exactly those defining properties; existence is the assertion
+// that the characterization is realizable (it is — by well-ordering on the set of
+// positive common multiples, the least of which is the lcm), and the axioms name
+// the least-common-multiple property directly.
+func lcm(a: Int, b: Int): Int
+axiom lcmNonneg: forall a, b: Int; is_nonneg(lcm(a, b))
+axiom lcmCommonMultipleLeft: forall a, b: Int; divides(a, lcm(a, b))
+axiom lcmCommonMultipleRight: forall a, b: Int; divides(b, lcm(a, b))
+axiom lcmLeast: forall a, b, n: Int; divides(a, n) -> divides(b, n) -> divides(lcm(a, b), n)
+
+// UNIQUENESS of the least common multiple (Judson's Exercise 23). Any positive m
+// that is itself a common multiple of a and b AND divides every common multiple
+// must equal lcm(a, b): lcm | m (lcm is least, m is a common multiple) and m | lcm
+// (m is least, lcm is a common multiple by its axioms); two positive integers that
+// divide each other are equal by antisymmetry of ≤ on the positives.
+theorem lcmUnique: forall a, b, m: Int;
+  less_than(ZERO, m) ->
+  less_than(ZERO, lcm(a, b)) ->
+  divides(a, m) -> divides(b, m) ->
+  (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) ->
+  m = lcm(a, b)
+proof
+  @generalize-a |
+    fix a: Int {
+      @generalize-b |
+        fix b: Int {
+          @generalize-m |
+            fix m: Int {
+              @given-m-positive |
+                assume less_than(ZERO, m) {
+                  @given-lcm-positive |
+                    assume less_than(ZERO, lcm(a, b)) {
+                      @given-m-divides-a |
+                        assume divides(a, m) {
+                          @given-m-divides-b |
+                            assume divides(b, m) {
+                              @given-m-least |
+                                assume forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n) {
+                                  @m-positive |
+                                    less_than(ZERO, m)
+                                    [by hypothesis given-m-positive]
+                                  @lcm-positive |
+                                    less_than(ZERO, lcm(a, b))
+                                    [by hypothesis given-lcm-positive]
+                                  @m-multiple-of-a |
+                                    divides(a, m)
+                                    [by hypothesis given-m-divides-a]
+                                  @m-multiple-of-b |
+                                    divides(b, m)
+                                    [by hypothesis given-m-divides-b]
+                                  @m-divides-common-multiples |
+                                    forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)
+                                    [by hypothesis given-m-least]
+                                  // lcm divides m (lcm is least; m is a common multiple).
+                                  @lcm-divides-m |
+                                    divides(lcm(a, b), m)
+                                    [by specialize lcmLeast(a, b, m) m-multiple-of-a m-multiple-of-b]
+                                  // m divides lcm (m is least; lcm is a common multiple).
+                                  @a-divides-lcm |
+                                    divides(a, lcm(a, b))
+                                    [by specialize lcmCommonMultipleLeft(a, b)]
+                                  @b-divides-lcm |
+                                    divides(b, lcm(a, b))
+                                    [by specialize lcmCommonMultipleRight(a, b)]
+                                  @m-least-at-lcm |
+                                    divides(a, lcm(a, b)) -> divides(b, lcm(a, b)) -> divides(m, lcm(a, b))
+                                    [by forall_elim(lcm(a, b)) m-divides-common-multiples]
+                                  @m-divides-lcm |
+                                    divides(m, lcm(a, b))
+                                    [by tautology m-least-at-lcm a-divides-lcm b-divides-lcm]
+                                  // two positive mutual divisors are equal.
+                                  @lcm-at-most-m |
+                                    at_most(lcm(a, b), m)
+                                    [by specialize divisorAtMost(lcm(a, b), m) lcm-positive m-positive lcm-divides-m]
+                                  @m-at-most-lcm |
+                                    at_most(m, lcm(a, b))
+                                    [by specialize divisorAtMost(m, lcm(a, b)) m-positive lcm-positive m-divides-lcm]
+                                  @conclusion-m-equals-lcm |
+                                    m = lcm(a, b)
+                                    [by specialize lessOrEqualAntisymmetric(m, lcm(a, b)) m-at-most-lcm lcm-at-most-m]
+                                }
+                              @m-least-implies-equal |
+                                (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+                                [by implies_intro given-m-least]
+                            }
+                          @m-divides-b-implies |
+                            divides(b, m) -> (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+                            [by implies_intro given-m-divides-b]
+                        }
+                      @m-divides-a-implies |
+                        divides(a, m) -> divides(b, m) -> (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+                        [by implies_intro given-m-divides-a]
+                    }
+                  @lcm-positive-implies |
+                    less_than(ZERO, lcm(a, b)) -> divides(a, m) -> divides(b, m) -> (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+                    [by implies_intro given-lcm-positive]
+                }
+              @m-positive-implies |
+                less_than(ZERO, m) -> less_than(ZERO, lcm(a, b)) -> divides(a, m) -> divides(b, m) -> (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+                [by implies_intro given-m-positive]
+            }
+          @discharge-m |
+            forall m: Int; less_than(ZERO, m) -> less_than(ZERO, lcm(a, b)) -> divides(a, m) -> divides(b, m) -> (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+            [by forall_intro generalize-m]
+        }
+      @discharge-b |
+        forall b, m: Int; less_than(ZERO, m) -> less_than(ZERO, lcm(a, b)) -> divides(a, m) -> divides(b, m) -> (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, m: Int; less_than(ZERO, m) -> less_than(ZERO, lcm(a, b)) -> divides(a, m) -> divides(b, m) -> (forall n: Int; divides(a, n) -> divides(b, n) -> divides(m, n)) -> m = lcm(a, b)
+    [by forall_intro generalize-a]
+qed
