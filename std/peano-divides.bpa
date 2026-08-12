@@ -37,6 +37,7 @@ theorem addIsAssociative = peano.addIsAssociative
 theorem addZeroRight = peano.addZeroRight
 theorem addIsCommutative = peano.addIsCommutative
 theorem addCancelLeft = peano.addCancelLeft
+theorem addLeftSwap = peano.addLeftSwap
 theorem trichotomy = ordering.trichotomy
 theorem lessThanAddCancelLeft = ordering.lessThanAddCancelLeft
 theorem notLessThanZero = ordering.notLessThanZero
@@ -242,15 +243,9 @@ proof
                         [by specialize dividesMul(d, b, div(a, b)) d-divides-b]
                       // r = sub(a, mul(b, q)): commute divModProperty to add(r, mul(b,q)) = a
                       // then subAddCancel gives sub(a, mul(b,q)) = r.
-                      @decomposition-commutes |
-                        add(mul(b, div(a, b)), mod(a, b)) = add(mod(a, b), mul(b, div(a, b)))
-                        [by specialize peano.addIsCommutative(mul(b, div(a, b)), mod(a, b))]
-                      @a-is-decomposition |
-                        a = add(mul(b, div(a, b)), mod(a, b))
-                        [by symmetry a-decomposes]
                       @a-is-remainder-plus-multiple |
                         a = add(mod(a, b), mul(b, div(a, b)))
-                        [by rewrite decomposition-commutes a-is-decomposition]
+                        [by arithmetic a-decomposes]
                       // sac: sub(add(r, x), x) = r  with x = mul(b,q)
                       @remainder-recovered-by-subtraction |
                         sub(add(mod(a, b), mul(b, div(a, b))), mul(b, div(a, b))) = mod(a, b)
@@ -377,31 +372,21 @@ proof
                                           @b-times-q2-includes-a-full-b |
                                             mul(b, q2) = add(mul(b, q1), add(mul(b, k), b))
                                             [by simplify q2-as-gap-sum mulAddDistribLeft mulSuccRight]
-                                          // reassociate RHS: add(add(mul(b,q1), X), r2) = add(mul(b,q1), add(X, r2))
-                                          @rhs-reassociates |
-                                            add(add(mul(b, q1), add(mul(b, k), b)), r2) = add(mul(b, q1), add(add(mul(b, k), b), r2))
-                                            [by specialize addIsAssociative(mul(b, q1), add(mul(b, k), b), r2)]
                                           // add(mul(b, q1), r1) = add(mul(b, q2), r2) = add(add(mul(b, q1), add(mul(b, k), b)), r2)
                                           //   = add(mul(b, q1), add(add(mul(b, k), b), r2))
                                           @decomposition-over-common-prefix |
                                             add(mul(b, q1), r1) = add(mul(b, q1), add(add(mul(b, k), b), r2))
-                                            [by chain decompositions-equal b-times-q2-includes-a-full-b rhs-reassociates]
+                                            [by arithmetic decompositions-equal b-times-q2-includes-a-full-b]
                                           // cancel mul(b, q1): r1 = add(add(mul(b,k), b), r2)
                                           @r1-contains-a-full-b |
                                             r1 = add(add(mul(b, k), b), r2)
                                             [by specialize addCancelLeft(mul(b, q1), r1, add(add(mul(b, k), b), r2)) decomposition-over-common-prefix]
                                           // now r1 contains a full b as a summand; rearrange to the
                                           // form add(b, Y) so the assumed less_than(r1, b) collapses.
-                                          @base-moves-to-front |
-                                            add(mul(b, k), b) = add(b, mul(b, k))
-                                            [by specialize addIsCommutative(mul(b, k), b)]
-                                          @base-prefix-reassociates |
-                                            add(add(b, mul(b, k)), r2) = add(b, add(mul(b, k), r2))
-                                            [by specialize addIsAssociative(b, mul(b, k), r2)]
-                                          // r1 = add(add(mul(b, k), b), r2) = add(add(b, mul(b, k)), r2) = add(b, add(mul(b, k), r2))
+                                          // r1 = add(add(mul(b, k), b), r2) = add(b, add(mul(b, k), r2))
                                           @r1-is-b-plus-remainder |
                                             r1 = add(b, add(mul(b, k), r2))
-                                            [by chain r1-contains-a-full-b base-moves-to-front base-prefix-reassociates]
+                                            [by arithmetic r1-contains-a-full-b]
                                           // less_than(r1, b) with r1 = add(b, Y): substitute, then cancel b.
                                           @r1-below-b-restated |
                                             less_than(r1, b)

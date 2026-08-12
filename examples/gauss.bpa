@@ -73,18 +73,15 @@ proof
             add(sumTo(succ(k)), sumTo(succ(k))) = add(add(sumTo(k), succ(k)), add(sumTo(k), succ(k)))
             [by simplify sumToSucc]
 
-          // regroup (s+c)+(s+c) into (s+s)+(c+c) — one step, no exchange lemma
-          @swapped |
-            add(add(sumTo(k), succ(k)), add(sumTo(k), succ(k))) = add(add(sumTo(k), sumTo(k)), add(succ(k), succ(k)))
-            [by assoc_commut]
+          // regroup (s+c)+(s+c) into (s+s)+(c+c) — one linear-arithmetic step
           @regrouped |
             add(sumTo(succ(k)), sumTo(succ(k))) = add(add(sumTo(k), sumTo(k)), add(succ(k), succ(k)))
-            [by rewrite swapped unfolded]
+            [by arithmetic unfolded]
 
           // fold the inductive hypothesis into the first summand
           @with-ih |
             add(sumTo(succ(k)), sumTo(succ(k))) = add(mul(k, succ(k)), add(succ(k), succ(k)))
-            [by rewrite inductive-hypothesis regrouped]
+            [by arithmetic regrouped inductive-hypothesis]
 
           // k*(k+1) + 2*(k+1) = (k+1)*(k+2): expand every product and right-nest
           // the additive residue; both sides normalize to succ(succ(k*k + 3k))
@@ -94,7 +91,7 @@ proof
 
           @succ-case |
             add(sumTo(succ(k)), sumTo(succ(k))) = mul(succ(k), succ(succ(k)))
-            [by rewrite target with-ih]
+            [by arithmetic with-ih target]
         }
       @induction-step-at-k |
         add(sumTo(k), sumTo(k)) = mul(k, succ(k)) -> add(sumTo(succ(k)), sumTo(succ(k))) = mul(succ(k), succ(succ(k)))

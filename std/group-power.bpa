@@ -99,9 +99,6 @@ proof
       @generalize-m |
         fix m: Int {
           // base case n = ZERO.
-          @add-m-zero |
-            add(m, ZERO) = m
-            [by specialize addZeroRight(m)]
           @power-zero |
             power(g, ZERO) = E
             [by specialize powerZero(g)]
@@ -114,7 +111,7 @@ proof
             [by chain power-zero op-with-identity]
           @add-m-zero-flipped |
             m = add(m, ZERO)
-            [by symmetry add-m-zero]
+            [by arithmetic]
           @base-case |
             op(power(g, m), power(g, ZERO)) = power(g, add(m, ZERO))
             [by chain base-lhs-collapses add-m-zero-flipped]
@@ -137,7 +134,7 @@ proof
                     [by hypothesis given-ih-succ]
                   @exponent-succ |
                     add(m, succ(k)) = succ(add(m, k))
-                    [by specialize addSuccRight(m, k)]
+                    [by arithmetic]
                   // g^(m + succ k) = g^(succ(m+k)) = op(g^(m+k), g).
                   @rhs-unfolds |
                     power(g, succ(add(m, k))) = op(power(g, add(m, k)), g)
@@ -182,7 +179,7 @@ proof
                     [by hypothesis given-ih-prev]
                   @exponent-prev |
                     add(m, prev(k)) = prev(add(m, k))
-                    [by specialize addPrevRight(m, k)]
+                    [by arithmetic]
                   // g^(m + prev k) = g^(prev(m+k)) = op(g^(m+k), g⁻¹).
                   @rhs-unfolds |
                     power(g, prev(add(m, k))) = op(power(g, add(m, k)), inverse(g))
@@ -243,7 +240,7 @@ proof
             [by specialize powerAdd(g, m, neg(m))]
           @exponent-cancels |
             add(m, neg(m)) = ZERO
-            [by specialize addNegRight(m)]
+            [by arithmetic]
           @power-zero |
             power(g, ZERO) = E
             [by specialize powerZero(g)]
@@ -460,7 +457,7 @@ proof
               // g^(−succ k) = g^(prev(−k)) = op(g^(−k), g⁻¹).
               @negated-exponent-steps-down |
                 neg(succ(k)) = prev(neg(k))
-                [by specialize negSucc(k)]
+                [by arithmetic]
               @negated-power-unfolds |
                 power(g, prev(neg(k))) = op(power(g, neg(k)), inverse(g))
                 [by specialize powerPrev(g, neg(k))]
@@ -494,7 +491,7 @@ proof
               // g^(−prev k) = g^(succ(−k)) = op(g^(−k), g).
               @negated-exponent-steps-up |
                 neg(prev(k)) = succ(neg(k))
-                [by specialize negPrev(k)]
+                [by arithmetic]
               @negated-power-unfolds |
                 power(g, succ(neg(k))) = op(power(g, neg(k)), g)
                 [by specialize powerSucc(g, neg(k))]
@@ -572,7 +569,7 @@ proof
               // −(−n) = n.
               @double-negation-cancels |
                 neg(neg(n)) = n
-                [by specialize negNeg(n)]
+                [by arithmetic]
               @conclusion-power-of-product |
                 power(op(g, h), n) = power(op(inverse(h), inverse(g)), neg(n))
                 [by chain double-negation-cancels inverse-base-pulls-out-sign reversed-product-is-inverse]
