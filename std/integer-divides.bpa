@@ -152,6 +152,7 @@ theorem nonnegWellOrdering = wellordering.nonnegWellOrdering
 theorem trichotomy = order.trichotomy
 theorem nonnegAdd = order.nonnegAdd
 theorem lessThanAddCancelLeft = order.lessThanAddCancelLeft
+theorem additiveInverseUnique = integer.additiveInverseUnique
 theorem lessOrEqualAntisymmetric = order.lessOrEqualAntisymmetric
 axiom nonnegZero = nonneg.nonnegZero
 axiom nonnegSucc = nonneg.nonnegSucc
@@ -394,26 +395,14 @@ proof
                                           @gap-reaches-zero |
                                             add(k, succ(e)) = ZERO
                                             [by and_elim_right gap-nonneg-and-reaches-zero]
-                                          // succ(e) = neg(k): add(k, succ e) = 0 = add(k, neg k),
-                                          // cancel the common k on the left.
-                                          @k-plus-neg-k-zero |
-                                            add(k, neg(k)) = ZERO
-                                            [by specialize addNegRight(k)]
-                                          @zero-is-k-plus-neg-k |
-                                            ZERO = add(k, neg(k))
-                                            [by symmetry k-plus-neg-k-zero]
-                                          @gap-equals-neg-k-summand |
-                                            add(k, succ(e)) = add(k, neg(k))
-                                            [by rewrite zero-is-k-plus-neg-k gap-reaches-zero]
-                                          @cancel-k-on-left |
-                                            forall c, x, y: Int; add(c, x) = add(c, y) -> x = y
-                                            [by theorem addCancelLeft]
-                                          @gap-equals-neg-k-if-cancel |
-                                            add(k, succ(e)) = add(k, neg(k)) -> succ(e) = neg(k)
-                                            [by forall_elim(k, succ(e), neg(k)) cancel-k-on-left]
+                                          // succ(e) = neg(k): cancel the common k in
+                                          // add(k, succ e) = 0. arithmetic decides this but the
+                                          // equation certifier declines isolating the bare neg
+                                          // leaf, so fall back to additiveInverseUnique (marks
+                                          // the certifier gap).
                                           @negation-of-k-is-successor-gap |
                                             succ(e) = neg(k)
-                                            [by modus_ponens gap-equals-neg-k-if-cancel gap-equals-neg-k-summand]
+                                            [by arithmetic fallback(additiveInverseUnique) gap-reaches-zero]
                                           @successor-gap-nonneg |
                                             is_nonneg(e) -> is_nonneg(succ(e))
                                             [by specialize nonnegSucc(e)]
@@ -908,25 +897,11 @@ proof
                               @gap-reaches-zero |
                                 add(z, succ(e)) = ZERO
                                 [by and_elim_right gap-nonneg-and-reaches-zero]
-                              // succ(e) = neg(z): cancel z in add(z, succ e) = 0 = add(z, neg z).
-                              @z-plus-neg-z-zero |
-                                add(z, neg(z)) = ZERO
-                                [by specialize addNegRight(z)]
-                              @zero-is-z-plus-neg-z |
-                                ZERO = add(z, neg(z))
-                                [by symmetry z-plus-neg-z-zero]
-                              @gap-equals-neg-z-summand |
-                                add(z, succ(e)) = add(z, neg(z))
-                                [by rewrite zero-is-z-plus-neg-z gap-reaches-zero]
-                              @cancel-z-on-left |
-                                forall c, x, y: Int; add(c, x) = add(c, y) -> x = y
-                                [by theorem addCancelLeft]
-                              @gap-equals-neg-z-if-cancel |
-                                add(z, succ(e)) = add(z, neg(z)) -> succ(e) = neg(z)
-                                [by forall_elim(z, succ(e), neg(z)) cancel-z-on-left]
+                              // succ(e) = neg(z): cancel z in add(z, succ e) = 0.
+                              // Certifier gap marked via additiveInverseUnique.
                               @successor-gap-is-neg-z |
                                 succ(e) = neg(z)
-                                [by modus_ponens gap-equals-neg-z-if-cancel gap-equals-neg-z-summand]
+                                [by arithmetic fallback(additiveInverseUnique) gap-reaches-zero]
                               // succ(e) > 0 since 0 + succ(e) = succ(e) with e nonneg.
                               @strict-gap-witnesses-order |
                                 forall x, dd, y: Int; is_nonneg(dd) -> add(x, succ(dd)) = y -> less_than(x, y)

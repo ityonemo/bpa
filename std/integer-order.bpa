@@ -31,6 +31,7 @@ theorem addSuccRight = ring.addSuccRight
 theorem addIsCommutative = ring.addIsCommutative
 theorem addIsAssociative = ring.addIsAssociative
 theorem addNegRight = ring.addNegRight
+theorem additiveInverseUnique = integer.additiveInverseUnique
 
 theorem addNegLeft = ring.addNegLeft
 // addLeftSwap feeds the `arithmetic` equation certifier (reorders a sum to bring
@@ -1843,19 +1844,11 @@ proof
               @gap-witnesses-zero |
                 add(n, succ(d0)) = ZERO
                 [by and_elim_right gap-nonneg-and-witnesses-zero]
-              // add(n, succ d0) = 0 = add(n, neg n); cancel n to pin neg n = succ d0.
-              @n-plus-neg-n-is-zero |
-                add(n, neg(n)) = ZERO
-                [by specialize addNegRight(n)]
-              @zero-is-n-plus-neg-n |
-                ZERO = add(n, neg(n))
-                [by symmetry n-plus-neg-n-is-zero]
-              @gap-equals-negation-suffix |
-                add(n, succ(d0)) = add(n, neg(n))
-                [by rewrite zero-is-n-plus-neg-n gap-witnesses-zero]
+              // add(n, succ d0) = 0 ⟹ succ d0 = neg n; certifier gap marked via
+              // additiveInverseUnique.
               @negation-is-gap |
                 succ(d0) = neg(n)
-                [by specialize addCancelLeft(n, succ(d0), neg(n)) gap-equals-negation-suffix]
+                [by arithmetic fallback(additiveInverseUnique) gap-witnesses-zero]
               @succ-gap-nonneg |
                 nonneg(succ(d0))
                 [by specialize nonnegSucc(d0) gap-nonneg]

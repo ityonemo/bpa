@@ -2604,6 +2604,18 @@ proof
     [by model(IntegerRing) ring.negMulNeg]
 qed
 
+// Uniqueness of the additive inverse over ℤ: k + x = 0 ⟹ x = −k, transferred
+// from the ring layer. The certified home for the recurring "cancel a common
+// prefix to a bare inverse" bookkeeping; `arithmetic` decides this shape but the
+// equation certifier declines isolating a bare neg leaf, so downstream sites cite
+// it as `[by arithmetic fallback(additiveInverseUnique) <the k+x=0 premise>]`.
+theorem additiveInverseUnique: forall k, x: Int; add(k, x) = ZERO -> x = neg(k)
+proof
+  @conclusion |
+    forall k, x: Int; add(k, x) = ZERO -> x = neg(k)
+    [by model(IntegerRing) ring.additiveInverseUnique]
+qed
+
 // -- subtraction: sub(a, b) = a + (-b) --------------------------------------
 // Over ℤ subtraction is TOTAL and trivial — just addition of the negation.
 // It lives here in the ring layer (it needs only `add`/`neg`), so every ℤ file

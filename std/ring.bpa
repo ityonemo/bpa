@@ -175,9 +175,20 @@ proof
     [by forall_intro generalize-a]
 qed
 
+// Uniqueness of the additive inverse: a right additive inverse is exactly neg.
+// This is `group.inverseUnique` transferred through the AdditiveGroup model
+// (op = add, E = ZERO, inverse = neg). Named here so downstream layers can cite
+// the "x + y = 0 ⟹ y = −x" cancellation directly instead of re-deriving it.
+theorem additiveInverseUnique: forall x, y: Ring; add(x, y) = ZERO -> y = neg(x)
+proof
+  @conclusion |
+    forall x, y: Ring; add(x, y) = ZERO -> y = neg(x)
+    [by model(AdditiveGroup) group.inverseUnique]
+qed
+
 // a·(-b) = -(a·b), by a·b + a·(-b) = a·(b + -b) = a·0 = 0, so a·(-b) is
-// THE additive inverse of a·b, hence = -(a·b) by the transferred `inverseUnique`
-// (a right inverse in the additive group is exactly neg).
+// THE additive inverse of a·b, hence = -(a·b) by the transferred
+// `additiveInverseUnique` (a right inverse in the additive group is exactly neg).
 theorem mulNegRight: forall a, b: Ring; mul(a, neg(b)) = neg(mul(a, b))
 proof
   @generalize-a |
@@ -200,11 +211,11 @@ proof
           @sum-of-products-is-zero |
             add(mul(a, b), mul(a, neg(b))) = ZERO
             [by rewrite product-over-sum product-over-sum-is-zero]
-          // inverseUnique: op(a, b) = E -> b = inverse(a). Additively:
-          // add(x, y) = ZERO -> y = neg(x). Apply at (mul(a,b), mul(a,neg(b))).
+          // additiveInverseUnique: add(x, y) = ZERO -> y = neg(x). Apply at
+          // (mul(a,b), mul(a,neg(b))).
           @inverse-unique |
             forall x, y: Ring; add(x, y) = ZERO -> y = neg(x)
-            [by model(AdditiveGroup) group.inverseUnique]
+            [by theorem additiveInverseUnique]
           @inverse-unique-at |
             add(mul(a, b), mul(a, neg(b))) = ZERO -> mul(a, neg(b)) = neg(mul(a, b))
             [by forall_elim(mul(a, b), mul(a, neg(b))) inverse-unique]
