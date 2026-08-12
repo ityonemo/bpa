@@ -35,6 +35,9 @@ pub fn addTests(
     // (the set-algebra proposition + De Morgan's laws proved by hand; the §1.2
     // exercises discharged in one line each by the `ext` tactic).
     ctx.okSilent(&.{ "check", "aata/1.2.1-sets.md" });
+    // §1.2.1 exercises migrated out: the five set-identity element-chases
+    // (symmetric difference &c.), each one line of `ext_quantified`.
+    ctx.okSilent(&.{ "check", "aata/1.2.1-sets-exercises.md" });
 
     // AATA functions: the literate transliteration of Chapter 1 §1.2.2
     // (composition associativity/preservation + invertible⟺bijective, BOTH
@@ -43,11 +46,17 @@ pub fn addTests(
     // total+unique preimage graph realized as a function). Verified; the one
     // theorem resting on that disclosed axiom.
     ctx.okSilent(&.{ "check", "aata/1.2.2-functions.md" });
+    // §1.2.2 exercises migrated out: Ex 25 ((g∘f)⁻¹ = f⁻¹∘g⁻¹) via inverse
+    // uniqueness; re-proves composeAssoc locally (not in std) so citations resolve.
+    ctx.okSilent(&.{ "check", "aata/1.2.2-functions-exercises.md" });
 
     // AATA relations: the FOL-tractable part of Chapter 1 §1.2.3 — the three
     // equivalence-projections + the "reflexivity is redundant" exercise. The
     // equivalence⇔partition correspondence is deferred (needs sets-of-sets).
     ctx.okSilent(&.{ "check", "aata/1.2.3-relations.md" });
+    // §1.2.3 relations exercises migrated out: Ex 24 (reflexivity is redundant
+    // under symmetry + transitivity + seriality).
+    ctx.okSilent(&.{ "check", "aata/1.2.3-relations-exercises.md" });
 
     // AATA equivalence classes/partitions (§1.2.3): classes are nonempty, [x]=[y]
     // iff x~y, any two are equal-or-disjoint, AND the classes FORM A PARTITION —
