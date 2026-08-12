@@ -237,16 +237,18 @@ fn polyCanon(self: *Elaborator, pr: PolyRules, x: TermId) ElabError!?simplify_mo
     // 5) cancel additive-inverse monomials (m + neg(m) → 0) in the sorted sum,
     //    emitting addNegRight/addNegLeft + zero-drop rewrites into the trace
     //    (kernel-checked). Reuses the linear engine's cancelInverses on the sum
-    //    (monomials are its leaves); a FULL symbols struct is required so its
-    //    parseTower classifies monomials as leaves (not numeral offsets) — succ/
-    //    prev/one absent would misparse. Self-guards when neg/zero absent (peano).
+    //    (monomials are its leaves). `one` is deliberately LEFT NULL: unlike the
+    //    arithmetic engine, polynomial does NOT reduce ONE to succ(ZERO), so a
+    //    bare `ONE` summand must ride as an opaque LEAF (isOpaqueAtom excludes
+    //    symbols.one) — passing one would make parseTower reject a sum containing
+    //    ONE and skip the cancellation (e.g. `1 + (t + neg(t))`). succ/prev stay
+    //    set so genuine numeral towers still fold. Self-guards when neg/zero absent.
     if (pr.neg_sym != null and pr.zero_sym != null) {
         const cancel_symbols: presburger_mod.Symbols = .{
             .add = pr.add_sym,
             .mul = pr.mul_sym,
             .neg = pr.neg_sym,
             .zero = pr.zero_sym,
-            .one = try self.wellKnownSym("ONE"),
             .succ = try self.wellKnownSym("succ"),
             .prev = try self.wellKnownSym("prev"),
         };
