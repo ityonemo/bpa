@@ -71,3 +71,145 @@ proof
     forall g: Grp; power(g, succ(ZERO)) = g
     [by forall_intro generalize-g]
 qed
+
+// -- Law (1): g^(m+n) = g^m · g^n -------------------------------------------
+// Bidirectional induction on n (g, m fixed). base n=0: add(m,0)=m and g^0=E
+// cancels on the right. succ step: add(m, succ k) = succ(add(m,k)); unfold power
+// twice and reassociate so the IH g^(m+k)=g^m·g^k lands. prev step: add(m, prev
+// k) = prev(add(m,k)); unfold power via powerPrev twice and reassociate the same
+// way, with inverse(g) as the trailing factor.
+theorem powerAdd: forall g: Grp; forall m, n: Int; op(power(g, m), power(g, n)) = power(g, add(m, n))
+proof
+  @generalize-g |
+    fix g: Grp {
+      @generalize-m |
+        fix m: Int {
+          // base case n = ZERO.
+          @add-m-zero |
+            add(m, ZERO) = m
+            [by specialize addZeroRight(m)]
+          @power-zero |
+            power(g, ZERO) = E
+            [by specialize powerZero(g)]
+          @op-with-identity |
+            op(power(g, m), E) = power(g, m)
+            [by specialize opIdentityRight(power(g, m))]
+          // op(g^m, g^0) = op(g^m, E) = g^m = g^(m+0).
+          @base-lhs-collapses |
+            op(power(g, m), power(g, ZERO)) = power(g, m)
+            [by chain power-zero op-with-identity]
+          @add-m-zero-flipped |
+            m = add(m, ZERO)
+            [by symmetry add-m-zero]
+          @base-case |
+            op(power(g, m), power(g, ZERO)) = power(g, add(m, ZERO))
+            [by chain base-lhs-collapses add-m-zero-flipped]
+
+          // reusable recursion facts.
+          @power-at-successor |
+            forall a: Grp; forall n: Int; power(a, succ(n)) = op(power(a, n), a)
+            [by axiom powerSucc]
+          @power-at-predecessor |
+            forall a: Grp; forall n: Int; power(a, prev(n)) = op(power(a, n), inverse(a))
+            [by axiom powerPrev]
+
+          // -- successor step: from n=k to n=succ(k) ---------------------------
+          @successor-step |
+            fix k: Int {
+              @given-ih-succ |
+                assume op(power(g, m), power(g, k)) = power(g, add(m, k)) {
+                  @ih-succ |
+                    op(power(g, m), power(g, k)) = power(g, add(m, k))
+                    [by hypothesis given-ih-succ]
+                  @exponent-succ |
+                    add(m, succ(k)) = succ(add(m, k))
+                    [by specialize addSuccRight(m, k)]
+                  // g^(m + succ k) = g^(succ(m+k)) = op(g^(m+k), g).
+                  @rhs-unfolds |
+                    power(g, succ(add(m, k))) = op(power(g, add(m, k)), g)
+                    [by forall_elim(g, add(m, k)) power-at-successor]
+                  // g^(succ k) = op(g^k, g).
+                  @right-factor |
+                    power(g, succ(k)) = op(power(g, k), g)
+                    [by forall_elim(g, k) power-at-successor]
+                  // op(g^m, g^(succ k)) = op(g^m, op(g^k, g)) = op(op(g^m, g^k), g)
+                  //   = op(g^(m+k), g) = g^(succ(m+k)) = g^(m + succ k).
+                  @reassociates |
+                    op(power(g, m), op(power(g, k), g)) = op(op(power(g, m), power(g, k)), g)
+                    [by symmetry op-assoc-succ]
+                  @op-assoc-succ |
+                    op(op(power(g, m), power(g, k)), g) = op(power(g, m), op(power(g, k), g))
+                    [by specialize opAssoc(power(g, m), power(g, k), g)]
+                  @lhs-expands |
+                    op(power(g, m), power(g, succ(k))) = op(power(g, m), op(power(g, k), g))
+                    [by rewrite right-factor op-refl-succ]
+                  @op-refl-succ |
+                    op(power(g, m), power(g, succ(k))) = op(power(g, m), power(g, succ(k)))
+                    [by reflexivity]
+                  @conclusion-succ |
+                    op(power(g, m), power(g, succ(k))) = power(g, add(m, succ(k)))
+                    [by chain lhs-expands reassociates ih-succ rhs-unfolds exponent-succ]
+                }
+              @ih-implies-succ |
+                op(power(g, m), power(g, k)) = power(g, add(m, k)) -> op(power(g, m), power(g, succ(k))) = power(g, add(m, succ(k)))
+                [by implies_intro given-ih-succ]
+            }
+          @successor-step-all-k |
+            forall k: Int; op(power(g, m), power(g, k)) = power(g, add(m, k)) -> op(power(g, m), power(g, succ(k))) = power(g, add(m, succ(k)))
+            [by forall_intro successor-step]
+
+          // -- predecessor step: from n=k to n=prev(k) ------------------------
+          @predecessor-step |
+            fix k: Int {
+              @given-ih-prev |
+                assume op(power(g, m), power(g, k)) = power(g, add(m, k)) {
+                  @ih-prev |
+                    op(power(g, m), power(g, k)) = power(g, add(m, k))
+                    [by hypothesis given-ih-prev]
+                  @exponent-prev |
+                    add(m, prev(k)) = prev(add(m, k))
+                    [by specialize addPrevRight(m, k)]
+                  // g^(m + prev k) = g^(prev(m+k)) = op(g^(m+k), g⁻¹).
+                  @rhs-unfolds |
+                    power(g, prev(add(m, k))) = op(power(g, add(m, k)), inverse(g))
+                    [by forall_elim(g, add(m, k)) power-at-predecessor]
+                  // g^(prev k) = op(g^k, g⁻¹).
+                  @right-factor |
+                    power(g, prev(k)) = op(power(g, k), inverse(g))
+                    [by forall_elim(g, k) power-at-predecessor]
+                  @op-assoc-prev |
+                    op(op(power(g, m), power(g, k)), inverse(g)) = op(power(g, m), op(power(g, k), inverse(g)))
+                    [by specialize opAssoc(power(g, m), power(g, k), inverse(g))]
+                  @reassociates |
+                    op(power(g, m), op(power(g, k), inverse(g))) = op(op(power(g, m), power(g, k)), inverse(g))
+                    [by symmetry op-assoc-prev]
+                  @lhs-expands |
+                    op(power(g, m), power(g, prev(k))) = op(power(g, m), op(power(g, k), inverse(g)))
+                    [by rewrite right-factor op-refl-prev]
+                  @op-refl-prev |
+                    op(power(g, m), power(g, prev(k))) = op(power(g, m), power(g, prev(k)))
+                    [by reflexivity]
+                  @conclusion-prev |
+                    op(power(g, m), power(g, prev(k))) = power(g, add(m, prev(k)))
+                    [by chain lhs-expands reassociates ih-prev rhs-unfolds exponent-prev]
+                }
+              @ih-implies-prev |
+                op(power(g, m), power(g, k)) = power(g, add(m, k)) -> op(power(g, m), power(g, prev(k))) = power(g, add(m, prev(k)))
+                [by implies_intro given-ih-prev]
+            }
+          @predecessor-step-all-k |
+            forall k: Int; op(power(g, m), power(g, k)) = power(g, add(m, k)) -> op(power(g, m), power(g, prev(k))) = power(g, add(m, prev(k)))
+            [by forall_intro predecessor-step]
+
+          @powers-add-over-all-n |
+            forall n: Int; op(power(g, m), power(g, n)) = power(g, add(m, n))
+            [by instantiate induction((fun n: Int => op(power(g, m), power(g, n)) = power(g, add(m, n)))) base-case successor-step-all-k predecessor-step-all-k]
+        }
+      @discharge-m |
+        forall m, n: Int; op(power(g, m), power(g, n)) = power(g, add(m, n))
+        [by forall_intro generalize-m]
+    }
+  @conclusion |
+    forall g: Grp; forall m, n: Int; op(power(g, m), power(g, n)) = power(g, add(m, n))
+    [by forall_intro generalize-g]
+qed
