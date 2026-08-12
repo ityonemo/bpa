@@ -900,10 +900,13 @@ expensive instance? Realize it into a named theorem and cite that instead.
 
 ### RULE: specialize
 
-`[by specialize THM(args) hyps...]` — apply a `forall`-quantified THEOREM (or
-axiom) `THM` in ONE step: it ∀-elims `THM` at each written-out `args` (peeling the
-universal prefix), then modus_ponens each trailing hyp ref against a leading `->`
-antecedent, left to right. The result must be the goal.
+`[by specialize HEAD(args) hyps...]` — apply a `forall`-quantified fact `HEAD` in
+ONE step: it ∀-elims `HEAD` at each written-out `args` (peeling the universal
+prefix), then modus_ponens each trailing hyp ref against a leading `->` antecedent,
+left to right. The result must be the goal. **`HEAD` may be a declared THEOREM/AXIOM
+name OR a LOCAL STEP LABEL** — a `forall`-shaped fact held in a proof step (an
+`assume`d, unpacked, or derived universal). So a local universal gets the same
+one-liner as a named lemma (no need to hand-roll `forall_elim` + `modus_ponens`).
 
 This is pure sugar over `forall_elim` + `modus_ponens` — it EMITS those kernel
 steps as a certificate the kernel re-checks, so it is fully verified and carries no

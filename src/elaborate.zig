@@ -1975,7 +1975,7 @@ pub const Elaborator = struct {
         return false;
     }
 
-    fn lowAncestorOrSelf(low: *const Lowering, a: kernel.BlockId, b: kernel.BlockId) bool {
+    pub fn lowAncestorOrSelf(low: *const Lowering, a: kernel.BlockId, b: kernel.BlockId) bool {
         var cur: ?kernel.BlockId = b;
         while (cur) |c| {
             if (c == a) return true;

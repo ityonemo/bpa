@@ -109,6 +109,7 @@ qed
 - `assoc_commut` / `assoc_commut_quantified` — reorder an A/C sum; bare = add/mul, `(assoc,comm,swap)` for a custom op; `_quantified` peels a `forall` prefix.
 - `assoc(assocLemma)` — associativity-ONLY equality (required lemma arg; no commutativity).
 - `polynomial(theory)` — nonlinear `add`/`mul` identity by canonical expansion.
+- `specialize HEAD(args) hyps…` — apply a `forall`-quantified fact in one step (∀-elim at args + modus_ponens each hyp; emits the kernel chain). `HEAD` may be a declared THEOREM/AXIOM name **or a LOCAL STEP LABEL** (a `forall`-shaped assumed/derived step) — no need to hand-roll `forall_elim`+`modus_ponens` for a local universal.
 - `ext` — extensionality reduction (sets/functions) → propositional residue.
 - `tautology refs…` — propositional consequence (decides iff goals; consumes iff/`and`/`or`/`->` hyps). Atom cap 16.
 - `arithmetic refs…` — linear arithmetic over Nat (Presburger). `arithmetic(module)` / `fallback(thm)` variants. `fallback(thm)` cites a proven theorem for a decide-but-can't-certify goal; the goal may be `thm` VERBATIM or a SPECIALIZED INSTANCE (the matcher infers the ∀-witnesses and discharges `thm`'s `->` antecedents from the step's refs, emitting a kernel-checked forall_elim+mp chain).

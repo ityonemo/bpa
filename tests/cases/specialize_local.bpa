@@ -1,0 +1,82 @@
+// specialize with a LOCAL STEP LABEL as its head — apply a `forall`-shaped fact
+// held in a proof step (an assumed / unpacked / derived universal), not only a
+// declared theorem/axiom. The step-label path forall_elims at the args and
+// modus_ponens the antecedents from the refs, exactly like the theorem path, with
+// no cite step and no taint (the local step is already kernel-checked).
+sort Nat
+const ZERO: Nat
+func succ(n: Nat): Nat
+pred p(n: Nat)
+pred q(n: Nat)
+pred r(n: Nat)
+
+// (1) apply an ASSUMED local universal: `forall x; p(x) -> q(x)` held as a
+// hypothesis step `the-rule`, then specialize it at ZERO discharging p(ZERO).
+theorem applyLocalHypothesis: (forall x: Nat; p(x) -> q(x)) -> p(ZERO) -> q(ZERO)
+proof
+  @given-rule |
+    assume forall x: Nat; p(x) -> q(x) {
+      @given-p |
+        assume p(ZERO) {
+          @the-rule |
+            forall x: Nat; p(x) -> q(x)
+            [by hypothesis given-rule]
+          @p-holds |
+            p(ZERO)
+            [by hypothesis given-p]
+          @q-holds |
+            q(ZERO)
+            [by specialize the-rule(ZERO) p-holds]
+        }
+      @p-implies-q |
+        p(ZERO) -> q(ZERO)
+        [by implies_intro given-p]
+    }
+  @conclusion |
+    (forall x: Nat; p(x) -> q(x)) -> p(ZERO) -> q(ZERO)
+    [by implies_intro given-rule]
+qed
+
+// (2) multi-arg + multi-hyp local head: `forall x, y; p(x) -> p(y) -> q(x)`.
+theorem applyLocalMulti: (forall x: Nat; forall y: Nat; p(x) -> p(y) -> q(x)) -> p(ZERO) -> q(ZERO)
+proof
+  @given-rule |
+    assume forall x: Nat; forall y: Nat; p(x) -> p(y) -> q(x) {
+      @given-p |
+        assume p(ZERO) {
+          @the-rule |
+            forall x: Nat; forall y: Nat; p(x) -> p(y) -> q(x)
+            [by hypothesis given-rule]
+          @p-holds |
+            p(ZERO)
+            [by hypothesis given-p]
+          @q-holds |
+            q(ZERO)
+            [by specialize the-rule(ZERO, ZERO) p-holds p-holds]
+        }
+      @p-implies-q |
+        p(ZERO) -> q(ZERO)
+        [by implies_intro given-p]
+    }
+  @conclusion |
+    (forall x: Nat; forall y: Nat; p(x) -> p(y) -> q(x)) -> p(ZERO) -> q(ZERO)
+    [by implies_intro given-rule]
+qed
+
+// (3) no-hyp local head: specialize a plain local ∀ down to a quantifier-free
+// instance (the result is just the instantiated step).
+theorem applyLocalNoHyp: (forall x: Nat; p(x)) -> p(ZERO)
+proof
+  @given-all |
+    assume forall x: Nat; p(x) {
+      @the-all |
+        forall x: Nat; p(x)
+        [by hypothesis given-all]
+      @p-zero |
+        p(ZERO)
+        [by specialize the-all(ZERO)]
+    }
+  @conclusion |
+    (forall x: Nat; p(x)) -> p(ZERO)
+    [by implies_intro given-all]
+qed

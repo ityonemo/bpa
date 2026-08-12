@@ -24,25 +24,48 @@ const TermId = term.TermId;
 
 pub fn justify(self: *Elaborator, low: *Lowering, block_id: kernel.BlockId, goal: TermId, c: ast.Step.Claim) ElabError!kernel.Justification {
     _ = goal;
-    const name_tok = c.schema.?; // parser guarantees presence for `specialize NAME(...)`
-    const stmt_id = try self.resolveStatementRef(name_tok);
-    const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
-    const cited_formula: TermId, const cite_just: kernel.Justification = switch (stmt) {
-        .axiom => |a| blk: {
-            if (a.is_hole) try self.inheritHoles(a.holes);
-            break :blk .{ a.formula, .{ .axiom_ref = .{ .stmt = stmt_id, .loc = name_tok.start } } };
-        },
-        .theorem => |t| blk: {
-            try self.inheritAccelerated(t.accelerated);
-            try self.inheritHoles(t.holes);
-            break :blk .{ t.formula, .{ .theorem_ref = .{ .stmt = stmt_id, .loc = name_tok.start } } };
-        },
-        .schema => return self.fail(name_tok.start, "'{s}' is a schema; use `instantiate`", .{self.text(name_tok)}),
-    };
-    // cite the theorem as a step, then forall_elim at each arg (peeling the ∀
-    // prefix — every arg but the last emits an intermediate step).
-    var cur = try self.emitStep(low, block_id, name_tok.start, cited_formula, cite_just);
-    var cur_formula = cited_formula;
+    const name_tok = c.schema.?; // parser guarantees presence for `specialize HEAD(...)`
+
+    // The head may be a LOCAL STEP LABEL (a `forall`-shaped fact held in a proof
+    // step) or a declared THEOREM/AXIOM name. Try the label FIRST — a local step
+    // is already kernel-checked, so we cite its own SRef (no new cite step, no
+    // taint inheritance) and seed the arg/hyp walk from it. Otherwise fall back to
+    // the statement-name path.
+    var cur: kernel.SRef = undefined;
+    var cur_formula: TermId = undefined;
+    const head_name = try self.internTok(name_tok);
+    if (low.labels.get(head_name)) |target| {
+        switch (target) {
+            .step => |sid| {
+                const s = low.steps.items[@intFromEnum(sid)];
+                if (!Elaborator.lowAncestorOrSelf(low, s.block, block_id)) {
+                    return self.fail(name_tok.start, "'{s}' is not accessible from this step (closed subproof)", .{self.text(name_tok)});
+                }
+                cur = .{ .id = sid, .loc = name_tok.start };
+                cur_formula = s.formula;
+            },
+            .block => return self.fail(name_tok.start, "'{s}' names a subproof; a step is required", .{self.text(name_tok)}),
+        }
+    } else {
+        const stmt_id = try self.resolveStatementRef(name_tok);
+        const stmt = self.env.statements.items[@intFromEnum(stmt_id)];
+        const cited_formula: TermId, const cite_just: kernel.Justification = switch (stmt) {
+            .axiom => |a| blk: {
+                if (a.is_hole) try self.inheritHoles(a.holes);
+                break :blk .{ a.formula, .{ .axiom_ref = .{ .stmt = stmt_id, .loc = name_tok.start } } };
+            },
+            .theorem => |t| blk: {
+                try self.inheritAccelerated(t.accelerated);
+                try self.inheritHoles(t.holes);
+                break :blk .{ t.formula, .{ .theorem_ref = .{ .stmt = stmt_id, .loc = name_tok.start } } };
+            },
+            .schema => return self.fail(name_tok.start, "'{s}' is a schema; use `instantiate`", .{self.text(name_tok)}),
+        };
+        // cite the theorem/axiom as a step to peel from (local steps skip this —
+        // the step is already materialized).
+        cur = try self.emitStep(low, block_id, name_tok.start, cited_formula, cite_just);
+        cur_formula = cited_formula;
+    }
     // Walk the cited formula by STRUCTURE, threading args and hyps in order: at a
     // `forall` consume the next arg (forall_elim); at a leading `->` consume the
     // next hyp (modus_ponens). This handles the interleaved guarded shape

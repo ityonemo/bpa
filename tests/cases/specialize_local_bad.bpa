@@ -1,0 +1,24 @@
+// NEGATIVE: `specialize` with a local step head that is NOT universally quantified
+// — supplying an argument has nothing to peel, so it must be rejected with the
+// existing "not universally quantified here (too many arguments)" error, now
+// reachable via a step-label head. Guards against the step-head path silently
+// accepting a non-forall fact.
+sort Nat
+const ZERO: Nat
+pred p(n: Nat)
+
+theorem bad: p(ZERO) -> p(ZERO)
+proof
+  @given-p |
+    assume p(ZERO) {
+      @p-holds |
+        p(ZERO)
+        [by hypothesis given-p]
+      @nonsense |
+        p(ZERO)
+        [by specialize p-holds(ZERO)]
+    }
+  @conclusion |
+    p(ZERO) -> p(ZERO)
+    [by implies_intro given-p]
+qed

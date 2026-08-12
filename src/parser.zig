@@ -399,14 +399,15 @@ pub const Parser = struct {
                     .identifier, .keyword_axiom, .keyword_theorem, .keyword_model => self.advance(),
                     else => return self.fail("expected a rule name, got '{s}'", .{self.describe()}),
                 };
-                // `instantiate NAME(args)` cites a schema by name; `specialize
-                // NAME(args)` cites a forall-quantified THEOREM by name the same way
-                // (the theorem to specialize goes in the `schema` slot).
+                // `instantiate NAME(args)` cites a schema by name (always a plain
+                // identifier). `specialize HEAD(args)` cites a forall-quantified
+                // THEOREM/AXIOM by name OR a local `forall`-shaped STEP by its label
+                // — so its head parses like a reference (plain OR kebab identifier).
                 var schema: ?Token = null;
-                if (std.mem.eql(u8, self.text(rule), "instantiate") or
-                    std.mem.eql(u8, self.text(rule), "specialize"))
-                {
+                if (std.mem.eql(u8, self.text(rule), "instantiate")) {
                     schema = try self.expect(.identifier);
+                } else if (std.mem.eql(u8, self.text(rule), "specialize")) {
+                    schema = try self.expectLabelRef();
                 }
                 // Theory-parameterized tactics take `(theory)`: the named
                 // module whose scope their vocabulary + lemmas resolve against
