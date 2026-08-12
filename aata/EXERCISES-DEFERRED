@@ -80,4 +80,65 @@ obstacle; see `aata/EXERCISE-RCA`.
 
 ---
 
-_(Chapter 3 deferrals are appended as those exercise files are authored.)_
+---
+
+## Chapter 3 (Groups)
+
+### ℤ_n (integers mod n as a concrete group/ring sort) — the biggest Ch3 blocker
+Note: §3.1's exercises restate many ℤ_n facts as ℤ-congruence `n | (x−y)` and ARE
+proved (see `aata/3.1-integers-mod-n-exercises.md`); only the ones needing ℤ_n as
+an actual finite sort / the unit group U(n) remain deferred.
+- §3.1 Ex 26 — U(n) has an element k with k²=1, k≠1 (n>2) — needs U(n).
+- §3.2 Ex 1, 6, 26 — compute/tabulate in ℤ_n and U(n).
+- §3.2 Ex 12 — ℤ_n is a group (as a sort).
+- §3.4-era Ex 34, 38 — subgroups of ℤ₃×ℤ₃ and ℤ_n×ℤ_n (also needs direct products).
+
+### finite sets + explicit enumeration / Cayley tables / symmetry groups
+- §3.1/§3.2 Ex 2, 3, 4, 5 — Cayley tables; symmetries of rectangle, rhombus,
+  square (dihedral groups D_n as finite symmetry groups).
+- §3.2 Ex 17, 18 — count groups of order 8; the n! permutations of n objects.
+- §3.2 Ex 32 — a finite group of even order has an element of order 2 (needs
+  finite-group order/cardinality + a pairing argument).
+
+### matrices (GL₂ / SL₂ / determinant / trace / Heisenberg)
+- §3.2 Ex 8, 9, 10, 11 — non-commuting matrices; SL₂ closed; the Heisenberg
+  group; determinant is multiplicative.
+- §3.3 Ex 40, 42, 43 — SO(2); trace-0 matrices; SL₂(ℤ).
+
+### reals / ℝ* / quadratic fields
+- §3.2 Ex 7, 13, 14, 15 — ℝ∖{−1} under a∗b=a+b+ab; ℝ*; ℝ*×ℤ; an order-6
+  nonabelian group.
+- §3.3 Ex 37, 41 — ⟨powers of 2⟩ in ℝ*; a+b√2 group.
+
+### ℂ / unit circle
+- §3.3 Ex 39 — the circle group 𝕋.
+
+### permutation groups S_n
+- §3.3 Ex 35 — subgroups of S₃.
+- §3.3 Ex 46, 52 — H∪K-not-a-subgroup and proper-subgroup-of-nonabelian
+  counterexamples (the standard disproofs use S₃).
+
+### dihedral D_n
+- §3.3 Ex 36 — subgroups of D₄.
+
+### quaternion group Q₈
+- §3.3 Ex 44 — subgroups of Q₈.
+
+### direct products + isomorphism
+- §3.3 Ex 34, 38 — subgroups of ℤ₃×ℤ₃, ℤ_n×ℤ_n.
+
+### indexed group product (fold over a list of group elements)
+- §3.2 Ex 27 — inverse of g₁g₂…gₙ is gₙ⁻¹…g₁⁻¹ (the binary case (ab)⁻¹=b⁻¹a⁻¹ is
+  `invProduct`, cited in the main text §3.2; the n-ary form needs an indexed
+  product).
+
+### product set HK
+- §3.3 Ex 47 — is HK = {hk} a subgroup? (needs the product set + a concrete
+  nonabelian group for the disproof).
+
+### "give an example" in an unmodeled structure
+- §3.3 Ex 50 — an infinite group whose nontrivial subgroups are all infinite.
+
+_(Any exercise an agent marked Deferred(attempted) or provided an RCA for is also
+noted in `aata/EXERCISE-RCA`.)_
+

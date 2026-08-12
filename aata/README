@@ -77,11 +77,17 @@ proofs follow its arguments.
 
 | File | Chapter / section | Status |
 |---|---|---|
-| `1.2.1-sets.md` | 1 — Preliminaries, §1.2.1 Set Theory | ✅ full transliteration; set algebra + De Morgan (hand proofs) + §1.2 exercises via `ext` (19 theorems), kernel-checked |
-| `1.2.2-functions.md` | 1 — Preliminaries, §1.2.2 Cartesian Products and Mappings | ✅ full transliteration; composition associativity/preservation + invertible⇒bijective forward + the (g∘f)⁻¹ = f⁻¹∘g⁻¹ exercise (11 theorems), kernel-checked; bijective⇒invertible marked (needs a choice operator) |
-| `1.2.3-relations.md` | 1 — Preliminaries, §1.2.3 Equivalence Relations and Partitions | ◑ FOL-tractable part; the three equivalence-projections + the "reflexivity is redundant" exercise (4 theorems), kernel-checked |
-| `1.2.3-partitions.md` | 1 — Preliminaries, §1.2.3 Equivalence Classes and Partitions | ◑ the tractable heart via `classOf(x): Set` — classes nonempty, [x]=[y] iff x∼y, equal-or-disjoint (3 theorems, kernel-checked); the "form a partition" packaging (a set of sets) stays a `hole` (needs `--draft`; sets-of-sets deferred) |
-| `3.2-groups.md` | 3 — Groups, §3.2 Definitions and Examples | ✅ full transliteration; definition + 7 examples + basic-properties propositions (10 theorems) + Exercise 31, verified pure |
+| `1.2.1-sets.md` | 1 — Preliminaries, §1.2.1 Set Theory | ✅ full transliteration; set algebra + De Morgan (hand proofs), kernel-checked. Exercises → `1.2.1-sets-exercises.md`. |
+| `1.2.2-functions.md` | 1 — Preliminaries, §1.2.2 Cartesian Products and Mappings | ✅ full transliteration; composition associativity/preservation + invertible⇒bijective forward, kernel-checked; bijective⇒invertible marked (needs a choice operator). Exercises → `1.2.2-functions-exercises.md`. |
+| `1.2.3-relations.md` | 1 — Preliminaries, §1.2.3 Equivalence Relations and Partitions | ◑ FOL-tractable part; the three equivalence-projections, kernel-checked. Exercises → `1.2.3-relations-exercises.md`. |
+| `1.2.3-partitions.md` | 1 — Preliminaries, §1.2.3 Equivalence Classes and Partitions | ✅ the tractable heart via `classOf(x): Set` — classes nonempty, [x]=[y] iff x∼y, equal-or-disjoint, AND the classes form a partition (via `std/collection.bpa`), kernel-checked, no holes |
+| `2.1-induction.md` | 2 — The Integers, §2.1 Mathematical Induction | ✅ induction / strong induction / well-ordering. Exercises → `2.1-induction-exercises.md`. |
+| `2.2-division-algorithm.md` | 2 — The Integers, §2.2 The Division Algorithm | ✅ existence + uniqueness inline. Exercises → `2.2-division-algorithm-exercises.md`. |
+| `2.3-primes.md` | 2 — The Integers, §2.2 GCD & Primes | ✅ GCD/Bézout + Euclid's Lemma + FTA. Exercises → `2.3-primes-exercises.md`. |
+| `3.1-integers-mod-n.md` | 3 — Groups, §3.1 Integers mod n | ✅ the ℤ_n arithmetic proposition (all six parts) as ℤ-congruence. Exercises → `3.1-integers-mod-n-exercises.md`. |
+| `3.2-groups.md` | 3 — Groups, §3.2 Definitions and Examples | ✅ full transliteration; definition + 7 examples + basic-properties propositions + Laws of Exponents (`std/group-power.bpa`), verified pure. Exercises → `3.2-groups-exercises.md`. |
+| `3.3-subgroups.md` | 3 — Groups, §3.3 Subgroups | ✅ subgroup definition + one-step test + intersection. Exercises → `3.3-subgroups-exercises.md`. |
+| `*-exercises.md` | — the segregated chapter exercises | ✅ each Judson end-of-chapter exercise is proved (`std` used liberally), forwarded to a main-text proof, skipped (a brute numeric computation), or **deferred** with a prose note naming the missing machinery. The master deferred index, grouped by machinery, is `EXERCISES-DEFERRED`. |
 
 The set theory rests on `std/set.bpa` (sets over an abstract `Universe` of
 elements, fixed membershipwise, with extensionality). Every identity is proved
@@ -112,8 +118,6 @@ chapters will motivate:
 - a concrete **ℤ_n / U(n)** model (modular arithmetic as a group sort),
 - **finite sets + cardinality** (counting arguments, Cayley tables, Lagrange),
 - **matrix / GLₙ** constructions and the reals,
-- a **group power** `gⁿ` (recursive over a Nat exponent) for the ℕ-indexed
-  exercises,
 - **sets-of-sets / quotient structure + a relation sort** — Chapter 1's §1.2.3
   (equivalence relations ⟺ partitions) needs equivalence classes `[a]` and the
   partition `X = ⋃[x]`, which `std/set.bpa`'s flat `member : Universe → Set`
