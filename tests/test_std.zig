@@ -108,6 +108,12 @@ pub fn addTests(
     // powAdd: pow(g, m+n) = op(pow(g,m), pow(g,n)) by induction on n.
     ctx.okSilent(&.{ "check", "std/group-power.bpa" });
 
+    // finite group products (std/group-sequence.bpa): models std/sequence.bpa's
+    // fold with op/E to get productUpTo(s, n) = g0·…·g_{n-1}, and proves the n-ary
+    // inverse law invOfProduct: inv(g0·…·g_{n-1}) = g_{n-1}⁻¹·…·g0⁻¹ (Judson §3.2
+    // Ex 27) by induction, step = binary invProduct. Never cites opCommutative.
+    ctx.okSilent(&.{ "check", "std/group-sequence.bpa" });
+
     // subgroups (std/subgroup.bpa, Judson §3.3): a STANDALONE theory (declares its own
     // parent group) — the subgroup criteria, the one-step test (both directions), the
     // intersection, and the five group axioms proven on the subgroup (what a group-

@@ -1,0 +1,138 @@
+// std/group-sequence.bpa — the finite PRODUCT of a sequence of group elements,
+// and the n-ary inverse-of-a-product law.
+//
+// This MODELS the abstract fold of std/sequence.bpa with Value:Grp, combine:op,
+// IDENTITY:E, foldUpTo:productUpTo — the ℕ-indexed left-fold `productUpTo(s, n) =
+// g₀·g₁·⋯·gₙ₋₁` of the first n entries of a group-valued sequence. It is the group
+// twin of std/integer-sequence.bpa (which models the same fold with mul/ONE).
+//
+// On top of the fold it proves the n-ary inverse-of-a-product law (Judson §3.2
+// Ex 27): (g₀·g₁·⋯·gₙ₋₁)⁻¹ = gₙ₋₁⁻¹·⋯·g₀⁻¹. The right-hand side is a SECOND fold,
+// `revProductUpTo`, that PREPENDS each inverse (the opposite nesting to
+// productUpTo); the law is an induction on n whose step is the binary invProduct.
+// The proof never cites opCommutative, so it holds for every group, abelian or not.
+
+import group <<< "std/group.bpa"
+import sequence <<< "std/sequence.bpa"
+import peano <<< "std/peano.bpa"
+
+sort Grp = group.Grp
+const E = group.E
+func op = group.op
+func inverse = group.inverse
+axiom opIdentityLeft = group.opIdentityLeft
+theorem invProduct = group.invProduct
+theorem inverseUnique = group.inverseUnique
+
+sort Nat = peano.Nat
+const ZERO = peano.ZERO
+func succ = peano.succ
+axiom induction = peano.induction
+
+// -- the finite group product (models sequence.bpa's fold) ------------------
+
+sort Seq
+func at(s: Seq, i: Nat): Grp
+func productUpTo(s: Seq, k: Nat): Grp
+axiom productUpToZero: forall s: Seq; productUpTo(s, ZERO) = E
+axiom productUpToSucc: forall s: Seq; forall k: Nat; productUpTo(s, succ(k)) = op(productUpTo(s, k), at(s, k))
+
+model GroupSeq {
+  sequence.Nat: Nat
+  sequence.ZERO: ZERO
+  sequence.succ: succ
+  sequence.Value: Grp
+  sequence.Seq: Seq
+  sequence.at: at
+  sequence.IDENTITY: E
+  sequence.combine: op
+  sequence.foldUpTo: productUpTo
+  sequence.foldZero <- productUpToZero
+  sequence.foldSucc <- productUpToSucc
+}
+
+// -- the reversed product of inverses ---------------------------------------
+//
+// revProductUpTo(s, n) = at(s,n-1)⁻¹ · … · at(s,0)⁻¹ — a PREPEND fold: each step
+// multiplies the new inverse on the LEFT (opposite nesting to productUpTo). This
+// is exactly the shape the n-ary inverse takes; it is its own recursion rather
+// than a model of sequence.bpa's append-fold.
+func revProductUpTo(s: Seq, k: Nat): Grp
+axiom revProductZero: forall s: Seq; revProductUpTo(s, ZERO) = E
+axiom revProductSucc: forall s: Seq; forall k: Nat; revProductUpTo(s, succ(k)) = op(inverse(at(s, k)), revProductUpTo(s, k))
+
+// -- the identity is its own inverse ----------------------------------------
+
+// inverse(E) = E — from op(E, E) = E (left identity at E) and inverseUnique.
+theorem inverseIdentity: inverse(E) = E
+proof
+  @identity-times-itself |
+    op(E, E) = E
+    [by specialize opIdentityLeft(E)]
+  @identity-is-its-own-inverse |
+    E = inverse(E)
+    [by specialize inverseUnique(E, E) identity-times-itself]
+  @conclusion |
+    inverse(E) = E
+    [by symmetry identity-is-its-own-inverse]
+qed
+
+// -- the n-ary inverse-of-a-product law (Ex 27) -----------------------------
+
+// (g₀·⋯·gₙ₋₁)⁻¹ = gₙ₋₁⁻¹·⋯·g₀⁻¹, by induction on n.
+//   base: inv(productUpTo s 0) = inv(E) = E = revProductUpTo s 0.
+//   step: inv(productUpTo s (k+1)) = inv(op(P, aₖ)) = op(aₖ⁻¹, inv P)   [invProduct]
+//                                  = op(aₖ⁻¹, revProductUpTo s k)        [IH]
+//                                  = revProductUpTo s (k+1).             [revProductSucc]
+theorem invOfProduct: forall s: Seq; forall n: Nat;
+  inverse(productUpTo(s, n)) = revProductUpTo(s, n)
+proof
+  @generalize-s |
+    fix s: Seq {
+      @base-case |
+        inverse(productUpTo(s, ZERO)) = revProductUpTo(s, ZERO)
+        [by simplify productUpToZero revProductZero inverseIdentity]
+      @induction-step |
+        fix k: Nat {
+          @given-inductive-hypothesis |
+            assume inverse(productUpTo(s, k)) = revProductUpTo(s, k) {
+              @inductive-hypothesis |
+                inverse(productUpTo(s, k)) = revProductUpTo(s, k)
+                [by hypothesis given-inductive-hypothesis]
+              @product-at-successor |
+                productUpTo(s, succ(k)) = op(productUpTo(s, k), at(s, k))
+                [by specialize productUpToSucc(s, k)]
+              @inverse-of-the-binary-product |
+                inverse(op(productUpTo(s, k), at(s, k))) = op(inverse(at(s, k)), inverse(productUpTo(s, k)))
+                [by specialize invProduct(productUpTo(s, k), at(s, k))]
+              @inverse-at-successor |
+                inverse(productUpTo(s, succ(k))) = op(inverse(at(s, k)), inverse(productUpTo(s, k)))
+                [by rewrite product-at-successor inverse-of-the-binary-product]
+              @inverse-at-successor-folds-the-tail |
+                inverse(productUpTo(s, succ(k))) = op(inverse(at(s, k)), revProductUpTo(s, k))
+                [by rewrite inductive-hypothesis inverse-at-successor]
+              @reversed-product-at-successor |
+                revProductUpTo(s, succ(k)) = op(inverse(at(s, k)), revProductUpTo(s, k))
+                [by specialize revProductSucc(s, k)]
+              @conclusion-inductive-step |
+                inverse(productUpTo(s, succ(k))) = revProductUpTo(s, succ(k))
+                [by chain inverse-at-successor-folds-the-tail reversed-product-at-successor]
+            }
+          @discharge |
+            inverse(productUpTo(s, k)) = revProductUpTo(s, k) ->
+              inverse(productUpTo(s, succ(k))) = revProductUpTo(s, succ(k))
+            [by implies_intro given-inductive-hypothesis]
+        }
+      @induction-step-for-all-k |
+        forall k: Nat;
+          inverse(productUpTo(s, k)) = revProductUpTo(s, k) ->
+          inverse(productUpTo(s, succ(k))) = revProductUpTo(s, succ(k))
+        [by forall_intro induction-step]
+      @conclusion-for-s |
+        forall n: Nat; inverse(productUpTo(s, n)) = revProductUpTo(s, n)
+        [by instantiate induction((fun k: Nat => inverse(productUpTo(s, k)) = revProductUpTo(s, k))) base-case induction-step-for-all-k]
+    }
+  @conclusion |
+    forall s: Seq; forall n: Nat; inverse(productUpTo(s, n)) = revProductUpTo(s, n)
+    [by forall_intro generalize-s]
+qed
