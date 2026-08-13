@@ -115,9 +115,10 @@ pub fn addTests(
     ctx.okSilent(&.{ "check", "std/group-sequence.bpa" });
 
     // finite integer sums (std/integer-sum.bpa): the SECOND fold over sequence.bpa
-    // (combine:add, IDENTITY:ZERO) → sumUpTo(s, n) = Σ_{i<n} at(s,i). Declares the
-    // identity sequence (at(idSeq,i)=i) and proves the Gauss sum in division-free
-    // form 2·Σ_{i<n} i = n·(n-1) by nonneg-induction (the /2 needs ℚ, not ℤ).
+    // (combine:add, IDENTITY:ZERO) → sumUpTo(s, n) = Σ_{i<n} at(s,i). Identity-style
+    // sequences (at(i)=i, i², i³, (3i+1)X) + nonneg-induction prove §2.1 Ex 1/2/4 and
+    // the Gauss sum in DIVISION-FREE form (6·Σi²=(n-1)n(2n-1), 4·Σi³=(n(n-1))², etc.)
+    // — ℚ not needed, only the fractional notation would be; ring steps by polynomial.
     ctx.okSilent(&.{ "check", "std/integer-sum.bpa" });
 
     // subgroups (std/subgroup.bpa, Judson §3.3): a STANDALONE theory (declares its own
