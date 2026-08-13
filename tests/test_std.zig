@@ -114,6 +114,12 @@ pub fn addTests(
     // Ex 27) by induction, step = binary invProduct. Never cites opCommutative.
     ctx.okSilent(&.{ "check", "std/group-sequence.bpa" });
 
+    // finite integer sums (std/integer-sum.bpa): the SECOND fold over sequence.bpa
+    // (combine:add, IDENTITY:ZERO) → sumUpTo(s, n) = Σ_{i<n} at(s,i). Declares the
+    // identity sequence (at(idSeq,i)=i) and proves the Gauss sum in division-free
+    // form 2·Σ_{i<n} i = n·(n-1) by nonneg-induction (the /2 needs ℚ, not ℤ).
+    ctx.okSilent(&.{ "check", "std/integer-sum.bpa" });
+
     // subgroups (std/subgroup.bpa, Judson §3.3): a STANDALONE theory (declares its own
     // parent group) — the subgroup criteria, the one-step test (both directions), the
     // intersection, and the five group axioms proven on the subgroup (what a group-

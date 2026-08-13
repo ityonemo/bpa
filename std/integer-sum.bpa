@@ -1,0 +1,233 @@
+// std/integer-sum.bpa — the finite SUM of an integer sequence (Σ), the second
+// fold over std/sequence.bpa (the first, in std/integer-sequence.bpa, is the
+// product). It MODELS the abstract fold with Value:Int, combine:add, IDENTITY:ZERO
+// → sumUpTo(s, n) = at(s,0) + at(s,1) + … + at(s,n-1), the sum of the first n
+// entries. The index domain is NonNegZ (the nonneg integers, a Peano image), so
+// every index sits under an is_nonneg guard — the same nonneg-induction discipline
+// std/integer-sequence.bpa uses.
+//
+// It also declares the IDENTITY SEQUENCE `idSeq` (at(idSeq, i) = i), so
+// sumUpTo(idSeq, n) = 0 + 1 + … + (n-1) = Σ_{i<n} i is a concrete finite sum, and
+// proves the Gauss identity in DIVISION-FREE form: 2·Σ_{i<n} i = n·(n-1). (The
+// classic n(n-1)/2 needs rational division, which the ℤ kernel lacks; multiplying
+// through by 2 keeps it inside ℤ.)
+
+import sequence <<< "std/sequence.bpa"
+import integer <<< "std/integer.bpa"
+import order <<< "std/integer-order.bpa"
+import wellordering <<< "std/integer-wellordering.bpa"
+
+sort Int = integer.Int
+const ZERO = integer.ZERO
+const ONE = integer.ONE
+func succ = integer.succ
+func prev = integer.prev
+func add = integer.add
+func mul = integer.mul
+func neg = integer.neg
+
+sort NonNegZ = integer.NonNeg
+pred is_nonneg = order.nonneg
+axiom nonnegZero = order.nonnegZero
+axiom nonnegSucc = order.nonnegSucc
+axiom nonnegInduction = order.nonnegInduction
+
+axiom mulZeroLeft = integer.mulZeroLeft
+theorem mulZeroRight = order.mulZeroRight
+
+// ring vocabulary the arithmetic/polynomial accelerants resolve for the Gauss
+// algebra (distribution, commutativity, the numeral/prev/succ folds).
+axiom prevSucc = integer.prevSucc
+axiom oneIsSuccZero = integer.oneIsSuccZero
+axiom addZeroLeft = integer.addZeroLeft
+theorem addZeroRight = integer.addZeroRight
+theorem addIsCommutative = integer.addIsCommutative
+theorem addIsAssociative = integer.addIsAssociative
+theorem mulOneRight = integer.mulOneRight
+theorem mulAddDistribLeft = integer.mulAddDistribLeft
+theorem mulAddDistribRight = integer.mulAddDistribRight
+theorem mulIsCommutative = order.mulIsCommutative
+theorem mulIsAssociative = integer.mulIsAssociative
+axiom mulSuccLeft = integer.mulSuccLeft
+theorem mulSuccRight = integer.mulSuccRight
+theorem addLeftSwap = integer.addLeftSwap
+theorem mulLeftSwap = integer.mulLeftSwap
+theorem mulOneLeft = integer.mulOneLeft
+theorem mulPrevRight = integer.mulPrevRight
+// neg/sub folds so `polynomial` can expand and cancel the -k term.
+theorem negAdd = integer.negAdd
+theorem negNeg = integer.negNeg
+theorem mulNegLeft = order.mulNegLeft
+theorem mulNegRight = integer.mulNegRight
+theorem addNegRight = integer.addNegRight
+theorem addNegLeft = integer.addNegLeft
+axiom definitionOfSubtraction = order.definitionOfSubtraction
+axiom negZero = integer.negZero
+axiom negSucc = integer.negSucc
+axiom negPrev = integer.negPrev
+
+// -- the finite sum (models sequence.bpa's fold with add/ZERO) --------------
+
+sort Seq
+func at(s: Seq, i: NonNegZ): Int
+func sumUpTo(s: Seq, k: NonNegZ): Int
+axiom sumUpToZero: forall s: Seq; sumUpTo(s, ZERO) = ZERO
+axiom sumUpToSucc: forall s: Seq; forall k: NonNegZ; sumUpTo(s, succ(k)) = add(sumUpTo(s, k), at(s, k))
+
+model IntSum {
+  sequence.Nat: NonNegZ
+  sequence.ZERO: ZERO
+  sequence.succ: succ
+  sequence.Value: Int
+  sequence.Seq: Seq
+  sequence.at: at
+  sequence.IDENTITY: ZERO
+  sequence.combine: add
+  sequence.foldUpTo: sumUpTo
+  sequence.foldZero <- sumUpToZero
+  sequence.foldSucc <- sumUpToSucc
+}
+
+// nonneg(succ(ZERO)) as an in-scope fact for the length-one concrete index.
+theorem nonnegSuccZero: is_nonneg(succ(ZERO))
+proof
+  @zero-nonneg |
+    is_nonneg(ZERO)
+    [by axiom nonnegZero]
+  @conclusion |
+    is_nonneg(succ(ZERO))
+    [by specialize nonnegSucc(ZERO) zero-nonneg]
+qed
+
+// the length-one sum combines the identity with the sole entry: sumUpTo(s, 1) =
+// add(ZERO, at(s, 0)). Transferred from the abstract fold through IntSum.
+theorem sumOneCombinesIdentity: forall s: Seq; sumUpTo(s, succ(ZERO)) = add(ZERO, at(s, ZERO))
+proof
+  @conclusion |
+    forall s: Seq; sumUpTo(s, succ(ZERO)) = add(ZERO, at(s, ZERO))
+    [by model(IntSum) sequence.foldOneCombinesIdentity]
+qed
+
+// -- the identity sequence and the Gauss sum --------------------------------
+
+// idSeq: the sequence whose i-th entry is i itself. Then sumUpTo(idSeq, n) is the
+// running sum 0 + 1 + … + (n-1) = Σ_{i<n} i.
+const idSeq: Seq
+axiom idSeqEntry: forall i: NonNegZ; at(idSeq, i) = i
+
+// Gauss (division-free): 2·Σ_{i<n} i = n·(n-1) = mul(n, prev(n)). Nonneg-induction
+// on n with the guard folded into the predicate.
+//   base n=0:  2·0 = 0 = 0·(0-1).
+//   step:      2·Σ_{i<k+1} = 2·(Σ_{i<k} + k) = k(k-1) + 2k = k(k+1) = (k+1)·k,
+//              and (k+1)-1 = k, so the RHS is (k+1)·((k+1)-1).  [by arithmetic]
+theorem gaussSum: forall n: NonNegZ;
+  is_nonneg(n) -> mul(succ(ONE), sumUpTo(idSeq, n)) = mul(n, prev(n))
+proof
+  @given-zero-nonneg |
+    assume is_nonneg(ZERO) {
+      @sum-at-zero-is-zero |
+        sumUpTo(idSeq, ZERO) = ZERO
+        [by specialize sumUpToZero(idSeq)]
+      // 2·Σ_0 = 2·0 = 0, and 0·(0-1) = 0, so both sides are ZERO.
+      @two-times-empty-sum |
+        mul(succ(ONE), sumUpTo(idSeq, ZERO)) = ZERO
+        [by simplify sum-at-zero-is-zero mulZeroRight]
+      @zero-times-anything |
+        mul(ZERO, prev(ZERO)) = ZERO
+        [by specialize mulZeroLeft(prev(ZERO))]
+      @gauss-at-zero |
+        mul(succ(ONE), sumUpTo(idSeq, ZERO)) = mul(ZERO, prev(ZERO))
+        [by chain two-times-empty-sum zero-times-anything]
+    }
+  @base-case |
+    is_nonneg(ZERO) -> mul(succ(ONE), sumUpTo(idSeq, ZERO)) = mul(ZERO, prev(ZERO))
+    [by implies_intro given-zero-nonneg]
+  @induction-step |
+    fix k: Int {
+      @given-k-nonneg |
+        assume is_nonneg(k) {
+          @k-nonneg |
+            is_nonneg(k)
+            [by hypothesis given-k-nonneg]
+          @given-inductive-hypothesis |
+            assume is_nonneg(k) -> mul(succ(ONE), sumUpTo(idSeq, k)) = mul(k, prev(k)) {
+              @guarded-inductive-hypothesis |
+                is_nonneg(k) -> mul(succ(ONE), sumUpTo(idSeq, k)) = mul(k, prev(k))
+                [by hypothesis given-inductive-hypothesis]
+              @inductive-hypothesis |
+                mul(succ(ONE), sumUpTo(idSeq, k)) = mul(k, prev(k))
+                [by specialize guarded-inductive-hypothesis k-nonneg]
+              @successor-nonneg |
+                is_nonneg(succ(k))
+                [by specialize nonnegSucc(k) k-nonneg]
+              @sum-at-successor |
+                sumUpTo(idSeq, succ(k)) = add(sumUpTo(idSeq, k), at(idSeq, k))
+                [by specialize sumUpToSucc(idSeq, k) k-nonneg]
+              @entry-at-k-is-k |
+                at(idSeq, k) = k
+                [by specialize idSeqEntry(k) k-nonneg]
+              @sum-at-successor-adds-k |
+                sumUpTo(idSeq, succ(k)) = add(sumUpTo(idSeq, k), k)
+                [by rewrite entry-at-k-is-k sum-at-successor]
+              // 2·Σ_{k+1} = 2·(Σ_k + k) = 2·Σ_k + 2k.  Expose the 2·Σ_k so the IH
+              // can substitute k·(k-1) for it.
+              @two-times-sum-successor |
+                mul(succ(ONE), sumUpTo(idSeq, succ(k))) = add(mul(succ(ONE), sumUpTo(idSeq, k)), mul(succ(ONE), k))
+                [by arithmetic sum-at-successor-adds-k]
+              // substitute the IH 2·Σ_k = k·(k-1): now 2·Σ_{k+1} = k·(k-1) + 2·k.
+              @two-times-sum-successor-with-ih |
+                mul(succ(ONE), sumUpTo(idSeq, succ(k))) = add(mul(k, prev(k)), mul(succ(ONE), k))
+                [by rewrite inductive-hypothesis two-times-sum-successor]
+              // prev(k) = k-1, prev(succ(k)) = k. Package the ring identity
+              // k·(k-1) + 2·k = (k+1)·k with prev normalized to a successor offset.
+              @prev-of-successor-is-k |
+                prev(succ(k)) = k
+                [by specialize prevSucc(k)]
+              // expand k·(k-1) = k·k + (-k) so the identity is pure add/mul/neg/succ.
+              @k-times-prev-k |
+                mul(k, prev(k)) = add(mul(k, k), neg(k))
+                [by specialize mulPrevRight(k, k)]
+              @ring-identity-expanded |
+                add(add(mul(k, k), neg(k)), mul(succ(ONE), k)) = mul(succ(k), k)
+                [by polynomial]
+              // k·(k-1) + 2k = k² + k = (k+1)·k, folding the expanded prev term.
+              @ring-identity |
+                add(mul(k, prev(k)), mul(succ(ONE), k)) = mul(succ(k), k)
+                [by rewrite k-times-prev-k ring-identity-expanded]
+              @gauss-at-successor-in-k |
+                mul(succ(ONE), sumUpTo(idSeq, succ(k))) = mul(succ(k), k)
+                [by chain two-times-sum-successor-with-ih ring-identity]
+              // wrap the body under is_nonneg(succ(k)) to match the predicate
+              // shape P(succ k) = is_nonneg(succ k) -> body(succ k). The body is
+              // already unconditional, so the guard is vacuously discharged.
+              @given-successor-nonneg |
+                assume is_nonneg(succ(k)) {
+                  @gauss-at-successor |
+                    mul(succ(ONE), sumUpTo(idSeq, succ(k))) = mul(succ(k), prev(succ(k)))
+                    [by rewrite prev-of-successor-is-k gauss-at-successor-in-k]
+                }
+              @predicate-at-successor |
+                is_nonneg(succ(k)) -> mul(succ(ONE), sumUpTo(idSeq, succ(k))) = mul(succ(k), prev(succ(k)))
+                [by implies_intro given-successor-nonneg]
+            }
+          @inductive-hypothesis-implies-successor |
+            (is_nonneg(k) -> mul(succ(ONE), sumUpTo(idSeq, k)) = mul(k, prev(k))) ->
+              (is_nonneg(succ(k)) -> mul(succ(ONE), sumUpTo(idSeq, succ(k))) = mul(succ(k), prev(succ(k))))
+            [by implies_intro given-inductive-hypothesis]
+        }
+      @discharge-successor |
+        is_nonneg(k) ->
+          ((is_nonneg(k) -> mul(succ(ONE), sumUpTo(idSeq, k)) = mul(k, prev(k))) ->
+          (is_nonneg(succ(k)) -> mul(succ(ONE), sumUpTo(idSeq, succ(k))) = mul(succ(k), prev(succ(k)))))
+        [by implies_intro given-k-nonneg]
+    }
+  @induction-step-for-all-k |
+    forall k: Int;
+      is_nonneg(k) ->
+      (is_nonneg(k) -> mul(succ(ONE), sumUpTo(idSeq, k)) = mul(k, prev(k))) ->
+      (is_nonneg(succ(k)) -> mul(succ(ONE), sumUpTo(idSeq, succ(k))) = mul(succ(k), prev(succ(k))))
+    [by forall_intro induction-step]
+  @conclusion |
+    forall n: NonNegZ; is_nonneg(n) -> mul(succ(ONE), sumUpTo(idSeq, n)) = mul(n, prev(n))
+    [by instantiate nonnegInduction((fun n: Int => is_nonneg(n) -> mul(succ(ONE), sumUpTo(idSeq, n)) = mul(n, prev(n)))) base-case induction-step-for-all-k]
+qed
