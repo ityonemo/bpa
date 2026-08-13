@@ -154,6 +154,154 @@ proof
     [by forall_intro generalize-a]
 qed
 
+// More parent-group derived laws a subgroup-specific proof may cite, proved from
+// the grp* axioms (Judson has each by §3.2). They live here rather than being
+// imported from std/group.bpa so this theory stays self-contained — a subgroup's
+// PARENT is a group, so these hold on `Grp` and a §3.3 proof cites them directly
+// instead of re-deriving them inline.
+
+// (ab)⁻¹ = b⁻¹a⁻¹ — the inverse of a product reverses the factors. From
+// (ab)(b⁻¹a⁻¹) = e and inverseUnique.
+theorem invProduct: forall a, b: Grp; inverse(op(a, b)) = op(inverse(b), inverse(a))
+proof
+  @generalize-a |
+    fix a: Grp {
+      @generalize-b |
+        fix b: Grp {
+          @rearrange |
+            op(op(a, b), op(inverse(b), inverse(a))) = op(a, op(op(b, inverse(b)), inverse(a)))
+            [by assoc(grpAssoc)]
+          @b-times-inverse-b-is-identity |
+            op(b, inverse(b)) = E
+            [by specialize grpInverseRight(b)]
+          @identity-times-inverse-a |
+            op(E, inverse(a)) = inverse(a)
+            [by specialize grpIdentityLeft(inverse(a))]
+          @a-times-inverse-a-is-identity |
+            op(a, inverse(a)) = E
+            [by specialize grpInverseRight(a)]
+          // (ab)(b⁻¹a⁻¹) = a((bb⁻¹)a⁻¹) = a(e·a⁻¹) = a·a⁻¹ = e
+          @product-is-identity |
+            op(op(a, b), op(inverse(b), inverse(a))) = E
+            [by chain rearrange b-times-inverse-b-is-identity identity-times-inverse-a a-times-inverse-a-is-identity]
+          @inverses-swapped-is-the-inverse |
+            op(inverse(b), inverse(a)) = inverse(op(a, b))
+            [by specialize inverseUnique(op(a, b), op(inverse(b), inverse(a))) product-is-identity]
+          @conclusion-inverse-of-product |
+            inverse(op(a, b)) = op(inverse(b), inverse(a))
+            [by symmetry inverses-swapped-is-the-inverse]
+        }
+      @discharge-b |
+        forall b: Grp; inverse(op(a, b)) = op(inverse(b), inverse(a))
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b: Grp; inverse(op(a, b)) = op(inverse(b), inverse(a))
+    [by forall_intro generalize-a]
+qed
+
+// Right cancellation: ba = ca ⟹ b = c. Multiply on the right by a⁻¹.
+theorem cancelRight: forall b, a, c: Grp; op(b, a) = op(c, a) -> b = c
+proof
+  @generalize-b |
+    fix b: Grp {
+      @generalize-a |
+        fix a: Grp {
+          @generalize-c |
+            fix c: Grp {
+              @given-right-products-equal |
+                assume op(b, a) = op(c, a) {
+                  @right-products-equal |
+                    op(b, a) = op(c, a)
+                    [by hypothesis given-right-products-equal]
+                  @reassociate-around-b |
+                    op(op(b, a), inverse(a)) = op(b, op(a, inverse(a)))
+                    [by specialize grpAssoc(b, a, inverse(a))]
+                  @a-times-inverse-a-is-identity |
+                    op(a, inverse(a)) = E
+                    [by specialize grpInverseRight(a)]
+                  @identity-cancels-on-b |
+                    op(b, E) = b
+                    [by specialize grpIdentityRight(b)]
+                  @reassociate-around-c |
+                    op(op(c, a), inverse(a)) = op(c, op(a, inverse(a)))
+                    [by specialize grpAssoc(c, a, inverse(a))]
+                  @identity-cancels-on-c |
+                    op(c, E) = c
+                    [by specialize grpIdentityRight(c)]
+                  // b = b·e = b·(a·a⁻¹) = (b·a)·a⁻¹ = (c·a)·a⁻¹ = c·(a·a⁻¹) = c·e = c
+                  @b-is-c |
+                    b = c
+                    [by chain identity-cancels-on-b a-times-inverse-a-is-identity reassociate-around-b right-products-equal reassociate-around-c identity-cancels-on-c]
+                }
+              @discharge |
+                op(b, a) = op(c, a) -> b = c
+                [by implies_intro given-right-products-equal]
+            }
+          @discharge-c |
+            forall c: Grp; op(b, a) = op(c, a) -> b = c
+            [by forall_intro generalize-c]
+        }
+      @discharge-a |
+        forall a, c: Grp; op(b, a) = op(c, a) -> b = c
+        [by forall_intro generalize-a]
+    }
+  @conclusion |
+    forall b, a, c: Grp; op(b, a) = op(c, a) -> b = c
+    [by forall_intro generalize-b]
+qed
+
+// Left cancellation: ab = ac ⟹ b = c. Multiply on the left by a⁻¹.
+theorem cancelLeft: forall a, b, c: Grp; op(a, b) = op(a, c) -> b = c
+proof
+  @generalize-a |
+    fix a: Grp {
+      @generalize-b |
+        fix b: Grp {
+          @generalize-c |
+            fix c: Grp {
+              @given-left-products-equal |
+                assume op(a, b) = op(a, c) {
+                  @left-products-equal |
+                    op(a, b) = op(a, c)
+                    [by hypothesis given-left-products-equal]
+                  @reassociate-around-b |
+                    op(op(inverse(a), a), b) = op(inverse(a), op(a, b))
+                    [by specialize grpAssoc(inverse(a), a, b)]
+                  @inverse-a-times-a-is-identity |
+                    op(inverse(a), a) = E
+                    [by specialize grpInverseLeft(a)]
+                  @identity-cancels-on-b |
+                    op(E, b) = b
+                    [by specialize grpIdentityLeft(b)]
+                  @reassociate-around-c |
+                    op(op(inverse(a), a), c) = op(inverse(a), op(a, c))
+                    [by specialize grpAssoc(inverse(a), a, c)]
+                  @identity-cancels-on-c |
+                    op(E, c) = c
+                    [by specialize grpIdentityLeft(c)]
+                  // b = e·b = (a⁻¹·a)·b = a⁻¹·(a·b) = a⁻¹·(a·c) = (a⁻¹·a)·c = e·c = c
+                  @b-is-c |
+                    b = c
+                    [by chain identity-cancels-on-b inverse-a-times-a-is-identity reassociate-around-b left-products-equal reassociate-around-c identity-cancels-on-c]
+                }
+              @discharge |
+                op(a, b) = op(a, c) -> b = c
+                [by implies_intro given-left-products-equal]
+            }
+          @discharge-c |
+            forall c: Grp; op(a, b) = op(a, c) -> b = c
+            [by forall_intro generalize-c]
+        }
+      @discharge-b |
+        forall b, c: Grp; op(a, b) = op(a, c) -> b = c
+        [by forall_intro generalize-b]
+    }
+  @conclusion |
+    forall a, b, c: Grp; op(a, b) = op(a, c) -> b = c
+    [by forall_intro generalize-a]
+qed
+
 // The subgroup, as a membership predicate over the group's sort, characterized by
 // the three subgroup-criterion conditions.
 pred inSubgroup(g: Grp)
